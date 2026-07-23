@@ -1,0 +1,4292 @@
+import 'dart:ui';
+import 'dart:convert';
+import 'dart:async';
+import 'dart:math' as math;
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
+import '../../../../core/database/database_helper.dart';
+import '../../../../core/domain/models.dart';
+import '../../../../core/theme/ritmo_theme.dart';
+import '../../../../core/domain/engines/ritmo_execution_kernel.dart';
+import '../../../../core/utils/ritmo_toast.dart';
+import '../../../../core/utils/ritmo_date_picker.dart';
+import '../../../../core/utils/persian_digits.dart';
+import '../../goals/presentation/widgets/goals_formatters.dart' hide toPersianDigits;
+import 'quick_add_parser.dart';
+
+// Subsystem imports
+import '../../worship/models/worship_models.dart' hide toPersianDigits;
+import '../../courses/logic/courses_repository.dart';
+import '../../courses/models/course_models.dart';
+import '../../goals/logic/goals_repository.dart';
+import '../../goals/models/goal_models.dart';
+import '../../reflection/models/reflection_models.dart';
+import '../../../../core/domain/engines/ritmo_event_bus.dart';
+import 'package:sqflite/sqflite.dart';
+
+// Strategy Pattern — Phase 4
+import '../domain/strategies/planner_save_context.dart';
+import '../domain/strategies/planner_strategy_registry.dart';
+import '../../health/presentation/widgets/medication_form_sheet.dart';
+
+
+// --- MAIN UNIVERSAL PLANNER SHEET ---
+class UniversalPlannerSheet extends StatefulWidget {
+  final Map<String, dynamic>? routineToEdit;
+  final VoidCallback onSaved;
+
+  const UniversalPlannerSheet({
+    super.key,
+    required this.onSaved,
+    this.routineToEdit,
+  });
+
+  static void show(BuildContext context, {Map<String, dynamic>? routineToEdit, required VoidCallback onSaved}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => UniversalPlannerSheet(
+        routineToEdit: routineToEdit,
+        onSaved: onSaved,
+      ),
+    );
+  }
+
+  @override
+  State<UniversalPlannerSheet> createState() => _UniversalPlannerSheetState();
+}
+
+class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
+  late PlannerController _controller;
+  final PageController _pageController = PageController();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PlannerController(
+      routineToEdit: widget.routineToEdit,
+      onSaved: widget.onSaved,
+      onPageChanged: (pageIndex) {
+        if (_pageController.hasClients) {
+          _pageController.animateToPage(
+            pageIndex,
+            duration: const Duration(milliseconds: 380),
+            curve: Curves.easeInOutCubic,
+          );
+        }
+      },
+    );
+    _controller.init();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Wire up the medical sheet opener here so `context` is always current
+    _controller._openMedicalSheet = ([MedicationFormData? prefillData]) {
+      MedicationFormSheet.show(
+        context,
+        prefillData: prefillData ?? _controller.tempMedicationData,
+        onFormCompleted: (formData) {
+          _controller.title = formData.name;
+          _controller.description = formData.dose;
+          _controller.tempMedicationData = formData;
+          _controller.selectedCategory = Category.medical;
+          _controller.itemType = 'REMINDER';
+          _controller.updatePage(2);
+        },
+      );
+    };
+
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.45),
+              alignment: Alignment.bottomCenter,
+              child: GestureDetector(
+                onTap: () {}, // Prevent dismissal when tapping inside the sheet
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 0.9,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F111E).withValues(alpha: 0.94) : Colors.white.withValues(alpha: 0.94),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                    border: Border.all(
+                      color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                      width: 1.0,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: Stack(
+                          children: [
+                            Column(
+                              children: [
+                                // Header
+                                PlannerHeader(controller: _controller),
+                                const SizedBox(height: 12),
+
+                                // Step Content PageView
+                                Expanded(
+                                  child: PageView(
+                                    controller: _pageController,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    children: [
+                                      // STEP 1: What? (Matches Mockup 100%)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: [
+                                            PlannerNaturalInput(controller: _controller),
+                                            const SizedBox(height: 20),
+                                            Expanded(
+                                              child: PlannerCategoryGrid(controller: _controller),
+                                            ),
+                                            const SizedBox(height: 16),
+                                          ],
+                                        ),
+                                      ),
+
+                                      // STEP 2: When? (Matches Mockup 100%)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: [
+                                            Expanded(
+                                              child: SingleChildScrollView(
+                                                child: _buildDynamicSubsystemForm(),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                          ],
+                                        ),
+                                      ),
+
+                                      // STEP 3: Preview (Matches Mockup 100%)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: [
+                                            Expanded(
+                                              child: SingleChildScrollView(
+                                                child: Column(
+                                                  children: [
+                                                    PlannerSummaryCard(controller: _controller),
+                                                    if (_controller.selectedCategory != Category.medical) ...[
+                                                      const SizedBox(height: 20),
+                                                      PlannerJourneyPreview(controller: _controller),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Fixed Bottom section (Submit button / Continue button + Progress indicator)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      PlannerSubmitButton(controller: _controller),
+                                      const SizedBox(height: 16),
+                                      _buildStepProgressIndicator(),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            // Success Confetti overlay
+                            if (_controller.showSuccessAnim)
+                              Positioned.fill(
+                                child: Container(
+                                  color: Colors.black.withValues(alpha: 0.4),
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          width: 80,
+                                          height: 80,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xff10B981),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.check_rounded, color: Colors.white, size: 48),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        const Text(
+                                          'ایستگاه جدید به مسیر زندگی اضافه شد!',
+                                          style: TextStyle(
+                                            fontFamily: 'Vazirmatn',
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const SizedBox(
+                                          height: 100,
+                                          width: 300,
+                                          child: _ConfettiWidget(),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStepProgressIndicator() {
+    final colors = context.colors;
+    final int page = _controller.currentPage;
+
+    return Center(
+      child: Container(
+        width: 160,
+        height: 24,
+        alignment: Alignment.center,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Connecting line
+            Container(
+              height: 2.2,
+              width: 140,
+              decoration: BoxDecoration(
+                color: colors.textSecondary.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+            // Active line segment
+            Positioned(
+              right: 10,
+              left: page == 0 ? 80 : (page == 1 ? 40 : 10),
+              child: Container(
+                height: 2.2,
+                color: colors.primary,
+              ),
+            ),
+            // 3 Nodes/Dots
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(3, (index) {
+                final isActive = page == index;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: isActive ? 12 : 8,
+                  height: isActive ? 12 : 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isActive ? colors.primary : colors.textSecondary.withValues(alpha: 0.35),
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: colors.primary.withValues(alpha: 0.45),
+                              blurRadius: 8,
+                              spreadRadius: 1.5,
+                            )
+                          ]
+                        : null,
+                  ),
+                );
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDynamicSubsystemForm() {
+    switch (_controller.selectedCategory) {
+      case Category.religious:
+        return WorshipStep2Form(controller: _controller);
+      case Category.fitness:
+        return SportsStep2Form(controller: _controller);
+      case Category.medical:
+        // Medication is saved via MedicationFormSheet before reaching step 2.
+        // This page is skipped; show a simple confirmation in the rare case it's reached.
+        return _buildMedicalSavedPlaceholder();
+      case Category.learning:
+        return CourseStep2Form(controller: _controller);
+      case Category.custom:
+        return GoalStep2Form(controller: _controller);
+      case Category.personal:
+        if (_controller.itemType == 'REFLECT') {
+          return ReflectionStep2Form(controller: _controller);
+        }
+        return GenericStep2Form(controller: _controller);
+      default:
+        return GenericStep2Form(controller: _controller);
+    }
+  }
+
+  Widget _buildMedicalSavedPlaceholder() {
+    final colors = context.colors;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_outline_rounded, size: 64, color: colors.primary),
+            const SizedBox(height: 16),
+            Text(
+              'دارو با موفقیت ثبت شد',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'می‌توانید پیش‌نمایش را تأیید کنید.',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 13,
+                color: colors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- STATE CONTROLLER ---
+class PlannerController extends ChangeNotifier {
+  final Map<String, dynamic>? routineToEdit;
+  final VoidCallback onSaved;
+  final void Function(int) onPageChanged;
+
+  bool moduleReligionEnabled = true;
+  bool moduleMedicineEnabled = false;
+  bool moduleCycleEnabled = false;
+  bool moduleCoursesEnabled = false;
+  bool moduleKonkurEnabled = false;
+  bool moduleGoalsEnabled = false;
+  bool moduleSportsEnabled = false;
+  bool moduleEnergyEnabled = false;
+  bool moduleSleepEnabled = false;
+
+  PlannerController({
+    this.routineToEdit,
+    required this.onSaved,
+    required this.onPageChanged,
+  });
+
+  int currentPage = 0;
+  bool isEditing = false;
+
+  // NLP Text Input
+  final TextEditingController inputController = TextEditingController();
+  bool isParsing = false;
+  bool isListening = false; // Voice input pulsing simulation
+
+  // Core Fields
+  String title = '';
+  String description = '';
+  Category selectedCategory = Category.personal;
+  String itemType = 'ROUTINE'; // 'ROUTINE' | 'REMINDER' | 'TASK' | 'REFLECT' | 'EVENT'
+  double priority = 1.0; // 0.5=Low, 1.0=Medium, 1.5=High, 2.0=Critical
+  
+  // Temporal data for medical category
+  MedicationFormData? tempMedicationData;
+  
+  // Date & Time Configurations
+  DateTime selectedDate = DateTime.now();
+  TimeOfDay selectedTime = const TimeOfDay(hour: 8, minute: 0);
+  int targetDuration = 60; // 60 minutes
+  String recurrenceType = 'EVERY_DAY'; // 'EVERY_DAY', 'WEEKLY', 'CUSTOM_DAYS'
+  int reminderOffsetMinutes = 15; // 15 mins before
+
+  // Worship specific fields
+  String worshipType = 'MUSTAHAB'; // 'MUSTAHAB' | 'DHIKR' | 'QURAN' | 'DEBT'
+  String worshipDebtType = 'PRAYER'; // 'PRAYER' | 'FAST'
+  int worshipTotalCount = 10;
+  int worshipDailyTarget = 1;
+  String worshipReminderAnchor = 'NONE'; // NONE, FAJR, SUNRISE, DHUHR, ASR, MAGHRIB, ISHA, MIDNIGHT_SHARI, WAKEUP, BEDTIME
+  int worshipOffsetMinutes = 0;
+  List<int> worshipSelectedDays = [6, 7, 1, 2, 3, 4, 5]; // Sat..Fri (matches 6,7,1,2,3,4,5)
+  String worshipRepeatType = 'RECURRING'; // 'RECURRING' | 'ONCE'
+
+  String _formatDate(DateTime dt) {
+    final y = dt.year.toString().padLeft(4, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+  
+  // Sports specific fields
+  String sportsOpType = 'ROUTINE'; // 'ROUTINE' | 'LOG'
+  String sportsType = 'STRENGTH'; // RUNNING, WALKING, STRENGTH, YOGA, CYCLING, SWIMMING, OTHER
+  int sportsDuration = 45;
+  String sportsIntensity = 'MEDIUM'; // LIGHT, MEDIUM, HIGH
+  String sportsLocation = 'GYM'; // HOME, GYM
+  String sportsFeeling = 'خوب';
+  
+  // Medical specific fields
+  String medicalMode = 'FIXED'; // 'FIXED' | 'PRN'
+  List<TimeOfDay> medicalTimes = [const TimeOfDay(hour: 8, minute: 0)];
+  int medicalStockCount = 30;
+  int medicalRefillWarning = 5;
+  int medicalMinIntervalHours = 4;
+  int medicalMaxDosesPerDay = 4;
+
+  // Learning/Course specific fields
+  String courseType = 'VIDEO'; // VIDEO, BOOK, SKILL, CUSTOM
+  int courseTotalSessions = 10;
+  int courseWeeklyTarget = 3;
+  int courseSessionDuration = 45;
+  List<int> coursePreferredDays = [6, 1, 3]; // Sat, Mon, Wed
+  TimeOfDay coursePreferredTime = const TimeOfDay(hour: 18, minute: 0);
+
+  // Goals specific fields
+  String goalType = 'DAILY'; // DAILY, WEEKLY, LONG_TERM
+  DateTime goalTargetDate = DateTime.now().add(const Duration(days: 30));
+  List<String> goalSteps = [''];
+
+  // Reflection specific fields
+  int reflectionMood = 3;
+  String reflectionWins = '';
+  String reflectionGratitude = '';
+  String reflectionLearnings = '';
+  bool reflectionIsPrivate = false;
+
+  // Event specific fields
+  DateTime eventDate = DateTime.now();
+  TimeOfDay eventStartTime = const TimeOfDay(hour: 9, minute: 0);
+  TimeOfDay eventEndTime = const TimeOfDay(hour: 10, minute: 0);
+  String eventLocation = '';
+
+  // Advanced accordion properties
+  bool isAdvancedExpanded = false;
+  String notes = '';
+  String? dependsOnRoutineId;
+  String? selectedZoneId;
+  List<Map<String, dynamic>> availableZones = [];
+  String energyRule = 'NONE';
+
+  // Visual/UI effects
+  bool showSuccessAnim = false;
+  List<Map<String, dynamic>> todayOtherRoutines = [];
+
+  // Sunrise/Sunset calculations (standard fallback or loaded)
+  TimeOfDay sunriseTime = const TimeOfDay(hour: 5, minute: 45);
+  TimeOfDay sunsetTime = const TimeOfDay(hour: 19, minute: 15);
+
+  void init() {
+    isEditing = routineToEdit != null;
+    if (isEditing) {
+      _loadEditData();
+    }
+    _loadOtherRoutinesForDate();
+    _loadModuleSettings();
+    _loadZones();
+  }
+
+  Future<void> _loadZones() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final list = await db.query('zones');
+      availableZones = list;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading zones in planner: $e');
+    }
+  }
+
+  Future<void> _loadModuleSettings() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final settings = await db.query('app_settings');
+      final settingsMap = {for (var s in settings) s['key'] as String: s['value'] as String};
+      
+      moduleReligionEnabled = settingsMap['module_religion_enabled'] == 'true';
+      moduleMedicineEnabled = settingsMap['module_medicine_enabled'] == 'true';
+      moduleCycleEnabled = settingsMap['module_cycle_enabled'] == 'true';
+      moduleCoursesEnabled = settingsMap['module_courses_enabled'] == 'true';
+      moduleKonkurEnabled = settingsMap['module_konkur_enabled'] == 'true';
+      moduleGoalsEnabled = settingsMap['module_goals_enabled'] == 'true';
+      moduleSportsEnabled = settingsMap['module_sports_enabled'] == 'true';
+      moduleEnergyEnabled = settingsMap['module_energy_enabled'] == 'true';
+      moduleSleepEnabled = settingsMap['module_sleep_enabled'] == 'true';
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading module settings in planner: $e');
+    }
+  }
+
+  void _loadEditData() {
+    final data = routineToEdit!;
+    title = data['title'] as String? ?? '';
+    description = data['description'] as String? ?? '';
+    selectedCategory = Category.values.firstWhere((e) => e.name == data['category'], orElse: () => Category.personal);
+    priority = data['priority'] as double? ?? 1.0;
+    targetDuration = data['targetDurationMinutes'] as int? ?? 60;
+    itemType = data['itemType'] as String? ?? 'ROUTINE';
+    dependsOnRoutineId = data['dependsOnRoutineId'] as String?;
+    selectedZoneId = data['zoneId'] as String?;
+    energyRule = data['energyRule'] as String? ?? 'NONE';
+    
+    // Load Time and Recurrence
+    final timeStr = data['timeOfDay'] as String? ?? '08:00';
+    final parts = timeStr.split(':');
+    if (parts.length == 2) {
+      selectedTime = TimeOfDay(
+        hour: int.tryParse(parts[0]) ?? 8,
+        minute: int.tryParse(parts[1]) ?? 0,
+      );
+    }
+    notifyListeners();
+  }
+
+  Future<void> _loadOtherRoutinesForDate() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final list = await db.query(
+        'routines',
+        where: 'isArchived = 0',
+        orderBy: 'title ASC',
+      );
+      
+      // Load schedules and merge
+      final List<Map<String, dynamic>> resolvedList = [];
+      for (var r in list) {
+        final schedules = await db.query(
+          'routine_schedules',
+          where: 'routineId = ?',
+          whereArgs: [r['id']],
+        );
+        if (schedules.isNotEmpty) {
+          final sched = schedules.first;
+          final rMap = Map<String, dynamic>.from(r);
+          rMap['timeOfDay'] = sched['timeOfDay'] ?? '08:00';
+          resolvedList.add(rMap);
+        }
+      }
+
+      // Sort chronologically
+      resolvedList.sort((a, b) {
+        final timeA = a['timeOfDay'] as String? ?? '08:00';
+        final timeB = b['timeOfDay'] as String? ?? '08:00';
+        return timeA.compareTo(timeB);
+      });
+
+      todayOtherRoutines = resolvedList;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Load other routines error: $e');
+    }
+  }
+
+  void updatePage(int page) {
+    currentPage = page;
+    onPageChanged(page);
+    notifyListeners();
+  }
+
+  void selectCategory(Category cat, BuildContext context, {String? type}) {
+    bool isSystemEnabled = true;
+    String? settingKey;
+    String? systemName;
+    String? systemDescription;
+    IconData? systemIcon;
+    Color? systemColor;
+
+    if (cat == Category.fitness) {
+      isSystemEnabled = moduleSportsEnabled;
+      settingKey = 'module_sports_enabled';
+      systemName = 'ورزش';
+      systemDescription = 'با فعالسازی این سیستم، میتوانید تمرینهای ورزشی، مدت و شدت آنها را ثبت کرده و روند فعالیت بدنی خود را پیگیری کنید.';
+      systemIcon = Icons.fitness_center;
+      systemColor = const Color(0xff10B981);
+    } else if (cat == Category.religious) {
+      isSystemEnabled = moduleReligionEnabled;
+      settingKey = 'module_religion_enabled';
+      systemName = 'عبادت';
+      systemDescription = 'با فعال‌سازی این سیستم، می‌توانید برنامه‌ی نمازهای واجب، مستحبات، اذکار و قرآن خود را زمان‌بندی و پیگیری کنید.';
+      systemIcon = Icons.mosque_rounded;
+      systemColor = const Color(0xffFBBF24);
+    } else if (cat == Category.medical) {
+      isSystemEnabled = moduleMedicineEnabled;
+      settingKey = 'module_medicine_enabled';
+      systemName = 'دارو و سلامت';
+      systemDescription = 'با فعال‌سازی این سیستم، می‌توانید برنامه‌ی داروها، نوبت‌های پزشک و سایر موارد پزشکی خود را مدیریت کنید.';
+      systemIcon = Icons.vaccines_rounded;
+      systemColor = const Color(0xff06B6D4);
+    } else if (cat == Category.learning) {
+      isSystemEnabled = moduleCoursesEnabled;
+      settingKey = 'module_courses_enabled';
+      systemName = 'دوره‌های آموزشی';
+      systemDescription = 'با فعال‌سازی این سیستم، می‌توانید دوره‌های آموزشی، کتاب‌ها و دوره‌های دلخواه خود را زمان‌بندی و پیگیری کنید.';
+      systemIcon = Icons.school_rounded;
+      systemColor = const Color(0xff6366F1);
+    } else if (cat == Category.custom) {
+      isSystemEnabled = moduleGoalsEnabled;
+      settingKey = 'module_goals_enabled';
+      systemName = 'اهداف و برنامه‌ها';
+      systemDescription = 'با فعال‌سازی این سیستم، می‌توانید اهداف زندگی خود را در قالب پروژه‌ها و گام‌های مشخص زمان‌بندی و مدیریت کنید.';
+      systemIcon = Icons.track_changes_rounded;
+      systemColor = const Color(0xffF97316);
+    }
+
+    if (!isSystemEnabled && settingKey != null) {
+      _showActivationDialog(
+        context: context,
+        settingKey: settingKey,
+        name: systemName!,
+        description: systemDescription!,
+        icon: systemIcon!,
+        color: systemColor!,
+        onActivated: () {
+          selectedCategory = cat;
+          if (type != null) {
+            itemType = type;
+          } else {
+            itemType = cat == Category.medical ? 'REMINDER' : 'ROUTINE';
+          }
+          if (cat == Category.medical && _openMedicalSheet != null) {
+            _openMedicalSheet!();
+          } else {
+            updatePage(1);
+          }
+        },
+      );
+      return;
+    }
+
+    selectedCategory = cat;
+    if (type != null) {
+      itemType = type;
+    } else {
+      if (cat == Category.medical) {
+        itemType = 'REMINDER';
+      } else {
+        itemType = 'ROUTINE';
+      }
+    }
+
+    // Medical: open the unified MedicationFormSheet directly, then jump to preview (page 2)
+    if (cat == Category.medical && _openMedicalSheet != null) {
+      _openMedicalSheet!();
+      return;
+    }
+
+    updatePage(1);
+  }
+
+  /// Callback set by the widget to open MedicationFormSheet in the right context
+  void Function([MedicationFormData?])? _openMedicalSheet;
+
+  void _showActivationDialog({
+    required BuildContext context,
+    required String settingKey,
+    required String name,
+    required String description,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onActivated,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      isScrollControlled: true,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            decoration: BoxDecoration(
+              color: isDark 
+                  ? const Color(0xff12141C).withValues(alpha: 0.9) 
+                  : Colors.white.withValues(alpha: 0.9),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.4),
+                  width: 1.5,
+                ),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.25),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      )
+                    ],
+                  ),
+                  child: Icon(icon, color: color, size: 38),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'فعال‌سازی سیستم $name',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Vazirmatn',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  description,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                    height: 1.5,
+                    fontFamily: 'Vazirmatn',
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            side: BorderSide(
+                              color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'انصراف',
+                          style: TextStyle(
+                            color: isDark ? Colors.white70 : Colors.black87,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Vazirmatn',
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          try {
+                            final db = await DatabaseHelper.instance.database;
+                            await db.insert(
+                              'app_settings',
+                              {
+                                'key': settingKey,
+                                'value': 'true',
+                                'updatedAt': DateTime.now().millisecondsSinceEpoch,
+                              },
+                              conflictAlgorithm: ConflictAlgorithm.replace,
+                            );
+                            await _loadModuleSettings();
+                            onActivated();
+                          } catch (e) {
+                            debugPrint('Error enabling module: $e');
+                          }
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor: color,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Text(
+                          'فعال‌سازی سیستم',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Vazirmatn',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void triggerVoiceSimulate() {
+    isListening = true;
+    notifyListeners();
+
+    // Pulse animation simulation then parse a template text
+    Timer(const Duration(seconds: 3), () {
+      isListening = false;
+      inputController.text = 'فردا ساعت ۸ باشگاه ورزشی بروم';
+      parseNLPText();
+    });
+  }
+
+  void parseNLPText() {
+    final text = inputController.text.trim();
+    if (text.isEmpty) return;
+
+    isParsing = true;
+    notifyListeners();
+
+    Timer(const Duration(milliseconds: 650), () {
+      isParsing = false;
+      final parsed = QuickAddParser.parse(text);
+      if (parsed != null) {
+        title = parsed.title;
+        if (parsed.timeOfDay != null) {
+          selectedTime = parsed.timeOfDay!;
+        }
+        if (parsed.itemType != null) {
+          itemType = parsed.itemType!;
+        }
+        if (parsed.weekdays != null && parsed.weekdays!.isNotEmpty) {
+          recurrenceType = 'WEEKLY';
+        }
+        updatePage(1);
+      } else {
+        title = text;
+        updatePage(1);
+      }
+      notifyListeners();
+    });
+  }
+
+  void adjustDuration(int delta) {
+    targetDuration = (targetDuration + delta).clamp(15, 180);
+    notifyListeners();
+  }
+
+  void setTime(TimeOfDay time) {
+    selectedTime = time;
+    notifyListeners();
+  }
+
+  void setDate(DateTime date) {
+    selectedDate = date;
+    notifyListeners();
+  }
+
+  /// Builds an immutable snapshot of the controller's current state.
+  /// This is passed to the strategy so strategies never import PlannerController.
+  PlannerSaveContext _buildSaveContext() {
+    return PlannerSaveContext(
+      title: title,
+      description: description,
+      notes: notes,
+      selectedDate: selectedDate,
+      selectedTime: selectedTime,
+      isEditing: isEditing,
+      routineToEdit: routineToEdit,
+      selectedCategory: selectedCategory,
+      itemType: itemType,
+      // Generic
+      recurrenceType: recurrenceType,
+      targetDuration: targetDuration,
+      reminderOffsetMinutes: reminderOffsetMinutes,
+      priority: priority,
+      energyRule: energyRule,
+      dependsOnRoutineId: dependsOnRoutineId,
+      selectedZoneId: selectedZoneId,
+      // Worship
+      worshipType: worshipType,
+      worshipDebtType: worshipDebtType,
+      worshipTotalCount: worshipTotalCount,
+      worshipDailyTarget: worshipDailyTarget,
+      worshipReminderAnchor: worshipReminderAnchor,
+      worshipOffsetMinutes: worshipOffsetMinutes,
+      worshipSelectedDays: worshipSelectedDays,
+      worshipRepeatType: worshipRepeatType,
+      // Sports
+      sportsOpType: sportsOpType,
+      sportsType: sportsType,
+      sportsDuration: sportsDuration,
+      sportsIntensity: sportsIntensity,
+      sportsLocation: sportsLocation,
+      sportsFeeling: sportsFeeling,
+      // Medical
+      medicalMode: medicalMode,
+      medicalTimes: medicalTimes,
+      medicalStockCount: medicalStockCount,
+      medicalRefillWarning: medicalRefillWarning,
+      medicalMinIntervalHours: medicalMinIntervalHours,
+      medicalMaxDosesPerDay: medicalMaxDosesPerDay,
+      // Course
+      courseType: courseType,
+      courseTotalSessions: courseTotalSessions,
+      courseWeeklyTarget: courseWeeklyTarget,
+      courseSessionDuration: courseSessionDuration,
+      coursePreferredDays: coursePreferredDays,
+      coursePreferredTime: coursePreferredTime,
+      // Goal
+      goalType: goalType,
+      goalTargetDate: goalTargetDate,
+      goalSteps: goalSteps,
+      // Reflection
+      reflectionMood: reflectionMood,
+      reflectionWins: reflectionWins,
+      reflectionGratitude: reflectionGratitude,
+      reflectionLearnings: reflectionLearnings,
+      reflectionIsPrivate: reflectionIsPrivate,
+    );
+  }
+
+  Future<void> save(BuildContext context) async {
+    // Medical: medication is saved now since the user confirmed on Step 3
+    if (selectedCategory == Category.medical) {
+      if (tempMedicationData != null) {
+        try {
+          await MedicationSaveHelper.save(tempMedicationData!);
+        } catch (e) {
+          debugPrint('Save medical error: $e');
+          RitmoToast.show(context, 'خطا در ثبت دارو: $e', icon: Icons.error_outline, iconColor: Colors.red);
+          return;
+        }
+      }
+      showSuccessAnim = true;
+      notifyListeners();
+      Timer(const Duration(milliseconds: 1400), () {
+        onSaved();
+        if (context.mounted) {
+          Navigator.pop(context);
+        }
+      });
+      return;
+    }
+
+    if (title.trim().isEmpty) {
+      RitmoToast.show(context, 'لطفاً عنوان فعالیت را وارد کنید.', icon: Icons.warning_rounded, iconColor: Colors.amber);
+      updatePage(0);
+      return;
+    }
+
+    try {
+      final saveCtx = _buildSaveContext();
+      final strategy = PlannerStrategyRegistry.resolve(
+        selectedCategory,
+        itemType: itemType,
+      );
+      await strategy.save(saveCtx, context);
+
+      showSuccessAnim = true;
+      notifyListeners();
+
+      Timer(const Duration(milliseconds: 1400), () {
+        onSaved();
+        if (context.mounted) {
+          Navigator.pop(context);
+        }
+      });
+    } catch (e) {
+      debugPrint('Save error: $e');
+      RitmoToast.show(context, 'خطا در ثبت اطلاعات: $e', icon: Icons.error_outline, iconColor: Colors.red);
+    }
+  }
+}
+
+// LEGACY SAVE LOGIC REMOVED — see lib/features/routines/domain/strategies/ for per-category implementations.
+// The old monolithic if/else chain (Category.religious, Category.fitness, Category.medical,
+// Category.learning, Category.custom, Category.personal+REFLECT, generic)
+// has been extracted into: WorshipStrategy, SportsStrategy, MedicalStrategy,
+// CourseStrategy, GoalStrategy, ReflectionStrategy, GenericStrategy.
+
+// --- SUBWIDGET: HEADER (Matches Mockup 100%) ---
+class PlannerHeader extends StatelessWidget {
+  final PlannerController controller;
+
+  const PlannerHeader({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Close/Back Button (Mockup placement: Left side)
+          GestureDetector(
+            onTap: () {
+              if (controller.currentPage > 0) {
+                // Medical skips step 2 — going back from preview goes straight to category selection
+                final prevPage = (controller.selectedCategory == Category.medical && controller.currentPage == 2)
+                    ? 0
+                    : controller.currentPage - 1;
+                controller.updatePage(prevPage);
+              } else {
+                Navigator.pop(context);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colors.card.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                controller.currentPage > 0 ? Icons.arrow_back_ios_new_rounded : Icons.close_rounded,
+                size: 20,
+                color: colors.textPrimary,
+              ),
+            ),
+          ),
+
+          // Title & Subtitle Centered (Mockup style)
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  controller.currentPage == 0
+                      ? '✨ ایجاد ایستگاه جدید'
+                      : (controller.currentPage == 1 ? '📅 زمان‌بندی' : '👁️ پیش‌نمایش ایستگاه'),
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  controller.currentPage == 0
+                      ? 'چه چیزی می‌خواهی به مسیر زندگیت اضافه کنی؟'
+                      : (controller.currentPage == 1 ? 'زمان مناسب را روی مسیر انتخاب کن' : 'این ایستگاه در مسیر اضافه می‌شود'),
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 11,
+                    color: colors.textSecondary.withValues(alpha: 0.65),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 36),
+        ],
+      ),
+    );
+  }
+}
+
+// --- SUBWIDGET: NATURAL INPUT ---
+class PlannerNaturalInput extends StatelessWidget {
+  final PlannerController controller;
+
+  const PlannerNaturalInput({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 12),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E2235).withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: colors.border.withValues(alpha: 0.15),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: controller.inputController,
+                    style: TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 14,
+                      color: colors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'مثلاً: فردا ساعت ۸ برم باشگاه',
+                      hintStyle: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontSize: 12.5,
+                        color: colors.textSecondary.withValues(alpha: 0.4),
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onFieldSubmitted: (_) => controller.parseNLPText(),
+                    onChanged: (text) => controller.title = text,
+                  ),
+                ),
+                if (controller.isParsing)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xff8B5CF6)),
+                  )
+                else
+                  GestureDetector(
+                    onTap: () => controller.parseNLPText(),
+                    child: Icon(Icons.arrow_forward_rounded, color: colors.primary, size: 20),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- SUBWIDGET: CATEGORY GRID (Matches Mockup 100%) ---
+class PlannerCategoryGrid extends StatelessWidget {
+  final PlannerController controller;
+
+  const PlannerCategoryGrid({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final categories = [
+      {'cat': Category.fitness, 'title': 'ورزش', 'icon': Icons.directions_run_rounded, 'color': const Color(0xff10B981)},
+      {'cat': Category.religious, 'title': 'عبادت', 'icon': Icons.mosque_rounded, 'color': const Color(0xffFBBF24)},
+      {'cat': Category.medical, 'title': 'دارو', 'icon': Icons.vaccines_rounded, 'color': const Color(0xff06B6D4)},
+      {'cat': Category.free, 'title': 'مطالعه', 'icon': Icons.menu_book_rounded, 'color': const Color(0xff3B82F6)},
+      {'cat': Category.personal, 'title': 'یادداشت', 'icon': Icons.note_alt_rounded, 'color': const Color(0xff8B5CF6), 'type': 'REFLECT'},
+      {'cat': Category.learning, 'title': 'دوره', 'icon': Icons.school_rounded, 'color': const Color(0xff6366F1)},
+      {'cat': Category.custom, 'title': 'هدف', 'icon': Icons.track_changes_rounded, 'color': const Color(0xffF97316)},
+      {'cat': Category.personal, 'title': 'رویداد', 'icon': Icons.event_note_rounded, 'color': const Color(0xffEF4444), 'type': 'EVENT'},
+      {'cat': Category.personal, 'title': 'یادآور ساده', 'icon': Icons.notifications_active_rounded, 'color': const Color(0xff6366F1), 'type': 'REMINDER'},
+    ];
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Text(
+              'یا از دسته‌بندی‌ها انتخاب کن',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 12.5,
+                fontWeight: FontWeight.bold,
+                color: colors.textSecondary.withValues(alpha: 0.65),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: categories.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.05,
+            ),
+            itemBuilder: (context, index) {
+              final item = categories[index];
+              final cat = item['cat'] as Category;
+              final title = item['title'] as String;
+              final icon = item['icon'] as IconData;
+              final color = item['color'] as Color;
+              final type = item['type'] as String?;
+
+              bool isEnabled = true;
+              if (cat == Category.fitness) isEnabled = controller.moduleSportsEnabled;
+              else if (cat == Category.religious) isEnabled = controller.moduleReligionEnabled;
+              else if (cat == Category.medical) isEnabled = controller.moduleMedicineEnabled;
+              else if (cat == Category.learning) isEnabled = controller.moduleCoursesEnabled;
+              else if (cat == Category.custom) isEnabled = controller.moduleGoalsEnabled;
+
+              return GestureDetector(
+                onTap: () => controller.selectCategory(cat, context, type: type),
+                child: Opacity(
+                  opacity: isEnabled ? 1.0 : 0.55,
+                  child: Stack(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF16192E).withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.75),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: color.withValues(alpha: 0.22),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            )
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(icon, size: 40, color: color),
+                            const SizedBox(height: 8),
+                            Text(
+                              title,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'Vazirmatn',
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                                color: colors.textPrimary.withValues(alpha: 0.85),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!isEnabled)
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Icon(
+                            Icons.lock_rounded,
+                            size: 13,
+                            color: colors.textSecondary.withValues(alpha: 0.5),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: () {
+              controller.inputController.text = 'پیشنهاد با AI';
+              controller.parseNLPText();
+            },
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF16192E).withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xff8B5CF6).withValues(alpha: 0.3),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xff8B5CF6).withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  )
+                ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.auto_awesome_rounded, color: Color(0xff8B5CF6), size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'پیشنهاد با AI',
+                    style: TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xff8B5CF6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- SUBWIDGET: TIMELINE PICKER ---
+class PlannerTimelinePicker extends StatefulWidget {
+  final PlannerController controller;
+
+  const PlannerTimelinePicker({super.key, required this.controller});
+
+  @override
+  State<PlannerTimelinePicker> createState() => _PlannerTimelinePickerState();
+}
+
+class _PlannerTimelinePickerState extends State<PlannerTimelinePicker> {
+  late FixedExtentScrollController _hourScrollController;
+  late FixedExtentScrollController _minuteScrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    final currentHour = widget.controller.selectedTime.hour;
+    final currentMinute = widget.controller.selectedTime.minute;
+    _hourScrollController = FixedExtentScrollController(initialItem: currentHour);
+    _minuteScrollController = FixedExtentScrollController(initialItem: currentMinute);
+  }
+
+  @override
+  void didUpdateWidget(covariant PlannerTimelinePicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final hour = widget.controller.selectedTime.hour;
+    final minute = widget.controller.selectedTime.minute;
+
+    if (_hourScrollController.hasClients && _hourScrollController.selectedItem != hour) {
+      _hourScrollController.jumpToItem(hour);
+    }
+    if (_minuteScrollController.hasClients && _minuteScrollController.selectedItem != minute) {
+      _minuteScrollController.jumpToItem(minute);
+    }
+  }
+
+  @override
+  void dispose() {
+    _hourScrollController.dispose();
+    _minuteScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final List<DateTime> dateOptions = List.generate(7, (i) => DateTime.now().add(Duration(days: i)));
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. Date selector capsules row
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                ...dateOptions.map((date) {
+                  final jd = Jalali.fromDateTime(date);
+                  final isToday = date.day == DateTime.now().day;
+                  final isTomorrow = date.day == DateTime.now().add(const Duration(days: 1)).day;
+                  
+                  String line1 = '';
+                  String? line2;
+                  String line3 = '${toPersianDigits(jd.day.toString())} ${jd.formatter.mN}';
+
+                  if (isToday) {
+                    line1 = 'امروز';
+                    line2 = jd.formatter.wN;
+                  } else if (isTomorrow) {
+                    line1 = 'فردا';
+                    line2 = jd.formatter.wN;
+                  } else {
+                    line1 = jd.formatter.wN;
+                    line2 = null;
+                  }
+
+                  final isSelected = widget.controller.selectedDate.day == date.day;
+
+                  return GestureDetector(
+                    onTap: () => widget.controller.setDate(date),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      width: 85,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        gradient: isSelected
+                            ? LinearGradient(
+                                colors: [
+                                  const Color(0xff8B5CF6).withValues(alpha: 0.25),
+                                  const Color(0xff8B5CF6).withValues(alpha: 0.15),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                        color: isSelected
+                            ? null
+                            : (isDark ? const Color(0xFF16192E).withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.75)),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xff8B5CF6).withValues(alpha: 0.5)
+                              : colors.border.withValues(alpha: 0.1),
+                          width: isSelected ? 1.8 : 1.0,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xff8B5CF6).withValues(alpha: 0.25),
+                                  blurRadius: 16,
+                                  spreadRadius: 2,
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            line1,
+                            style: TextStyle(
+                              fontFamily: 'Vazirmatn',
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : colors.textPrimary,
+                            ),
+                          ),
+                          if (line2 != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              line2,
+                              style: TextStyle(
+                                fontFamily: 'Vazirmatn',
+                                fontSize: 11,
+                                color: isSelected
+                                    ? Colors.white.withValues(alpha: 0.8)
+                                    : colors.textSecondary.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 2),
+                          Text(
+                            line3,
+                            style: TextStyle(
+                              fontFamily: 'Vazirmatn',
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected
+                                  ? Colors.white.withValues(alpha: 0.9)
+                                  : colors.textSecondary.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                
+                // Calendar trigger card
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await RitmoDatePicker.show(
+                      context: context,
+                      initialDate: widget.controller.selectedDate,
+                      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      widget.controller.setDate(picked);
+                    }
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 5),
+                    width: 54,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF16192E).withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: colors.border.withValues(alpha: 0.1)),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.calendar_today_rounded, color: colors.textPrimary.withValues(alpha: 0.85), size: 20),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // 2. Sunrise / Time Picker / Sunset Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Sunrise Shortcut
+              GestureDetector(
+                onTap: () {
+                  final sunrise = widget.controller.sunriseTime;
+                  _hourScrollController.animateToItem(sunrise.hour, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                  _minuteScrollController.animateToItem(sunrise.minute, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.amber.withValues(alpha: 0.15),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      )
+                    ],
+                  ),
+                  child: Icon(Icons.wb_sunny_rounded, color: Colors.amber.shade500, size: 24),
+                ),
+              ),
+              const SizedBox(width: 24),
+
+              // Hour / Minute Wheel Selector
+              Container(
+                height: 180,
+                width: 220,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF16192E).withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.02),
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(color: const Color(0xff8B5CF6).withValues(alpha: 0.15)),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xff8B5CF6).withValues(alpha: 0.25),
+                            const Color(0xff8B5CF6).withValues(alpha: 0.15),
+                          ],
+                        ),
+                        border: Border.symmetric(
+                          horizontal: BorderSide(
+                            color: const Color(0xff8B5CF6).withValues(alpha: 0.5),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Hours (00-23)
+                        Expanded(
+                          child: ListWheelScrollView.useDelegate(
+                            controller: _hourScrollController,
+                            itemExtent: 44,
+                            perspective: 0.006,
+                            physics: const FixedExtentScrollPhysics(),
+                            onSelectedItemChanged: (index) {
+                              widget.controller.setTime(TimeOfDay(
+                                hour: index % 24,
+                                minute: widget.controller.selectedTime.minute,
+                              ));
+                            },
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              childCount: 24,
+                              builder: (context, index) {
+                                final isSelected = widget.controller.selectedTime.hour == index;
+                                return Center(
+                                  child: Text(
+                                    index.toString().padLeft(2, '0'),
+                                    style: TextStyle(
+                                      fontFamily: 'Vazirmatn',
+                                      fontSize: isSelected ? 24 : 17,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : colors.textSecondary.withValues(alpha: 0.4),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        
+                        // Colon Separator
+                        Text(
+                          ':',
+                          style: TextStyle(
+                            fontFamily: 'Vazirmatn',
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        
+                        // Minutes (00-59)
+                        Expanded(
+                          child: ListWheelScrollView.useDelegate(
+                            controller: _minuteScrollController,
+                            itemExtent: 44,
+                            perspective: 0.006,
+                            physics: const FixedExtentScrollPhysics(),
+                            onSelectedItemChanged: (index) {
+                              widget.controller.setTime(TimeOfDay(
+                                hour: widget.controller.selectedTime.hour,
+                                minute: index % 60,
+                              ));
+                            },
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              childCount: 60,
+                              builder: (context, index) {
+                                final isSelected = widget.controller.selectedTime.minute == index;
+                                return Center(
+                                  child: Text(
+                                    index.toString().padLeft(2, '0'),
+                                    style: TextStyle(
+                                      fontFamily: 'Vazirmatn',
+                                      fontSize: isSelected ? 24 : 17,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : colors.textSecondary.withValues(alpha: 0.4),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+
+              // Sunset Shortcut
+              GestureDetector(
+                onTap: () {
+                  final sunset = widget.controller.sunsetTime;
+                  _hourScrollController.animateToItem(sunset.hour, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                  _minuteScrollController.animateToItem(sunset.minute, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                    color: Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.wb_twilight_rounded, color: colors.textSecondary.withValues(alpha: 0.5), size: 24),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- SUBWIDGET: DURATION PICKER ---
+class PlannerDurationPicker extends StatelessWidget {
+  final PlannerController controller;
+
+  const PlannerDurationPicker({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                'مدت فعالیت',
+                style: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E2235).withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: colors.border.withValues(alpha: 0.1)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline_rounded, size: 24),
+                      onPressed: () => controller.adjustDuration(-15),
+                      color: colors.primary,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        '${toPersianDigits(controller.targetDuration.toString())} دقیقه',
+                        style: TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline_rounded, size: 24),
+                      onPressed: () => controller.adjustDuration(15),
+                      color: colors.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- SUBWIDGET: JOURNEY PREVIEW (TIMELINE) ---
+class PlannerJourneyPreview extends StatelessWidget {
+  final PlannerController controller;
+
+  const PlannerJourneyPreview({super.key, required this.controller});
+
+  IconData _getCategoryIcon(dynamic category, {String? itemType}) {
+    final String catStr = category is Category ? category.name : (category as String? ?? '');
+    switch (catStr) {
+      case 'medical':
+        return Icons.medication_rounded;
+      case 'fitness':
+        return Icons.directions_run_rounded;
+      case 'religious':
+        return Icons.mosque_rounded;
+      case 'learning':
+        return Icons.school_rounded;
+      case 'custom':
+        return Icons.track_changes_rounded;
+      case 'free':
+        return Icons.menu_book_rounded;
+      case 'personal':
+        if (itemType == 'REFLECT') return Icons.note_alt_rounded;
+        if (itemType == 'EVENT') return Icons.event_note_rounded;
+        return Icons.star_rounded;
+      default:
+        return Icons.star_rounded;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final selectedTimeStr = '${controller.selectedTime.hour.toString().padLeft(2, '0')}:${controller.selectedTime.minute.toString().padLeft(2, '0')}';
+    
+    Map<String, dynamic>? beforeItem;
+    Map<String, dynamic>? afterItem;
+
+    for (var item in controller.todayOtherRoutines) {
+      final time = item['timeOfDay'] as String? ?? '08:00';
+      if (time.compareTo(selectedTimeStr) < 0) {
+        beforeItem = item;
+      } else if (time.compareTo(selectedTimeStr) > 0 && afterItem == null) {
+        afterItem = item;
+      }
+    }
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'پیش‌نمایش مسیر فعالیت‌ها',
+            style: TextStyle(
+              fontFamily: 'Vazirmatn',
+              fontSize: 12.5,
+              fontWeight: FontWeight.bold,
+              color: colors.textSecondary.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E2235).withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.02),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: colors.border.withValues(alpha: 0.08)),
+            ),
+            child: Column(
+              children: [
+                if (beforeItem != null)
+                  _buildTimelineNode(
+                    time: beforeItem['timeOfDay'] as String,
+                    title: beforeItem['title'] as String,
+                    icon: _getCategoryIcon(beforeItem['category'], itemType: beforeItem['itemType']),
+                    color: colors.textSecondary,
+                    isNew: false,
+                  )
+                else
+                  _buildTimelineNode(
+                    time: 'شروع روز',
+                    title: 'ورود به صبح',
+                    icon: Icons.wb_sunny_rounded,
+                    color: colors.textSecondary,
+                    isNew: false,
+                  ),
+
+                _buildConnectorLine(colors),
+
+                _buildTimelineNode(
+                  time: selectedTimeStr,
+                  title: controller.title.isEmpty ? 'ایستگاه جدید' : controller.title,
+                  icon: _getCategoryIcon(controller.selectedCategory, itemType: controller.itemType),
+                  color: colors.primary,
+                  isNew: true,
+                ),
+
+                _buildConnectorLine(colors),
+
+                if (afterItem != null)
+                  _buildTimelineNode(
+                    time: afterItem['timeOfDay'] as String,
+                    title: afterItem['title'] as String,
+                    icon: _getCategoryIcon(afterItem['category'], itemType: afterItem['itemType']),
+                    color: colors.textSecondary,
+                    isNew: false,
+                  )
+                else
+                  _buildTimelineNode(
+                    time: 'پایان روز',
+                    title: 'ورود به شب',
+                    icon: Icons.nightlight_round,
+                    color: colors.textSecondary,
+                    isNew: false,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineNode({
+    required String time,
+    required String title,
+    required IconData icon,
+    required Color color,
+    required bool isNew,
+  }) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 50,
+          child: Text(
+            toPersianDigits(time),
+            style: TextStyle(
+              fontFamily: 'Vazirmatn',
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: isNew ? color : color.withValues(alpha: 0.6),
+            ),
+          ),
+        ),
+
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: isNew ? color.withValues(alpha: 0.16) : Colors.grey.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isNew ? color : color.withValues(alpha: 0.3),
+              width: isNew ? 2.0 : 1.2,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, size: 16, color: isNew ? color : color.withOpacity(0.65)),
+        ),
+        const SizedBox(width: 12),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 12.5,
+                  fontWeight: isNew ? FontWeight.bold : FontWeight.normal,
+                  color: isNew ? color : color.withValues(alpha: 0.85),
+                ),
+              ),
+              if (isNew)
+                const Text(
+                  'این ایستگاه به این قسمت از مسیر اضافه می‌شود.',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 9.5,
+                    color: Color(0xff10B981),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConnectorLine(RitmoColors colors) {
+    return Container(
+      margin: const EdgeInsets.only(right: 66),
+      height: 24,
+      width: 1.5,
+      color: colors.border.withValues(alpha: 0.15),
+    );
+  }
+}
+
+// --- SUBWIDGET: SUMMARY CARD (STEP 3) ---
+class PlannerSummaryCard extends StatelessWidget {
+  final PlannerController controller;
+
+  const PlannerSummaryCard({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.selectedCategory == Category.medical && controller.tempMedicationData != null) {
+      return MedicationPreviewCard(
+        data: controller.tempMedicationData!,
+        onEdit: () {
+          if (controller._openMedicalSheet != null) {
+            controller._openMedicalSheet!(controller.tempMedicationData);
+          }
+        },
+      );
+    }
+
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final String dateLabel = formatShamsiDate(controller.selectedDate.toIso8601String().substring(0, 10));
+    final String timeLabel = '${controller.selectedTime.hour.toString().padLeft(2, '0')}:${controller.selectedTime.minute.toString().padLeft(2, '0')}';
+
+    // Dynamic category labels driven by controller
+    final (String catEmoji, String catLabel, String fallbackTitle) = switch (controller.selectedCategory) {
+      Category.medical   => ('💊', 'دارو',              'ثبت دارو'),
+      Category.fitness   => ('🏃', 'ورزش',              'ورزش و تندرستی'),
+      Category.religious => ('🕌', 'عبادات',            'تمرین عبادی'),
+      Category.learning  => ('📚', 'آموزش',             'دوره آموزشی'),
+      Category.custom    => ('🎯', 'اهداف',             'هدف جدید'),
+      Category.personal  => ('✨', 'شخصی',              'برنامه شخصی'),
+      _                  => ('📌', 'برنامه',            'برنامه جدید'),
+    };
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E2235).withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.75),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: colors.primary.withValues(alpha: 0.15),
+            width: 1.2,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: colors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$catEmoji $catLabel',
+                    style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => controller.updatePage(0),
+                  child: Icon(Icons.edit_rounded, size: 18, color: colors.primary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              controller.title.isEmpty ? fallbackTitle : controller.title,
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
+            if (controller.description.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                controller.description,
+                style: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 11.5,
+                  color: colors.textSecondary.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+            const Divider(height: 24),
+            
+            _buildDetailRow(Icons.calendar_today_rounded, 'تاریخ انجام', dateLabel, colors),
+            const SizedBox(height: 10),
+            _buildDetailRow(Icons.access_time_rounded, 'ساعت شروع', toPersianDigits(timeLabel), colors),
+            const SizedBox(height: 10),
+            _buildDetailRow(Icons.hourglass_empty_rounded, 'مدت زمان', '${toPersianDigits(controller.targetDuration.toString())} دقیقه', colors),
+            const SizedBox(height: 10),
+            _buildDetailRow(Icons.repeat_rounded, 'تکرار', 'هر روز', colors),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  Widget _buildDetailRow(IconData icon, String title, String value, RitmoColors colors) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: colors.textSecondary.withValues(alpha: 0.7)),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontFamily: 'Vazirmatn',
+            fontSize: 12,
+            color: colors.textSecondary.withValues(alpha: 0.8),
+          ),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: TextStyle(
+            fontFamily: 'Vazirmatn',
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: colors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// --- SUBWIDGET: ADVANCED SECTION (ACCORDION) ---
+class PlannerAdvancedSection extends StatelessWidget {
+  final PlannerController controller;
+
+  const PlannerAdvancedSection({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GestureDetector(
+            onTap: () {
+              controller.isAdvancedExpanded = !controller.isAdvancedExpanded;
+              controller.notifyListeners();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              color: Colors.transparent,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'تنظیمات پیشرفته',
+                    style: TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  Icon(
+                    controller.isAdvancedExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                    size: 24,
+                    color: colors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (controller.isAdvancedExpanded)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E2235).withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.02),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    initialValue: controller.description,
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'توضیحات یا یادداشت‌ها',
+                      labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.textSecondary),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    onChanged: (val) => controller.description = val,
+                  ),
+                  const SizedBox(height: 12),
+
+                  DropdownButtonFormField<double>(
+                    value: controller.priority,
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'اولویت',
+                      labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.textSecondary),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 0.5, child: Text('پایین ⚠️')),
+                      DropdownMenuItem(value: 1.0, child: Text('متوسط ⚠️⚠️')),
+                      DropdownMenuItem(value: 1.5, child: Text('بالا ⚠️⚠️⚠️')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        controller.priority = val;
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- SUBWIDGET: SUBMIT BUTTON ---
+class PlannerSubmitButton extends StatelessWidget {
+  final PlannerController controller;
+
+  const PlannerSubmitButton({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    String label = 'ادامه ➜';
+    if (controller.currentPage == 2) {
+      label = controller.isEditing ? 'ذخیره تغییرات ➕' : 'افزودن به مسیر ➕';
+    }
+
+    return Container(
+      width: double.infinity,
+      height: 52,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xff8B5CF6), // Purple
+            Color(0xff10B981), // Green
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xff8B5CF6).withValues(alpha: 0.35),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            if (controller.currentPage < 2) {
+              controller.updatePage(controller.currentPage + 1);
+            } else {
+              controller.save(context);
+            }
+          },
+          child: Center(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 14.5,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- PRIVATE CONFETTI PARTICLE EFFECT ---
+class _ConfettiWidget extends StatefulWidget {
+  const _ConfettiWidget();
+
+  @override
+  State<_ConfettiWidget> createState() => _ConfettiWidgetState();
+}
+
+class _ConfettiWidgetState extends State<_ConfettiWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  final List<_ConfettiParticle> _particles = [];
+  final math.Random _random = math.Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..addListener(() {
+        setState(() {});
+      });
+
+    for (int i = 0; i < 45; i++) {
+      _particles.add(
+        _ConfettiParticle(
+          x: 150.0,
+          y: 20.0,
+          vx: (_random.nextDouble() - 0.5) * 8.0,
+          vy: -_random.nextDouble() * 6.0 - 2.0,
+          color: HSLColor.fromAHSL(
+            1.0,
+            _random.nextDouble() * 360,
+            0.8,
+            0.6,
+          ).toColor(),
+          radius: _random.nextDouble() * 4.0 + 2.0,
+        ),
+      );
+    }
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _ConfettiPainter(particles: _particles, progress: _controller.value),
+    );
+  }
+}
+
+class _ConfettiParticle {
+  double x, y;
+  double vx, vy;
+  Color color;
+  double radius;
+
+  _ConfettiParticle({
+    required this.x,
+    required this.y,
+    required this.vx,
+    required this.vy,
+    required this.color,
+    required this.radius,
+  });
+
+  void update() {
+    x += vx;
+    y += vy;
+    vy += 0.2; // Gravity
+    vx *= 0.98; // Air resistance
+  }
+}
+
+class _ConfettiPainter extends CustomPainter {
+  final List<_ConfettiParticle> particles;
+  final double progress;
+
+  _ConfettiPainter({required this.particles, required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()..style = PaintingStyle.fill;
+
+    for (var p in particles) {
+      p.update();
+      paint.color = p.color.withValues(alpha: 1.0 - progress);
+      canvas.drawCircle(Offset(p.x, p.y), p.radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// --- SUBSYSTEM FORMS & HELPERS FOR STEP 2 ---
+
+class PlannerDayOfWeekSelector extends StatelessWidget {
+  final List<int> selectedDays;
+  final ValueChanged<List<int>> onChanged;
+
+  const PlannerDayOfWeekSelector({
+    super.key,
+    required this.selectedDays,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    const days = [
+      {'key': 6, 'label': 'ش'},
+      {'key': 7, 'label': 'ی'},
+      {'key': 1, 'label': 'د'},
+      {'key': 2, 'label': 'س'},
+      {'key': 3, 'label': 'چ'},
+      {'key': 4, 'label': 'پ'},
+      {'key': 5, 'label': 'ج'},
+    ];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: days.map((d) {
+        final key = d['key'] as int;
+        final label = d['label'] as String;
+        final isSelected = selectedDays.contains(key);
+
+        return GestureDetector(
+          onTap: () {
+            final list = List<int>.from(selectedDays);
+            if (list.contains(key)) {
+              if (list.length > 1) list.remove(key);
+            } else {
+              list.add(key);
+            }
+            onChanged(list);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? colors.primary.withValues(alpha: 0.15)
+                  : (isDark ? const Color(0xFF1E2235).withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.03)),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected ? colors.primary : Colors.transparent,
+                width: 1.5,
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? colors.primary : colors.textSecondary,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class WorshipStep2Form extends StatefulWidget {
+  final PlannerController controller;
+  const WorshipStep2Form({super.key, required this.controller});
+
+  @override
+  State<WorshipStep2Form> createState() => _WorshipStep2FormState();
+}
+
+class _WorshipStep2FormState extends State<WorshipStep2Form> {
+  final TextEditingController _titleController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController.text = widget.controller.title;
+  }
+
+  @override
+  void didUpdateWidget(covariant WorshipStep2Form oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller.title != _titleController.text) {
+      _titleController.text = widget.controller.title;
+      _titleController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _titleController.text.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'نوع عبادت',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildTypeChip('MUSTAHAB', 'عمل مستحبی', Icons.star_rounded),
+                const SizedBox(width: 8),
+                _buildTypeChip('DHIKR', 'ذکر روزانه', Icons.repeat_rounded),
+                const SizedBox(width: 8),
+                _buildTypeChip('QURAN', 'قرائت قرآن', Icons.menu_book_rounded),
+                const SizedBox(width: 8),
+                _buildTypeChip('DEBT', 'بدهی (قضا)', Icons.history_rounded),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          if (widget.controller.worshipType == 'DEBT') ...[
+            const Text(
+              'نوع بدهی',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _buildDebtTypeChip('PRAYER', 'نماز قضا'),
+                const SizedBox(width: 12),
+                _buildDebtTypeChip('FAST', 'روزه قضا'),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'تعداد کل: ${widget.controller.worshipTotalCount}',
+              style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14.5),
+            ),
+            Slider(
+              value: widget.controller.worshipTotalCount.toDouble(),
+              min: 1,
+              max: 300,
+              divisions: 300,
+              activeColor: colors.primary,
+              onChanged: (val) {
+                widget.controller.worshipTotalCount = val.toInt();
+                widget.controller.notifyListeners();
+              },
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'هدف روزانه انجام: ${widget.controller.worshipDailyTarget}',
+              style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14.5),
+            ),
+            Slider(
+              value: widget.controller.worshipDailyTarget.toDouble(),
+              min: 1,
+              max: 5,
+              divisions: 4,
+              activeColor: colors.primary,
+              onChanged: (val) {
+                widget.controller.worshipDailyTarget = val.toInt();
+                widget.controller.notifyListeners();
+              },
+            ),
+          ] else ...[
+            // Custom Title text input field
+            const Text(
+              'نام عبادت یا ذکر',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _titleController,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 15.5,
+                color: colors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                labelText: 'تایپ نام عبادت شخصی (مثلاً: زیارت جامعه کبیره)',
+                labelStyle: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 14.5,
+                  color: colors.textSecondary.withOpacity(0.8),
+                ),
+                hintText: 'نام عبادت را وارد کنید...',
+                hintStyle: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 13.5,
+                  color: colors.textSecondary.withOpacity(0.5),
+                ),
+                prefixIcon: Icon(Icons.edit_rounded, color: colors.primary, size: 18),
+                filled: true,
+                fillColor: isDark ? const Color(0xFF16192E).withOpacity(0.3) : Colors.black.withOpacity(0.02),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: colors.border.withOpacity(0.15)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: colors.border.withOpacity(0.1)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: colors.primary.withOpacity(0.5), width: 1.5),
+                ),
+              ),
+              onChanged: (val) {
+                widget.controller.title = val;
+                widget.controller.notifyListeners();
+              },
+            ),
+            const SizedBox(height: 20),
+
+            const Text(
+              'انتخاب سریع یا شخصی‌سازی',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildPresetChip('نماز شب', 'MUSTAHAB'),
+                  const SizedBox(width: 8),
+                  _buildPresetChip('زیارت عاشورا', 'MUSTAHAB'),
+                  const SizedBox(width: 8),
+                  _buildPresetChip('دعای عهد', 'MUSTAHAB'),
+                  const SizedBox(width: 8),
+                  _buildPresetChip('صلوات', 'DHIKR'),
+                  const SizedBox(width: 8),
+                  _buildPresetChip('تلاوت قرآن', 'QURAN'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            const Text(
+              'مبنای زمان‌بندی',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _buildAnchorBasisChip('NONE', 'ساعت مشخص'),
+                const SizedBox(width: 8),
+                _buildAnchorBasisChip('SHARIA', 'اوقات شرعی'),
+                const SizedBox(width: 8),
+                _buildAnchorBasisChip('SLEEP', 'بیداری/خواب'),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            if (widget.controller.worshipReminderAnchor == 'NONE') ...[
+              PlannerTimelinePicker(controller: widget.controller),
+            ] else if (widget.controller.worshipReminderAnchor == 'SHARIA') ...[
+              const Text(
+                'کدام وقت شرعی؟',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5, color: Colors.grey),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildShariaAnchorChip('FAJR', '🌅 اذان صبح'),
+                  _buildShariaAnchorChip('SUNRISE', '☀️ طلوع آفتاب'),
+                  _buildShariaAnchorChip('DHUHR', '🕐 اذان ظهر'),
+                  _buildShariaAnchorChip('ASR', '🌤 اذان عصر'),
+                  _buildShariaAnchorChip('MAGHRIB', '🌇 اذان مغرب'),
+                  _buildShariaAnchorChip('ISHA', '🌙 اذان عشا'),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'فاصله زمانی: ${widget.controller.worshipOffsetMinutes} دقیقه',
+                style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5),
+              ),
+              Slider(
+                value: widget.controller.worshipOffsetMinutes.toDouble(),
+                min: -60,
+                max: 60,
+                divisions: 24,
+                activeColor: colors.primary,
+                onChanged: (val) {
+                  widget.controller.worshipOffsetMinutes = val.toInt();
+                  widget.controller.notifyListeners();
+                },
+              ),
+            ] else ...[
+              Row(
+                children: [
+                  _buildShariaAnchorChip('WAKEUP', '⏰ زمان بیداری'),
+                  const SizedBox(width: 12),
+                  _buildShariaAnchorChip('BEDTIME', '😴 زمان خوابیدن'),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'فاصله زمانی: ${widget.controller.worshipOffsetMinutes} دقیقه',
+                style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5),
+              ),
+              Slider(
+                value: widget.controller.worshipOffsetMinutes.toDouble(),
+                min: -60,
+                max: 60,
+                divisions: 24,
+                activeColor: colors.primary,
+                onChanged: (val) {
+                  widget.controller.worshipOffsetMinutes = val.toInt();
+                  widget.controller.notifyListeners();
+                },
+              ),
+            ],
+            const SizedBox(height: 20),
+
+            // Repeat frequency toggle
+            const Text(
+              'نحوه تکرار یادآور',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _buildRepeatTypeOption('RECURRING', 'تکرار هفتگی'),
+                const SizedBox(width: 12),
+                _buildRepeatTypeOption('ONCE', 'فقط یک‌بار (تاریخ انتخابی)'),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            if (widget.controller.worshipRepeatType == 'RECURRING') ...[
+              const Text(
+                'روزهای تکرار',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 10),
+              PlannerDayOfWeekSelector(
+                selectedDays: widget.controller.worshipSelectedDays,
+                onChanged: (list) {
+                  widget.controller.worshipSelectedDays = list;
+                  widget.controller.notifyListeners();
+                },
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeChip(String type, String label, IconData icon) {
+    final sel = widget.controller.worshipType == type;
+    final wColor = const Color(0xffFBBF24);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ChoiceChip(
+      avatar: Icon(icon, color: sel ? Colors.white : wColor, size: 17),
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5)),
+      selected: sel,
+      selectedColor: wColor,
+      backgroundColor: isDark ? const Color(0xFF1E2235) : Colors.black.withOpacity(0.04),
+      labelStyle: TextStyle(
+        color: sel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+        fontFamily: 'Vazirmatn',
+      ),
+      onSelected: (val) {
+        if (val) {
+          widget.controller.worshipType = type;
+          if (type == 'DEBT') {
+            widget.controller.title = 'نماز قضا';
+          }
+          widget.controller.notifyListeners();
+        }
+      },
+    );
+  }
+
+  Widget _buildDebtTypeChip(String debtType, String label) {
+    final sel = widget.controller.worshipDebtType == debtType;
+    final wColor = const Color(0xffFBBF24);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5)),
+      selected: sel,
+      selectedColor: wColor,
+      backgroundColor: isDark ? const Color(0xFF1E2235) : Colors.black.withOpacity(0.04),
+      labelStyle: TextStyle(
+        color: sel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+        fontFamily: 'Vazirmatn',
+      ),
+      onSelected: (val) {
+        if (val) {
+          widget.controller.worshipDebtType = debtType;
+          widget.controller.title = debtType == 'PRAYER' ? 'نماز قضا' : 'روزه قضا';
+          widget.controller.notifyListeners();
+        }
+      },
+    );
+  }
+
+  Widget _buildPresetChip(String name, String type) {
+    final sel = widget.controller.title == name;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ActionChip(
+      label: Text(name, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12.5)),
+      backgroundColor: sel 
+          ? const Color(0xffFBBF24).withOpacity(0.2) 
+          : (isDark ? const Color(0xFF1E2235) : Colors.black.withOpacity(0.04)),
+      side: BorderSide(
+        color: sel ? const Color(0xffFBBF24) : Colors.transparent,
+        width: 1,
+      ),
+      labelStyle: TextStyle(
+        color: sel ? const Color(0xffFBBF24) : (isDark ? Colors.white70 : Colors.black87),
+        fontFamily: 'Vazirmatn',
+      ),
+      onPressed: () {
+        widget.controller.title = name;
+        widget.controller.worshipType = type;
+        widget.controller.notifyListeners();
+      },
+    );
+  }
+
+  Widget _buildAnchorBasisChip(String basis, String label) {
+    final sel = (basis == 'NONE' && widget.controller.worshipReminderAnchor == 'NONE') ||
+                 (basis == 'SHARIA' && widget.controller.worshipReminderAnchor != 'NONE' && widget.controller.worshipReminderAnchor != 'WAKEUP' && widget.controller.worshipReminderAnchor != 'BEDTIME') ||
+                 (basis == 'SLEEP' && (widget.controller.worshipReminderAnchor == 'WAKEUP' || widget.controller.worshipReminderAnchor == 'BEDTIME'));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5)),
+      selected: sel,
+      selectedColor: const Color(0xffFBBF24),
+      backgroundColor: isDark ? const Color(0xFF1E2235) : Colors.black.withOpacity(0.04),
+      labelStyle: TextStyle(
+        color: sel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+        fontFamily: 'Vazirmatn',
+      ),
+      onSelected: (val) {
+        if (val) {
+          if (basis == 'NONE') {
+            widget.controller.worshipReminderAnchor = 'NONE';
+          } else if (basis == 'SHARIA') {
+            widget.controller.worshipReminderAnchor = 'FAJR';
+          } else {
+            widget.controller.worshipReminderAnchor = 'WAKEUP';
+          }
+          widget.controller.notifyListeners();
+        }
+      },
+    );
+  }
+
+  Widget _buildShariaAnchorChip(String key, String label) {
+    final sel = widget.controller.worshipReminderAnchor == key;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12.5)),
+      selected: sel,
+      selectedColor: const Color(0xffFBBF24),
+      backgroundColor: isDark ? const Color(0xFF1E2235) : Colors.black.withOpacity(0.04),
+      labelStyle: TextStyle(
+        color: sel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+        fontFamily: 'Vazirmatn',
+      ),
+      onSelected: (val) {
+        if (val) {
+          widget.controller.worshipReminderAnchor = key;
+          widget.controller.notifyListeners();
+        }
+      },
+    );
+  }
+
+  Widget _buildRepeatTypeOption(String type, String label) {
+    final sel = widget.controller.worshipRepeatType == type;
+    final wColor = const Color(0xffFBBF24);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5)),
+      selected: sel,
+      selectedColor: wColor,
+      backgroundColor: isDark ? const Color(0xFF1E2235) : Colors.black.withOpacity(0.04),
+      labelStyle: TextStyle(
+        color: sel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+        fontFamily: 'Vazirmatn',
+      ),
+      onSelected: (val) {
+        if (val) {
+          widget.controller.worshipRepeatType = type;
+          widget.controller.notifyListeners();
+        }
+      },
+    );
+  }
+}
+
+class SportsStep2Form extends StatelessWidget {
+  final PlannerController controller;
+  const SportsStep2Form({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'نوع عملیات ورزشی',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildOpChip('ROUTINE', 'برنامه‌ریزی روتین (تکرارشونده)', Icons.calendar_month_rounded),
+              const SizedBox(width: 8),
+              _buildOpChip('LOG', 'ثبت فوری فعالیت (لاگ تمرین)', Icons.history_rounded),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          if (controller.sportsOpType == 'LOG') ...[
+            const Text(
+              'نوع تمرین',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildTypeChip('STRENGTH', '🏋️ بدنسازی/قدرتی'),
+                _buildTypeChip('RUNNING', '🏃 دویدن'),
+                _buildTypeChip('WALKING', '🚶 پیاده‌روی'),
+                _buildTypeChip('YOGA', '🧘 یوگا'),
+                _buildTypeChip('CYCLING', '🚴 دوچرخه‌سوار'),
+                _buildTypeChip('SWIMMING', '🏊 شنا'),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'مدت تمرین: ${controller.sportsDuration} دقیقه',
+              style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+            ),
+            Slider(
+              value: controller.sportsDuration.toDouble(),
+              min: 5,
+              max: 180,
+              divisions: 35,
+              activeColor: colors.primary,
+              onChanged: (val) {
+                controller.sportsDuration = val.toInt();
+                controller.notifyListeners();
+              },
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'شدت تمرین',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildIntensityChip('LIGHT', 'سبک'),
+                const SizedBox(width: 8),
+                _buildIntensityChip('MEDIUM', 'متوسط'),
+                const SizedBox(width: 8),
+                _buildIntensityChip('HIGH', 'شدید'),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'مکان تمرین',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildLocationChip('GYM', '🏟️ باشگاه'),
+                const SizedBox(width: 8),
+                _buildLocationChip('HOME', '🏠 خانه'),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'حس و حال شما',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildFeelingChip('خوب', '😊 خوب'),
+                const SizedBox(width: 8),
+                _buildFeelingChip('عالی', '🤩 عالی'),
+                const SizedBox(width: 8),
+                _buildFeelingChip('خسته', '😫 خسته'),
+              ],
+            ),
+          ] else ...[
+            PlannerTimelinePicker(controller: controller),
+            const SizedBox(height: 20),
+            PlannerDurationPicker(controller: controller),
+            const SizedBox(height: 16),
+            const Text(
+              'روزهای تمرین',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            PlannerDayOfWeekSelector(
+              selectedDays: controller.worshipSelectedDays,
+              onChanged: (list) {
+                controller.worshipSelectedDays = list;
+                controller.notifyListeners();
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOpChip(String opType, String label, IconData icon) {
+    final sel = controller.sportsOpType == opType;
+    return ChoiceChip(
+      avatar: Icon(icon, color: sel ? Colors.white : const Color(0xff10B981), size: 16),
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
+      selected: sel,
+      selectedColor: const Color(0xff10B981),
+      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
+      onSelected: (val) {
+        if (val) {
+          controller.sportsOpType = opType;
+          if (opType == 'LOG') {
+            controller.title = 'فعالیت ورزشی';
+          }
+          controller.notifyListeners();
+        }
+      },
+    );
+  }
+
+  Widget _buildTypeChip(String type, String label) {
+    final sel = controller.sportsType == type;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
+      selected: sel,
+      selectedColor: const Color(0xff10B981),
+      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
+      onSelected: (val) {
+        if (val) {
+          controller.sportsType = type;
+          controller.title = label.substring(2);
+          controller.notifyListeners();
+        }
+      },
+    );
+  }
+
+  Widget _buildIntensityChip(String intensity, String label) {
+    final sel = controller.sportsIntensity == intensity;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
+      selected: sel,
+      selectedColor: const Color(0xff10B981),
+      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
+      onSelected: (val) {
+        if (val) {
+          controller.sportsIntensity = intensity;
+          controller.notifyListeners();
+        }
+      },
+    );
+  }
+
+  Widget _buildLocationChip(String loc, String label) {
+    final sel = controller.sportsLocation == loc;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
+      selected: sel,
+      selectedColor: const Color(0xff10B981),
+      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
+      onSelected: (val) {
+        if (val) {
+          controller.sportsLocation = loc;
+          controller.notifyListeners();
+        }
+      },
+    );
+  }
+
+  Widget _buildFeelingChip(String feel, String label) {
+    final sel = controller.sportsFeeling == feel;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
+      selected: sel,
+      selectedColor: const Color(0xff10B981),
+      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
+      onSelected: (val) {
+        if (val) {
+          controller.sportsFeeling = feel;
+          controller.notifyListeners();
+        }
+      },
+    );
+  }
+}
+
+class MedicalStep2Form extends StatefulWidget {
+  final PlannerController controller;
+  const MedicalStep2Form({super.key, required this.controller});
+
+  @override
+  State<MedicalStep2Form> createState() => _MedicalStep2FormState();
+}
+
+class _MedicalStep2FormState extends State<MedicalStep2Form> {
+  final TextEditingController _doseController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _doseController.text = widget.controller.description;
+    _nameController.text = widget.controller.title;
+  }
+
+  @override
+  void didUpdateWidget(covariant MedicalStep2Form oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller.title != _nameController.text) {
+      _nameController.text = widget.controller.title;
+      _nameController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _nameController.text.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _doseController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = widget.controller;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'نام دارو',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _nameController,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontFamily: 'Vazirmatn',
+              fontSize: 15.5,
+              color: colors.textPrimary,
+            ),
+            decoration: InputDecoration(
+              labelText: 'نام دارو (مثلاً: استامینوفن)',
+              labelStyle: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 14.5,
+                color: colors.textSecondary.withOpacity(0.8),
+              ),
+              hintText: 'نام دارو را وارد کنید...',
+              hintStyle: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 13.5,
+                color: colors.textSecondary.withOpacity(0.5),
+              ),
+              prefixIcon: Icon(Icons.medication_rounded, color: colors.primary, size: 18),
+              filled: true,
+              fillColor: isDark ? const Color(0xFF16192E).withOpacity(0.3) : Colors.black.withOpacity(0.02),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: colors.border.withOpacity(0.15)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: colors.border.withOpacity(0.15)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: colors.primary.withOpacity(0.5), width: 1.5),
+              ),
+            ),
+            onChanged: (val) {
+              controller.title = val;
+            },
+          ),
+          const SizedBox(height: 20),
+
+          const Text(
+            'نحوه مصرف دارو',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _buildModeChip('FIXED', 'منظم (ساعت مشخص)', Icons.alarm_rounded),
+              const SizedBox(width: 8),
+              _buildModeChip('PRN', 'در صورت نیاز (PRN)', Icons.medical_services_rounded),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'دوز مصرفی (مثلاً: ۵۰۰ میلی‌گرم)',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _doseController,
+            style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 15.5, color: colors.textPrimary),
+            decoration: InputDecoration(
+              hintText: 'دوز مصرفی دارو را وارد کنید',
+              hintStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5, color: colors.textSecondary.withOpacity(0.5)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            ),
+            onChanged: (val) {
+              controller.description = val;
+            },
+          ),
+          const SizedBox(height: 20),
+
+          if (controller.medicalMode == 'FIXED') ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'ساعات مصرف دارو',
+                  style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                TextButton.icon(
+                  onPressed: () async {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: const TimeOfDay(hour: 8, minute: 0),
+                    );
+                    if (time != null) {
+                      controller.medicalTimes.add(time);
+                      controller.notifyListeners();
+                    }
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('افزودن ساعت', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (controller.medicalTimes.isEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  '⚠️ هیچ ساعتی برای مصرف تنظیم نشده است. لطفاً حداقل یک ساعت اضافه کنید.',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 13.5,
+                    color: Colors.redAccent.shade200,
+                  ),
+                ),
+              ),
+            ] else ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: controller.medicalTimes.asMap().entries.map((e) {
+                  final idx = e.key;
+                  final t = e.value;
+                  final padH = t.hour.toString().padLeft(2, '0');
+                  final padM = t.minute.toString().padLeft(2, '0');
+                  return InputChip(
+                    label: Text(
+                      '$padH:$padM', 
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn', 
+                        fontSize: 14,
+                        color: colors.textPrimary,
+                      )
+                    ),
+                    backgroundColor: isDark ? const Color(0xFF1E2235) : Colors.black.withOpacity(0.04),
+                    deleteIconColor: Colors.redAccent,
+                    onPressed: () async {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: t,
+                      );
+                      if (time != null) {
+                        controller.medicalTimes[idx] = time;
+                        controller.notifyListeners();
+                      }
+                    },
+                    onDeleted: () {
+                      controller.medicalTimes.removeAt(idx);
+                      controller.notifyListeners();
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+          ] else ...[
+            Text(
+              'حداقل فاصله بین دوزها: ${controller.medicalMinIntervalHours} ساعت',
+              style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14.5),
+            ),
+            Slider(
+              value: controller.medicalMinIntervalHours.toDouble(),
+              min: 1,
+              max: 24,
+              divisions: 23,
+              activeColor: const Color(0xff06B6D4),
+              onChanged: (val) {
+                controller.medicalMinIntervalHours = val.toInt();
+                controller.notifyListeners();
+              },
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'حداکثر دوز در روز: ${controller.medicalMaxDosesPerDay} بار',
+              style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14.5),
+            ),
+            Slider(
+              value: controller.medicalMaxDosesPerDay.toDouble(),
+              min: 1,
+              max: 12,
+              divisions: 11,
+              activeColor: const Color(0xff06B6D4),
+              onChanged: (val) {
+                controller.medicalMaxDosesPerDay = val.toInt();
+                controller.notifyListeners();
+              },
+            ),
+          ],
+          const SizedBox(height: 20),
+          Text(
+            'موجودی فعلی دارو: ${controller.medicalStockCount}',
+            style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14.5),
+          ),
+          Slider(
+            value: controller.medicalStockCount.toDouble(),
+            min: 0,
+            max: 100,
+            divisions: 100,
+            activeColor: const Color(0xff06B6D4),
+            onChanged: (val) {
+              controller.medicalStockCount = val.toInt();
+              controller.notifyListeners();
+            },
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'هشدار کمبود موجودی: کمتر از ${controller.medicalRefillWarning} عدد',
+            style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14.5),
+          ),
+          Slider(
+            value: controller.medicalRefillWarning.toDouble(),
+            min: 0,
+            max: 20,
+            divisions: 20,
+            activeColor: const Color(0xff06B6D4),
+            onChanged: (val) {
+              controller.medicalRefillWarning = val.toInt();
+              controller.notifyListeners();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeChip(String mode, String label, IconData icon) {
+    final controller = widget.controller;
+    final sel = controller.medicalMode == mode;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ChoiceChip(
+      avatar: Icon(icon, color: sel ? Colors.white : const Color(0xff06B6D4), size: 17),
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5)),
+      selected: sel,
+      selectedColor: const Color(0xff06B6D4),
+      backgroundColor: isDark ? const Color(0xFF1E2235) : Colors.black.withOpacity(0.04),
+      labelStyle: TextStyle(
+        color: sel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+        fontFamily: 'Vazirmatn',
+      ),
+      onSelected: (val) {
+        if (val) {
+          controller.medicalMode = mode;
+          controller.notifyListeners();
+        }
+      },
+    );
+  }
+}
+
+class CourseStep2Form extends StatelessWidget {
+  final PlannerController controller;
+  const CourseStep2Form({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'نوع منبع آموزشی',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildTypeChip('VIDEO', '🎥 ویدیو / کلاس'),
+              _buildTypeChip('BOOK', '📖 کتاب / متن'),
+              _buildTypeChip('SKILL', '🎯 تمرین عملی'),
+              _buildTypeChip('CUSTOM', '📚 سایر منابع'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'تعداد کل جلسات / فصول: ${controller.courseTotalSessions}',
+            style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+          ),
+          Slider(
+            value: controller.courseTotalSessions.toDouble(),
+            min: 1,
+            max: 100,
+            divisions: 99,
+            activeColor: colors.primary,
+            onChanged: (val) {
+              controller.courseTotalSessions = val.toInt();
+              controller.notifyListeners();
+            },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'هدف هفتگی (تعداد جلسات در هفته): ${controller.courseWeeklyTarget}',
+            style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+          ),
+          Slider(
+            value: controller.courseWeeklyTarget.toDouble(),
+            min: 1,
+            max: 7,
+            divisions: 6,
+            activeColor: colors.primary,
+            onChanged: (val) {
+              controller.courseWeeklyTarget = val.toInt();
+              controller.notifyListeners();
+            },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'مدت زمان تقریبی هر جلسه: ${controller.courseSessionDuration} دقیقه',
+            style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+          ),
+          Slider(
+            value: controller.courseSessionDuration.toDouble(),
+            min: 5,
+            max: 180,
+            divisions: 35,
+            activeColor: colors.primary,
+            onChanged: (val) {
+              controller.courseSessionDuration = val.toInt();
+              controller.notifyListeners();
+            },
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'زمان ترجیحی مطالعه',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: controller.coursePreferredTime,
+                  );
+                  if (time != null) {
+                    controller.coursePreferredTime = time;
+                    controller.notifyListeners();
+                  }
+                },
+                child: Text(
+                  '${controller.coursePreferredTime.hour.toString().padLeft(2, '0')}:${controller.coursePreferredTime.minute.toString().padLeft(2, '0')}',
+                  style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'روزهای ترجیحی برای مطالعه',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          PlannerDayOfWeekSelector(
+            selectedDays: controller.coursePreferredDays,
+            onChanged: (list) {
+              controller.coursePreferredDays = list;
+              controller.notifyListeners();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeChip(String type, String label) {
+    final sel = controller.courseType == type;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
+      selected: sel,
+      selectedColor: const Color(0xff6366F1),
+      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
+      onSelected: (val) {
+        if (val) {
+          controller.courseType = type;
+          controller.notifyListeners();
+        }
+      },
+    );
+  }
+}
+
+class GoalStep2Form extends StatefulWidget {
+  final PlannerController controller;
+  const GoalStep2Form({super.key, required this.controller});
+
+  @override
+  State<GoalStep2Form> createState() => _GoalStep2FormState();
+}
+
+class _GoalStep2FormState extends State<GoalStep2Form> {
+  @override
+  Widget build(BuildContext context) {
+    final controller = widget.controller;
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'بازه زمانی هدف (SMART)',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildTypeChip('DAILY', 'روزانه'),
+              const SizedBox(width: 8),
+              _buildTypeChip('WEEKLY', 'هفتگی'),
+              const SizedBox(width: 8),
+              _buildTypeChip('LONG_TERM', 'بلندمدت'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'تاریخ اتمام هدف',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final date = await RitmoDatePicker.show(
+                    context: context,
+                    initialDate: controller.goalTargetDate,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                  );
+                  if (date != null) {
+                    controller.goalTargetDate = date;
+                    controller.notifyListeners();
+                  }
+                },
+                child: Text(
+                  '${controller.goalTargetDate.year}/${controller.goalTargetDate.month}/${controller.goalTargetDate.day}',
+                  style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'تعریف مراحل (Steps)',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              IconButton(
+                onPressed: () {
+                  controller.goalSteps.add('');
+                  controller.notifyListeners();
+                },
+                icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.deepOrange),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: controller.goalSteps.length,
+            itemBuilder: (context, idx) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+                        decoration: InputDecoration(
+                          hintText: 'گام ${idx + 1}',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        controller: TextEditingController(text: controller.goalSteps[idx])
+                          ..selection = TextSelection.fromPosition(
+                            TextPosition(offset: controller.goalSteps[idx].length),
+                          ),
+                        onChanged: (val) {
+                          controller.goalSteps[idx] = val;
+                        },
+                      ),
+                    ),
+                    if (controller.goalSteps.length > 1)
+                      IconButton(
+                        onPressed: () {
+                          controller.goalSteps.removeAt(idx);
+                          controller.notifyListeners();
+                        },
+                        icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeChip(String type, String label) {
+    final controller = widget.controller;
+    final sel = controller.goalType == type;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
+      selected: sel,
+      selectedColor: Colors.deepOrange,
+      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
+      onSelected: (val) {
+        if (val) {
+          controller.goalType = type;
+          controller.notifyListeners();
+        }
+      },
+    );
+  }
+}
+
+class ReflectionStep2Form extends StatelessWidget {
+  final PlannerController controller;
+  const ReflectionStep2Form({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'حس و حال امروز شما',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(5, (index) {
+              final score = index + 1;
+              final isSelected = controller.reflectionMood == score;
+              final emojis = ['😫', '☹️', '😐', '🙂', '🤩'];
+              return GestureDetector(
+                onTap: () {
+                  controller.reflectionMood = score;
+                  controller.notifyListeners();
+                },
+                child: Text(
+                  emojis[index],
+                  style: TextStyle(
+                    fontSize: isSelected ? 40 : 28,
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'موفقیت‌های امروز',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'امروز چه موفقیت‌هایی داشتید؟',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            onChanged: (val) {
+              controller.reflectionWins = val;
+            },
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'شکرگزاری امروز',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'امروز بابت چه چیزی شکرگزار هستید؟',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            onChanged: (val) {
+              controller.reflectionGratitude = val;
+            },
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'آموخته‌های امروز',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'امروز چه چیز جدیدی یاد گرفتید؟',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            onChanged: (val) {
+              controller.reflectionLearnings = val;
+            },
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'یادداشت محرمانه باشد؟',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              Switch(
+                value: controller.reflectionIsPrivate,
+                activeColor: colors.primary,
+                onChanged: (val) {
+                  controller.reflectionIsPrivate = val;
+                  controller.notifyListeners();
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class GenericStep2Form extends StatelessWidget {
+  final PlannerController controller;
+  const GenericStep2Form({super.key, required this.controller});
+
+  void _showDurationManualDialog(BuildContext context, RitmoColors colors) {
+    final textController = TextEditingController(text: controller.targetDuration.toString());
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: colors.sheetBackground,
+            title: const Text(
+              'وارد کردن دستی مدت زمان',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'مدت زمان مورد نظر خود را به دقیقه وارد کنید:',
+                  style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: textController,
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 18, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    suffixText: 'دقیقه',
+                    suffixStyle: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('لغو', style: TextStyle(fontFamily: 'Vazirmatn', color: colors.textSecondary)),
+              ),
+              TextButton(
+                onPressed: () {
+                  final val = int.tryParse(textController.text);
+                  if (val != null && val > 0) {
+                    controller.targetDuration = val;
+                    controller.notifyListeners();
+                  }
+                  Navigator.pop(context);
+                },
+                child: const Text('تایید', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showReminderPicker(BuildContext context, RitmoColors colors) {
+    final options = [
+      {'label': 'همزمان با شروع', 'value': 0},
+      {'label': '۵ دقیقه قبل', 'value': 5},
+      {'label': '۱۰ دقیقه قبل', 'value': 10},
+      {'label': '۱۵ دقیقه قبل', 'value': 15},
+      {'label': '۳۰ دقیقه قبل', 'value': 30},
+      {'label': '۱ ساعت قبل', 'value': 60},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.sheetBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'تنظیم زمان یادآوری',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                ...options.map((opt) {
+                  final isSelected = controller.reminderOffsetMinutes == opt['value'];
+                  return ListTile(
+                    title: Text(
+                      opt['label'] as String,
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontSize: 14,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected ? colors.primary : colors.textPrimary,
+                      ),
+                    ),
+                    trailing: isSelected ? Icon(Icons.check_rounded, color: colors.primary) : null,
+                    onTap: () {
+                      controller.reminderOffsetMinutes = opt['value'] as int;
+                      controller.notifyListeners();
+                      Navigator.pop(context);
+                    },
+                  );
+                }),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        children: [
+          PlannerTimelinePicker(controller: controller),
+          const SizedBox(height: 28),
+          
+          // 1. Duration Picker Card
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF16192E).withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.75),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: colors.border.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'مدت زمان',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E2235).withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.03),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove, size: 18),
+                        onPressed: () => controller.adjustDuration(-15),
+                        color: colors.textPrimary.withValues(alpha: 0.6),
+                      ),
+                      GestureDetector(
+                        onTap: () => _showDurationManualDialog(context, colors),
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: Text(
+                            '${toPersianDigits(controller.targetDuration.toString())} دقیقه',
+                            style: TextStyle(
+                              fontFamily: 'Vazirmatn',
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: colors.primary,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add, size: 18),
+                        onPressed: () => controller.adjustDuration(15),
+                        color: colors.textPrimary.withValues(alpha: 0.6),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 2. Recurrence Card
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF16192E).withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.75),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: colors.border.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'تکرار',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                Row(
+                  children: [
+                    Text(
+                      controller.recurrenceType == 'EVERY_DAY'
+                          ? 'روزانه'
+                          : (controller.recurrenceType == 'WEEKLY' ? 'هفتگی' : 'دلخواه'),
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontSize: 14,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.sync_rounded, size: 18, color: colors.textSecondary.withValues(alpha: 0.7)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 3. Reminder Card
+          GestureDetector(
+            onTap: () => _showReminderPicker(context, colors),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF16192E).withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: colors.border.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'یادآوری',
+                    style: TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        controller.reminderOffsetMinutes == 0
+                            ? 'همزمان با شروع'
+                            : '${toPersianDigits(controller.reminderOffsetMinutes.toString())} دقیقه قبل',
+                        style: TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontSize: 14,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_ios_rounded, size: 14, color: colors.textSecondary.withValues(alpha: 0.6)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 4. Advanced Settings Card
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF16192E).withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: colors.border.withValues(alpha: 0.05),
+              ),
+            ),
+            child: Column(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    controller.isAdvancedExpanded = !controller.isAdvancedExpanded;
+                    controller.notifyListeners();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    color: Colors.transparent,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'تنظیمات پیشرفته',
+                          style: TextStyle(
+                            fontFamily: 'Vazirmatn',
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                        Icon(
+                          controller.isAdvancedExpanded
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color: colors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (controller.isAdvancedExpanded)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Description field
+                        TextFormField(
+                          initialValue: controller.description,
+                          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: 'توضیحات یا یادداشت‌ها',
+                            labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.textSecondary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          onChanged: (val) => controller.description = val,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Priority dropdown
+                        DropdownButtonFormField<double>(
+                          value: controller.priority,
+                          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: 'اولویت',
+                            labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.textSecondary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 0.5, child: Text('پایین ⚠️')),
+                            DropdownMenuItem(value: 1.0, child: Text('متوسط ⚠️⚠️')),
+                            DropdownMenuItem(value: 1.5, child: Text('بالا ⚠️⚠️⚠️')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              controller.priority = val;
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Energy Rule / Adaptive Behavior
+                        DropdownButtonFormField<String>(
+                          value: controller.energyRule,
+                          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: 'قانون مدیریت انرژی هوشمند (نقشه راه)',
+                            labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.textSecondary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'NONE', child: Text('پایبندی بدون قید و شرط 🎯')),
+                            DropdownMenuItem(value: 'SKIP', child: Text('پرش در صورت خستگی شدید 💤')),
+                            DropdownMenuItem(value: 'OFFER_LIGHT', child: Text('کاهش خودکار به نسخه سبک ⚡')),
+                            DropdownMenuItem(value: 'HIGH_ENERGY_ONLY', child: Text('فقط هنگام انرژی بالا 🔥')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              controller.energyRule = val;
+                              controller.notifyListeners();
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Zone (Realm) selection dropdown
+                        DropdownButtonFormField<String?>(
+                          value: controller.selectedZoneId,
+                          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: 'زون مربوطه (Realm)',
+                            labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.textSecondary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String?>(value: null, child: Text('بدون زون (عمومی)')),
+                            ...controller.availableZones.map((z) {
+                              return DropdownMenuItem<String?>(
+                                value: z['id'] as String,
+                                child: Text('${z['emoji'] ?? '🌐'} ${z['name'] ?? ''}'),
+                              );
+                            }),
+                          ],
+                          onChanged: (val) {
+                            controller.selectedZoneId = val;
+                            controller.notifyListeners();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

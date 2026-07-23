@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
+
+    <!-- Ritmo Persistent Notification Dark Theme Palette -->
+    <color name="notif_bg">#12141F</color>
+    <color name="notif_text_primary">#FFFFFF</color>
+    <color name="notif_text_secondary">#A0A6B5</color>
+    <color name="notif_divider">#1FFFFFFF</color>
+    <color name="notif_progress_bg">#1FFFFFFF</color>
+    <color name="notif_accent">#D4A843</color>
+    <color name="notif_btn_inactive_bg">#0FFFFFFF</color>
+    <color name="notif_btn_inactive_stroke">#20FFFFFF</color>
+    <color name="notif_btn_inactive_text">#FFFFFF</color>
+    <color name="notif_btn_active_bg">#D4A843</color>
+    <color name="notif_btn_active_text">#12141F</color>
+</resources>

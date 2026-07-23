@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:padding="8dp"
+    android:background="@color/notif_bg">
+
+    <!-- Far Right App Icon -->
+    <ImageView
+        android:id="@+id/notif_app_icon"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:src="@drawable/ic_notification"
+        android:contentDescription="Ritmo Icon"
+        android:padding="4dp" />
+
+    <!-- Left Complete Checkbox -->
+    <ImageView
+        android:id="@+id/btn_collapsed_done"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_checkbox_unchecked"
+        android:scaleType="centerInside"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="Complete Task" />
+
+    <!-- Center Info Column (Persian Layout: right to left) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_toStartOf="@id/notif_app_icon"
+        android:layout_toEndOf="@id/btn_collapsed_done"
+        android:layout_centerVertical="true"
+        android:orientation="vertical"
+        android:paddingEnd="12dp"
+        android:paddingStart="8dp">
+
+        <TextView
+            android:id="@+id/txt_collapsed_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="زون: آزاد | انرژی: متوسط"
+            android:textColor="@color/notif_text_primary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_gravity="end" />
+
+        <TextView
+            android:id="@+id/txt_collapsed_task"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="پیشنهاد: استراحت 🌿"
+            android:textColor="@color/notif_text_secondary"
+            android:textSize="11sp"
+            android:layout_marginTop="2dp"
+            android:layout_gravity="end"
+            android:ellipsize="end"
+            android:maxLines="1" />
+    </LinearLayout>
+
+</RelativeLayout>

@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@color/notif_bg">
+
+    <!-- 1. Header Row (RTL) -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Left: Progress Stats -->
+        <TextView
+            android:id="@+id/txt_expanded_stats"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:text="کارهای امروز: ۳ از ۵"
+            android:textColor="@color/notif_text_secondary"
+            android:textSize="11sp" />
+
+        <!-- Right: App Name/Icon -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ریتمو در جریان است 🌿"
+                android:textColor="@color/notif_text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginEnd="6dp" />
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_notification" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- 2. Progress Bar -->
+    <ProgressBar
+        android:id="@+id/progressBar_today"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_marginTop="8dp"
+        android:progress="60"
+        android:max="100"
+        android:progressBackgroundTint="@color/notif_progress_bg"
+        android:progressTint="@color/notif_accent" />
+
+    <!-- Divider -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/notif_divider"
+        android:layout_marginTop="8dp" />
+
+    <!-- 3. Suggestion & Action Panel -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp">
+
+        <!-- Left Action Button -->
+        <TextView
+            android:id="@+id/btn_expanded_done"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:text="انجام شد"
+            android:textColor="@color/notif_btn_active_text"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:background="@drawable/bg_notification_button_active"
+            android:backgroundTint="@color/notif_accent"
+            android:minWidth="70dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone" />
+
+        <!-- Right Suggestion Info -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@id/btn_expanded_done"
+            android:layout_centerVertical="true"
+            android:orientation="vertical"
+            android:gravity="end"
+            android:paddingStart="8dp">
+
+            <TextView
+                android:id="@+id/txt_expanded_task_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="پیشنهاد بعدی: ورزش هوازی 🏃‍♂️"
+                android:textColor="@color/notif_text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/txt_expanded_task_desc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="زون: کار | انرژی: بالا"
+                android:textColor="@color/notif_text_secondary"
+                android:textSize="10.5sp"
+                android:layout_marginTop="1dp" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- Divider -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/notif_divider"
+        android:layout_marginTop="8dp" />
+
+    <!-- 4. Control Toggles (RTL Rows) -->
+    <!-- Zone Toggles Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp"
+        android:gravity="end">
+
+        <!-- Zone 3 (Rest/Auto) -->
+        <TextView
+            android:id="@+id/btn_zone_3"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="🌿 آزاد"
+            android:textColor="@color/notif_btn_inactive_text"
+            android:textSize="10.5sp"
+            android:gravity="center"
+            android:background="@drawable/bg_notification_button_inactive"
+            android:layout_marginEnd="4dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Zone 2 (Study) -->
+        <TextView
+            android:id="@+id/btn_zone_2"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="📚 درس"
+            android:textColor="@color/notif_btn_inactive_text"
+            android:textSize="10.5sp"
+            android:gravity="center"
+            android:background="@drawable/bg_notification_button_inactive"
+            android:layout_marginEnd="4dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Zone 1 (Work) -->
+        <TextView
+            android:id="@+id/btn_zone_1"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="💼 کار"
+            android:textColor="@color/notif_btn_inactive_text"
+            android:textSize="10.5sp"
+            android:gravity="center"
+            android:background="@drawable/bg_notification_button_inactive"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:clickable="true"
+            android:focusable="true" />
+            
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="قلمرو:"
+            android:textColor="@color/notif_text_secondary"
+            android:textSize="11sp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="8dp"
+            android:minWidth="35dp"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <!-- Energy Toggles Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="6dp"
+        android:gravity="end">
+
+        <!-- Low Energy -->
+        <TextView
+            android:id="@+id/btn_energy_low"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="🪫 پایین"
+            android:textColor="@color/notif_btn_inactive_text"
+            android:textSize="10.5sp"
+            android:gravity="center"
+            android:background="@drawable/bg_notification_button_inactive"
+            android:layout_marginEnd="4dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Medium Energy -->
+        <TextView
+            android:id="@+id/btn_energy_med"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="⚡ متوسط"
+            android:textColor="@color/notif_btn_inactive_text"
+            android:textSize="10.5sp"
+            android:gravity="center"
+            android:background="@drawable/bg_notification_button_inactive"
+            android:layout_marginEnd="4dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- High Energy -->
+        <TextView
+            android:id="@+id/btn_energy_high"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="🔋 بالا"
+            android:textColor="@color/notif_btn_inactive_text"
+            android:textSize="10.5sp"
+            android:gravity="center"
+            android:background="@drawable/bg_notification_button_inactive"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="انرژی:"
+            android:textColor="@color/notif_text_secondary"
+            android:textSize="11sp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="8dp"
+            android:minWidth="35dp"
+            android:gravity="end" />
+    </LinearLayout>
+
+</LinearLayout>

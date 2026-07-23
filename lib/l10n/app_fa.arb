@@ -1,0 +1,651 @@
+{
+  "@@locale": "fa",
+  "learningGrowthInsightTitle": "رشد چشمگیر یادگیری \uD83D\uDCC8",
+  "learningGrowthInsightMessage": "فعالیت‌های یادگیری شما در این هفته نسبت به هفته گذشته {percent}٪ رشد داشته است. مسیر مطالعه خود را ادامه دهید!",
+  "@learningGrowthInsightMessage": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "healthDeclineInsightTitle": "توجه به سلامت و ورزش ⚠️",
+  "healthDeclineInsightMessage": "تعداد روتین‌های سلامتی شما در ۷ روز گذشته {percent}٪ کاهش یافته است. تلاش کنید دوباره آنها را در برنامه قرار دهید.",
+  "@healthDeclineInsightMessage": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "morningLeadInsightTitle": "برتری عملکرد صبحگاهی ☀️",
+  "morningLeadInsightMessage": "روتین‌های صبحگاهی شما (۶:۰۰ تا ۱۲:۰۰) نرخ تکمیل بالاتری نسبت به روتین‌های عصرگاهی دارند. برای کارهای مهم‌تر روی صبح‌ها سرمایه‌گذاری کنید.",
+  "fatigueWarningInsightTitle": "بازه حساس خستگی ⚡",
+  "fatigueWarningInsightMessage": "بازه زمانی {window} شایع‌ترین دوره خستگی و از دست رفتن روتین‌های شماست. در این ساعات تسک‌های سبک‌تر قرار دهید.",
+  "@fatigueWarningInsightMessage": {
+    "placeholders": {
+      "window": {
+        "type": "String"
+      }
+    }
+  },
+  "productiveWeekdayInsightTitle": "روز درخشان شما \uD83C\uDF1F",
+  "productiveWeekdayInsightMessage": "روز «{weekday}» پربازده‌ترین روز هفته برای شماست. کارهای سنگین و پروژه‌های خود را در این روز برنامه‌ریزی کنید.",
+  "@productiveWeekdayInsightMessage": {
+    "placeholders": {
+      "weekday": {
+        "type": "String"
+      }
+    }
+  },
+  "gatheringDataInsightTitle": "در حال شناخت ریتم شما \uD83D\uDD0D",
+  "gatheringDataInsightMessage": "ریتمو برای ارائه تحلیل‌های معتبر نیاز به داده‌های بیشتری دارد. لطفاً به ثبت فعالیت‌های خود ادامه دهید.",
+  
+  "contextExplanationRest": "استراحت و بازیابی انرژی \uD83C\uDF3F",
+  "contextExplanationEssential": "سیستم زندگی «{title}» به دلیل اهمیت حیاتی، در اولویت بالاتر قرار گرفت.",
+  "@contextExplanationEssential": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationSick": "به دلیل کسالت و بیماری، روتین‌های فیزیکی تعلیق شده و روتین «{title}» پیشنهاد می‌شود.",
+  "@contextExplanationSick": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationExam": "با توجه به بازه امتحانات، روتین‌های یادگیری و مطالعه نظیر «{title}» تقویت شده‌اند.",
+  "@contextExplanationExam": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationBusy": "به دلیل تراکم بالای برنامه‌های امروز، اقدام بهینه بعدی روتین «{title}» است.",
+  "@contextExplanationBusy": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationWorship": "با توجه به فصل عبادی جاری ({season})، روتین «{title}» پیشنهاد می‌شود.",
+  "@contextExplanationWorship": {
+    "placeholders": {
+      "season": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationZone": "با توجه به حضور در زون فعال، روتین «{title}» جهت همگامی با ریتم جاری پیشنهاد می‌شود.",
+  "@contextExplanationZone": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationLowEnergy": "با توجه به سطح انرژی پایین، نسخه متناسب از روتین «{title}» پیشنهاد می‌شود.",
+  "@contextExplanationLowEnergy": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationDynamic": "با تحلیل پویای ریتم روزانه، روتین «{title}» به عنوان بهترین اقدام بهینه بعدی پیشنهاد می‌شود.",
+  "@contextExplanationDynamic": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  
+  "hormonalMenstrualAdjustment1": "فعالیت‌های سنگین را کاهش دهید",
+  "hormonalMenstrualAdjustment2": "بین کارها استراحت کوتاه اضافه کنید",
+  "hormonalMenstrualAdjustment3": "روی کارهای سبک و ضروری تمرکز کنید",
+  "hormonalMenstrualAdjustment4": "آب کافی بنوشید و استراحت کافی داشته باشید",
+  "hormonalPreCycleAdjustment1": "ممکن است خستگی بدنی یا نوسانات انرژی خفیف را تجربه کنید \uD83D\uDD0B",
+  "hormonalPreCycleAdjustment2": "اولویت‌دهی به کارهای مهم در ساعات اولیه روز ⏰",
+  "hormonalPreCycleAdjustment3": "پیشنهاد می‌شود زمان خواب شبانه را افزایش دهید \uD83C\uDF19",
+  "hormonalPostCycleAdjustment1": "سطح انرژی و توانایی تمرکز در حال افزایش است \uD83D\uDCC8",
+  "hormonalPostCycleAdjustment2": "زمان عالی برای شروع برنامه‌ها یا یادگیری کارهای جدید \uD83C\uDF93",
+
+  "hormonalContextMenstrual": "به دلیل فاز قاعدگی فعال، پیشنهاد می‌شود فعالیت‌های بدنی سبک‌تری داشته باشید و زمان ریکاوری را افزایش دهید. \uD83C\uDF38",
+  "hormonalContextPreCycle": "در فاز پیش از قاعدگی (Pre-cycle)، احتمال خستگی یا حساسیت عاطفی ملایم وجود دارد. انعطاف‌پذیری برنامه به آسایش شما کمک می‌کند. \uD83E\uDDD8",
+  "hormonalContextPostCycle": "در فاز پس از قاعدگی (Post-cycle)، سطح آمادگی ذهنی و انرژی بدنی رو به افزایش است. زمان خوبی برای چالش‌های جدید است. ⚡",
+  "hormonalContextNormal": "وضعیت بدنی در حالت عادی و متعادل قرار دارد. \uD83C\uDF43",
+  "hormonalContextNoData": "هنوز داده کافی برای پیش‌بینی دقیق وضعیت شما وجود ندارد.",
+  "hormonalContextDisabled": "ماژول چرخه بدنی فعال نیست.",
+
+  "medicineStockAlert": "موجودی داروی «{title}» رو‌به‌اتمام است (موجودی فعلی: {count}).",
+  "@medicineStockAlert": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeConflictAlert": "تداخل زمانی بین روتین‌های «{title1}» و «{title2}» شناسایی شد.",
+  "@timeConflictAlert": {
+    "placeholders": {
+      "title1": {
+        "type": "String"
+      },
+      "title2": {
+        "type": "String"
+      }
+    }
+  },
+  "pulseCardMoodGood": "امروز روز خوبی بوده 🌱",
+  "pulseCardMoodExcellent": "ریتم زندگی شما عالی است! 🌟",
+  "pulseCardMoodRestore": "بیا ریتم زندگی را بازیابی کنیم 🌿",
+  "pulseCardTitle": "نبض زندگی",
+  "pulseCardTrend": "روند این هفته +۱۱٪",
+  "currentEnergyTitle": "انرژی فعلی",
+  "manageEnergy": "مدیریت انرژی",
+  "currentRealmTitle": "قلمرو فعلی",
+  "outOfRealm": "خارج از قلمرو",
+  "noActiveSchedule": "بدون زمان‌بندی فعال",
+  "logNewDailyRealm": "ثبت قلمرو جدید روزانه",
+  "routinesConnectedToRealm": "{count} روتین متصل به این قلمرو",
+  "@routinesConnectedToRealm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addRealm": "افزودن قلمرو ›",
+  "manageRealm": "مدیریت قلمرو ›",
+  "energyLevelHigh": "بالا",
+  "energyLevelLow": "پایین",
+  "energyLevelMedium": "متوسط",
+  "energyDescHigh": "آماده برای کارهای عمیق و تمرکز سنگین",
+  "energyDescLow": "زمان مناسب برای استراحت و کار سبک",
+  "energyDescMedium": "مناسب برای مطالعه، پروژه‌ها و روتین‌ها",
+  "contextNormal": "عادی 🍃",
+  "contextSick": "بیماری 🤒",
+  "contextTravel": "سفر ✈️",
+  "contextExam": "امتحانات 📚",
+  "contextBusy": "مشغله زیاد 🔥",
+  "contextWorship": "فصل عبادی",
+  "energyLevelHighSymbol": "بالا 🔥",
+  "energyLevelLowSymbol": "پایین 💤",
+  "energyLevelMediumSymbol": "متوسط ⚡",
+  "outOfRealmSymbol": "خارج از قلمرو 🌐",
+  "resolveScheduleConflict": "⚡ رفع تداخل برنامه",
+  "labelContext": "بستر:",
+  "labelEnergy": "انرژی:",
+  "labelRealm": "قلمرو:",
+  "quickSystemsTitle": "سیستم‌های سریع",
+  "systemWorships": "عبادات",
+  "systemHealth": "سلامت",
+  "systemGoals": "اهداف",
+  "systemEducation": "آموزش",
+  "worshipItemsToday": "۳ مورد امروز",
+  "medicineToday": "{count} دارو امروز",
+  "@medicineToday": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsAndPlans": "اهداف و برنامه‌ها",
+  "activeCourse": "۱ دوره فعال",
+  "disabled": "غیرفعال",
+  "moduleDisabled": "ماژول غیرفعال است",
+  "restAndRecovery": "استراحت و بازیابی 🌿",
+  "minutesLight": "{minutes} دقیقه (سبک)",
+  "@minutesLight": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "minutes": "{minutes} دقیقه",
+  "@minutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "freeTime": "زمان آزاد",
+  "smartAssistantTitle": "دستیار هوشمند ریتمو",
+  "focusOnThisToday": "امروز روی این تمرکز کن:",
+  "balanceAndImprovement": "🎯 تعادل و بهبود مستمر",
+  "bestNextAction": "بهترین کار بعدی برای شما",
+  "reasonForSuggestion": "دلیل پیشنهاد:",
+  "reasonEssential": "این روتین به دلیل اهمیت حیاتی در اولویت است 🎯",
+  "reasonActiveZone": "شما در زون «{zone}» هستید 💼",
+  "@reasonActiveZone": {
+    "placeholders": {
+      "zone": {
+        "type": "String"
+      }
+    }
+  },
+  "reasonEnergyLevel": "سطح انرژی شما {energy} است ⚡",
+  "@reasonEnergyLevel": {
+    "placeholders": {
+      "energy": {
+        "type": "String"
+      }
+    }
+  },
+  "reasonSick": "به دلیل کسالت، برنامه به حالت بهینه سبک تغییر یافته 🤒",
+  "reasonExam": "با توجه به بازه امتحانات، اولویت یادگیری افزایش یافته 📚",
+  "reasonBusy": "به دلیل شلوغی برنامه امروز، این کار پیشنهاد بهینه است ⏳",
+  "reasonWorship": "با توجه به فصل عبادی جاری ({season}) 🌙",
+  "@reasonWorship": {
+    "placeholders": {
+      "season": {
+        "type": "String"
+      }
+    }
+  },
+  "reasonCompleted": "کارهای امروز با موفقیت تکمیل شده‌اند ✨",
+  "reasonRestTime": "زمان استراحت و ریکاوری است 🍃",
+  "start": "شروع",
+  "whyThisSuggestion": "چرا این پیشنهاد؟",
+  "todaysTasksTitle": "کارهای امروز",
+  "resolveConflictBtn": "⚡ رفع تداخل",
+  "viewAll": "مشاهده همه",
+  "routineDoneMsg": "روتین «{title}» انجام شد! 🌟",
+  "@routineDoneMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "routineDoneLightMsg": "روتین «{title}» به صورت سبک انجام شد! ⚡",
+  "@routineDoneLightMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "routineDoneMinimalMsg": "روتین «{title}» به صورت حداقلی انجام شد! 🌿",
+  "@routineDoneMinimalMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "routineSkippedMsg": "روتین «{title}» رد شد. ✕",
+  "@routineSkippedMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "routinePostponedMsg": "روتین «{title}» به تعویق افتاد. ⏳",
+  "@routinePostponedMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "loggedAtTime": "ثبت شده در {time} دقیقه پیش",
+  "@loggedAtTime": {
+    "placeholders": {
+      "time": {
+        "type": "int"
+      }
+    }
+  },
+  "loggedAtTimeWithNote": "ثبت شده در {time} دقیقه پیش ({note})",
+  "@loggedAtTimeWithNote": {
+    "placeholders": {
+      "time": {
+        "type": "int"
+      },
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "basedOnCalculationsAndDefaults": "بر اساس محاسبات و مقادیر پیش‌فرض",
+  "basedOnDefaults": "بر اساس پیش‌فرض",
+  "worshipDebt": "بدهی عبادی",
+  "snoozeTimeMinutes": "{count} دقیقه",
+  "@snoozeTimeMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "snoozeTimeHours": "{count} ساعت",
+  "@snoozeTimeHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "welcomeUser": "سلام {name}",
+  "@welcomeUser": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noRoutinesToday": "هیچ روتینی برای امروز باقی نمانده است. ✨",
+  "timeLabel": "ساعت:",
+  "checkinReminderTitle": "ثبت وضعیت صبحگاهی (چک‌این) ☀️",
+  "checkinReminderDesc": "ثبت وضعیت به ریتمو کمک می‌کند برنامه‌تان را متناسب با سطح انرژی‌تان تنظیم کند.",
+  "reflectionReminderTitle": "ثبت تأمل و خودارزیابی روزانه 🌙",
+  "reflectionReminderDesc": "زمانی را برای ارزیابی امروز و یادگیری‌های آن اختصاص دهید.",
+  "laterOrDismiss": "بعداً / صرف‌نظر",
+  "yesRecord": "بله، ثبت کنم",
+  "criticalSystemAlerts": "هشدارهای بحرانی سیستم ⚠️",
+  "worshipPrayer": "نماز",
+  "worshipFast": "روزه",
+  "totalDebtsLabel": "تعداد کل قضاها",
+  "dailyTargetLabel": "هدف انجام روزانه",
+  "cancelBtn": "انصراف",
+  "registerDebtBtn": "ثبت بدهی",
+  "timeConflictWarning": "هشدار تداخل زمانی",
+  "medMinIntervalAlert": "فاصله زمانی مجاز بین هر بار مصرف این دارو (حداقل {minInterval} ساعت) رعایت نشده است. آیا مایل به ثبت مصرف هستید؟",
+  "@medMinIntervalAlert": {
+    "placeholders": {
+      "minInterval": {
+        "type": "double"
+      }
+    }
+  },
+  "overdoseDanger": "خطر بیش‌مصرف (اوردوز)",
+  "medMaxDosesAlert": "تعداد دفعات مصرف مجاز روزانه این دارو ({maxDoses} بار در روز) به سقف خود رسیده است. مصرف بیشتر خطرناک است. آیا مطمئن به ثبت هستید؟",
+  "@medMaxDosesAlert": {
+    "placeholders": {
+      "maxDoses": {
+        "type": "int"
+      }
+    }
+  },
+  "dosageUnit": "1 عدد",
+  "medLoggedSuccess": "مصرف داروی «{title}» با موفقیت ثبت شد.",
+  "@medLoggedSuccess": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "noCancel": "خیر، لغو ثبت",
+  "yesLog": "بله، ثبت مصرف",
+  "refillStockTitle": "شارژ مجدد موجودی: {title}",
+  "@refillStockTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "refillCountLabel": "تعداد داروی اضافه شده",
+  "refillStockBtn": "شارژ موجودی",
+  "niyyahTitle": "آماده‌سازی و شروع: {title}",
+  "@niyyahTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "completionModeFull": "کامل 🎯",
+  "completionModeLight": "سبک ⚡",
+  "completionModeMinimal": "حداقلی 🌿",
+  "startFocusTimer": "شروع تایمر تمرکز",
+  "logWithoutTimer": "ثبت فوری بدون تایمر",
+  "contextEngineExplanation": "سیستم بر اساس موتور تحلیل بافت (Context Engine)، شرایط زمانی و انرژی فعلی شما را سنجیده است.",
+  "ritmoSmartAnalysis": "تحلیل هوشمند ریتمو ✨",
+  "understood": "فهمیدم",
+  "energyManagementTitle": "مدیریت و تحلیل انرژی ریتمو",
+  "currentDynamicEnergyLabel": "درصد پویای انرژی فعلی شما: {label}",
+  "@currentDynamicEnergyLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "whyThisNumberTitle": "چرا این عدد؟ (فرمول محاسبه پویای انرژی)",
+  "calculating": "در حال محاسبه...",
+  "setBaseEnergyLabel": "تنظیم سطح انرژی پایه ثبت دستی:",
+  "factorsAffectingEnergyLabel": "فاکتورهای مؤثر بر خستگی یا افت انرژی امروز:",
+  "factorPoorSleep": "خواب ضعیف 🛌",
+  "factorHighStress": "استرس بالا 🧠",
+  "factorPhysicalFatigue": "خستگی جسمی 🏋️",
+  "factorLackOfFocus": "عدم تمرکز ذهنی 🎯",
+  "moodNotesPlaceholder": "توضیحات کوتاه یا خلق‌و‌خو (اختیاری)",
+  "lackOfFocusStr": "عدم تمرکز ذهنی",
+  "energyUpdatedSuccess": "سطح انرژی با موفقیت به روز شد.",
+  "saveStatusBtn": "ثبت و ذخیره‌سازی وضعیت",
+  "aiSmartAnalysisTitle": "تحلیل هوشمند دستیار ریتمو (AI)",
+  "dataSentToAiLabel": "داده‌های ارسالی به هوش مصنوعی جهت تحلیل:",
+  "bulletCalculatedEnergy": "• درصد پویای محاسبه شده فعلی: {percent}٪\n",
+  "@bulletCalculatedEnergy": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "bulletReportedFactors": "• عوامل موقت گزارش شده: {factors}\n",
+  "@bulletReportedFactors": {
+    "placeholders": {
+      "factors": {
+        "type": "String"
+      }
+    }
+  },
+  "bulletBiologicalClock": "• فاز ساعت زیستی بدن در ساعت فعلی روز\n",
+  "bulletSleepHistory": "• تاریخچه خواب اخیر و وضعیت روتین‌های تکمیل‌شده",
+  "agreeToSendData": "با ارسال امن داده‌های فوق جهت تحلیل موافقم.",
+  "noRecommendationFound": "پیشنهادی یافت نشد.",
+  "networkErrorMsg": "خطا در اتصال به شبکه یا دریافت پاسخ.",
+  "analyzeAndGetRecommendation": "تحلیل و دریافت پیشنهاد ✨",
+  "analyzingDataMsg": "در حال تحلیل داده‌های خواب و روتین‌ها توسط هوش مصنوعی...",
+  "reAnalyze": "تحلیل مجدد 🔄",
+  "localEnergyEngineReport": "گزارش آماری موتور تحلیل انرژی (محلی):",
+  "insufficientData": "داده ناکافی",
+  "goldenHourLabel": "ساعت طلایی بازدهی:",
+  "fatigueWindowLabel": "بازه بیشترین خستگی:",
+  "productiveDayLabel": "پربازده‌ترین روز:",
+  "healthScreenTitle": "سلامت",
+  "medicationsToday": "داروهای امروز",
+  "doctorVisits": "نوبت‌های پزشک",
+  "healthMonitoring": "پایش سلامت",
+  "medicalDocuments": "مدارک پزشکی",
+  "pregnancyTracker": "بارداری",
+  "vaccinations": "واکسن‌ها",
+  "allergies": "آلرژی‌ها",
+  "medicalProfile": "پرونده پزشکی",
+  "doctorVisitsTabUpcoming": "پیش‌رو",
+  "doctorVisitsTabPast": "گذشته",
+  "doctorVisitsNoUpcoming": "هیچ نوبت پیش‌رویی ثبت نشده است.",
+  "doctorVisitsNoPast": "هیچ نوبت گذشته‌ای ثبت نشده است.",
+  "doctorVisitsAddTitle": "ثبت نوبت پزشک",
+  "doctorVisitsEditTitle": "ویرایش نوبت پزشک",
+  "doctorVisitsDoctorName": "نام پزشک",
+  "doctorVisitsSpecialty": "تخصص (اختیاری)",
+  "doctorVisitsClinicName": "نام کلینیک (اختیاری)",
+  "doctorVisitsClinicAddress": "آدرس (اختیاری)",
+  "doctorVisitsClinicPhone": "تلفن (اختیاری)",
+  "doctorVisitsReason": "علت مراجعه (اختیاری)",
+  "doctorVisitsNotes": "یادداشت‌ها (اختیاری)",
+  "doctorVisitsDateTime": "تاریخ و ساعت نوبت",
+  "doctorVisitsReminder": "یادآوری قبل از نوبت",
+  "doctorVisitsType": "نوع نوبت",
+  "doctorVisitsTypeInPerson": "حضوری",
+  "doctorVisitsTypeOnline": "آنلاین",
+  "doctorVisitsTypeTelephone": "تلفنی",
+  "doctorVisitsReminderNone": "بدون یادآوری",
+  "doctorVisitsReminder15m": "۱۵ دقیقه قبل",
+  "doctorVisitsReminder30m": "۳۰ دقیقه قبل",
+  "doctorVisitsReminder1h": "۱ ساعت قبل",
+  "doctorVisitsReminder2h": "۲ ساعت قبل",
+  "doctorVisitsReminder1d": "۱ روز قبل",
+  "doctorVisitsSave": "ذخیره نوبت",
+  "doctorVisitsDeleteConfirm": "آیا مطمئن هستید که می‌خواهید این نوبت را حذف کنید؟",
+  "doctorVisitsAddAttachment": "افزودن نسخه یا مدرک",
+  "doctorVisitsDelete": "حذف نوبت",
+  "doctorVisitsCancel": "انصراف",
+  "doctorVisitsConfirm": "تایید",
+  "bloodSugarTitle": "قند خون",
+  "bloodSugarValue": "میزان قند خون (mg/dL)",
+  "bloodSugarFasting": "ناشتا",
+  "bloodSugarBeforeMeal": "قبل از غذا",
+  "bloodSugarAfterMeal": "بعد از غذا",
+  "bloodSugarBedtime": "قبل از خواب",
+  "bloodSugarRandom": "تصادفی",
+  "bloodSugarDiabeticFlag": "کاربر مبتلا به دیابت است",
+  "bloodSugarInRange": "در محدوده نرمال",
+  "bloodSugarLow": "پایین (افت قند)",
+  "bloodSugarHigh": "بالا (قند خون بالا)",
+  "bloodSugarSave": "ثبت قند خون",
+  "bloodSugarHistory": "تاریخچه سنجش‌ها",
+  "bloodSugarEnterValue": "لطفاً میزان قند خون را وارد کنید",
+  "bloodSugarLastLog": "آخرین سنجش: {value} {type}",
+  "bloodPressureTitle": "فشار خون",
+  "bloodPressureSystolic": "فشار سیستولیک (میلی‌متر جیوه)",
+  "bloodPressureDiastolic": "فشار دیاستولیک (میلی‌متر جیوه)",
+  "bloodPressurePulse": "ضربان قلب (بار در دقیقه)",
+  "bloodPressureArm": "دست مورد استفاده",
+  "bloodPressureArmLeft": "دست چپ",
+  "bloodPressureArmRight": "دست راست",
+  "bloodPressurePosition": "وضعیت بدن",
+  "bloodPressurePositionSitting": "نشسته",
+  "bloodPressurePositionStanding": "ایستاده",
+  "bloodPressurePositionLying": "خوابیده",
+  "bloodPressureSave": "ثبت فشار خون",
+  "bloodPressureHistory": "تاریخچه فشار خون",
+  "bloodPressureLastLog": "آخرین فشار: {systolic}/{diastolic}",
+  "vitalSignsTitle": "علائم حیاتی",
+  "vitalSignsWeight": "وزن",
+  "vitalSignsTemperature": "دمای بدن",
+  "vitalSignsSpo2": "اکسیژن خون",
+  "vitalSignsWaist": "دور کمر",
+  "vitalSignsHeight": "قد (سانتی‌متر)",
+  "vitalSignsSave": "ثبت علامت حیاتی",
+  "vitalSignsValue": "مقدار",
+  "vitalSignsHistory": "سابقه علائم حیاتی",
+  "vitalSignsLastWeight": "آخرین وزن: {value} کیلوگرم",
+  "vitalSignsBmi": "شاخص توده بدنی (BMI): {value} ({label})",
+  "vitalSignsBmiUnderweight": "کمبود وزن",
+  "vitalSignsBmiNormal": "نرمال",
+  "vitalSignsBmiOverweight": "اضافه وزن",
+  "vitalSignsBmiObese": "چاقی",
+  "medicalDocumentsTitle": "مدارک پزشکی",
+  "medicalDocumentsAddTitle": "ثبت مدرک جدید",
+  "medicalDocumentsEditTitle": "ویرایش مدرک",
+  "medicalDocumentsDocTitle": "عنوان مدرک",
+  "medicalDocumentsCategory": "دسته‌بندی",
+  "medicalDocumentsDate": "تاریخ آزمایش / مدرک",
+  "medicalDocumentsLabName": "نام آزمایشگاه / مرکز درمان",
+  "medicalDocumentsSummary": "خلاصه گزارش",
+  "medicalDocumentsDoctorNotes": "توصیه پزشک",
+  "medicalDocumentsUserNotes": "یادداشت کاربر",
+  "medicalDocumentsSelectImages": "انتخاب تصاویر مدارک",
+  "medicalDocumentsHistory": "آرشیو مدارک پزشکی",
+  "medicalDocumentsNoDocs": "هیچ مدرک یا آزمایشی ثبت نشده است.",
+  "medicalDocumentsDeleteConfirm": "آیا مطمئن هستید که می‌خواهید این مدرک و تمامی تصاویر آن را حذف کنید؟",
+  "medicalDocumentsSave": "ذخیره مدرک",
+  "medicalDocumentsCount": "{count} مدرک ثبت شده",
+  "@medicalDocumentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vaccineName": "نام واکسن",
+  "vaccineDiseaseTarget": "بیماری هدف",
+  "vaccineDoseNumber": "شماره دوز",
+  "vaccineTotalDoses": "تعداد کل دوزها",
+  "vaccineDateAdministered": "تاریخ تزریق",
+  "vaccineNextDoseDue": "تاریخ دوز بعدی",
+  "vaccineBatchNumber": "شماره سری (بچ)",
+  "vaccineClinicName": "نام کلینیک / مرکز تزریق",
+  "vaccineNotes": "یادداشت‌ها",
+  "vaccineSave": "ثبت واکسیناسیون",
+  "vaccineDaysUntilDue": "{days} روز تا دوز بعدی",
+  "@vaccineDaysUntilDue": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "vaccineOverdue": "⚠️ دوز بعدی تأخیر دارد ({days} روز تأخیر)",
+  "@vaccineOverdue": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "vaccineNoDoses": "هیچ واکسنی ثبت نشده است.",
+  "allergyName": "ماده حساسیت‌زا (آلرژن)",
+  "allergyCategory": "دسته‌بندی آلرژی",
+  "allergyCategoryFood": "غذایی",
+  "allergyCategoryDrug": "دارویی",
+  "allergyCategoryEnvironment": "محیطی",
+  "allergyCategoryOther": "سایر",
+  "allergyReaction": "واکنش بدنی / علائم",
+  "allergySeverity": "شدت حساسیت",
+  "allergySeverityMild": "خفیف",
+  "allergySeverityModerate": "متوسط",
+  "allergySeveritySevere": "شدید",
+  "allergySeverityLifeThreatening": "تهدیدکننده حیات ⚠️",
+  "allergyDiagnosedDate": "تاریخ تشخیص",
+  "allergySave": "ثبت آلرژی",
+  "allergyNoAllergies": "هیچ آلرژی ثبت نشده است.",
+  "allergyDeleteConfirm": "آیا مطمئن هستید که می‌خواهید این آلرژی را حذف کنید؟",
+  "pregnancyTitle": "بارداری",
+  "pregnancyLmp": "اولین روز آخرین قاعدگی (LMP)",
+  "pregnancyEdd": "تاریخ تخمینی زایمان (EDD)",
+  "pregnancyStart": "شروع پایش بارداری",
+  "pregnancyEnd": "غیرفعال‌سازی پایش",
+  "pregnancyWeek": "هفته {week} بارداری (روز {day})",
+  "@pregnancyWeek": {
+    "placeholders": {
+      "week": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "pregnancyTrimester1": "سه ماهه اول",
+  "pregnancyTrimester2": "سه ماهه دوم",
+  "pregnancyTrimester3": "سه ماهه سوم",
+  "pregnancyNoTracker": "پایش فعال بارداری وجود ندارد.",
+  "cycleSosButton": "کمک فوری تسکین درد",
+  "cyclePregnancyActivate": "🤰 فعالسازی حالت بارداری",
+  "cyclePregnancyConfirmPrompt": "آیا باردار هستید؟ با فعالسازی این حالت، پیگیری چرخه قاعدگی متوقف میشود و اطلاعات دوران بارداری نمایش داده میشود.",
+  "cyclePregnancyDeactivate": "بازگشت به حالت عادی"
+}

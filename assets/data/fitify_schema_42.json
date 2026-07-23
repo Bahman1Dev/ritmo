@@ -1,0 +1,717 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 42,
+    "identityHash": "2d7085adad386feac819a7be60bdf2b6",
+    "entities": [
+      {
+        "tableName": "sections",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`code` TEXT NOT NULL, `title` TEXT, `category_code` TEXT NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`code`))",
+        "fields": [
+          {
+            "fieldPath": "code",
+            "columnName": "code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "categoryCode",
+            "columnName": "category_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "code"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sections_position",
+            "unique": false,
+            "columnNames": [
+              "position"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sections_position` ON `${TABLE_NAME}` (`position`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sets",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`code` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `image` TEXT NOT NULL, `premium` INTEGER NOT NULL, `featured` INTEGER NOT NULL, `supported_tools` TEXT NOT NULL, `required_tools` TEXT NOT NULL, `main_ability` TEXT NOT NULL, `section_code` TEXT NOT NULL, `position` INTEGER NOT NULL, `full_body` INTEGER NOT NULL, `ratio_lowerbody` REAL NOT NULL, `ratio_abscore` REAL NOT NULL, `ratio_back` REAL NOT NULL, `ratio_upperbody` REAL NOT NULL, `rest_period` INTEGER NOT NULL, `warmup_supported` INTEGER NOT NULL, `get_ready_duration` INTEGER NOT NULL, `difficulty_offset` INTEGER NOT NULL, `difficulty_offset_tools` TEXT NOT NULL, `calorie_coefficient` REAL NOT NULL, `default_round_count` INTEGER NOT NULL, `round_duration` INTEGER NOT NULL, `impact` INTEGER NOT NULL, `neighbor_friendly` INTEGER NOT NULL, `preferred_shapes` TEXT NOT NULL, `preferred_shapes_z_tools` TEXT NOT NULL, PRIMARY KEY(`code`))",
+        "fields": [
+          {
+            "fieldPath": "code",
+            "columnName": "code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "image",
+            "columnName": "image",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "premium",
+            "columnName": "premium",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "featured",
+            "columnName": "featured",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "supportedTools",
+            "columnName": "supported_tools",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "requiredTools",
+            "columnName": "required_tools",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mainAbility",
+            "columnName": "main_ability",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sectionCode",
+            "columnName": "section_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fullBody",
+            "columnName": "full_body",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lowerbodyRatio",
+            "columnName": "ratio_lowerbody",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "abscoreRatio",
+            "columnName": "ratio_abscore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "backRatio",
+            "columnName": "ratio_back",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "upperbodyRatio",
+            "columnName": "ratio_upperbody",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "restPeriod",
+            "columnName": "rest_period",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "warmupSupported",
+            "columnName": "warmup_supported",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "getReadyDuration",
+            "columnName": "get_ready_duration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "difficultyOffset",
+            "columnName": "difficulty_offset",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "difficultyOffsetTools",
+            "columnName": "difficulty_offset_tools",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "calorieCoefficient",
+            "columnName": "calorie_coefficient",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "defaultRoundCount",
+            "columnName": "default_round_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "roundDuration",
+            "columnName": "round_duration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "impact",
+            "columnName": "impact",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "neighborFriendly",
+            "columnName": "neighbor_friendly",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "preferredShapes",
+            "columnName": "preferred_shapes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "preferredShapesZTools",
+            "columnName": "preferred_shapes_z_tools",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "code"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sets_position",
+            "unique": false,
+            "columnNames": [
+              "position"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sets_position` ON `${TABLE_NAME}` (`position`)"
+          }
+        ]
+      },
+      {
+        "tableName": "exercises",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`code` TEXT NOT NULL, `title` TEXT NOT NULL, `duration` INTEGER NOT NULL, `tool` TEXT NOT NULL, `change_sides` INTEGER NOT NULL, `sexyness_m` INTEGER NOT NULL, `sexyness_f` INTEGER NOT NULL, `stance` TEXT NOT NULL, `skill_required` INTEGER NOT NULL, `skill_max` INTEGER NOT NULL, `constraint_positive` TEXT NOT NULL, `constraint_negative` TEXT NOT NULL, `category_cardio` INTEGER NOT NULL, `category_plyometric` INTEGER NOT NULL, `category_lower_body` INTEGER NOT NULL, `category_upper_body` INTEGER NOT NULL, `category_shoulder_and_back` INTEGER NOT NULL, `category_core` INTEGER NOT NULL, `category_stretching` INTEGER NOT NULL, `category_yoga` INTEGER NOT NULL, `category_balance` INTEGER NOT NULL, `category_warmup` INTEGER NOT NULL, `remote` INTEGER NOT NULL, `breathing` TEXT NOT NULL, `hints` TEXT NOT NULL, `harder` TEXT NOT NULL, `easier` TEXT NOT NULL, `looks_cool` INTEGER NOT NULL, `impact` INTEGER NOT NULL, `noisy` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `reps_double` INTEGER NOT NULL, `reps_hint` TEXT, `rep_duration_low` REAL, `rep_duration_medium` REAL, `rep_duration_high` REAL, `muscle_intensity` TEXT NOT NULL, `muscle_intensity_stretch` TEXT NOT NULL, `reps_preferred` INTEGER NOT NULL, `weight_supported` INTEGER NOT NULL, `weight_per_hand` INTEGER NOT NULL, `weight_including_bar` INTEGER NOT NULL, `isolated_vs_compound` INTEGER, `machine_vs_freeweight` INTEGER, `strength_vs_cardio` INTEGER, `tools_required` TEXT NOT NULL, `benchmark_weights` TEXT, `gym_sexyness_m` INTEGER NOT NULL, `gym_sexyness_f` INTEGER NOT NULL, `has_gender_variant` INTEGER NOT NULL, `focus` TEXT NOT NULL, `common_mistakes` TEXT NOT NULL, `benefits` TEXT NOT NULL, PRIMARY KEY(`code`))",
+        "fields": [
+          {
+            "fieldPath": "code",
+            "columnName": "code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tool",
+            "columnName": "tool",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "changeSides",
+            "columnName": "change_sides",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sexynessMale",
+            "columnName": "sexyness_m",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sexynessFemale",
+            "columnName": "sexyness_f",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stance",
+            "columnName": "stance",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "skillRequired",
+            "columnName": "skill_required",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "skillMax",
+            "columnName": "skill_max",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "constraintPositive",
+            "columnName": "constraint_positive",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "constraintNegative",
+            "columnName": "constraint_negative",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryCardio",
+            "columnName": "category_cardio",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryPlyometric",
+            "columnName": "category_plyometric",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryLowerBody",
+            "columnName": "category_lower_body",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryUpperBody",
+            "columnName": "category_upper_body",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryShoulderAndBack",
+            "columnName": "category_shoulder_and_back",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryCore",
+            "columnName": "category_core",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryStretching",
+            "columnName": "category_stretching",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryYoga",
+            "columnName": "category_yoga",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryBalance",
+            "columnName": "category_balance",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryWarmup",
+            "columnName": "category_warmup",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remote",
+            "columnName": "remote",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "breathing",
+            "columnName": "breathing",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hints",
+            "columnName": "hints",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "harder",
+            "columnName": "harder",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "easier",
+            "columnName": "easier",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "looksCool",
+            "columnName": "looks_cool",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "impact",
+            "columnName": "impact",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noisy",
+            "columnName": "noisy",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reps",
+            "columnName": "reps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "repsDouble",
+            "columnName": "reps_double",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "repsHint",
+            "columnName": "reps_hint",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "repDurationLow",
+            "columnName": "rep_duration_low",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "repDurationMedium",
+            "columnName": "rep_duration_medium",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "repDurationHigh",
+            "columnName": "rep_duration_high",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "muscleIntensity",
+            "columnName": "muscle_intensity",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "muscleIntensityStretch",
+            "columnName": "muscle_intensity_stretch",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "areRepsPreferred",
+            "columnName": "reps_preferred",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isWeightSupported",
+            "columnName": "weight_supported",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isWeightPerHand",
+            "columnName": "weight_per_hand",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isWeightIncludingBar",
+            "columnName": "weight_including_bar",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isolatedVsCompound",
+            "columnName": "isolated_vs_compound",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "machineVsFreeweight",
+            "columnName": "machine_vs_freeweight",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "strengthVsCardio",
+            "columnName": "strength_vs_cardio",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "toolsRequired",
+            "columnName": "tools_required",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "benchmarkWeights",
+            "columnName": "benchmark_weights",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "gymSexynessMale",
+            "columnName": "gym_sexyness_m",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gymSexynessFemale",
+            "columnName": "gym_sexyness_f",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasGenderVariant",
+            "columnName": "has_gender_variant",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "focus",
+            "columnName": "focus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "commonMistakes",
+            "columnName": "common_mistakes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "benefits",
+            "columnName": "benefits",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "code"
+          ]
+        }
+      },
+      {
+        "tableName": "set_exercises",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`exercise_code` TEXT NOT NULL, `set_code` TEXT NOT NULL, `suitability` REAL NOT NULL, `difficulty` INTEGER NOT NULL, `order` INTEGER NOT NULL, `suitability_lowerbody` REAL NOT NULL, `suitability_abscore` REAL NOT NULL, `suitability_back` REAL NOT NULL, `suitability_upperbody` REAL NOT NULL, `set_skill_required` INTEGER NOT NULL, `set_skill_max` INTEGER NOT NULL, PRIMARY KEY(`exercise_code`, `set_code`), FOREIGN KEY(`exercise_code`) REFERENCES `exercises`(`code`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "exerciseCode",
+            "columnName": "exercise_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "setCode",
+            "columnName": "set_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suitability",
+            "columnName": "suitability",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "difficulty",
+            "columnName": "difficulty",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "order",
+            "columnName": "order",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suitabilityLowerBody",
+            "columnName": "suitability_lowerbody",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suitabilityAbsCore",
+            "columnName": "suitability_abscore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suitabilityBack",
+            "columnName": "suitability_back",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suitabilityUpperBody",
+            "columnName": "suitability_upperbody",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "skillRequired",
+            "columnName": "set_skill_required",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "skillMax",
+            "columnName": "set_skill_max",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "exercise_code",
+            "set_code"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "exercises",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "exercise_code"
+            ],
+            "referencedColumns": [
+              "code"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "fitness_tools",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`code` TEXT NOT NULL, `state` INTEGER NOT NULL, `size` INTEGER NOT NULL, `exercise_count` INTEGER NOT NULL, `version` INTEGER NOT NULL, `downloaded_count` INTEGER NOT NULL, `downloaded_version` INTEGER NOT NULL, PRIMARY KEY(`code`))",
+        "fields": [
+          {
+            "fieldPath": "code",
+            "columnName": "code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "size",
+            "columnName": "size",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exerciseCount",
+            "columnName": "exercise_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "downloadedCount",
+            "columnName": "downloaded_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "downloadedVersion",
+            "columnName": "downloaded_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "code"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2d7085adad386feac819a7be60bdf2b6')"
+    ]
+  }
+}

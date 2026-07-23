@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/item_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layoutDirection="rtl"
+    android:gravity="center_vertical"
+    android:background="@drawable/widget_row_background"
+    android:padding="8dp"
+    android:layout_marginBottom="4dp">
+
+    <!-- Left accent bar -->
+    <ImageView
+        android:id="@+id/item_accent_bar"
+        android:layout_width="3dp"
+        android:layout_height="24dp"
+        android:background="#3B82F6" />
+
+    <!-- Time of the event -->
+    <TextView
+        android:id="@+id/item_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="۰۸:۳۰"
+        android:textColor="#9AA0AE"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <!-- Title of the item -->
+    <TextView
+        android:id="@+id/item_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:text="کلاس درس"
+        android:textColor="#ECEEF3"
+        android:textSize="13sp"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+    <!-- Checkbox trigger image (ImageView is safer than ImageButton in AppWidgets) -->
+    <ImageView
+        android:id="@+id/item_check_btn"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:padding="4dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_checkbox_unchecked"
+        android:contentDescription="تیک انجام" />
+
+</LinearLayout>

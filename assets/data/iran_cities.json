@@ -1,0 +1,2536 @@
+[
+    {
+        "id":  "KHUZESTAN_ABADAN",
+        "province":  "خوزستان",
+        "city":  "آبادان",
+        "latitude":  32.992500,
+        "longitude":  47.419722
+    },
+    {
+        "id":  "FARS_ABADE",
+        "province":  "فارس",
+        "city":  "آباده",
+        "latitude":  30.347296,
+        "longitude":  48.293400
+    },
+    {
+        "id":  "ILAM_ABDANAN",
+        "province":  "ایلام",
+        "city":  "آبدانان",
+        "latitude":  32.992500,
+        "longitude":  47.419722
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_AZARSHAHR",
+        "province":  "آذربایجان شرقی",
+        "city":  "آذرشهر",
+        "latitude":  37.758889,
+        "longitude":  45.978333
+    },
+    {
+        "id":  "SEMNAN_ARADAN",
+        "province":  "سمنان",
+        "city":  "آرادان",
+        "latitude":  33.860278,
+        "longitude":  58.521667
+    },
+    {
+        "id":  "ESFAHAN_ARAN_VA_BIDGOL",
+        "province":  "اصفهان",
+        "city":  "آران وبيدگل",
+        "latitude":  34.057778,
+        "longitude":  51.484167
+    },
+    {
+        "id":  "GOLESTAN_AZADSHAHR",
+        "province":  "گلستان",
+        "city":  "آزادشهر",
+        "latitude":  37.758889,
+        "longitude":  45.978333
+    },
+    {
+        "id":  "GILAN_ASTARA",
+        "province":  "گیلان",
+        "city":  "آستارا",
+        "latitude":  38.429167,
+        "longitude":  48.871944
+    },
+    {
+        "id":  "GILAN_ASTANEH",
+        "province":  "گیلان",
+        "city":  "آستانه اشرفيه",
+        "latitude":  37.259802,
+        "longitude":  49.943662
+    },
+    {
+        "id":  "MARKAZI_ASHTIAN",
+        "province":  "مرکزی",
+        "city":  "آشتيان",
+        "latitude":  34.521944,
+        "longitude":  50.006111
+    },
+    {
+        "id":  "GOLESTAN_AQQALA",
+        "province":  "گلستان",
+        "city":  "آق قلا",
+        "latitude":  37.013889,
+        "longitude":  54.455000
+    },
+    {
+        "id":  "MAZANDARAN_AMOL",
+        "province":  "مازندران",
+        "city":  "آمل",
+        "latitude":  36.469722,
+        "longitude":  52.350833
+    },
+    {
+        "id":  "YAZD_ABARKOUH",
+        "province":  "یزد",
+        "city":  "ابركوه",
+        "latitude":  31.130404,
+        "longitude":  53.250374
+    },
+    {
+        "id":  "ZANJAN_ABHAR",
+        "province":  "زنجان",
+        "city":  "ابهر",
+        "latitude":  38.489430,
+        "longitude":  47.068357
+    },
+    {
+        "id":  "HORMOZGAN_ABU_MUSA",
+        "province":  "هرمزگان",
+        "city":  "ابوموسي",
+        "latitude":  25.879711,
+        "longitude":  55.032802
+    },
+    {
+        "id":  "MARKAZI_ARAK",
+        "province":  "مرکزی",
+        "city":  "اراک",
+        "latitude":  34.091667,
+        "longitude":  49.689167
+    },
+    {
+        "id":  "ARDABIL_ARDABIL",
+        "province":  "اردبیل",
+        "city":  "اردبيل",
+        "latitude":  38.485328,
+        "longitude":  47.891121
+    },
+    {
+        "id":  "ESFAHAN_ARDESTN",
+        "province":  "اصفهان",
+        "city":  "اردستان",
+        "latitude":  33.376111,
+        "longitude":  52.369444
+    },
+    {
+        "id":  "YAZD_ARDAKAN",
+        "province":  "یزد",
+        "city":  "اردكان",
+        "latitude":  33.376111,
+        "longitude":  52.369444
+    },
+    {
+        "id":  "CHAHARMAHAL_AND_BAKHTIARI__ARDAL",
+        "province":  "چهارمحال و بختیاری",
+        "city":  "اردل",
+        "latitude":  38.485328,
+        "longitude":  47.891121
+    },
+    {
+        "id":  "FARS_ARSANJAN",
+        "province":  "فارس",
+        "city":  "ارسنجان",
+        "latitude":  33.376111,
+        "longitude":  52.369444
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_ADDRESS",
+        "province":  "آذربایجان غربی",
+        "city":  "اروميه",
+        "latitude":  37.555278,
+        "longitude":  45.072500
+    },
+    {
+        "id":  "LORESTAN_AZNA",
+        "province":  "لرستان",
+        "city":  "ازنا",
+        "latitude":  33.455833,
+        "longitude":  49.455556
+    },
+    {
+        "id":  "FARS_ESTAHBAN",
+        "province":  "فارس",
+        "city":  "استهبان",
+        "latitude":  35.696111,
+        "longitude":  51.423056
+    },
+    {
+        "id":  "HAMEDAN_ASADABAD",
+        "province":  "همدان",
+        "city":  "اسدآباد",
+        "latitude":  37.850000,
+        "longitude":  46.833333
+    },
+    {
+        "id":  "NORTH_KHORASAN_ESFARAIEN",
+        "province":  "خراسان شمالی",
+        "city":  "اسفراين",
+        "latitude":  37.076389,
+        "longitude":  57.510000
+    },
+    {
+        "id":  "KERMANSHAH_ISLAMIC_GARB",
+        "province":  "کرمانشاه",
+        "city":  "اسلام آبادغرب",
+        "latitude":  33.729388,
+        "longitude":  73.093146
+    },
+    {
+        "id":  "TEHRAN_ESLAMSHAHR",
+        "province":  "تهران",
+        "city":  "اسلامشهر",
+        "latitude":  35.544581,
+        "longitude":  51.230246
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_OSKU",
+        "province":  "آذربایجان شرقی",
+        "city":  "اسکو",
+        "latitude":  37.915833,
+        "longitude":  46.123611
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_OSHNAVIEH",
+        "province":  "آذربایجان غربی",
+        "city":  "اشنويه",
+        "latitude":  37.039722,
+        "longitude":  45.098333
+    },
+    {
+        "id":  "ESFAHAN_ESFAHAN",
+        "province":  "اصفهان",
+        "city":  "اصفهان",
+        "latitude":  32.654627,
+        "longitude":  51.667983
+    },
+    {
+        "id":  "FARS_EGHLID",
+        "province":  "فارس",
+        "city":  "اقليد",
+        "latitude":  30.898889,
+        "longitude":  52.686667
+    },
+    {
+        "id":  "QAZVIN_ALBORZ",
+        "province":  "قزوین",
+        "city":  "البرز",
+        "latitude":  35.996047,
+        "longitude":  50.928925
+    },
+    {
+        "id":  "LORESTAN_ALIGOUDARZ",
+        "province":  "لرستان",
+        "city":  "اليگودرز",
+        "latitude":  33.400556,
+        "longitude":  49.695000
+    },
+    {
+        "id":  "GILAN_AMLASH",
+        "province":  "گیلان",
+        "city":  "املش",
+        "latitude":  37.091633,
+        "longitude":  50.186938
+    },
+    {
+        "id":  "KERMAN_POMEGRANATE",
+        "province":  "کرمان",
+        "city":  "انار",
+        "latitude":  37.340278,
+        "longitude":  46.056111
+    },
+    {
+        "id":  "KHUZESTAN_ANDIMESHK",
+        "province":  "خوزستان",
+        "city":  "انديمشک",
+        "latitude":  32.460000,
+        "longitude":  48.359167
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_AHAR",
+        "province":  "آذربایجان شرقی",
+        "city":  "اهر",
+        "latitude":  38.489430,
+        "longitude":  47.068357
+    },
+    {
+        "id":  "KHUZESTAN_AHVAZ",
+        "province":  "خوزستان",
+        "city":  "اهواز",
+        "latitude":  31.318327,
+        "longitude":  48.670619
+    },
+    {
+        "id":  "ZANJAN_IJROUD",
+        "province":  "زنجان",
+        "city":  "ايجرود",
+        "latitude":  36.416093,
+        "longitude":  48.246925
+    },
+    {
+        "id":  "KHUZESTAN_IZEH",
+        "province":  "خوزستان",
+        "city":  "ايذه",
+        "latitude":  31.834167,
+        "longitude":  49.867222
+    },
+    {
+        "id":  "SISTAN_AND_BALUCHISTAN_IRANSHAHR",
+        "province":  "سیستان وبلوچستان",
+        "city":  "ايرانشهر",
+        "latitude":  36.694444,
+        "longitude":  45.141667
+    },
+    {
+        "id":  "ILAM_ILAM",
+        "province":  "ایلام",
+        "city":  "ايلام",
+        "latitude":  33.295762,
+        "longitude":  46.670534
+    },
+    {
+        "id":  "ILAM_IVAN",
+        "province":  "ایلام",
+        "city":  "ايوان",
+        "latitude":  33.272917,
+        "longitude":  52.198531
+    },
+    {
+        "id":  "MAZANDARAN_BABOL",
+        "province":  "مازندران",
+        "city":  "بابل",
+        "latitude":  36.702500,
+        "longitude":  52.657500
+    },
+    {
+        "id":  "MAZANDARAN_BABOLSAR",
+        "province":  "مازندران",
+        "city":  "بابلسر",
+        "latitude":  32.468191,
+        "longitude":  44.550193
+    },
+    {
+        "id":  "KOHGILOYEH_BOYERAHMAD_BASHT",
+        "province":  "کهگیلویه و بویراحمد",
+        "city":  "باشت",
+        "latitude":  29.233056,
+        "longitude":  56.602222
+    },
+    {
+        "id":  "KHUZESTAN_GARDEN_PROPERTY",
+        "province":  "خوزستان",
+        "city":  "باغ ملک",
+        "latitude":  32.394721,
+        "longitude":  51.596533
+    },
+    {
+        "id":  "KERMAN_TISSUE",
+        "province":  "کرمان",
+        "city":  "بافت",
+        "latitude":  29.233056,
+        "longitude":  56.602222
+    },
+    {
+        "id":  "YAZD_BAFG",
+        "province":  "یزد",
+        "city":  "بافق",
+        "latitude":  35.998600,
+        "longitude":  45.882343
+    },
+    {
+        "id":  "KURDISTAN_BANE",
+        "province":  "کردستان",
+        "city":  "بانه",
+        "latitude":  35.274732,
+        "longitude":  59.467773
+    },
+    {
+        "id":  "KHUZESTAN_BAVI",
+        "province":  "خوزستان",
+        "city":  "باوي",
+        "latitude":  35.274732,
+        "longitude":  59.467773
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_BAJESTAN",
+        "province":  "خراسان رضوی",
+        "city":  "بجستان",
+        "latitude":  33.376111,
+        "longitude":  52.369444
+    },
+    {
+        "id":  "NORTH_KHORASAN_BOJNOORD",
+        "province":  "خراسان شمالی",
+        "city":  "بجنورد",
+        "latitude":  37.475000,
+        "longitude":  57.333333
+    },
+    {
+        "id":  "ESFAHAN_BORKHAR",
+        "province":  "اصفهان",
+        "city":  "برخوار",
+        "latitude":  34.974722,
+        "longitude":  59.623611
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_BARDASKAN",
+        "province":  "خراسان رضوی",
+        "city":  "بردسكن",
+        "latitude":  35.260833,
+        "longitude":  57.969722
+    },
+    {
+        "id":  "KERMAN_BARDSIR",
+        "province":  "کرمان",
+        "city":  "بردسير",
+        "latitude":  29.927500,
+        "longitude":  56.572222
+    },
+    {
+        "id":  "LORESTAN_BORUJERD",
+        "province":  "لرستان",
+        "city":  "بروجرد",
+        "latitude":  37.475000,
+        "longitude":  57.333333
+    },
+    {
+        "id":  "CHAHARMAHAL_AND_BAKHTIARI__BORUJEN",
+        "province":  "چهارمحال و بختیاری",
+        "city":  "بروجن",
+        "latitude":  31.965278,
+        "longitude":  51.287222
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_BOSTANABAD",
+        "province":  "آذربایجان شرقی",
+        "city":  "بستان آباد",
+        "latitude":  37.850000,
+        "longitude":  46.833333
+    },
+    {
+        "id":  "HORMOZGAN_BLOCK",
+        "province":  "هرمزگان",
+        "city":  "بستك",
+        "latitude":  27.199167,
+        "longitude":  54.366667
+    },
+    {
+        "id":  "KERMAN_BASS",
+        "province":  "کرمان",
+        "city":  "بم",
+        "latitude":  29.106111,
+        "longitude":  58.356944
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_BONAB",
+        "province":  "آذربایجان شرقی",
+        "city":  "بناب",
+        "latitude":  37.340278,
+        "longitude":  46.056111
+    },
+    {
+        "id":  "GILAN_BANDAR_ANZALI",
+        "province":  "گیلان",
+        "city":  "بندرانزلي",
+        "latitude":  37.472447,
+        "longitude":  49.458731
+    },
+    {
+        "id":  "HORMOZGAN_BANDAR_ABBAS",
+        "province":  "هرمزگان",
+        "city":  "بندرعباس",
+        "latitude":  35.952222,
+        "longitude":  50.607500
+    },
+    {
+        "id":  "HORMOZGAN_LENGEH_SEAPORT",
+        "province":  "هرمزگان",
+        "city":  "بندرلنگه",
+        "latitude":  26.558056,
+        "longitude":  54.880556
+    },
+    {
+        "id":  "KHUZESTAN_BANDARE_MAHSHAHR",
+        "province":  "خوزستان",
+        "city":  "بندرماهشهر",
+        "latitude":  33.139722,
+        "longitude":  47.376111
+    },
+    {
+        "id":  "GOLESTAN_GAZ",
+        "province":  "گلستان",
+        "city":  "بندرگز",
+        "latitude":  37.444444,
+        "longitude":  59.108056
+    },
+    {
+        "id":  "YAZD_BAHABAD",
+        "province":  "یزد",
+        "city":  "بهاباد",
+        "latitude":  36.763056,
+        "longitude":  45.722222
+    },
+    {
+        "id":  "HAMEDAN_SPRING",
+        "province":  "همدان",
+        "city":  "بهار",
+        "latitude":  37.340278,
+        "longitude":  46.056111
+    },
+    {
+        "id":  "TEHRAN_BAHARESTAN",
+        "province":  "تهران",
+        "city":  "بهارستان",
+        "latitude":  33.376111,
+        "longitude":  52.369444
+    },
+    {
+        "id":  "KHUZESTAN_PA",
+        "province":  "خوزستان",
+        "city":  "بهبهان",
+        "latitude":  30.595833,
+        "longitude":  50.241667
+    },
+    {
+        "id":  "MAZANDARAN_BEHSHAHR",
+        "province":  "مازندران",
+        "city":  "بهشهر",
+        "latitude":  34.908325,
+        "longitude":  48.439273
+    },
+    {
+        "id":  "KOHGILOYEH_BOYERAHMAD_BAHMAIE",
+        "province":  "کهگیلویه و بویراحمد",
+        "city":  "بهمئي",
+        "latitude":  0.000000,
+        "longitude":  0.000000
+    },
+    {
+        "id":  "QAZVIN_BUIN_ZAHRA",
+        "province":  "قزوین",
+        "city":  "بوئين زهرا",
+        "latitude":  35.766944,
+        "longitude":  50.057778
+    },
+    {
+        "id":  "FARS_BAVANAT",
+        "province":  "فارس",
+        "city":  "بوانات",
+        "latitude":  33.220556,
+        "longitude":  50.315000
+    },
+    {
+        "id":  "BUSHEHR_BUSHEHR",
+        "province":  "بوشهر",
+        "city":  "بوشهر",
+        "latitude":  28.923384,
+        "longitude":  50.820314
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_BUKAN",
+        "province":  "آذربایجان غربی",
+        "city":  "بوكان",
+        "latitude":  36.521111,
+        "longitude":  46.208889
+    },
+    {
+        "id":  "KOHGILOYEH_BOYERAHMAD_BOYER",
+        "province":  "کهگیلویه و بویراحمد",
+        "city":  "بويراحمد",
+        "latitude":  30.724586,
+        "longitude":  50.845632
+    },
+    {
+        "id":  "KURDISTAN_BIJAR",
+        "province":  "کردستان",
+        "city":  "بيجار",
+        "latitude":  32.735278,
+        "longitude":  59.466667
+    },
+    {
+        "id":  "SOUTH_KHORASAN_BIRJAND",
+        "province":  "خراسان جنوبی",
+        "city":  "بيرجند",
+        "latitude":  32.864904,
+        "longitude":  59.226247
+    },
+    {
+        "id":  "ARDABIL_BILESAVAR",
+        "province":  "اردبیل",
+        "city":  "بيله سوار",
+        "latitude":  39.356777,
+        "longitude":  47.949076
+    },
+    {
+        "id":  "QAZVIN_THE_VINEYARD",
+        "province":  "قزوین",
+        "city":  "تاكستان",
+        "latitude":  28.983755,
+        "longitude":  50.833071
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_TAYBAD",
+        "province":  "خراسان رضوی",
+        "city":  "تايباد",
+        "latitude":  34.740000,
+        "longitude":  60.775556
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_TABRIZ",
+        "province":  "آذربایجان شرقی",
+        "city":  "تبريز",
+        "latitude":  38.066667,
+        "longitude":  46.300000
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_TORBATE_JAM",
+        "province":  "خراسان رضوی",
+        "city":  "تربت جام",
+        "latitude":  35.243889,
+        "longitude":  60.622500
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_TORBAT",
+        "province":  "خراسان رضوی",
+        "city":  "تربت حيدريه",
+        "latitude":  35.273889,
+        "longitude":  59.219444
+    },
+    {
+        "id":  "YAZD_TAFT",
+        "province":  "یزد",
+        "city":  "تفت",
+        "latitude":  39.630631,
+        "longitude":  -78.929542
+    },
+    {
+        "id":  "MARKAZI_TAFRESH",
+        "province":  "مرکزی",
+        "city":  "تفرش",
+        "latitude":  34.691944,
+        "longitude":  50.013056
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_TEKAB",
+        "province":  "آذربایجان غربی",
+        "city":  "تكاب",
+        "latitude":  37.340278,
+        "longitude":  46.056111
+    },
+    {
+        "id":  "MAZANDARAN_TONKABON",
+        "province":  "مازندران",
+        "city":  "تنكابن",
+        "latitude":  36.816389,
+        "longitude":  50.873889
+    },
+    {
+        "id":  "BUSHEHR_TANGISTAN",
+        "province":  "بوشهر",
+        "city":  "تنگستان",
+        "latitude":  28.983755,
+        "longitude":  50.833071
+    },
+    {
+        "id":  "TEHRAN_TEHRAN",
+        "province":  "تهران",
+        "city":  "تهران",
+        "latitude":  31.940000,
+        "longitude":  51.647778
+    },
+    {
+        "id":  "HAMEDAN_TUYSERKAN",
+        "province":  "همدان",
+        "city":  "تويسركان",
+        "latitude":  34.548056,
+        "longitude":  48.446944
+    },
+    {
+        "id":  "ESFAHAN_TIRAN_VKRVN",
+        "province":  "اصفهان",
+        "city":  "تيران وکرون",
+        "latitude":  0.000000,
+        "longitude":  0.000000
+    },
+    {
+        "id":  "KERMANSHAH_SALAS_BABAJANI",
+        "province":  "کرمانشاه",
+        "city":  "ثلاث باباجاني",
+        "latitude":  34.735837,
+        "longitude":  46.149397
+    },
+    {
+        "id":  "NORTH_KHORASAN_JAJARM",
+        "province":  "خراسان شمالی",
+        "city":  "جاجرم",
+        "latitude":  36.950000,
+        "longitude":  56.380000
+    },
+    {
+        "id":  "HORMOZGAN_JASK",
+        "province":  "هرمزگان",
+        "city":  "جاسك",
+        "latitude":  25.643889,
+        "longitude":  57.774444
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_JAGHATAY",
+        "province":  "خراسان رضوی",
+        "city":  "جغتاي",
+        "latitude":  36.578885,
+        "longitude":  57.251215
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_JOLFA",
+        "province":  "آذربایجان شرقی",
+        "city":  "جلفا",
+        "latitude":  38.940278,
+        "longitude":  45.630833
+    },
+    {
+        "id":  "BUSHEHR_JAM",
+        "province":  "بوشهر",
+        "city":  "جم",
+        "latitude":  27.827778,
+        "longitude":  52.326944
+    },
+    {
+        "id":  "FARS_JAHROM",
+        "province":  "فارس",
+        "city":  "جهرم",
+        "latitude":  28.500000,
+        "longitude":  53.560556
+    },
+    {
+        "id":  "KERMANSHAH_JAVANROOD",
+        "province":  "کرمانشاه",
+        "city":  "جوانرود",
+        "latitude":  36.418056,
+        "longitude":  54.976389
+    },
+    {
+        "id":  "MAZANDARAN_JUYBAR",
+        "province":  "مازندران",
+        "city":  "جويبار",
+        "latitude":  36.824129,
+        "longitude":  49.423727
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_JOVIN",
+        "province":  "خراسان رضوی",
+        "city":  "جوين",
+        "latitude":  36.636224,
+        "longitude":  57.507991
+    },
+    {
+        "id":  "KERMAN_JIROFT",
+        "province":  "کرمان",
+        "city":  "جيرفت",
+        "latitude":  28.675112,
+        "longitude":  57.737157
+    },
+    {
+        "id":  "HORMOZGAN_HAJIABADI",
+        "province":  "هرمزگان",
+        "city":  "حاجي اباد",
+        "latitude":  28.309167,
+        "longitude":  55.901667
+    },
+    {
+        "id":  "YAZD_SEAL",
+        "province":  "یزد",
+        "city":  "خاتم",
+        "latitude":  28.180429,
+        "longitude":  55.745337
+    },
+    {
+        "id":  "SISTAN_AND_BALUCHISTAN_KHASH",
+        "province":  "سیستان وبلوچستان",
+        "city":  "خاش",
+        "latitude":  28.216667,
+        "longitude":  61.200000
+    },
+    {
+        "id":  "ZANJAN_KHODABANDE",
+        "province":  "زنجان",
+        "city":  "خدابنده",
+        "latitude":  36.114722,
+        "longitude":  48.591111
+    },
+    {
+        "id":  "LORESTAN_KHORRAMABAD",
+        "province":  "لرستان",
+        "city":  "خرم آباد",
+        "latitude":  39.648333,
+        "longitude":  47.917500
+    },
+    {
+        "id":  "FARS_KHORRAMBID",
+        "province":  "فارس",
+        "city":  "خرم بيد",
+        "latitude":  32.670834,
+        "longitude":  51.647028
+    },
+    {
+        "id":  "ZANJAN_KHORAMDEH",
+        "province":  "زنجان",
+        "city":  "خرمدره",
+        "latitude":  30.425622,
+        "longitude":  48.189118
+    },
+    {
+        "id":  "KHUZESTAN_KHORRAMSHAHR",
+        "province":  "خوزستان",
+        "city":  "خرمشهر",
+        "latitude":  37.758889,
+        "longitude":  45.978333
+    },
+    {
+        "id":  "ARDABIL_ANKLET",
+        "province":  "اردبیل",
+        "city":  "خلخال",
+        "latitude":  37.618889,
+        "longitude":  48.525833
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_KHALIABAD",
+        "province":  "خراسان رضوی",
+        "city":  "خليل آباد",
+        "latitude":  35.255833,
+        "longitude":  58.286389
+    },
+    {
+        "id":  "HORMOZGAN_DOUGH",
+        "province":  "هرمزگان",
+        "city":  "خمير",
+        "latitude":  26.952222,
+        "longitude":  55.585000
+    },
+    {
+        "id":  "MARKAZI_KHOMAIN",
+        "province":  "مرکزی",
+        "city":  "خمين",
+        "latitude":  33.640615,
+        "longitude":  50.077112
+    },
+    {
+        "id":  "ESFAHAN_KHOMEINI_SHAHR",
+        "province":  "اصفهان",
+        "city":  "خميني شهر",
+        "latitude":  32.700278,
+        "longitude":  51.521111
+    },
+    {
+        "id":  "FARS_KHONJ",
+        "province":  "فارس",
+        "city":  "خنج",
+        "latitude":  27.891389,
+        "longitude":  53.434444
+    },
+    {
+        "id":  "MARKAZI_VARKAROUD",
+        "province":  "مرکزی",
+        "city":  "خنداب",
+        "latitude":  37.340278,
+        "longitude":  46.056111
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_KHAF",
+        "province":  "خراسان رضوی",
+        "city":  "خواف",
+        "latitude":  34.576389,
+        "longitude":  60.140833
+    },
+    {
+        "id":  "ESFAHAN_KHANSAR",
+        "province":  "اصفهان",
+        "city":  "خوانسار",
+        "latitude":  33.220556,
+        "longitude":  50.315000
+    },
+    {
+        "id":  "SOUTH_KHORASAN_KHOOSF",
+        "province":  "خراسان جنوبی",
+        "city":  "خوسف",
+        "latitude":  34.576389,
+        "longitude":  60.140833
+    },
+    {
+        "id":  "FARS_DARAB",
+        "province":  "فارس",
+        "city":  "داراب",
+        "latitude":  37.940833,
+        "longitude":  47.536667
+    },
+    {
+        "id":  "KERMANSHAH_DALAHOO",
+        "province":  "کرمانشاه",
+        "city":  "دالاهو",
+        "latitude":  34.284167,
+        "longitude":  46.242222
+    },
+    {
+        "id":  "SEMNAN_DAMGHAN",
+        "province":  "سمنان",
+        "city":  "دامغان",
+        "latitude":  31.940000,
+        "longitude":  51.647778
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_DAVARZAN",
+        "province":  "خراسان رضوی",
+        "city":  "داورزن",
+        "latitude":  36.168333,
+        "longitude":  54.348056
+    },
+    {
+        "id":  "SOUTH_KHORASAN_IN_THE_MIDDLE_OF",
+        "province":  "خراسان جنوبی",
+        "city":  "درميان",
+        "latitude":  33.033940,
+        "longitude":  60.118480
+    },
+    {
+        "id":  "ILAM_VALLEY_CITY",
+        "province":  "ایلام",
+        "city":  "دره شهر",
+        "latitude":  33.139722,
+        "longitude":  47.376111
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_DARGAZ",
+        "province":  "خراسان رضوی",
+        "city":  "درگز",
+        "latitude":  37.444444,
+        "longitude":  59.108056
+    },
+    {
+        "id":  "KHUZESTAN_DEZFUL",
+        "province":  "خوزستان",
+        "city":  "دزفول",
+        "latitude":  32.383078,
+        "longitude":  48.423584
+    },
+    {
+        "id":  "KHUZESTAN_DASHTEAZADEGAN",
+        "province":  "خوزستان",
+        "city":  "دشت آزادگان",
+        "latitude":  30.347296,
+        "longitude":  48.293400
+    },
+    {
+        "id":  "BUSHEHR_DASHTESTAN",
+        "province":  "بوشهر",
+        "city":  "دشتستان",
+        "latitude":  29.266667,
+        "longitude":  51.216667
+    },
+    {
+        "id":  "BUSHEHR_DASHTI",
+        "province":  "بوشهر",
+        "city":  "دشتي",
+        "latitude":  35.784515,
+        "longitude":  51.434796
+    },
+    {
+        "id":  "LORESTAN_DELFAN",
+        "province":  "لرستان",
+        "city":  "دلفان",
+        "latitude":  38.940278,
+        "longitude":  45.630833
+    },
+    {
+        "id":  "MARKAZI_DELIJAN",
+        "province":  "مرکزی",
+        "city":  "دليجان",
+        "latitude":  32.475017,
+        "longitude":  51.305085
+    },
+    {
+        "id":  "SISTAN_AND_BALUCHISTAN_DLGAN",
+        "province":  "سیستان وبلوچستان",
+        "city":  "دلگان",
+        "latitude":  27.607736,
+        "longitude":  59.472090
+    },
+    {
+        "id":  "TEHRAN_DAMAVAND",
+        "province":  "تهران",
+        "city":  "دماوند",
+        "latitude":  35.946749,
+        "longitude":  52.127548
+    },
+    {
+        "id":  "KOHGILOYEH_BOYERAHMAD_DENA",
+        "province":  "کهگیلویه و بویراحمد",
+        "city":  "دنا",
+        "latitude":  30.951667,
+        "longitude":  51.437500
+    },
+    {
+        "id":  "ESFAHAN_DEHAGHAN",
+        "province":  "اصفهان",
+        "city":  "دهاقان",
+        "latitude":  31.940000,
+        "longitude":  51.647778
+    },
+    {
+        "id":  "ILAM_DEHLORAN",
+        "province":  "ایلام",
+        "city":  "دهلران",
+        "latitude":  31.940000,
+        "longitude":  51.647778
+    },
+    {
+        "id":  "KURDISTAN_DEHGOLAN",
+        "province":  "کردستان",
+        "city":  "دهگلان",
+        "latitude":  31.940000,
+        "longitude":  51.647778
+    },
+    {
+        "id":  "LORESTAN_THE_PERIOD",
+        "province":  "لرستان",
+        "city":  "دوره",
+        "latitude":  33.495503,
+        "longitude":  49.063174
+    },
+    {
+        "id":  "LORESTAN_DORUD",
+        "province":  "لرستان",
+        "city":  "دورود",
+        "latitude":  34.806667,
+        "longitude":  46.488611
+    },
+    {
+        "id":  "BUSHEHR_DAYLAM",
+        "province":  "بوشهر",
+        "city":  "ديلم",
+        "latitude":  30.118263,
+        "longitude":  50.226123
+    },
+    {
+        "id":  "KURDISTAN_DIVANDAREH",
+        "province":  "کردستان",
+        "city":  "ديواندره",
+        "latitude":  35.913889,
+        "longitude":  47.023889
+    },
+    {
+        "id":  "KERMAN_SEAL",
+        "province":  "کرمان",
+        "city":  "رابر",
+        "latitude":  37.940833,
+        "longitude":  47.536667
+    },
+    {
+        "id":  "MAZANDARAN_RAMSAR",
+        "province":  "مازندران",
+        "city":  "رامسر",
+        "latitude":  36.903056,
+        "longitude":  50.658333
+    },
+    {
+        "id":  "KHUZESTAN_RAMSHIR",
+        "province":  "خوزستان",
+        "city":  "رامشير",
+        "latitude":  30.425622,
+        "longitude":  48.189118
+    },
+    {
+        "id":  "KHUZESTAN_RMHORMOZ",
+        "province":  "خوزستان",
+        "city":  "رامهرمز",
+        "latitude":  31.280000,
+        "longitude":  49.603611
+    },
+    {
+        "id":  "GOLESTAN_RAMIAN",
+        "province":  "گلستان",
+        "city":  "راميان",
+        "latitude":  33.272917,
+        "longitude":  52.198531
+    },
+    {
+        "id":  "KERMAN_RAVER",
+        "province":  "کرمان",
+        "city":  "راور",
+        "latitude":  31.265556,
+        "longitude":  56.805556
+    },
+    {
+        "id":  "TEHRAN_ROBAT_KARIM",
+        "province":  "تهران",
+        "city":  "رباطكريم",
+        "latitude":  35.484722,
+        "longitude":  51.082778
+    },
+    {
+        "id":  "HAMEDAN_RAZAN",
+        "province":  "همدان",
+        "city":  "رزن",
+        "latitude":  35.386667,
+        "longitude":  49.033889
+    },
+    {
+        "id":  "FARS_RUSTAM",
+        "province":  "فارس",
+        "city":  "رستم",
+        "latitude":  37.270915,
+        "longitude":  49.596915
+    },
+    {
+        "id":  "GILAN_RASHT",
+        "province":  "گیلان",
+        "city":  "رشت",
+        "latitude":  37.280833,
+        "longitude":  49.583056
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_ROSHTKHAR",
+        "province":  "خراسان رضوی",
+        "city":  "رشتخوار",
+        "latitude":  34.974722,
+        "longitude":  59.623611
+    },
+    {
+        "id":  "GILAN_REZVANSHAHR",
+        "province":  "گیلان",
+        "city":  "رضوانشهر",
+        "latitude":  36.694444,
+        "longitude":  45.141667
+    },
+    {
+        "id":  "KERMAN_RAFSANJAN",
+        "province":  "کرمان",
+        "city":  "رفسنجان",
+        "latitude":  32.475017,
+        "longitude":  51.305085
+    },
+    {
+        "id":  "KERMANSHAH_RAWANSAR",
+        "province":  "کرمانشاه",
+        "city":  "روانسر",
+        "latitude":  33.220556,
+        "longitude":  50.315000
+    },
+    {
+        "id":  "GILAN_RUDBAR",
+        "province":  "گیلان",
+        "city":  "رودبار",
+        "latitude":  36.641111,
+        "longitude":  52.912500
+    },
+    {
+        "id":  "KERMAN_RVDBARJNVB",
+        "province":  "کرمان",
+        "city":  "رودبارجنوب",
+        "latitude":  36.824129,
+        "longitude":  49.423727
+    },
+    {
+        "id":  "GILAN_RUDSAR",
+        "province":  "گیلان",
+        "city":  "رودسر",
+        "latitude":  37.137842,
+        "longitude":  50.283620
+    },
+    {
+        "id":  "LORESTAN_RVMSHKAN",
+        "province":  "لرستان",
+        "city":  "رومشکان",
+        "latitude":  36.521111,
+        "longitude":  46.208889
+    },
+    {
+        "id":  "KERMAN_REAGAN",
+        "province":  "کرمان",
+        "city":  "ريگان",
+        "latitude":  27.607736,
+        "longitude":  59.472090
+    },
+    {
+        "id":  "SISTAN_AND_BALUCHISTAN_ZABUL",
+        "province":  "سیستان وبلوچستان",
+        "city":  "زابل",
+        "latitude":  31.028611,
+        "longitude":  61.501111
+    },
+    {
+        "id":  "SISTAN_AND_BALUCHISTAN_ZAHEDAN",
+        "province":  "سیستان وبلوچستان",
+        "city":  "زاهدان",
+        "latitude":  30.347296,
+        "longitude":  48.293400
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_ZAVH",
+        "province":  "خراسان رضوی",
+        "city":  "زاوه",
+        "latitude":  35.274732,
+        "longitude":  59.467773
+    },
+    {
+        "id":  "KERMAN_ZARAND",
+        "province":  "کرمان",
+        "city":  "زرند",
+        "latitude":  38.425117,
+        "longitude":  45.769636
+    },
+    {
+        "id":  "MARKAZI_ZARANDIEH",
+        "province":  "مرکزی",
+        "city":  "زرنديه",
+        "latitude":  30.812778,
+        "longitude":  56.563889
+    },
+    {
+        "id":  "FARS_ZARRINDASHT",
+        "province":  "فارس",
+        "city":  "زرين دشت",
+        "latitude":  28.354505,
+        "longitude":  54.417801
+    },
+    {
+        "id":  "ZANJAN_ZANJAN",
+        "province":  "زنجان",
+        "city":  "زنجان",
+        "latitude":  32.475017,
+        "longitude":  51.305085
+    },
+    {
+        "id":  "SOUTH_KHORASAN_ZIRKOUH",
+        "province":  "خراسان جنوبی",
+        "city":  "زيرکوه",
+        "latitude":  31.130404,
+        "longitude":  53.250374
+    },
+    {
+        "id":  "MAZANDARAN_INFECTIOUS",
+        "province":  "مازندران",
+        "city":  "سارئ",
+        "latitude":  36.563333,
+        "longitude":  53.060000
+    },
+    {
+        "id":  "CHAHARMAHAL_AND_BAKHTIARI__ORDER",
+        "province":  "چهارمحال و بختیاری",
+        "city":  "سامان",
+        "latitude":  31.940000,
+        "longitude":  51.647778
+    },
+    {
+        "id":  "ALBORZ_SAVOJBOLAGH",
+        "province":  "البرز",
+        "city":  "ساوجبلاغ",
+        "latitude":  38.378794,
+        "longitude":  47.497436
+    },
+    {
+        "id":  "MARKAZI_SAVEH",
+        "province":  "مرکزی",
+        "city":  "ساوه",
+        "latitude":  35.274732,
+        "longitude":  59.467773
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_SABZEVAR",
+        "province":  "خراسان رضوی",
+        "city":  "سبزوار",
+        "latitude":  36.215182,
+        "longitude":  57.667823
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_SARAB",
+        "province":  "آذربایجان شرقی",
+        "city":  "سراب",
+        "latitude":  37.940833,
+        "longitude":  47.536667
+    },
+    {
+        "id":  "SISTAN_AND_BALUCHISTAN_SARAVAN",
+        "province":  "سیستان وبلوچستان",
+        "city":  "سراوان",
+        "latitude":  33.860278,
+        "longitude":  58.521667
+    },
+    {
+        "id":  "SOUTH_KHORASAN_WRITERS",
+        "province":  "خراسان جنوبی",
+        "city":  "سرايان",
+        "latitude":  33.860278,
+        "longitude":  58.521667
+    },
+    {
+        "id":  "SISTAN_AND_BALUCHISTAN_SOLDIER",
+        "province":  "سیستان وبلوچستان",
+        "city":  "سرباز",
+        "latitude":  37.940833,
+        "longitude":  47.536667
+    },
+    {
+        "id":  "SOUTH_KHORASAN_SARBISHE",
+        "province":  "خراسان جنوبی",
+        "city":  "سربيشه",
+        "latitude":  32.575556,
+        "longitude":  59.798333
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_FERN",
+        "province":  "خراسان رضوی",
+        "city":  "سرخس",
+        "latitude":  37.940833,
+        "longitude":  47.536667
+    },
+    {
+        "id":  "SEMNAN_SORKHE",
+        "province":  "سمنان",
+        "city":  "سرخه",
+        "latitude":  36.545000,
+        "longitude":  61.157778
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_SARDASHT",
+        "province":  "آذربایجان غربی",
+        "city":  "سردشت",
+        "latitude":  36.155278,
+        "longitude":  45.478889
+    },
+    {
+        "id":  "KURDISTAN_SARVABAD",
+        "province":  "کردستان",
+        "city":  "سروآباد",
+        "latitude":  37.850000,
+        "longitude":  46.833333
+    },
+    {
+        "id":  "FARS_SARVESTAN",
+        "province":  "فارس",
+        "city":  "سروستان",
+        "latitude":  33.376111,
+        "longitude":  52.369444
+    },
+    {
+        "id":  "KERMANSHAH_SARPOLZOHAB",
+        "province":  "کرمانشاه",
+        "city":  "سرپل ذهاب",
+        "latitude":  34.461111,
+        "longitude":  45.862778
+    },
+    {
+        "id":  "KURDISTAN_TURPENTINE",
+        "province":  "کردستان",
+        "city":  "سقز",
+        "latitude":  36.246389,
+        "longitude":  46.266389
+    },
+    {
+        "id":  "LORESTAN_SERIES",
+        "province":  "لرستان",
+        "city":  "سلسله",
+        "latitude":  32.045776,
+        "longitude":  34.751639
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_SALMAS",
+        "province":  "آذربایجان غربی",
+        "city":  "سلماس",
+        "latitude":  38.197222,
+        "longitude":  44.765278
+    },
+    {
+        "id":  "SEMNAN_SEMNAN",
+        "province":  "سمنان",
+        "city":  "سمنان",
+        "latitude":  35.225558,
+        "longitude":  54.434214
+    },
+    {
+        "id":  "ESFAHAN_SEMIROM",
+        "province":  "اصفهان",
+        "city":  "سميرم",
+        "latitude":  31.398835,
+        "longitude":  51.567593
+    },
+    {
+        "id":  "KERMANSHAH_FALCON",
+        "province":  "کرمانشاه",
+        "city":  "سنقر",
+        "latitude":  34.783611,
+        "longitude":  47.600278
+    },
+    {
+        "id":  "KURDISTAN_SANANDAJ",
+        "province":  "کردستان",
+        "city":  "سنندج",
+        "latitude":  35.321875,
+        "longitude":  46.986165
+    },
+    {
+        "id":  "MAZANDARAN_SAVADKOOH",
+        "province":  "مازندران",
+        "city":  "سوادكوه",
+        "latitude":  36.304026,
+        "longitude":  52.885240
+    },
+    {
+        "id":  "KERMAN_SIRJAN",
+        "province":  "کرمان",
+        "city":  "سيرجان",
+        "latitude":  33.860278,
+        "longitude":  58.521667
+    },
+    {
+        "id":  "ILAM_SIRVAN",
+        "province":  "ایلام",
+        "city":  "سيروان",
+        "latitude":  37.409236,
+        "longitude":  57.927618
+    },
+    {
+        "id":  "FARS_SEPIDAN",
+        "province":  "فارس",
+        "city":  "سپيدان",
+        "latitude":  30.242528,
+        "longitude":  51.992418
+    },
+    {
+        "id":  "KHUZESTAN_SHADEGAN",
+        "province":  "خوزستان",
+        "city":  "شادگان",
+        "latitude":  32.768333,
+        "longitude":  50.628611
+    },
+    {
+        "id":  "MARKAZI_SHAZAND",
+        "province":  "مرکزی",
+        "city":  "شازند",
+        "latitude":  33.455833,
+        "longitude":  49.455556
+    },
+    {
+        "id":  "SEMNAN_ANYMORE",
+        "province":  "سمنان",
+        "city":  "شاهرود",
+        "latitude":  37.477778,
+        "longitude":  47.050833
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_SHAHINDEZH",
+        "province":  "آذربایجان غربی",
+        "city":  "شاهين دژ",
+        "latitude":  36.679167,
+        "longitude":  46.566944
+    },
+    {
+        "id":  "ESFAHAN_SHAHIN_SHHRVMYMH",
+        "province":  "اصفهان",
+        "city":  "شاهين شهروميمه",
+        "latitude":  33.127185,
+        "longitude":  51.515008
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_SHABESTAR",
+        "province":  "آذربایجان شرقی",
+        "city":  "شبستر",
+        "latitude":  38.180278,
+        "longitude":  45.702778
+    },
+    {
+        "id":  "GILAN_SHAFTS",
+        "province":  "گیلان",
+        "city":  "شفت",
+        "latitude":  39.630631,
+        "longitude":  -78.929542
+    },
+    {
+        "id":  "TEHRAN_SHEMIRANAT",
+        "province":  "تهران",
+        "city":  "شميرانات",
+        "latitude":  35.954802,
+        "longitude":  51.599164
+    },
+    {
+        "id":  "KERMAN_SHAHRBABAK",
+        "province":  "کرمان",
+        "city":  "شهربابك",
+        "latitude":  30.116389,
+        "longitude":  55.118611
+    },
+    {
+        "id":  "ESFAHAN_BRANCH",
+        "province":  "اصفهان",
+        "city":  "شهرضا",
+        "latitude":  36.292445,
+        "longitude":  59.567715
+    },
+    {
+        "id":  "CHAHARMAHAL_AND_BAKHTIARI__KORD",
+        "province":  "چهارمحال و بختیاری",
+        "city":  "شهركرد",
+        "latitude":  32.325556,
+        "longitude":  50.864444
+    },
+    {
+        "id":  "TEHRAN_SH",
+        "province":  "تهران",
+        "city":  "شهريار",
+        "latitude":  35.659722,
+        "longitude":  51.059167
+    },
+    {
+        "id":  "KHUZESTAN_SUSA",
+        "province":  "خوزستان",
+        "city":  "شوش",
+        "latitude":  32.194167,
+        "longitude":  48.243611
+    },
+    {
+        "id":  "KHUZESTAN_SHUSHTAR",
+        "province":  "خوزستان",
+        "city":  "شوشتر",
+        "latitude":  32.194167,
+        "longitude":  48.243611
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_ROUND",
+        "province":  "آذربایجان غربی",
+        "city":  "شوط",
+        "latitude":  32.194167,
+        "longitude":  48.243611
+    },
+    {
+        "id":  "FARS_SHIRAZ",
+        "province":  "فارس",
+        "city":  "شيراز",
+        "latitude":  29.591768,
+        "longitude":  52.583698
+    },
+    {
+        "id":  "NORTH_KHORASAN_SHIRVAN",
+        "province":  "خراسان شمالی",
+        "city":  "شيروان",
+        "latitude":  37.409236,
+        "longitude":  57.927618
+    },
+    {
+        "id":  "KERMANSHAH_SCENE",
+        "province":  "کرمانشاه",
+        "city":  "صحنه",
+        "latitude":  35.998600,
+        "longitude":  45.882343
+    },
+    {
+        "id":  "GILAN_SOMESARA",
+        "province":  "گیلان",
+        "city":  "صومعه سرا",
+        "latitude":  37.311667,
+        "longitude":  49.321944
+    },
+    {
+        "id":  "ZANJAN_TAROM",
+        "province":  "زنجان",
+        "city":  "طارم",
+        "latitude":  36.950000,
+        "longitude":  56.380000
+    },
+    {
+        "id":  "ALBORZ_TALEGHAN",
+        "province":  "البرز",
+        "city":  "طالقان",
+        "latitude":  31.940000,
+        "longitude":  51.647778
+    },
+    {
+        "id":  "SOUTH_KHORASAN_PEAKS",
+        "province":  "خراسان جنوبی",
+        "city":  "طبس",
+        "latitude":  33.595833,
+        "longitude":  56.924444
+    },
+    {
+        "id":  "GILAN_TVALSH",
+        "province":  "گیلان",
+        "city":  "طوالش",
+        "latitude":  37.000000,
+        "longitude":  48.422222
+    },
+    {
+        "id":  "MAZANDARAN_ABBAS_ABAD",
+        "province":  "مازندران",
+        "city":  "عباس آباد",
+        "latitude":  37.850000,
+        "longitude":  46.833333
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_AJABSHIR",
+        "province":  "آذربایجان شرقی",
+        "city":  "عجب شير",
+        "latitude":  37.477500,
+        "longitude":  45.894167
+    },
+    {
+        "id":  "GOLESTAN_ALI_ABAD",
+        "province":  "گلستان",
+        "city":  "علي آباد",
+        "latitude":  32.632423,
+        "longitude":  51.367991
+    },
+    {
+        "id":  "KERMAN_ANBARABAD",
+        "province":  "کرمان",
+        "city":  "عنبرآباد",
+        "latitude":  35.952222,
+        "longitude":  50.607500
+    },
+    {
+        "id":  "CHAHARMAHAL_AND_BAKHTIARI__FARSAN",
+        "province":  "چهارمحال و بختیاری",
+        "city":  "فارسان",
+        "latitude":  33.376111,
+        "longitude":  52.369444
+    },
+    {
+        "id":  "NORTH_KHORASAN_FARUJ",
+        "province":  "خراسان شمالی",
+        "city":  "فاروج",
+        "latitude":  37.231111,
+        "longitude":  58.218889
+    },
+    {
+        "id":  "FARS_FARASHBAND",
+        "province":  "فارس",
+        "city":  "فراشبند",
+        "latitude":  28.871389,
+        "longitude":  52.091667
+    },
+    {
+        "id":  "MARKAZI_FARAHAN",
+        "province":  "مرکزی",
+        "city":  "فراهان",
+        "latitude":  38.509722,
+        "longitude":  46.654444
+    },
+    {
+        "id":  "SOUTH_KHORASAN_PARADISE",
+        "province":  "خراسان جنوبی",
+        "city":  "فردوس",
+        "latitude":  34.018611,
+        "longitude":  58.172222
+    },
+    {
+        "id":  "ALBORZ_FARDIS",
+        "province":  "البرز",
+        "city":  "فرديس",
+        "latitude":  34.018611,
+        "longitude":  58.172222
+    },
+    {
+        "id":  "ESFAHAN_FRIEDEN",
+        "province":  "اصفهان",
+        "city":  "فريدن",
+        "latitude":  33.021483,
+        "longitude":  50.306909
+    },
+    {
+        "id":  "ESFAHAN_FEREIDUNSHAHR",
+        "province":  "اصفهان",
+        "city":  "فريدونشهر",
+        "latitude":  32.941111,
+        "longitude":  50.121111
+    },
+    {
+        "id":  "MAZANDARAN_FEREIDOONKENAR",
+        "province":  "مازندران",
+        "city":  "فريدونكنار",
+        "latitude":  36.686389,
+        "longitude":  52.522500
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_FARIMAN",
+        "province":  "خراسان رضوی",
+        "city":  "فريمان",
+        "latitude":  35.706944,
+        "longitude":  59.850000
+    },
+    {
+        "id":  "FARS_FASA",
+        "province":  "فارس",
+        "city":  "فسا",
+        "latitude":  28.938333,
+        "longitude":  53.648333
+    },
+    {
+        "id":  "ESFAHAN_FALAVARJAN",
+        "province":  "اصفهان",
+        "city":  "فلاورجان",
+        "latitude":  32.555278,
+        "longitude":  51.509722
+    },
+    {
+        "id":  "SISTAN_AND_BALUCHISTAN_FENOUJ",
+        "province":  "سیستان وبلوچستان",
+        "city":  "فنوج",
+        "latitude":  27.946760,
+        "longitude":  57.706257
+    },
+    {
+        "id":  "GILAN_FOOMAN",
+        "province":  "گیلان",
+        "city":  "فومن",
+        "latitude":  37.223889,
+        "longitude":  49.312500
+    },
+    {
+        "id":  "FARS_FIROZABAD",
+        "province":  "فارس",
+        "city":  "فيروزآباد",
+        "latitude":  28.843889,
+        "longitude":  52.570833
+    },
+    {
+        "id":  "TEHRAN_FIROUZKOUH",
+        "province":  "تهران",
+        "city":  "فيروزكوه",
+        "latitude":  35.438671,
+        "longitude":  60.809387
+    },
+    {
+        "id":  "MAZANDARAN_QAEMSHAHR",
+        "province":  "مازندران",
+        "city":  "قائم شهر",
+        "latitude":  35.544581,
+        "longitude":  51.230246
+    },
+    {
+        "id":  "SOUTH_KHORASAN_GHAENAT",
+        "province":  "خراسان جنوبی",
+        "city":  "قائنات",
+        "latitude":  33.726667,
+        "longitude":  59.184444
+    },
+    {
+        "id":  "KURDISTAN_QORVEH",
+        "province":  "کردستان",
+        "city":  "قروه",
+        "latitude":  35.167893,
+        "longitude":  47.803827
+    },
+    {
+        "id":  "QAZVIN_QAZVIN",
+        "province":  "قزوین",
+        "city":  "قزوين",
+        "latitude":  36.088132,
+        "longitude":  49.854727
+    },
+    {
+        "id":  "HORMOZGAN_QESHM",
+        "province":  "هرمزگان",
+        "city":  "قشم",
+        "latitude":  34.639944,
+        "longitude":  50.875942
+    },
+    {
+        "id":  "KERMANSHAH_QASRE_SHIRIN",
+        "province":  "کرمانشاه",
+        "city":  "قصرشيرين",
+        "latitude":  34.515903,
+        "longitude":  45.577686
+    },
+    {
+        "id":  "KERMAN_CASTLE_TREASURE",
+        "province":  "کرمان",
+        "city":  "قلعه گنج",
+        "latitude":  27.523611,
+        "longitude":  57.881111
+    },
+    {
+        "id":  "QOM_QOM",
+        "province":  "قم",
+        "city":  "قم",
+        "latitude":  34.639944,
+        "longitude":  50.875942
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_GHOOCHAN",
+        "province":  "خراسان رضوی",
+        "city":  "قوچان",
+        "latitude":  37.106111,
+        "longitude":  58.509444
+    },
+    {
+        "id":  "FARS_QYRVKARZYN",
+        "province":  "فارس",
+        "city":  "قيروکارزين",
+        "latitude":  28.429980,
+        "longitude":  53.095160
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_KASHMAR",
+        "province":  "خراسان رضوی",
+        "city":  "كاشمر",
+        "latitude":  35.238333,
+        "longitude":  58.465556
+    },
+    {
+        "id":  "KURDISTAN_KAMYARAN",
+        "province":  "کردستان",
+        "city":  "كامياران",
+        "latitude":  34.795556,
+        "longitude":  46.935556
+    },
+    {
+        "id":  "HAMEDAN_KABOUDARAHANG",
+        "province":  "همدان",
+        "city":  "كبودرآهنگ",
+        "latitude":  35.208333,
+        "longitude":  48.723889
+    },
+    {
+        "id":  "KERMAN_KERMAN",
+        "province":  "کرمان",
+        "city":  "كرمان",
+        "latitude":  35.706944,
+        "longitude":  59.850000
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_KALAT",
+        "province":  "خراسان رضوی",
+        "city":  "كلات",
+        "latitude":  34.198333,
+        "longitude":  58.544444
+    },
+    {
+        "id":  "GOLESTAN_STIGMA",
+        "province":  "گلستان",
+        "city":  "كلاله",
+        "latitude":  37.380833,
+        "longitude":  55.491667
+    },
+    {
+        "id":  "BUSHEHR_KANGAN",
+        "province":  "بوشهر",
+        "city":  "كنگان",
+        "latitude":  27.837044,
+        "longitude":  52.064547
+    },
+    {
+        "id":  "KERMAN_KAHNOOJ",
+        "province":  "کرمان",
+        "city":  "كهنوج",
+        "latitude":  27.946760,
+        "longitude":  57.706257
+    },
+    {
+        "id":  "ARDABIL_KOSAR",
+        "province":  "اردبیل",
+        "city":  "كوثر",
+        "latitude":  31.867687,
+        "longitude":  54.337980
+    },
+    {
+        "id":  "KERMAN_KUHBANAN",
+        "province":  "کرمان",
+        "city":  "كوهبنان",
+        "latitude":  31.541944,
+        "longitude":  60.036389
+    },
+    {
+        "id":  "CHAHARMAHAL_AND_BAKHTIARI__KOUHRANG",
+        "province":  "چهارمحال و بختیاری",
+        "city":  "كوهرنگ",
+        "latitude":  32.555836,
+        "longitude":  51.678725
+    },
+    {
+        "id":  "FARS_LARESTAN",
+        "province":  "فارس",
+        "city":  "لارستان",
+        "latitude":  33.376111,
+        "longitude":  52.369444
+    },
+    {
+        "id":  "KHUZESTAN_LALI",
+        "province":  "خوزستان",
+        "city":  "لالي",
+        "latitude":  32.328889,
+        "longitude":  49.093611
+    },
+    {
+        "id":  "FARS_LAMERD",
+        "province":  "فارس",
+        "city":  "لامرد",
+        "latitude":  27.342377,
+        "longitude":  53.180356
+    },
+    {
+        "id":  "GILAN_LAHIJAN",
+        "province":  "گیلان",
+        "city":  "لاهيجان",
+        "latitude":  32.555278,
+        "longitude":  51.509722
+    },
+    {
+        "id":  "CHAHARMAHAL_AND_BAKHTIARI__LORDEGAN",
+        "province":  "چهارمحال و بختیاری",
+        "city":  "لردگان",
+        "latitude":  32.768333,
+        "longitude":  50.628611
+    },
+    {
+        "id":  "ESFAHAN_LENJAN",
+        "province":  "اصفهان",
+        "city":  "لنجان",
+        "latitude":  32.475017,
+        "longitude":  51.305085
+    },
+    {
+        "id":  "KOHGILOYEH_BOYERAHMAD_LANDHI",
+        "province":  "کهگیلویه و بویراحمد",
+        "city":  "لنده",
+        "latitude":  36.955278,
+        "longitude":  45.388056
+    },
+    {
+        "id":  "GILAN_LANGERUD",
+        "province":  "گیلان",
+        "city":  "لنگرود",
+        "latitude":  37.196944,
+        "longitude":  50.153611
+    },
+    {
+        "id":  "GILAN_MASAL",
+        "province":  "گیلان",
+        "city":  "ماسال",
+        "latitude":  37.362119,
+        "longitude":  49.131477
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_MAKU",
+        "province":  "آذربایجان غربی",
+        "city":  "ماكو",
+        "latitude":  39.295278,
+        "longitude":  44.516667
+    },
+    {
+        "id":  "NORTH_KHORASAN_MANET_VSMLQAN",
+        "province":  "خراسان شمالی",
+        "city":  "مانه وسملقان",
+        "latitude":  37.662061,
+        "longitude":  56.741207
+    },
+    {
+        "id":  "ZANJAN_MAHNESHAN",
+        "province":  "زنجان",
+        "city":  "ماهنشان",
+        "latitude":  33.122222,
+        "longitude":  46.164722
+    },
+    {
+        "id":  "ESFAHAN_MOBARAKEH",
+        "province":  "اصفهان",
+        "city":  "مبارکه",
+        "latitude":  32.346389,
+        "longitude":  51.504444
+    },
+    {
+        "id":  "MARKAZI_MAHALAT",
+        "province":  "مرکزی",
+        "city":  "محلات",
+        "latitude":  33.908575,
+        "longitude":  50.455262
+    },
+    {
+        "id":  "MAZANDARAN_MAHMUDABAD",
+        "province":  "مازندران",
+        "city":  "محمودآباد",
+        "latitude":  28.843889,
+        "longitude":  52.570833
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_MARAGHEH",
+        "province":  "آذربایجان شرقی",
+        "city":  "مراغه",
+        "latitude":  37.389167,
+        "longitude":  46.237500
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_MARAND",
+        "province":  "آذربایجان شرقی",
+        "city":  "مرند",
+        "latitude":  38.425117,
+        "longitude":  45.769636
+    },
+    {
+        "id":  "FARS_MARVDASHT",
+        "province":  "فارس",
+        "city":  "مرودشت",
+        "latitude":  29.874167,
+        "longitude":  52.802500
+    },
+    {
+        "id":  "KURDISTAN_MARIVAN",
+        "province":  "کردستان",
+        "city":  "مريوان",
+        "latitude":  35.526944,
+        "longitude":  46.176389
+    },
+    {
+        "id":  "KHUZESTAN_MASJED_SOLEIMAN",
+        "province":  "خوزستان",
+        "city":  "مسجدسليمان",
+        "latitude":  31.936389,
+        "longitude":  49.303889
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_MASHHAD",
+        "province":  "خراسان رضوی",
+        "city":  "مشهد",
+        "latitude":  38.425117,
+        "longitude":  45.769636
+    },
+    {
+        "id":  "ARDABIL_MESHKINSHAR",
+        "province":  "اردبیل",
+        "city":  "مشگين شهر",
+        "latitude":  32.941111,
+        "longitude":  50.121111
+    },
+    {
+        "id":  "TEHRAN_MALLARD",
+        "province":  "تهران",
+        "city":  "ملارد",
+        "latitude":  27.342377,
+        "longitude":  53.180356
+    },
+    {
+        "id":  "HAMEDAN_MALAYER",
+        "province":  "همدان",
+        "city":  "ملاير",
+        "latitude":  34.296944,
+        "longitude":  48.823611
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_MALAKAN",
+        "province":  "آذربایجان شرقی",
+        "city":  "ملکان",
+        "latitude":  37.145625,
+        "longitude":  46.168524
+    },
+    {
+        "id":  "FARS_MAMASANI",
+        "province":  "فارس",
+        "city":  "ممسني",
+        "latitude":  31.960034,
+        "longitude":  50.512265
+    },
+    {
+        "id":  "KERMAN_MANOUJAN",
+        "province":  "کرمان",
+        "city":  "منوجان",
+        "latitude":  32.475017,
+        "longitude":  51.305085
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_MAHVELAT",
+        "province":  "خراسان رضوی",
+        "city":  "مه ولات",
+        "latitude":  35.021083,
+        "longitude":  58.781812
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_MAHABAD",
+        "province":  "آذربایجان غربی",
+        "city":  "مهاباد",
+        "latitude":  36.763056,
+        "longitude":  45.722222
+    },
+    {
+        "id":  "SEMNAN_MEHDI_CITY",
+        "province":  "سمنان",
+        "city":  "مهدئ شهر",
+        "latitude":  35.700000,
+        "longitude":  53.350000
+    },
+    {
+        "id":  "FARS_STAMP",
+        "province":  "فارس",
+        "city":  "مهر",
+        "latitude":  33.122222,
+        "longitude":  46.164722
+    },
+    {
+        "id":  "ILAM_MEHRAN",
+        "province":  "ایلام",
+        "city":  "مهران",
+        "latitude":  33.122222,
+        "longitude":  46.164722
+    },
+    {
+        "id":  "SISTAN_AND_BALUCHISTAN_YOUR_SPOUSE",
+        "province":  "سیستان وبلوچستان",
+        "city":  "مهرستان",
+        "latitude":  33.122222,
+        "longitude":  46.164722
+    },
+    {
+        "id":  "YAZD_MEHRIZ",
+        "province":  "یزد",
+        "city":  "مهريز",
+        "latitude":  31.280000,
+        "longitude":  49.603611
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_MIANDOAB",
+        "province":  "آذربایجان غربی",
+        "city":  "مياندوآب",
+        "latitude":  36.969444,
+        "longitude":  46.102778
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_MIANEH",
+        "province":  "آذربایجان شرقی",
+        "city":  "ميانه",
+        "latitude":  37.421111,
+        "longitude":  47.715000
+    },
+    {
+        "id":  "YAZD_MEIBOD",
+        "province":  "یزد",
+        "city":  "ميبد",
+        "latitude":  32.248723,
+        "longitude":  54.007934
+    },
+    {
+        "id":  "HORMOZGAN_MINAB",
+        "province":  "هرمزگان",
+        "city":  "ميناب",
+        "latitude":  27.146667,
+        "longitude":  57.080000
+    },
+    {
+        "id":  "GOLESTAN_MINOODASHT",
+        "province":  "گلستان",
+        "city":  "مينودشت",
+        "latitude":  29.874167,
+        "longitude":  52.802500
+    },
+    {
+        "id":  "ESFAHAN_NAJAF_ABAD",
+        "province":  "اصفهان",
+        "city":  "نجف آباد",
+        "latitude":  32.632423,
+        "longitude":  51.367991
+    },
+    {
+        "id":  "KERMAN_NARMASHIR",
+        "province":  "کرمان",
+        "city":  "نرماشير",
+        "latitude":  30.558889,
+        "longitude":  49.198056
+    },
+    {
+        "id":  "ESFAHAN_NATANZ",
+        "province":  "اصفهان",
+        "city":  "نطنز",
+        "latitude":  33.513333,
+        "longitude":  51.916389
+    },
+    {
+        "id":  "ALBORZ_NAZARABAD",
+        "province":  "البرز",
+        "city":  "نظرآباد",
+        "latitude":  39.648333,
+        "longitude":  47.917500
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_TINSEL",
+        "province":  "آذربایجان غربی",
+        "city":  "نقده",
+        "latitude":  36.955278,
+        "longitude":  45.388056
+    },
+    {
+        "id":  "ARDABIL_NAMIN",
+        "province":  "اردبیل",
+        "city":  "نمين",
+        "latitude":  38.426944,
+        "longitude":  48.483889
+    },
+    {
+        "id":  "HAMEDAN_SKINHEADS",
+        "province":  "همدان",
+        "city":  "نهاوند",
+        "latitude":  35.946749,
+        "longitude":  52.127548
+    },
+    {
+        "id":  "SOUTH_KHORASAN_NEHBANDAN",
+        "province":  "خراسان جنوبی",
+        "city":  "نهبندان",
+        "latitude":  31.541944,
+        "longitude":  60.036389
+    },
+    {
+        "id":  "MAZANDARAN_NUR",
+        "province":  "مازندران",
+        "city":  "نور",
+        "latitude":  36.648889,
+        "longitude":  51.496111
+    },
+    {
+        "id":  "MAZANDARAN_NOSHAHR",
+        "province":  "مازندران",
+        "city":  "نوشهر",
+        "latitude":  36.648889,
+        "longitude":  51.496111
+    },
+    {
+        "id":  "ARDABIL_NIR",
+        "province":  "اردبیل",
+        "city":  "نير",
+        "latitude":  50.385125,
+        "longitude":  3.264244
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_NEYSHABUR",
+        "province":  "خراسان رضوی",
+        "city":  "نيشابور",
+        "latitude":  36.214087,
+        "longitude":  58.796092
+    },
+    {
+        "id":  "SISTAN_AND_BALUCHISTAN_NIKSHAHR",
+        "province":  "سیستان وبلوچستان",
+        "city":  "نيك شهر",
+        "latitude":  36.648889,
+        "longitude":  51.496111
+    },
+    {
+        "id":  "KERMANSHAH_HARSIN",
+        "province":  "کرمانشاه",
+        "city":  "هرسين",
+        "latitude":  34.271915,
+        "longitude":  47.604618
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_HARRIS",
+        "province":  "آذربایجان شرقی",
+        "city":  "هريس",
+        "latitude":  29.775182,
+        "longitude":  -95.310250
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_HASHTROOD",
+        "province":  "آذربایجان شرقی",
+        "city":  "هشترود",
+        "latitude":  37.477778,
+        "longitude":  47.050833
+    },
+    {
+        "id":  "HAMEDAN_HAMEDAN",
+        "province":  "همدان",
+        "city":  "همدان",
+        "latitude":  31.541944,
+        "longitude":  60.036389
+    },
+    {
+        "id":  "KHUZESTAN_HENDIJAN",
+        "province":  "خوزستان",
+        "city":  "هنديجان",
+        "latitude":  32.475017,
+        "longitude":  51.305085
+    },
+    {
+        "id":  "TEHRAN_VARAMIN",
+        "province":  "تهران",
+        "city":  "ورامين",
+        "latitude":  35.325241,
+        "longitude":  51.647199
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_VARZEGHAN",
+        "province":  "آذربایجان شرقی",
+        "city":  "ورزقان",
+        "latitude":  38.509722,
+        "longitude":  46.654444
+    },
+    {
+        "id":  "ARDABIL_PARS_ABAD",
+        "province":  "اردبیل",
+        "city":  "پارس آباد",
+        "latitude":  39.648333,
+        "longitude":  47.917500
+    },
+    {
+        "id":  "HORMOZGAN_PARSIAN",
+        "province":  "هرمزگان",
+        "city":  "پارسيان",
+        "latitude":  32.258207,
+        "longitude":  50.570509
+    },
+    {
+        "id":  "FARS_PASARGAD",
+        "province":  "فارس",
+        "city":  "پاسارگاد",
+        "latitude":  39.648333,
+        "longitude":  47.917500
+    },
+    {
+        "id":  "TEHRAN_PAKDASHT",
+        "province":  "تهران",
+        "city":  "پاكدشت",
+        "latitude":  35.466891,
+        "longitude":  51.686062
+    },
+    {
+        "id":  "KERMANSHAH_PAVE",
+        "province":  "کرمانشاه",
+        "city":  "پاوه",
+        "latitude":  29.579167,
+        "longitude":  50.516944
+    },
+    {
+        "id":  "TEHRAN_COLLEGE",
+        "province":  "تهران",
+        "city":  "پرديس",
+        "latitude":  34.018611,
+        "longitude":  58.172222
+    },
+    {
+        "id":  "LORESTAN_POLDOKHTAR",
+        "province":  "لرستان",
+        "city":  "پلدختر",
+        "latitude":  33.153611,
+        "longitude":  47.713611
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_DEMANDS",
+        "province":  "آذربایجان غربی",
+        "city":  "پلدشت",
+        "latitude":  33.153611,
+        "longitude":  47.713611
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_PIRANSHAR",
+        "province":  "آذربایجان غربی",
+        "city":  "پيرانشهر",
+        "latitude":  36.694444,
+        "longitude":  45.141667
+    },
+    {
+        "id":  "ESFAHAN_CHADEGAN",
+        "province":  "اصفهان",
+        "city":  "چادگان",
+        "latitude":  39.064984,
+        "longitude":  44.384468
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_CHAROYMAGH",
+        "province":  "آذربایجان شرقی",
+        "city":  "چاراويماق",
+        "latitude":  37.129905,
+        "longitude":  47.024569
+    },
+    {
+        "id":  "WESTERN_AZERBAIJAN_CHALDERAN",
+        "province":  "آذربایجان غربی",
+        "city":  "چالدران",
+        "latitude":  39.064984,
+        "longitude":  44.384468
+    },
+    {
+        "id":  "MAZANDARAN_CHALUS",
+        "province":  "مازندران",
+        "city":  "چالوس",
+        "latitude":  36.645917,
+        "longitude":  51.406979
+    },
+    {
+        "id":  "SISTAN_AND_BALUCHISTAN_CHABAHAR",
+        "province":  "سیستان وبلوچستان",
+        "city":  "چابهار",
+        "latitude":  25.291944,
+        "longitude":  60.643056
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_CHENARAN",
+        "province":  "خراسان رضوی",
+        "city":  "چناران",
+        "latitude":  39.064984,
+        "longitude":  44.384468
+    },
+    {
+        "id":  "KHUZESTAN_KARUN",
+        "province":  "خوزستان",
+        "city":  "کارون",
+        "latitude":  29.619444,
+        "longitude":  51.654167
+    },
+    {
+        "id":  "FARS_KAZEROON",
+        "province":  "فارس",
+        "city":  "کازرون",
+        "latitude":  29.619444,
+        "longitude":  51.654167
+    },
+    {
+        "id":  "ESFAHAN_KASHAN",
+        "province":  "اصفهان",
+        "city":  "کاشان",
+        "latitude":  33.985036,
+        "longitude":  51.409962
+    },
+    {
+        "id":  "ALBORZ_KARAJ",
+        "province":  "البرز",
+        "city":  "کرج",
+        "latitude":  35.840019,
+        "longitude":  50.939091
+    },
+    {
+        "id":  "KERMANSHAH_KERMANSHAH",
+        "province":  "کرمانشاه",
+        "city":  "کرمانشاه",
+        "latitude":  29.485009,
+        "longitude":  57.643905
+    },
+    {
+        "id":  "MAZANDARAN_KELARDASHT",
+        "province":  "مازندران",
+        "city":  "کلاردشت",
+        "latitude":  36.155278,
+        "longitude":  45.478889
+    },
+    {
+        "id":  "EAST_AZARBAIJAN_KALIBAR",
+        "province":  "آذربایجان شرقی",
+        "city":  "کليبر",
+        "latitude":  38.869444,
+        "longitude":  47.035556
+    },
+    {
+        "id":  "MARKAZI_KOMIJAN",
+        "province":  "مرکزی",
+        "city":  "کميجان",
+        "latitude":  27.447563,
+        "longitude":  57.505162
+    },
+    {
+        "id":  "KERMANSHAH_KANGAVAR",
+        "province":  "کرمانشاه",
+        "city":  "کنگاور",
+        "latitude":  27.837044,
+        "longitude":  52.064547
+    },
+    {
+        "id":  "FARS_KOVAR",
+        "province":  "فارس",
+        "city":  "کوار",
+        "latitude":  31.867687,
+        "longitude":  54.337980
+    },
+    {
+        "id":  "LORESTAN_KUHDASHT",
+        "province":  "لرستان",
+        "city":  "کوهدشت",
+        "latitude":  33.535000,
+        "longitude":  47.606111
+    },
+    {
+        "id":  "KHUZESTAN_SCROLL_DOWN",
+        "province":  "خوزستان",
+        "city":  "گتوند",
+        "latitude":  32.251389,
+        "longitude":  48.816111
+    },
+    {
+        "id":  "SEMNAN_GARMSAR",
+        "province":  "سمنان",
+        "city":  "گرمسار",
+        "latitude":  35.218333,
+        "longitude":  52.340833
+    },
+    {
+        "id":  "NORTH_KHORASAN_IT_IS_HOT",
+        "province":  "خراسان شمالی",
+        "city":  "گرمه",
+        "latitude":  39.037227,
+        "longitude":  47.927702
+    },
+    {
+        "id":  "ARDABIL_G",
+        "province":  "اردبیل",
+        "city":  "گرمي",
+        "latitude":  39.037227,
+        "longitude":  47.927702
+    },
+    {
+        "id":  "GOLESTAN_GORGAN",
+        "province":  "گلستان",
+        "city":  "گرگان",
+        "latitude":  36.845643,
+        "longitude":  54.439336
+    },
+    {
+        "id":  "MAZANDARAN_GALUGAH",
+        "province":  "مازندران",
+        "city":  "گلوگاه",
+        "latitude":  36.727222,
+        "longitude":  53.808889
+    },
+    {
+        "id":  "ESFAHAN_GOLPAYGAN",
+        "province":  "اصفهان",
+        "city":  "گلپايگان",
+        "latitude":  33.453611,
+        "longitude":  50.288333
+    },
+    {
+        "id":  "KHORASAN_RAZAVI_GONABAD",
+        "province":  "خراسان رضوی",
+        "city":  "گناباد",
+        "latitude":  36.763056,
+        "longitude":  45.722222
+    },
+    {
+        "id":  "BUSHEHR_GANAVEH",
+        "province":  "بوشهر",
+        "city":  "گناوه",
+        "latitude":  29.579167,
+        "longitude":  50.516944
+    },
+    {
+        "id":  "GOLESTAN_GONBAD",
+        "province":  "گلستان",
+        "city":  "گنبدكاووس",
+        "latitude":  37.250000,
+        "longitude":  55.167222
+    },
+    {
+        "id":  "KERMANSHAH_GILANGHARB",
+        "province":  "کرمانشاه",
+        "city":  "گيلانغرب",
+        "latitude":  34.142222,
+        "longitude":  45.920278
+    },
+    {
+        "id":  "KOHGILOYEH_BOYERAHMAD_GACHSARAN",
+        "province":  "کهگیلویه و بویراحمد",
+        "city":  "گچساران",
+        "latitude":  36.645556,
+        "longitude":  59.121111
+    }
+]

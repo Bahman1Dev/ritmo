@@ -1,0 +1,490 @@
+import 'package:flutter/material.dart';
+import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/features/konkur/logic/konkur_planner.dart';
+import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
+import 'package:ritmo/features/konkur/models/konkur_models.dart';
+import 'package:ritmo/features/konkur/presentation/widgets/konkur_formatters.dart';
+import 'package:ritmo/features/konkur/presentation/widgets/konkur_study_sheet.dart';
+
+class KonkurTodaySection extends StatefulWidget {
+
+  const KonkurTodaySection({
+    super.key,
+    required this.subjects,
+    required this.topics,
+    required this.todayPlanItems,
+    required this.onRefresh,
+  });
+  final List<KonkurSubject> subjects;
+  final List<KonkurTopic> topics;
+  final List<KonkurPlanItem> todayPlanItems;
+  final VoidCallback onRefresh;
+
+  @override
+  State<KonkurTodaySection> createState() => _KonkurTodaySectionState();
+}
+
+class _KonkurTodaySectionState extends State<KonkurTodaySection> {
+  String _energyLevel = 'MEDIUM'; // HIGH, MEDIUM, LOW
+  int _daysBehindCount = 0;
+  bool _isReplanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEnergyAndScheduleStats();
+  }
+
+  @override
+  void didUpdateWidget(covariant KonkurTodaySection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _loadEnergyAndScheduleStats();
+  }
+
+  Future<void> _loadEnergyAndScheduleStats() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      
+      // 1. Fetch latest energy level
+      final energyLogs = await db.query('energy_logs', orderBy: 'loggedAt DESC', limit: 1);
+      if (energyLogs.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _energyLevel = energyLogs.first['energyLevel'] as String? ?? 'MEDIUM';
+          });
+        }
+      }
+
+      // 2. Fetch all plan items to calculate daysBehind
+      final repo = KonkurRepository.instance;
+      final allPlanItems = await repo.getPlanItems();
+      final behind = KonkurPlanner.daysBehind(planItems: allPlanItems, today: DateTime.now());
+      
+      if (mounted) {
+        setState(() {
+          _daysBehindCount = behind;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _quickComplete(KonkurPlanItem item) async {
+    final session = KonkurStudySession(
+      id: 'sess_${DateTime.now().millisecondsSinceEpoch}',
+      topicId: item.topicId,
+      subjectId: item.subjectId,
+      dateIso: DateTime.now().toIso8601String().substring(0, 10),
+      durationMinutes: item.plannedMinutes,
+      note: 'ثبت سریع از صفحه داشبورد امروز کنکور',
+      createdAt: DateTime.now().millisecondsSinceEpoch,
+    );
+
+    try {
+      final repo = KonkurRepository.instance;
+      await repo.insertStudySession(session);
+      await repo.updatePlanItemStatus(item.id, 'DONE');
+      
+      widget.onRefresh();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'جلسه مطالعه با موفقیت ثبت شد! خدا قوت 🌟',
+              style: TextStyle(fontFamily: 'Vazirmatn'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'خطا در ثبت سریع: $e',
+              style: const TextStyle(fontFamily: 'Vazirmatn'),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _replanSchedule() async {
+    setState(() {
+      _isReplanning = true;
+    });
+
+    try {
+      final repo = KonkurRepository.instance;
+      final settings = await repo.getAppSettings();
+      final examDateStr = settings['konkur_exam_date'] ?? '';
+      
+      if (examDateStr.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'لطفاً ابتدا تاریخ کنکور را در تنظیمات تعیین کنید.',
+                style: TextStyle(fontFamily: 'Vazirmatn'),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      final examDate = DateTime.parse(examDateStr);
+      final dailyTarget = int.tryParse(settings['konkur_daily_target_minutes'] ?? '180') ?? 180;
+      
+      final cleanSubjects = await repo.getSubjects();
+      final cleanTopics = await repo.getTopics();
+
+      final newPlan = KonkurPlanner.buildPlan(
+        subjects: cleanSubjects,
+        topics: cleanTopics,
+        examDate: examDate,
+        from: DateTime.now(),
+        dailyTargetMinutes: dailyTarget,
+      );
+
+      await repo.savePlanItems(newPlan);
+      widget.onRefresh();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'برنامه مطالعاتی کنکور با موفقیت مجدداً چیده شد! 🧭',
+              style: TextStyle(fontFamily: 'Vazirmatn'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'خطا در بازچینش برنامه: $e',
+              style: const TextStyle(fontFamily: 'Vazirmatn'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isReplanning = false;
+        });
+      }
+    }
+  }
+
+  void _openStudySheet(KonkurTopic topic) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return KonkurStudySheet(
+          initialTopic: topic,
+          subjects: widget.subjects,
+          topics: widget.topics,
+          onSaved: widget.onRefresh,
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header / Replanning card
+          _buildSummaryCard(colors),
+          const SizedBox(height: 12),
+
+          // Low energy warning card
+          if (_energyLevel.toUpperCase() == 'LOW') ...[
+            _buildEnergyWarningCard(colors),
+            const SizedBox(height: 12),
+          ],
+
+          // List of today's plan items
+          if (widget.todayPlanItems.isEmpty)
+            _buildEmptyState(colors)
+          else ...[
+            Text(
+              'برنامه مطالعاتی امروز:',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: widget.todayPlanItems.length,
+              itemBuilder: (context, index) {
+                final item = widget.todayPlanItems[index];
+                final subject = widget.subjects.firstWhere((s) => s.id == item.subjectId);
+                final topic = widget.topics.firstWhere((t) => t.id == item.topicId);
+                return _buildPlanItemRow(item, subject, topic, colors);
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard(RitmoColors colors) {
+    return Card(
+      elevation: 0,
+      color: colors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.todayPlanItems.isEmpty
+                        ? 'امروز برنامه مطالعاتی ندارید'
+                        : 'برنامه امروز شما شامل ${toPersianDigits(widget.todayPlanItems.length)} مبحث است',
+                    style: TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (_daysBehindCount > 0)
+                    Text(
+                      '${toPersianDigits(_daysBehindCount)} مبحث از برنامه‌ عقب هستید! ⚠️',
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontSize: 11,
+                        color: colors.warning,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    )
+                  else
+                    Text(
+                      'کاملاً طبق برنامه پیش می‌روید. عالیه! 🌟',
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontSize: 11,
+                        color: colors.success,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _isReplanning ? null : _replanSchedule,
+              icon: const Icon(Icons.shuffle, size: 16, color: Colors.white),
+              label: _isReplanning
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.5),
+                    )
+                  : const Text(
+                      'بازچینش برنامه',
+                      style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B5CF6),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEnergyWarningCard(RitmoColors colors) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.warning.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.battery_alert, color: colors.warning),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'انرژی شما پایین است؛ برای جلوگیری از خستگی مفرط پیشنهاد می‌کنیم مباحث سبک‌تر را مطالعه کنید 🌿',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 11,
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(RitmoColors colors) {
+    return Card(
+      elevation: 0,
+      color: colors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colors.border),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Column(
+          children: [
+            Icon(Icons.eco, size: 48, color: Colors.green),
+            SizedBox(height: 16),
+            Text(
+              'امروز برنامه‌ای نیست — یه مبحث انتخاب کن 🌿',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlanItemRow(
+    KonkurPlanItem item,
+    KonkurSubject subject,
+    KonkurTopic topic,
+    RitmoColors colors,
+  ) {
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 8),
+      color: colors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: colors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: subject.colorHex != null
+                              ? Color(int.parse(subject.colorHex!.replaceFirst('#', '0xFF')))
+                              : const Color(0xFF8B5CF6),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        subject.name,
+                        style: TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontSize: 11,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    topic.name,
+                    style: TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'زمان برنامه‌ریزی شده: ${formatDuration(item.plannedMinutes)}',
+                    style: TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 11,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => _openStudySheet(topic),
+                  icon: const Icon(Icons.play_arrow, size: 14, color: Colors.white),
+                  label: const Text(
+                    'شروع',
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B5CF6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    minimumSize: Size.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                OutlinedButton.icon(
+                  onPressed: () => _quickComplete(item),
+                  icon: Icon(Icons.check, size: 14, color: colors.success),
+                  label: Text(
+                    'انجام',
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, color: colors.success, fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    minimumSize: Size.zero,
+                    side: BorderSide(color: colors.success),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

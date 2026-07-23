@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/item_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layoutDirection="rtl"
+    android:gravity="center_vertical"
+    android:background="@drawable/widget_row_background"
+    android:padding="10dp"
+    android:layout_marginBottom="6dp">
+
+    <ImageView
+        android:id="@+id/item_accent_bar"
+        android:layout_width="4dp"
+        android:layout_height="34dp"
+        android:background="#10B981" />
+
+    <TextView
+        android:id="@+id/item_emoji"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:text="•"
+        android:textSize="20sp" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="10dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/item_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="عنوان"
+            android:textColor="#ECEEF3"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/item_secondary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="توضیح"
+            android:textColor="#9AA0AE"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/item_primary"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="—"
+        android:textColor="#10B981"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+</LinearLayout>

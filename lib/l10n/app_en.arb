@@ -1,0 +1,651 @@
+{
+  "@@locale": "en",
+  "learningGrowthInsightTitle": "Impressive Learning Growth \uD83D\uDCC8",
+  "learningGrowthInsightMessage": "Your learning activities this week have grown by {percent}% compared to last week. Keep up the great work!",
+  "@learningGrowthInsightMessage": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "healthDeclineInsightTitle": "Attention to Health & Fitness ⚠️",
+  "healthDeclineInsightMessage": "Your health routines have dropped by {percent}% in the last 7 days. Try to schedule them back into your rhythm.",
+  "@healthDeclineInsightMessage": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "morningLeadInsightTitle": "Morning Peak Performance ☀️",
+  "morningLeadInsightMessage": "Your morning routines (6:00 to 12:00) have a higher completion rate than evening ones. Invest mornings for your most important tasks.",
+  "fatigueWarningInsightTitle": "Fatigue Window Alert ⚡",
+  "fatigueWarningInsightMessage": "The {window} timeframe is your most common period of fatigue and missed routines. Plan lighter tasks during these hours.",
+  "@fatigueWarningInsightMessage": {
+    "placeholders": {
+      "window": {
+        "type": "String"
+      }
+    }
+  },
+  "productiveWeekdayInsightTitle": "Your Brightest Day \uD83C\uDF1F",
+  "productiveWeekdayInsightMessage": "«{weekday}» is your most productive day of the week. Plan your heavy projects on this day.",
+  "@productiveWeekdayInsightMessage": {
+    "placeholders": {
+      "weekday": {
+        "type": "String"
+      }
+    }
+  },
+  "gatheringDataInsightTitle": "Learning Your Rhythm \uD83D\uDD0D",
+  "gatheringDataInsightMessage": "Ritmo needs more data to provide reliable insights. Please continue logging your activities.",
+  
+  "contextExplanationRest": "Rest and energy recovery \uD83C\uDF3F",
+  "contextExplanationEssential": "Life system «{title}» was prioritized due to its essential nature.",
+  "@contextExplanationEssential": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationSick": "Due to illness, physical routines are suspended and «{title}» is recommended.",
+  "@contextExplanationSick": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationExam": "Given the exam period, learning routines like «{title}» have been amplified.",
+  "@contextExplanationExam": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationBusy": "Due to today's high density, the next optimal action is «{title}».",
+  "@contextExplanationBusy": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationWorship": "Aligned with the current worship season ({season}), «{title}» is suggested.",
+  "@contextExplanationWorship": {
+    "placeholders": {
+      "season": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationZone": "Given your active zone, «{title}» is suggested to match the current rhythm.",
+  "@contextExplanationZone": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationLowEnergy": "Considering low energy levels, an adapted version of «{title}» is recommended.",
+  "@contextExplanationLowEnergy": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "contextExplanationDynamic": "Through dynamic daily rhythm analysis, «{title}» is suggested as the best next action.",
+  "@contextExplanationDynamic": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  
+  "hormonalMenstrualAdjustment1": "Reduce heavy physical activities",
+  "hormonalMenstrualAdjustment2": "Add short rests between tasks",
+  "hormonalMenstrualAdjustment3": "Focus on light and essential tasks",
+  "hormonalMenstrualAdjustment4": "Drink enough water and rest well",
+  "hormonalPreCycleAdjustment1": "You might experience mild physical fatigue or energy fluctuations \uD83D\uDD0B",
+  "hormonalPreCycleAdjustment2": "Prioritize important tasks early in the day ⏰",
+  "hormonalPreCycleAdjustment3": "Consider increasing your night sleep duration \uD83C\uDF19",
+  "hormonalPostCycleAdjustment1": "Energy levels and focus capacity are increasing \uD83D\uDCC8",
+  "hormonalPostCycleAdjustment2": "Excellent time to start new plans or learn new things \uD83C\uDF93",
+
+  "hormonalContextMenstrual": "Due to active menstruation phase, lighter physical activities and more recovery time are recommended. \uD83C\uDF38",
+  "hormonalContextPreCycle": "In the pre-cycle phase, mild fatigue or emotional sensitivity is possible. A flexible schedule helps your comfort. \uD83E\uDDD8",
+  "hormonalContextPostCycle": "In the post-cycle phase, mental readiness and physical energy are rising. Good time for new challenges. ⚡",
+  "hormonalContextNormal": "Your physical state is balanced and normal. \uD83C\uDF43",
+  "hormonalContextNoData": "Not enough data to accurately predict your state yet.",
+  "hormonalContextDisabled": "Cycle module is not enabled.",
+
+  "medicineStockAlert": "Stock for medication «{title}» is running low (current: {count}).",
+  "@medicineStockAlert": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeConflictAlert": "Time conflict detected between routines «{title1}» and «{title2}».",
+  "@timeConflictAlert": {
+    "placeholders": {
+      "title1": {
+        "type": "String"
+      },
+      "title2": {
+        "type": "String"
+      }
+    }
+  },
+  "pulseCardMoodGood": "Today has been a good day 🌱",
+  "pulseCardMoodExcellent": "Your life rhythm is excellent! 🌟",
+  "pulseCardMoodRestore": "Let's restore your life rhythm 🌿",
+  "pulseCardTitle": "Life Pulse",
+  "pulseCardTrend": "This week's trend +11%",
+  "currentEnergyTitle": "Current Energy",
+  "manageEnergy": "Manage Energy",
+  "currentRealmTitle": "Current Realm",
+  "outOfRealm": "Out of Realm",
+  "noActiveSchedule": "No active schedule",
+  "logNewDailyRealm": "Log new daily realm",
+  "routinesConnectedToRealm": "{count} routines connected to this realm",
+  "@routinesConnectedToRealm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addRealm": "Add Realm ›",
+  "manageRealm": "Manage Realm ›",
+  "energyLevelHigh": "High",
+  "energyLevelLow": "Low",
+  "energyLevelMedium": "Medium",
+  "energyDescHigh": "Ready for deep work and heavy focus",
+  "energyDescLow": "Good time for rest and light work",
+  "energyDescMedium": "Suitable for study, projects and routines",
+  "contextNormal": "Normal 🍃",
+  "contextSick": "Illness 🤒",
+  "contextTravel": "Travel ✈️",
+  "contextExam": "Exams 📚",
+  "contextBusy": "Very Busy 🔥",
+  "contextWorship": "Worship Season",
+  "energyLevelHighSymbol": "High 🔥",
+  "energyLevelLowSymbol": "Low 💤",
+  "energyLevelMediumSymbol": "Medium ⚡",
+  "outOfRealmSymbol": "Out of Realm 🌐",
+  "resolveScheduleConflict": "⚡ Resolve Schedule Conflict",
+  "labelContext": "Context:",
+  "labelEnergy": "Energy:",
+  "labelRealm": "Realm:",
+  "quickSystemsTitle": "Quick Systems",
+  "systemWorships": "Worships",
+  "systemHealth": "Health",
+  "systemGoals": "Goals",
+  "systemEducation": "Education",
+  "worshipItemsToday": "3 items today",
+  "medicineToday": "{count} meds today",
+  "@medicineToday": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "goalsAndPlans": "Goals & Plans",
+  "activeCourse": "1 active course",
+  "disabled": "Disabled",
+  "moduleDisabled": "Module is disabled",
+  "restAndRecovery": "Rest & Recovery 🌿",
+  "minutesLight": "{minutes} mins (Light)",
+  "@minutesLight": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "minutes": "{minutes} mins",
+  "@minutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "freeTime": "Free Time",
+  "smartAssistantTitle": "Ritmo Smart Assistant",
+  "focusOnThisToday": "Focus on this today:",
+  "balanceAndImprovement": "🎯 Balance & Continuous Improvement",
+  "bestNextAction": "Best next action for you",
+  "reasonForSuggestion": "Reason for suggestion:",
+  "reasonEssential": "This routine is prioritized due to its essential nature 🎯",
+  "reasonActiveZone": "You are in the «{zone}» zone 💼",
+  "@reasonActiveZone": {
+    "placeholders": {
+      "zone": {
+        "type": "String"
+      }
+    }
+  },
+  "reasonEnergyLevel": "Your energy level is {energy} ⚡",
+  "@reasonEnergyLevel": {
+    "placeholders": {
+      "energy": {
+        "type": "String"
+      }
+    }
+  },
+  "reasonSick": "Due to illness, the schedule was changed to light mode 🤒",
+  "reasonExam": "Due to exam season, learning priority has increased 📚",
+  "reasonBusy": "Due to a busy schedule today, this is the optimal suggestion ⏳",
+  "reasonWorship": "Aligned with the current worship season ({season}) 🌙",
+  "@reasonWorship": {
+    "placeholders": {
+      "season": {
+        "type": "String"
+      }
+    }
+  },
+  "reasonCompleted": "Today's tasks completed successfully ✨",
+  "reasonRestTime": "It is time for rest and recovery 🍃",
+  "start": "Start",
+  "whyThisSuggestion": "Why this suggestion?",
+  "todaysTasksTitle": "Today's Tasks",
+  "resolveConflictBtn": "⚡ Resolve Conflict",
+  "viewAll": "View All",
+  "routineDoneMsg": "Routine «{title}» completed! 🌟",
+  "@routineDoneMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "routineDoneLightMsg": "Routine «{title}» completed in light mode! ⚡",
+  "@routineDoneLightMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "routineDoneMinimalMsg": "Routine «{title}» completed in minimal mode! 🌿",
+  "@routineDoneMinimalMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "routineSkippedMsg": "Routine «{title}» skipped. ✕",
+  "@routineSkippedMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "routinePostponedMsg": "Routine «{title}» postponed. ⏳",
+  "@routinePostponedMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "loggedAtTime": "Logged {time} minutes ago",
+  "@loggedAtTime": {
+    "placeholders": {
+      "time": {
+        "type": "int"
+      }
+    }
+  },
+  "loggedAtTimeWithNote": "Logged {time} minutes ago ({note})",
+  "@loggedAtTimeWithNote": {
+    "placeholders": {
+      "time": {
+        "type": "int"
+      },
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "basedOnCalculationsAndDefaults": "Based on calculations and defaults",
+  "basedOnDefaults": "Based on defaults",
+  "worshipDebt": "Worship Debt",
+  "snoozeTimeMinutes": "{count} minutes",
+  "@snoozeTimeMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "snoozeTimeHours": "{count} hours",
+  "@snoozeTimeHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "welcomeUser": "Hello {name}",
+  "@welcomeUser": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noRoutinesToday": "No routines remaining for today. ✨",
+  "timeLabel": "Time:",
+  "checkinReminderTitle": "Record Morning Status (Check-in) ☀️",
+  "checkinReminderDesc": "Checking in helps Ritmo adjust your schedule according to your energy level.",
+  "reflectionReminderTitle": "Daily Reflection & Self-Evaluation 🌙",
+  "reflectionReminderDesc": "Dedicate some time to evaluate today and its learnings.",
+  "laterOrDismiss": "Later / Dismiss",
+  "yesRecord": "Yes, Record",
+  "criticalSystemAlerts": "Critical System Alerts ⚠️",
+  "worshipPrayer": "Prayer",
+  "worshipFast": "Fast",
+  "totalDebtsLabel": "Total Debts Count",
+  "dailyTargetLabel": "Daily Target",
+  "cancelBtn": "Cancel",
+  "registerDebtBtn": "Register Debt",
+  "timeConflictWarning": "Time Conflict Warning",
+  "medMinIntervalAlert": "The minimum interval allowed between each dose of this medication (at least {minInterval} hours) has not been met. Do you still want to log consumption?",
+  "@medMinIntervalAlert": {
+    "placeholders": {
+      "minInterval": {
+        "type": "double"
+      }
+    }
+  },
+  "overdoseDanger": "Overdose Risk",
+  "medMaxDosesAlert": "The maximum daily doses allowed for this medication ({maxDoses} times/day) has been reached. Consuming more is dangerous. Are you sure you want to log?",
+  "@medMaxDosesAlert": {
+    "placeholders": {
+      "maxDoses": {
+        "type": "int"
+      }
+    }
+  },
+  "dosageUnit": "1 unit",
+  "medLoggedSuccess": "Medication «{title}» consumption successfully logged.",
+  "@medLoggedSuccess": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "noCancel": "No, Cancel",
+  "yesLog": "Yes, Log Consumption",
+  "refillStockTitle": "Refill stock: {title}",
+  "@refillStockTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "refillCountLabel": "Added meds count",
+  "refillStockBtn": "Refill Stock",
+  "niyyahTitle": "Prepare & Start: {title}",
+  "@niyyahTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "completionModeFull": "Full 🎯",
+  "completionModeLight": "Light ⚡",
+  "completionModeMinimal": "Minimal 🌿",
+  "startFocusTimer": "Start Focus Timer",
+  "logWithoutTimer": "Log without timer",
+  "contextEngineExplanation": "The system has analyzed your current time conditions and energy levels based on the Context Engine.",
+  "ritmoSmartAnalysis": "Ritmo Smart Analysis ✨",
+  "understood": "Understood",
+  "energyManagementTitle": "Ritmo Energy Management & Analysis",
+  "currentDynamicEnergyLabel": "Your current dynamic energy level: {label}",
+  "@currentDynamicEnergyLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "whyThisNumberTitle": "Why this number? (Dynamic energy formula)",
+  "calculating": "Calculating...",
+  "setBaseEnergyLabel": "Set base energy level for manual log:",
+  "factorsAffectingEnergyLabel": "Factors affecting today's fatigue or energy drop:",
+  "factorPoorSleep": "Poor Sleep 🛌",
+  "factorHighStress": "High Stress 🧠",
+  "factorPhysicalFatigue": "Physical Fatigue 🏋️",
+  "factorLackOfFocus": "Mental Distraction 🎯",
+  "moodNotesPlaceholder": "Short note or mood (optional)",
+  "lackOfFocusStr": "Mental Distraction",
+  "energyUpdatedSuccess": "Energy level updated successfully.",
+  "saveStatusBtn": "Save Status",
+  "aiSmartAnalysisTitle": "Ritmo Assistant Smart Analysis (AI)",
+  "dataSentToAiLabel": "Data sent to AI for analysis:",
+  "bulletCalculatedEnergy": "• Current calculated dynamic energy: {percent}%\n",
+  "@bulletCalculatedEnergy": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "bulletReportedFactors": "• Reported temporary factors: {factors}\n",
+  "@bulletReportedFactors": {
+    "placeholders": {
+      "factors": {
+        "type": "String"
+      }
+    }
+  },
+  "bulletBiologicalClock": "• Body biological clock phase at the current hour\n",
+  "bulletSleepHistory": "• Recent sleep history and completed routines status",
+  "agreeToSendData": "I agree to securely send the above data for analysis.",
+  "noRecommendationFound": "No recommendation found.",
+  "networkErrorMsg": "Network connection error or failure to receive response.",
+  "analyzeAndGetRecommendation": "Analyze & Get Recommendation ✨",
+  "analyzingDataMsg": "AI is analyzing sleep and routine data...",
+  "reAnalyze": "Re-analyze 🔄",
+  "localEnergyEngineReport": "Energy Analytics Engine Report (Local):",
+  "insufficientData": "Insufficient data",
+  "goldenHourLabel": "Golden productivity hour:",
+  "fatigueWindowLabel": "Most fatigued window:",
+  "productiveDayLabel": "Most productive day:",
+  "healthScreenTitle": "Health",
+  "medicationsToday": "Today's Medications",
+  "doctorVisits": "Doctor Visits",
+  "healthMonitoring": "Health Monitoring",
+  "medicalDocuments": "Medical Documents",
+  "pregnancyTracker": "Pregnancy Tracker",
+  "vaccinations": "Vaccinations",
+  "allergies": "Allergies",
+  "medicalProfile": "Medical Profile",
+  "doctorVisitsTabUpcoming": "Upcoming",
+  "doctorVisitsTabPast": "Past",
+  "doctorVisitsNoUpcoming": "No upcoming visits scheduled.",
+  "doctorVisitsNoPast": "No past visits recorded.",
+  "doctorVisitsAddTitle": "Add Doctor Visit",
+  "doctorVisitsEditTitle": "Edit Doctor Visit",
+  "doctorVisitsDoctorName": "Doctor's Name",
+  "doctorVisitsSpecialty": "Specialty (Optional)",
+  "doctorVisitsClinicName": "Clinic Name (Optional)",
+  "doctorVisitsClinicAddress": "Address (Optional)",
+  "doctorVisitsClinicPhone": "Phone (Optional)",
+  "doctorVisitsReason": "Reason for Visit (Optional)",
+  "doctorVisitsNotes": "Notes (Optional)",
+  "doctorVisitsDateTime": "Visit Date & Time",
+  "doctorVisitsReminder": "Reminder Before Visit",
+  "doctorVisitsType": "Visit Type",
+  "doctorVisitsTypeInPerson": "In Person",
+  "doctorVisitsTypeOnline": "Online",
+  "doctorVisitsTypeTelephone": "Telephone",
+  "doctorVisitsReminderNone": "No Reminder",
+  "doctorVisitsReminder15m": "15 Minutes Before",
+  "doctorVisitsReminder30m": "30 Minutes Before",
+  "doctorVisitsReminder1h": "1 Hour Before",
+  "doctorVisitsReminder2h": "2 Hours Before",
+  "doctorVisitsReminder1d": "1 Day Before",
+  "doctorVisitsSave": "Save Visit",
+  "doctorVisitsDeleteConfirm": "Are you sure you want to delete this visit?",
+  "doctorVisitsAddAttachment": "Add Prescription or Doc",
+  "doctorVisitsDelete": "Delete Visit",
+  "doctorVisitsCancel": "Cancel",
+  "doctorVisitsConfirm": "Confirm",
+  "bloodSugarTitle": "Blood Sugar",
+  "bloodSugarValue": "Blood Sugar Level (mg/dL)",
+  "bloodSugarFasting": "Fasting",
+  "bloodSugarBeforeMeal": "Before Meal",
+  "bloodSugarAfterMeal": "After Meal",
+  "bloodSugarBedtime": "Bedtime",
+  "bloodSugarRandom": "Random",
+  "bloodSugarDiabeticFlag": "User is diabetic",
+  "bloodSugarInRange": "In Target Range",
+  "bloodSugarLow": "Low (Hypoglycemia)",
+  "bloodSugarHigh": "High (Hyperglycemia)",
+  "bloodSugarSave": "Save Blood Sugar",
+  "bloodSugarHistory": "Measurement History",
+  "bloodSugarEnterValue": "Please enter blood sugar level",
+  "bloodSugarLastLog": "Last log: {value} {type}",
+  "bloodPressureTitle": "Blood Pressure",
+  "bloodPressureSystolic": "Systolic BP (mmHg)",
+  "bloodPressureDiastolic": "Diastolic BP (mmHg)",
+  "bloodPressurePulse": "Pulse (bpm)",
+  "bloodPressureArm": "Arm Used",
+  "bloodPressureArmLeft": "Left Arm",
+  "bloodPressureArmRight": "Right Arm",
+  "bloodPressurePosition": "Body Position",
+  "bloodPressurePositionSitting": "Sitting",
+  "bloodPressurePositionStanding": "Standing",
+  "bloodPressurePositionLying": "Lying",
+  "bloodPressureSave": "Save Blood Pressure",
+  "bloodPressureHistory": "Blood Pressure History",
+  "bloodPressureLastLog": "Last BP: {systolic}/{diastolic}",
+  "vitalSignsTitle": "Vital Signs",
+  "vitalSignsWeight": "Weight",
+  "vitalSignsTemperature": "Body Temperature",
+  "vitalSignsSpo2": "Blood Oxygen (SPO2)",
+  "vitalSignsWaist": "Waist Circumference",
+  "vitalSignsHeight": "Height (cm)",
+  "vitalSignsSave": "Save Vital Sign",
+  "vitalSignsValue": "Value",
+  "vitalSignsHistory": "Vital Signs History",
+  "vitalSignsLastWeight": "Last Weight: {value} kg",
+  "vitalSignsBmi": "Body Mass Index (BMI): {value} ({label})",
+  "vitalSignsBmiUnderweight": "Underweight",
+  "vitalSignsBmiNormal": "Normal",
+  "vitalSignsBmiOverweight": "Overweight",
+  "vitalSignsBmiObese": "Obese",
+  "medicalDocumentsTitle": "Medical Documents",
+  "medicalDocumentsAddTitle": "Add New Document",
+  "medicalDocumentsEditTitle": "Edit Document",
+  "medicalDocumentsDocTitle": "Document Title",
+  "medicalDocumentsCategory": "Category",
+  "medicalDocumentsDate": "Document Date",
+  "medicalDocumentsLabName": "Lab / Clinic Name",
+  "medicalDocumentsSummary": "Report Summary",
+  "medicalDocumentsDoctorNotes": "Doctor's Recommendation",
+  "medicalDocumentsUserNotes": "User Notes",
+  "medicalDocumentsSelectImages": "Select Document Images",
+  "medicalDocumentsHistory": "Medical Documents Archive",
+  "medicalDocumentsNoDocs": "No medical documents recorded.",
+  "medicalDocumentsDeleteConfirm": "Are you sure you want to delete this document and all its images?",
+  "medicalDocumentsSave": "Save Document",
+  "medicalDocumentsCount": "{count} documents recorded",
+  "@medicalDocumentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vaccineName": "Vaccine Name",
+  "vaccineDiseaseTarget": "Target Disease",
+  "vaccineDoseNumber": "Dose Number",
+  "vaccineTotalDoses": "Total Doses",
+  "vaccineDateAdministered": "Date Administered",
+  "vaccineNextDoseDue": "Next Dose Due",
+  "vaccineBatchNumber": "Batch Number",
+  "vaccineClinicName": "Clinic / Vaccine Center",
+  "vaccineNotes": "Notes",
+  "vaccineSave": "Save Vaccination",
+  "vaccineDaysUntilDue": "{days} days until next dose",
+  "@vaccineDaysUntilDue": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "vaccineOverdue": "⚠️ Next dose overdue ({days} days overdue)",
+  "@vaccineOverdue": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "vaccineNoDoses": "No vaccinations recorded.",
+  "allergyName": "Allergen",
+  "allergyCategory": "Allergy Category",
+  "allergyCategoryFood": "Food",
+  "allergyCategoryDrug": "Drug",
+  "allergyCategoryEnvironment": "Environment",
+  "allergyCategoryOther": "Other",
+  "allergyReaction": "Reaction / Symptoms",
+  "allergySeverity": "Severity",
+  "allergySeverityMild": "Mild",
+  "allergySeverityModerate": "Moderate",
+  "allergySeveritySevere": "Severe",
+  "allergySeverityLifeThreatening": "Life Threatening ⚠️",
+  "allergyDiagnosedDate": "Diagnosed Date",
+  "allergySave": "Save Allergy",
+  "allergyNoAllergies": "No allergies recorded.",
+  "allergyDeleteConfirm": "Are you sure you want to delete this allergy?",
+  "pregnancyTitle": "Pregnancy Tracker",
+  "pregnancyLmp": "Last Menstrual Period (LMP)",
+  "pregnancyEdd": "Estimated Due Date (EDD)",
+  "pregnancyStart": "Start Pregnancy Tracker",
+  "pregnancyEnd": "End Tracker",
+  "pregnancyWeek": "Pregnancy Week {week} (Day {day})",
+  "@pregnancyWeek": {
+    "placeholders": {
+      "week": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "pregnancyTrimester1": "1st Trimester",
+  "pregnancyTrimester2": "2nd Trimester",
+  "pregnancyTrimester3": "3rd Trimester",
+  "pregnancyNoTracker": "No active pregnancy tracker.",
+  "cycleSosButton": "Emergency Pain Relief",
+  "cyclePregnancyActivate": "🤰 Activate Pregnancy Mode",
+  "cyclePregnancyConfirmPrompt": "Are you pregnant? Activating this mode will pause menstrual cycle tracking and display pregnancy-related details instead.",
+  "cyclePregnancyDeactivate": "Return to Normal Mode"
+}
