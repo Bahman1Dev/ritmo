@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/calendar/presentation/models/now_pill_view_model.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 
 class NowPill extends StatelessWidget {
   const NowPill({
@@ -23,100 +25,129 @@ class NowPill extends StatelessWidget {
 
     final item = viewModel.targetItem!;
     final isCurrent = viewModel.isCurrent;
-    final badgeColor = isCurrent ? Colors.green.shade700 : Colors.amber.shade800;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTapPill,
-        borderRadius: BorderRadius.circular(24.0),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceElevated,
-            borderRadius: BorderRadius.circular(24.0),
-            border: Border.all(
-              color: badgeColor.withValues(alpha: 0.6),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+    final badgeColor = isCurrent ? theme.colorScheme.primary : Colors.amber.shade700;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTapPill,
+          borderRadius: BorderRadius.circular(CalendarTokens.radiusPill),
+          child: Container(
+            height: 44.0,
+            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 4.0),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? theme.colorScheme.surfaceContainerHigh
+                  : theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(CalendarTokens.radiusPill),
+              border: Border.all(
+                color: badgeColor.withValues(alpha: 0.40),
+                width: 1.0,
               ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  borderRadius: BorderRadius.circular(12.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
                 ),
-                child: Text(
-                  viewModel.statusLabel,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Pulsing/Live indicator dot
+                RepaintBoundary(
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.4, end: 1.0),
+                    duration: const Duration(seconds: 1),
+                    curve: Curves.easeInOut,
+                    builder: (context, opacity, child) {
+                      return Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: badgeColor.withValues(alpha: isCurrent ? opacity : 1.0),
+                        ),
+                      );
+                    },
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                const SizedBox(width: CalendarTokens.spacingS),
+
+                // Content
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'الان: ',
+                        style: TextStyle(
+                          fontSize: CalendarTokens.textBody,
+                          fontWeight: FontWeight.w600,
+                          color: badgeColor,
+                          fontFamily: 'Vazirmatn',
+                        ),
                       ),
-                    ),
-                    Text(
-                      viewModel.timeLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                      Flexible(
+                        child: Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: CalendarTokens.textBody,
+                            fontWeight: FontWeight.w700,
+                            color: theme.textTheme.bodyLarge?.color,
+                            fontFamily: 'Vazirmatn',
+                          ),
+                        ),
                       ),
+                      Text(
+                        ' · ${toPersianDigits(viewModel.timeLabel)}',
+                        style: TextStyle(
+                          fontSize: CalendarTokens.textMeta,
+                          fontWeight: FontWeight.w400,
+                          color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.60),
+                          fontFamily: 'Vazirmatn',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: CalendarTokens.spacingS),
+
+                if (onTapJumpNow != null)
+                  IconButton(
+                    icon: Icon(Icons.my_location_rounded, size: 18, color: badgeColor),
+                    onPressed: onTapJumpNow,
+                    tooltip: 'پرش به زمان فعلی',
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(4),
+                  ),
+
+                if (onTapComplete != null && !item.isCompleted)
+                  IconButton(
+                    icon: Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 20,
+                      color: theme.colorScheme.primary,
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (onTapJumpNow != null)
-                IconButton(
-                  icon: const Icon(Icons.my_location, size: 18),
-                  onPressed: onTapJumpNow,
-                  tooltip: 'Jump to current time',
-                  constraints: const BoxConstraints(),
-                  padding: const EdgeInsets.all(4),
-                ),
-              if (onTapComplete != null && !item.isCompleted)
-                IconButton(
-                  icon: const Icon(Icons.check_circle_outline, size: 20, color: Colors.green),
-                  onPressed: onTapComplete,
-                  tooltip: 'Complete item',
-                  constraints: const BoxConstraints(),
-                  padding: const EdgeInsets.all(4),
-                ),
-            ],
+                    onPressed: onTapComplete,
+                    tooltip: 'تکمیل رویداد',
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(4),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-}
-
-extension _ThemeSurface on ColorScheme {
-  Color get surfaceElevated => brightness == Brightness.dark
-      ? const Color(0xFF242830)
-      : const Color(0xFFFFFFFF);
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 
 class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
   CalendarSearchDelegate({required this.items});
@@ -15,7 +16,7 @@ class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
     return [
       if (query.isNotEmpty)
         IconButton(
-          icon: const Icon(Icons.clear),
+          icon: const Icon(Icons.clear_rounded),
           onPressed: () {
             query = '';
           },
@@ -26,7 +27,7 @@ class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
   @override
   Widget? buildLeading(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.arrow_back),
+      icon: const Icon(Icons.arrow_back_rounded),
       onPressed: () => close(context, null),
     );
   }
@@ -42,6 +43,7 @@ class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
   }
 
   Widget _buildSearchResults(BuildContext context) {
+    final theme = Theme.of(context);
     final cleanQuery = query.trim().toLowerCase();
     final results = items.where((item) {
       final titleMatch = item.title.toLowerCase().contains(cleanQuery);
@@ -49,35 +51,46 @@ class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
       return titleMatch || subtitleMatch;
     }).toList();
 
-    if (results.isEmpty) {
-      return Center(
-        child: Text(
-          'هیچ رویدادی یافت نشد.',
-          style: TextStyle(color: Theme.of(context).hintColor),
-        ),
-      );
-    }
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: results.isEmpty
+          ? Center(
+              child: Text(
+                'هیچ رویدادی یافت نشد.',
+                style: TextStyle(
+                  color: theme.hintColor,
+                  fontSize: CalendarTokens.textBody,
+                  fontFamily: 'Vazirmatn',
+                ),
+              ),
+            )
+          : ListView.builder(
+              itemCount: results.length,
+              itemBuilder: (context, index) {
+                final item = results[index];
+                final timeStr = item.timeOfDay != null ? toPersianDigits(item.timeOfDay!) : 'تمام‌روز';
 
-    return ListView.builder(
-      itemCount: results.length,
-      itemBuilder: (context, index) {
-        final item = results[index];
-        final timeStr = item.timeOfDay != null ? toPersianDigits(item.timeOfDay!) : 'تمام‌روز';
-
-        return ListTile(
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.blueAccent.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+                return ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.event_note_rounded, color: theme.colorScheme.primary, size: 20),
+                  ),
+                  title: Text(
+                    item.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn'),
+                  ),
+                  subtitle: Text(
+                    '$timeStr ${item.subtitle != null && item.subtitle!.isNotEmpty ? "• ${item.subtitle}" : ""}',
+                    style: const TextStyle(fontFamily: 'Vazirmatn'),
+                  ),
+                  onTap: () => close(context, item),
+                );
+              },
             ),
-            child: const Icon(Icons.event_note, color: Colors.blueAccent, size: 20),
-          ),
-          title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text('$timeStr ${item.subtitle != null ? "• ${item.subtitle}" : ""}'),
-          onTap: () => close(context, item),
-        );
-      },
     );
   }
 }

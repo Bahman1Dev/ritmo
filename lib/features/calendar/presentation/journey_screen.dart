@@ -4,9 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/calendar/presentation/journey_controller.dart';
 import 'package:ritmo/features/calendar/presentation/models/now_pill_view_model.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_date_formatter.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/agenda_item_detail_sheet.dart';
+import 'package:ritmo/features/calendar/presentation/widgets/calendar_search_delegate.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_month_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_scale_switcher.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_smart_panel.dart';
@@ -14,11 +19,9 @@ import 'package:ritmo/features/calendar/presentation/widgets/journey_week_view.d
 import 'package:ritmo/features/calendar/presentation/widgets/journey_year_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/now_pill.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/timeline_grid.dart';
-import 'package:ritmo/features/calendar/presentation/widgets/calendar_search_delegate.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/timeline_untimed_section.dart';
-import 'package:ritmo/core/utils/persian_digits.dart';
-import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/courses/logic/course_scheduler.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 
 class JourneyScreen extends StatefulWidget {
   const JourneyScreen({
@@ -104,11 +107,11 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
   void _scrollToMinutesValue(int minutes) {
     if (!_scrollController.hasClients) return;
-    final targetScroll = ((minutes - 60).clamp(0, 1440)) * 1.2;
+    final targetScroll = ((minutes - 60).clamp(0, 1440)) * CalendarTokens.pxPerMinute;
     _scrollController.animateTo(
       targetScroll,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
+      duration: CalendarTokens.durationEmphasis,
+      curve: CalendarTokens.curveEmphasis,
     );
   }
 
@@ -169,59 +172,75 @@ class _JourneyScreenState extends State<JourneyScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.add_task_rounded, color: Colors.blueAccent),
-                  const SizedBox(width: 8),
-                  Text(
-                    'ثبت برنامه جدید در ساعت ${toPersianDigits(timeOfDay)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'کارت موقت ثبت سریع رویداد در ساعت ${toPersianDigits(timeOfDay)} ایجاد شد.',
-                style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.check),
-                  label: const Text('ثبت رویداد جدید'),
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(CalendarTokens.radiusSheet)),
+            ),
+            padding: const EdgeInsets.all(CalendarTokens.spacingXl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.add_task_rounded, color: Colors.blueAccent),
+                    const SizedBox(width: CalendarTokens.spacingS),
+                    Text(
+                      'ثبت برنامه جدید در ساعت ${toPersianDigits(timeOfDay)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: CalendarTokens.spacingM),
+                Text(
+                  'کارت موقت ثبت سریع رویداد در ساعت ${toPersianDigits(timeOfDay)} ایجاد شد.',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor),
+                ),
+                const SizedBox(height: CalendarTokens.spacingL),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.check),
+                    label: const Text('ثبت رویداد جدید'),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  String _getHeaderTitle(JourneyScale scale, DateTime date) {
+  String _getHeroDateTitle(DateTime date) {
+    return CalendarDateFormatter.formatSelectedDateTitle(
+      date,
+      relativeTo: DateTime.now(),
+      includeYear: true,
+    );
+  }
+
+  String _getSubContextTitle(JourneyScale scale, DateTime date) {
     switch (scale) {
       case JourneyScale.day:
-        return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+        final jalali = Jalali.fromDateTime(date);
+        return 'روز ${jalali.formatter.wN}';
       case JourneyScale.week:
         final sat = CourseScheduler.getSaturdayOfWeek(date);
         final fri = sat.add(const Duration(days: 6));
-        return '${sat.month}/${sat.day} - ${fri.month}/${fri.day} (${date.year})';
+        final satJalali = Jalali.fromDateTime(sat);
+        final friJalali = Jalali.fromDateTime(fri);
+        return 'هفته ${toPersianDigits(satJalali.day.toString())} ${satJalali.formatter.mN} – ${toPersianDigits(friJalali.day.toString())} ${friJalali.formatter.mN}';
       case JourneyScale.month:
-        return '${date.year}-${date.month.toString().padLeft(2, '0')}';
+        final jalali = Jalali.fromDateTime(date);
+        return '${jalali.formatter.mN} ${toPersianDigits(jalali.year.toString())}';
       case JourneyScale.year:
-        return 'سال ${toPersianDigits(date.year.toString())}';
+        final jalali = Jalali.fromDateTime(date);
+        return 'سال ${toPersianDigits(jalali.year.toString())}';
     }
   }
 
@@ -235,6 +254,9 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -249,112 +271,203 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: Row(
+          body: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Column(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: () => _controller.navigatePeriod(-1),
-                  tooltip: 'دوره قبل',
-                ),
-                Expanded(
-                  child: Text(
-                    _getHeaderTitle(activeScale, selectedDate),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                // Layer 1 Command Deck Header Surface
+                Container(
+                  color: isDark
+                      ? theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.85)
+                      : theme.colorScheme.surface.withValues(alpha: 0.95),
+                  padding: const EdgeInsets.only(
+                    left: CalendarTokens.spacingXl,
+                    right: CalendarTokens.spacingXl,
+                    top: CalendarTokens.spacingM,
+                    bottom: CalendarTokens.spacingM,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // [1] Date Hero Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _getHeroDateTitle(selectedDate),
+                              style: TextStyle(
+                                fontSize: CalendarTokens.textHero,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
+                                fontFamily: 'Vazirmatn',
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (!isToday)
+                            Semantics(
+                              label: 'پرش به امروز',
+                              button: true,
+                              child: GestureDetector(
+                                onTap: () {
+                                  _controller.selectDate(DateTime.now());
+                                  _autoScrollToNow();
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(CalendarTokens.radiusPill),
+                                  ),
+                                  child: Text(
+                                    'امروز',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onPrimaryContainer,
+                                      fontFamily: 'Vazirmatn',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: CalendarTokens.spacingS),
+
+                      // [2] Navigation & Context Action Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 38,
+                                height: 38,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  icon: const Icon(Icons.chevron_right, size: 22),
+                                  onPressed: () => _controller.navigatePeriod(-1),
+                                  tooltip: 'دوره قبل',
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                child: Text(
+                                  _getSubContextTitle(activeScale, selectedDate),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.55),
+                                    fontFamily: 'Vazirmatn',
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 38,
+                                height: 38,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  icon: const Icon(Icons.chevron_left, size: 22),
+                                  onPressed: () => _controller.navigatePeriod(1),
+                                  tooltip: 'دوره بعد',
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              if (snapshot != null)
+                                SizedBox(
+                                  width: 36,
+                                  height: 36,
+                                  child: IconButton(
+                                    padding: EdgeInsets.zero,
+                                    icon: const Icon(Icons.space_dashboard_outlined, size: 20),
+                                    tooltip: 'خلاصه روز',
+                                    onPressed: _openSmartPanel,
+                                  ),
+                                ),
+                              SizedBox(
+                                width: 36,
+                                height: 36,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  icon: const Icon(Icons.search_rounded, size: 20),
+                                  tooltip: 'جستجوی رویدادها',
+                                  onPressed: () async {
+                                    final selected = await showSearch<AgendaItem?>(
+                                      context: context,
+                                      delegate: CalendarSearchDelegate(items: snapshot?.items ?? []),
+                                    );
+                                    if (selected != null) {
+                                      _openItemDetails(selected);
+                                    }
+                                  },
+                                ),
+                              ),
+                              SizedBox(
+                                width: 36,
+                                height: 36,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  icon: const Icon(Icons.refresh, size: 20),
+                                  tooltip: 'بازخوانی',
+                                  onPressed: _controller.refresh,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: CalendarTokens.spacingM),
+
+                      // [3] Scale Switcher Segmented Control
+                      JourneyScaleSwitcher(
+                        activeScale: activeScale,
+                        onScaleChanged: _controller.setScale,
+                      ),
+                    ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: () => _controller.navigatePeriod(1),
-                  tooltip: 'دوره بعد',
+
+                // Content View with AnimatedSwitcher Transition
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: CalendarTokens.durationStandard,
+                    switchInCurve: CalendarTokens.curveDefault,
+                    switchOutCurve: CalendarTokens.curveDefault,
+                    child: _controller.isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _controller.errorMessage != null
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text('خطا: ${_controller.errorMessage}'),
+                                    const SizedBox(height: CalendarTokens.spacingM),
+                                    ElevatedButton(
+                                      onPressed: _controller.refresh,
+                                      child: const Text('بازخوانی'),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : _buildScaleContent(
+                                activeScale: activeScale,
+                                selectedDate: selectedDate,
+                                snapshot: snapshot,
+                                untimedItems: untimedItems,
+                                timedItems: timedItems,
+                                pillViewModel: pillViewModel,
+                                isToday: isToday,
+                              ),
+                  ),
                 ),
               ],
             ),
-            actions: [
-              if (!isToday)
-                TextButton(
-                  onPressed: () {
-                    _controller.selectDate(DateTime.now());
-                    _autoScrollToNow();
-                  },
-                  child: const Text('امروز', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              if (snapshot != null)
-                IconButton(
-                  icon: const Icon(Icons.space_dashboard_outlined),
-                  tooltip: 'خلاصه روز',
-                  onPressed: _openSmartPanel,
-                ),
-              IconButton(
-                icon: const Icon(Icons.search_rounded),
-                tooltip: 'جستجوی رویدادها',
-                onPressed: () async {
-                  final selected = await showSearch<AgendaItem?>(
-                    context: context,
-                    delegate: CalendarSearchDelegate(items: snapshot?.items ?? []),
-                  );
-                  if (selected != null) {
-                    _openItemDetails(selected);
-                  }
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.home_outlined),
-                tooltip: 'داشبورد امروز',
-                onPressed: () {
-                  RitmoEventBus().fire(RitmoEvent(
-                    type: 'navigate_tab',
-                    timestamp: DateTime.now(),
-                    payload: {'index': 2},
-                  ));
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: _controller.refresh,
-              ),
-            ],
-          ),
-          body: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-                child: JourneyScaleSwitcher(
-                  activeScale: activeScale,
-                  onScaleChanged: _controller.setScale,
-                ),
-              ),
-              Expanded(
-                child: _controller.isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _controller.errorMessage != null
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text('خطا: ${_controller.errorMessage}'),
-                                const SizedBox(height: 12),
-                                ElevatedButton(
-                                  onPressed: _controller.refresh,
-                                  child: const Text('بازخوانی'),
-                                ),
-                              ],
-                            ),
-                          )
-                        : _buildScaleContent(
-                            activeScale: activeScale,
-                            selectedDate: selectedDate,
-                            snapshot: snapshot,
-                            untimedItems: untimedItems,
-                            timedItems: timedItems,
-                            pillViewModel: pillViewModel,
-                            isToday: isToday,
-                          ),
-              ),
-            ],
           ),
         );
       },
@@ -391,7 +504,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
                             child: TimelineGrid(
                               items: timedItems,
                               isToday: isToday,
-                              pxPerMinute: 1.2,
+                              pxPerMinute: CalendarTokens.pxPerMinute,
                               highlightedItemId: _controller.highlightedItemId,
                               onItemTap: _openItemDetails,
                               onItemMove: (item, newTimeOfDay) async {

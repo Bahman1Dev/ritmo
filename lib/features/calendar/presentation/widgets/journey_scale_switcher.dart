@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/features/calendar/presentation/journey_controller.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 
 class JourneyScaleSwitcher extends StatelessWidget {
   const JourneyScaleSwitcher({
@@ -11,48 +12,75 @@ class JourneyScaleSwitcher extends StatelessWidget {
   final JourneyScale activeScale;
   final ValueChanged<JourneyScale> onScaleChanged;
 
+  static const List<JourneyScale> _scalesInRtlOrder = [
+    JourneyScale.day,
+    JourneyScale.week,
+    JourneyScale.month,
+    JourneyScale.year,
+  ];
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
-        padding: const EdgeInsets.all(2.0),
+        width: double.infinity,
+        padding: const EdgeInsets.all(CalendarTokens.spacingXs),
         decoration: BoxDecoration(
-          color: theme.cardColor.withValues(alpha: 0.8),
-          borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(CalendarTokens.radiusSegment),
+          border: Border.all(
+            color: theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder),
+          ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: JourneyScale.values.map((scale) {
+          children: _scalesInRtlOrder.map((scale) {
             final isSelected = scale == activeScale;
             final label = _getScaleLabel(scale);
 
-            return Semantics(
-              selected: isSelected,
-              label: 'نمای $label',
-              child: GestureDetector(
-                onTap: () => onScaleChanged(scale),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? theme.colorScheme.primaryContainer
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            return Expanded(
+              child: Semantics(
+                selected: isSelected,
+                label: 'نمای $label',
+                button: true,
+                child: GestureDetector(
+                  onTap: () => onScaleChanged(scale),
+                  behavior: HitTestBehavior.opaque,
+                  child: AnimatedContainer(
+                    duration: CalendarTokens.durationStandard,
+                    curve: CalendarTokens.curveEmphasis,
+                    height: 40.0,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
                       color: isSelected
-                          ? theme.colorScheme.onPrimaryContainer
-                          : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
-                      fontFamily: 'Vazirmatn',
+                          ? (isDark ? theme.colorScheme.surfaceContainerHigh : theme.cardColor)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(CalendarTokens.radiusSegPill),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.55),
+                        fontFamily: 'Vazirmatn',
+                      ),
                     ),
                   ),
                 ),

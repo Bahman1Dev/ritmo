@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 import 'package:ritmo/features/courses/logic/course_scheduler.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 
 class JourneyMonthView extends StatelessWidget {
   const JourneyMonthView({
@@ -17,6 +20,7 @@ class JourneyMonthView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final now = DateTime.now();
 
     final firstOfMonth = DateTime(selectedDate.year, selectedDate.month, 1);
@@ -28,113 +32,145 @@ class JourneyMonthView extends StatelessWidget {
 
     final gridDays = List.generate(gridDayCount, (i) => firstGridDay.add(Duration(days: i)));
 
-    const weekHeaders = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    // RTL Weekday headers order: ج · پ · چ · س · د · ی · ش (Right to Left)
+    const weekHeadersRtl = ['ج', 'پ', 'چ', 'س', 'د', 'ی', 'ش'];
 
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: weekHeaders.map((h) {
-              return Expanded(
-                child: Text(
-                  h,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                mainAxisSpacing: 6,
-                crossAxisSpacing: 6,
-                childAspectRatio: 0.85,
-              ),
-              itemCount: gridDays.length,
-              itemBuilder: (context, index) {
-                final day = gridDays[index];
-                final isCurrentMonth = day.month == selectedDate.month;
-                final isSelected = _isSameDay(day, selectedDate);
-                final isToday = _isSameDay(day, now);
-
-                final dateKey = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
-                final snapshot = rangeSnapshots[dateKey];
-                final totalItems = snapshot?.items.length ?? 0;
-                final completedCount = snapshot?.completedCount ?? 0;
-
-                return InkWell(
-                  onTap: () => onSelectDate(day),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? theme.colorScheme.primaryContainer
-                          : isToday
-                              ? Colors.amber.withValues(alpha: 0.2)
-                              : isCurrentMonth
-                                  ? theme.cardColor
-                                  : theme.cardColor.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected
-                            ? theme.colorScheme.primary
-                            : isToday
-                                ? Colors.amber
-                                : theme.dividerColor.withValues(alpha: 0.2),
-                        width: isSelected ? 2.0 : 1.0,
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(4.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${day.day}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
-                            color: isCurrentMonth
-                                ? (isToday ? Colors.amber.shade900 : theme.textTheme.bodyMedium?.color)
-                                : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        if (totalItems > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: completedCount == totalItems
-                                  ? Colors.green.withValues(alpha: 0.2)
-                                  : theme.colorScheme.primary.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '$completedCount/$totalItems',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                color: completedCount == totalItems ? Colors.green.shade800 : theme.colorScheme.primary,
-                              ),
-                            ),
-                          )
-                        else
-                          const SizedBox(height: 12),
-                      ],
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Padding(
+        padding: const EdgeInsets.all(CalendarTokens.spacingL),
+        child: Column(
+          children: [
+            // Weekday Header Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: weekHeadersRtl.map((h) {
+                return Expanded(
+                  child: Text(
+                    h,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: CalendarTokens.textLabel,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Vazirmatn',
+                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.45),
                     ),
                   ),
                 );
-              },
+              }).toList(),
             ),
-          ),
-        ],
+            const SizedBox(height: CalendarTokens.spacingS),
+
+            // Month Grid Cells
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  mainAxisSpacing: 4,
+                  crossAxisSpacing: 4,
+                  childAspectRatio: 0.85,
+                ),
+                itemCount: gridDays.length,
+                itemBuilder: (context, index) {
+                  final day = gridDays[index];
+                  final isCurrentMonth = day.month == selectedDate.month;
+                  final isSelected = _isSameDay(day, selectedDate);
+                  final isToday = _isSameDay(day, now);
+
+                  final dateKey = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+                  final snapshot = rangeSnapshots[dateKey];
+                  final totalItems = snapshot?.items.length ?? 0;
+
+                  final jalaliDay = Jalali.fromDateTime(day).day;
+                  final dayNumStr = toPersianDigits(jalaliDay.toString());
+
+                  final dotCount = totalItems == 0 ? 0 : (totalItems <= 2 ? 1 : (totalItems <= 4 ? 2 : 3));
+
+                  return InkWell(
+                    onTap: () => onSelectDate(day),
+                    borderRadius: BorderRadius.circular(CalendarTokens.radiusBadge),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.20 : 0.12)
+                            : (isToday
+                                ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                                : (isCurrentMonth
+                                    ? (isDark
+                                        ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.4)
+                                        : theme.cardColor)
+                                    : Colors.transparent)),
+                        borderRadius: BorderRadius.circular(CalendarTokens.radiusBadge),
+                        border: Border.all(
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : (isToday
+                                  ? theme.colorScheme.primary.withValues(alpha: 0.5)
+                                  : theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder)),
+                          width: isSelected ? 1.5 : 1.0,
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 6.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Day Number with Today Circle
+                          Container(
+                            width: 24,
+                            height: 24,
+                            alignment: Alignment.center,
+                            decoration: isToday
+                                ? BoxDecoration(
+                                    color: theme.colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                  )
+                                : null,
+                            child: Text(
+                              dayNumStr,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontFamily: 'Vazirmatn',
+                                fontWeight: isSelected || isToday ? FontWeight.w700 : FontWeight.w500,
+                                color: isToday
+                                    ? theme.colorScheme.onPrimary
+                                    : (isCurrentMonth
+                                        ? (isSelected
+                                            ? theme.colorScheme.primary
+                                            : theme.textTheme.bodyMedium?.color)
+                                        : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.20)),
+                              ),
+                            ),
+                          ),
+
+                          // Activity Density Dots (1..3 dots)
+                          if (dotCount > 0)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(dotCount, (i) {
+                                return Container(
+                                  width: 4,
+                                  height: 4,
+                                  margin: const EdgeInsets.symmetric(horizontal: 1.0),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isCurrentMonth
+                                        ? theme.colorScheme.primary.withValues(alpha: 0.70)
+                                        : theme.colorScheme.primary.withValues(alpha: 0.25),
+                                  ),
+                                );
+                              }),
+                            )
+                          else
+                            const SizedBox(height: 4),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

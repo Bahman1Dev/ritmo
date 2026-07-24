@@ -115,7 +115,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(selectedActivity?.id, equals(sampleItem.id));
 
-      // 2. Test Suggestions tab conflict selection
+      // 2. Test Suggestions / Conflicts tab conflict selection
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: JourneySmartPanel(
@@ -124,7 +124,7 @@ void main() {
           ),
         ),
       ));
-      await tester.tap(find.textContaining('Suggestions'));
+      await tester.tap(find.textContaining('پیشنهادها'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.textContaining('Collision at 09:00'));
@@ -140,10 +140,10 @@ void main() {
           ),
         ),
       ));
-      await tester.tap(find.textContaining('Free Gaps'));
+      await tester.tap(find.textContaining('زمان آزاد'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('12:00 - 13:00'));
+      await tester.tap(find.textContaining('۱۲:۰۰'));
       await tester.pumpAndSettle();
       expect(selectedGap?.startMinutes, equals(720));
     });

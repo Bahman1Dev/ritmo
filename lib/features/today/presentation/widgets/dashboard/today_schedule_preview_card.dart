@@ -106,6 +106,14 @@ class TodaySchedulePreviewCard extends StatelessWidget {
                         tooltip: 'تکمیل برنامه',
                         onPressed: () => convergenceHelper.completeItem(current),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.calendar_today, size: 18, color: Colors.blueAccent),
+                        tooltip: 'مشاهده در تقویم',
+                        onPressed: () => convergenceHelper.openCalendarInContext(
+                          context,
+                          itemId: current.id,
+                        ),
+                      ),
                     ],
                   ),
                 ),

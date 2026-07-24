@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/analysis/agenda_conflict_detector.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 
 class JourneySuggestionsSection extends StatelessWidget {
   const JourneySuggestionsSection({
@@ -14,27 +16,43 @@ class JourneySuggestionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final conflicts = snapshot.conflicts;
     final suggestions = snapshot.suggestions;
 
     if (conflicts.isEmpty && suggestions.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(vertical: CalendarTokens.spacing3xl),
         alignment: Alignment.center,
         child: Column(
           children: [
-            Icon(Icons.check_circle_outline, size: 36, color: Colors.green.shade400),
-            const SizedBox(height: 8),
-            const Text(
-              'No schedule conflicts or warnings.',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: CalendarTokens.emerald.withValues(alpha: isDark ? 0.15 : 0.08),
+              ),
+              child: const Icon(Icons.check_circle_outline_rounded, size: 28, color: CalendarTokens.emerald),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Your day is well aligned and ready to execute.',
+            const SizedBox(height: CalendarTokens.spacingM),
+            const Text(
+              'برنامه‌ات ایده‌آله 🎯',
               style: TextStyle(
-                fontSize: 11,
-                color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                fontWeight: FontWeight.bold,
+                fontSize: CalendarTokens.textTitle,
+                fontFamily: 'Vazirmatn',
+              ),
+            ),
+            const SizedBox(height: CalendarTokens.spacingXs),
+            Text(
+              'هیچ تداخل یا هشداری در این روز وجود ندارد.',
+              style: TextStyle(
+                fontSize: CalendarTokens.textMeta,
+                fontFamily: 'Vazirmatn',
+                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.60),
               ),
             ),
           ],
@@ -42,94 +60,165 @@ class JourneySuggestionsSection extends StatelessWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (conflicts.isNotEmpty) ...[
-          const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, size: 18, color: Colors.orange),
-              SizedBox(width: 6),
-              Text(
-                'Detected Conflicts',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.orange),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          for (final conflict in conflicts)
-            InkWell(
-              onTap: () => onSelectConflict?.call(conflict),
-              borderRadius: BorderRadius.circular(8.0),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 6.0),
-                padding: const EdgeInsets.all(10.0),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8.0),
-                  border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (conflicts.isNotEmpty) ...[
+            Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, size: 18, color: Colors.amber),
+                const SizedBox(width: CalendarTokens.spacingS),
+                Text(
+                  'تداخل‌ها (${toPersianDigits(conflicts.length.toString())})',
+                  style: TextStyle(
+                    fontSize: CalendarTokens.textTitle,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber.shade800,
+                    fontFamily: 'Vazirmatn',
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        conflict.description,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    const Icon(Icons.center_focus_strong, size: 16, color: Colors.orange),
-                  ],
-                ),
-              ),
+              ],
             ),
-          const SizedBox(height: 12),
-        ],
-        if (suggestions.isNotEmpty) ...[
-          const Row(
-            children: [
-              Icon(Icons.lightbulb_outline, size: 18, color: Colors.blue),
-              SizedBox(width: 6),
-              Text(
-                'Optimization Suggestions',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          for (final suggestion in suggestions)
-            Container(
-              margin: const EdgeInsets.only(bottom: 6.0),
-              padding: const EdgeInsets.all(10.0),
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      suggestion.message,
-                      style: const TextStyle(fontSize: 12),
+            const SizedBox(height: CalendarTokens.spacingS),
+            for (final conflict in conflicts)
+              InkWell(
+                onTap: () => onSelectConflict?.call(conflict),
+                borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: CalendarTokens.spacingS),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: isDark ? 0.12 : 0.06),
+                    borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+                    border: Border.all(color: Colors.amber.withValues(alpha: 0.25)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: CalendarTokens.accentBarWidth,
+                          height: 54,
+                          color: Colors.amber.shade700,
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    conflict.description,
+                                    style: const TextStyle(
+                                      fontSize: CalendarTokens.textBody,
+                                      fontFamily: 'Vazirmatn',
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade800,
+                                    borderRadius: BorderRadius.circular(CalendarTokens.radiusBadge),
+                                  ),
+                                  child: const Text(
+                                    'رفع تداخل',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      fontFamily: 'Vazirmatn',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  if (suggestion.suggestedTimeOfDay != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade700,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        suggestion.suggestedTimeOfDay!,
-                        style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                ],
+                ),
               ),
+            const SizedBox(height: CalendarTokens.spacingM),
+          ],
+          if (suggestions.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(Icons.lightbulb_outline_rounded, size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: CalendarTokens.spacingS),
+                Text(
+                  'پیشنهادها (${toPersianDigits(suggestions.length.toString())})',
+                  style: TextStyle(
+                    fontSize: CalendarTokens.textTitle,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                    fontFamily: 'Vazirmatn',
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: CalendarTokens.spacingS),
+            for (final suggestion in suggestions)
+              Container(
+                margin: const EdgeInsets.only(bottom: CalendarTokens.spacingS),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.12 : 0.06),
+                  borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.25)),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: CalendarTokens.accentBarWidth,
+                        height: 54,
+                        color: theme.colorScheme.primary,
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  suggestion.message,
+                                  style: const TextStyle(
+                                    fontSize: CalendarTokens.textBody,
+                                    fontFamily: 'Vazirmatn',
+                                  ),
+                                ),
+                              ),
+                              if (suggestion.suggestedTimeOfDay != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary,
+                                    borderRadius: BorderRadius.circular(CalendarTokens.radiusBadge),
+                                  ),
+                                  child: Text(
+                                    toPersianDigits(suggestion.suggestedTimeOfDay!),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Vazirmatn',
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

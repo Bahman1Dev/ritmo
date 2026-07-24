@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 
 class JourneySummarySection extends StatelessWidget {
   const JourneySummarySection({
@@ -14,140 +16,84 @@ class JourneySummarySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.analytics_outlined, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'Day Overview (${snapshot.dateStr})',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                label: 'Rhythm Score',
-                value: '${snapshot.rhythmScore}',
-                icon: Icons.speed,
-                color: Colors.indigo,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _MetricCard(
-                label: 'Completed',
-                value: '${snapshot.completedCount}',
-                icon: Icons.task_alt,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _MetricCard(
-                label: 'Remaining',
-                value: '${snapshot.remainingCount}',
-                icon: Icons.pending_actions,
-                color: Colors.orange,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                label: 'Free Gaps',
-                value: '${snapshot.freeGaps.length}',
-                icon: Icons.event_available,
-                color: Colors.teal,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _MetricCard(
-                label: 'Overload Ratio',
-                value: '${(snapshot.overloadScore * 100).toInt()}%',
-                icon: Icons.warning_amber_rounded,
-                color: snapshot.overloadScore > 1.0 ? Colors.red : Colors.blueGrey,
-              ),
-            ),
-          ],
-        ),
-        if (snapshot.currentActivity != null) ...[
-          const SizedBox(height: 16),
-          _ActivityRow(
-            label: 'Current Activity',
-            item: snapshot.currentActivity!,
-            color: Colors.green,
-            onTap: () => onSelectActivity?.call(snapshot.currentActivity!),
-          ),
-        ],
-        if (snapshot.nextActivity != null) ...[
-          const SizedBox(height: 8),
-          _ActivityRow(
-            label: 'Next Activity',
-            item: snapshot.nextActivity!,
-            color: Colors.amber,
-            onTap: () => onSelectActivity?.call(snapshot.nextActivity!),
-          ),
-        ],
-      ],
-    );
-  }
-}
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({
-    required this.label,
-    required this.item,
-    required this.color,
-    required this.onTap,
-  });
-
-  final String label;
-  final AgendaItem item;
-  final MaterialColor color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.all(12.0),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color.shade800),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.analytics_outlined, size: 18, color: theme.colorScheme.primary),
+              const SizedBox(width: CalendarTokens.spacingS),
+              Text(
+                'خلاصه روز (${toPersianDigits(snapshot.dateStr)})',
+                style: const TextStyle(
+                  fontSize: CalendarTokens.textTitle,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Vazirmatn',
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  item.title,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: CalendarTokens.spacingM),
+
+          // 3 Metric Tiles Row
+          Row(
+            children: [
+              Expanded(
+                child: _MetricCard(
+                  label: 'تکمیل‌شده',
+                  value: toPersianDigits('${snapshot.completedCount}'),
+                  icon: Icons.task_alt_rounded,
+                  color: CalendarTokens.emerald,
                 ),
-              ],
+              ),
+              const SizedBox(width: CalendarTokens.spacingS),
+              Expanded(
+                child: _MetricCard(
+                  label: 'باقی‌مانده',
+                  value: toPersianDigits('${snapshot.remainingCount}'),
+                  icon: Icons.pending_actions_rounded,
+                  color: Colors.amber.shade700,
+                ),
+              ),
+              const SizedBox(width: CalendarTokens.spacingS),
+              Expanded(
+                child: _MetricCard(
+                  label: 'زمان آزاد',
+                  value: toPersianDigits('${snapshot.freeGaps.length}'),
+                  icon: Icons.event_available_rounded,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: CalendarTokens.spacingL),
+
+          // Spotlight rows for Current / Next activity
+          if (snapshot.currentActivity != null) ...[
+            _SpotlightActivityCard(
+              label: 'فعالیت جاری',
+              item: snapshot.currentActivity!,
+              accentColor: theme.colorScheme.primary,
+              isCurrent: true,
+              onTap: () => onSelectActivity?.call(snapshot.currentActivity!),
             ),
-            const Icon(Icons.chevron_right, size: 20),
+            const SizedBox(height: CalendarTokens.spacingS),
           ],
-        ),
+          if (snapshot.nextActivity != null) ...[
+            _SpotlightActivityCard(
+              label: 'فعالیت بعدی',
+              item: snapshot.nextActivity!,
+              accentColor: Colors.amber.shade800,
+              isCurrent: false,
+              onTap: () => onSelectActivity?.call(snapshot.nextActivity!),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -168,35 +114,120 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 12.0),
+      padding: const EdgeInsets.all(CalendarTokens.spacingM),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: isDark ? 0.12 : 0.08),
+        borderRadius: BorderRadius.circular(CalendarTokens.radiusBadge),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(height: 4),
+          Icon(icon, size: 18, color: color),
+          const SizedBox(height: CalendarTokens.spacingS),
           Text(
             value,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: color,
+              fontFamily: 'Vazirmatn',
+              color: theme.textTheme.bodyLarge?.color,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
-              color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+              fontSize: CalendarTokens.textLabel,
+              fontFamily: 'Vazirmatn',
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.65),
             ),
-            textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SpotlightActivityCard extends StatelessWidget {
+  const _SpotlightActivityCard({
+    required this.label,
+    required this.item,
+    required this.accentColor,
+    required this.isCurrent,
+    required this.onTap,
+  });
+
+  final String label;
+  final AgendaItem item;
+  final Color accentColor;
+  final bool isCurrent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+      child: Container(
+        padding: const EdgeInsets.all(CalendarTokens.spacingM),
+        decoration: BoxDecoration(
+          color: accentColor.withValues(alpha: isDark ? 0.12 : 0.08),
+          borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+          border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: accentColor,
+              ),
+            ),
+            const SizedBox(width: CalendarTokens.spacingM),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: CalendarTokens.textLabel,
+                      fontWeight: FontWeight.w700,
+                      color: accentColor,
+                      fontFamily: 'Vazirmatn',
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: CalendarTokens.textBody,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Vazirmatn',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_left_rounded,
+              size: 20,
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.45),
+            ),
+          ],
+        ),
       ),
     );
   }

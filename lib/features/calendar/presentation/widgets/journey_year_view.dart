@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 
 class JourneyYearView extends StatelessWidget {
   const JourneyYearView({
@@ -16,134 +19,165 @@ class JourneyYearView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final now = DateTime.now();
-    final currentYear = selectedDate.year;
 
-    const monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    final jalaliSelected = Jalali.fromDateTime(selectedDate);
+    final jalaliYear = jalaliSelected.year;
+    final jalaliYearStr = toPersianDigits(jalaliYear.toString());
+
+    const jalaliMonthNames = [
+      'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+      'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
     ];
 
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.calendar_today, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                'Year $currentYear Overview',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.1,
-              ),
-              itemCount: 12,
-              itemBuilder: (context, index) {
-                final monthNumber = index + 1;
-                final monthDate = DateTime(currentYear, monthNumber, 1);
-                final isSelectedMonth = monthNumber == selectedDate.month;
-                final isCurrentMonth = currentYear == now.year && monthNumber == now.month;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: CalendarTokens.spacingL,
+          vertical: CalendarTokens.spacingS,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.calendar_today_rounded, size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: CalendarTokens.spacingS),
+                Text(
+                  'نمای سال $jalaliYearStr',
+                  style: TextStyle(
+                    fontSize: CalendarTokens.textTitle,
+                    fontWeight: FontWeight.bold,
+                    color: theme.textTheme.bodyLarge?.color,
+                    fontFamily: 'Vazirmatn',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: CalendarTokens.spacingM),
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.95,
+                ),
+                itemCount: 12,
+                itemBuilder: (context, index) {
+                  final monthNumber = index + 1;
+                  final monthDate = DateTime(selectedDate.year, monthNumber, 1);
 
-                // Calculate month summary metrics from rangeSnapshots
-                int monthTaskCount = 0;
-                int monthCompletedCount = 0;
+                  final isSelectedMonth = monthNumber == selectedDate.month;
+                  final isCurrentMonth = selectedDate.year == now.year && monthNumber == now.month;
 
-                for (final entry in rangeSnapshots.entries) {
-                  final parts = entry.key.split('-');
-                  if (parts.length == 3 &&
-                      int.tryParse(parts[0]) == currentYear &&
-                      int.tryParse(parts[1]) == monthNumber) {
-                    monthTaskCount += entry.value.items.length;
-                    monthCompletedCount += entry.value.completedCount;
+                  int monthTaskCount = 0;
+                  int monthCompletedCount = 0;
+
+                  for (final entry in rangeSnapshots.entries) {
+                    final parts = entry.key.split('-');
+                    if (parts.length == 3 &&
+                        int.tryParse(parts[0]) == selectedDate.year &&
+                        int.tryParse(parts[1]) == monthNumber) {
+                      monthTaskCount += entry.value.items.length;
+                      monthCompletedCount += entry.value.completedCount;
+                    }
                   }
-                }
 
-                return InkWell(
-                  onTap: () => onSelectMonth(monthDate),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(10.0),
-                    decoration: BoxDecoration(
-                      color: isSelectedMonth
-                          ? theme.colorScheme.primaryContainer
-                          : isCurrentMonth
-                              ? Colors.amber.withValues(alpha: 0.15)
-                              : theme.cardColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
+                  final progressRatio = monthTaskCount > 0
+                      ? (monthCompletedCount / monthTaskCount).clamp(0.0, 1.0)
+                      : 0.0;
+
+                  return InkWell(
+                    onTap: () => onSelectMonth(monthDate),
+                    borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+                    child: Container(
+                      padding: const EdgeInsets.all(CalendarTokens.spacingM),
+                      decoration: BoxDecoration(
                         color: isSelectedMonth
-                            ? theme.colorScheme.primary
-                            : isCurrentMonth
-                                ? Colors.amber
-                                : theme.dividerColor.withValues(alpha: 0.2),
-                        width: isSelectedMonth ? 2.0 : 1.0,
+                            ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.15 : 0.08)
+                            : (isCurrentMonth
+                                ? theme.colorScheme.primary.withValues(alpha: 0.06)
+                                : (isDark
+                                    ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.40)
+                                    : theme.cardColor)),
+                        borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+                        border: Border.all(
+                          color: isSelectedMonth
+                              ? theme.colorScheme.primary
+                              : (isCurrentMonth
+                                  ? theme.colorScheme.primary.withValues(alpha: 0.5)
+                                  : theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder)),
+                          width: isSelectedMonth ? 1.5 : 1.0,
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              monthNames[index],
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: isCurrentMonth ? Colors.amber.shade900 : theme.textTheme.bodyLarge?.color,
-                              ),
-                            ),
-                            if (isCurrentMonth)
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: const BoxDecoration(
-                                  color: Colors.amber,
-                                  shape: BoxShape.circle,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                jalaliMonthNames[index],
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Vazirmatn',
+                                  color: isCurrentMonth || isSelectedMonth
+                                      ? theme.colorScheme.primary
+                                      : theme.textTheme.bodyLarge?.color,
                                 ),
                               ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '$monthTaskCount items',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                              if (isCurrentMonth)
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${toPersianDigits(monthTaskCount.toString())} برنامه',
+                                style: TextStyle(
+                                  fontSize: CalendarTokens.textMeta,
+                                  fontFamily: 'Vazirmatn',
+                                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.60),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            if (monthTaskCount > 0)
-                              LinearProgressIndicator(
-                                value: (monthCompletedCount / monthTaskCount).clamp(0.0, 1.0),
-                                backgroundColor: theme.dividerColor.withValues(alpha: 0.2),
-                                color: Colors.green,
-                                minHeight: 3,
+                              const SizedBox(height: 4),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(2),
+                                child: LinearProgressIndicator(
+                                  value: progressRatio,
+                                  minHeight: 3,
+                                  backgroundColor: theme.dividerColor.withValues(alpha: 0.12),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    monthCompletedCount == monthTaskCount && monthTaskCount > 0
+                                        ? CalendarTokens.emerald
+                                        : theme.colorScheme.primary,
+                                  ),
+                                ),
                               ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

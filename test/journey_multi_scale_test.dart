@@ -63,10 +63,10 @@ void main() {
         ),
       ));
 
-      expect(find.text('Week Overview'), findsOneWidget);
-      expect(find.text('Sat'), findsOneWidget);
+      expect(find.text('نمای هفتگی'), findsOneWidget);
+      expect(find.text('شنبه'), findsWidgets);
 
-      await tester.tap(find.text('Sat'));
+      await tester.tap(find.text('شنبه').first);
       await tester.pumpAndSettle();
 
       expect(tappedDate, isNotNull);
@@ -85,10 +85,10 @@ void main() {
         ),
       ));
 
-      expect(find.text('Sat'), findsOneWidget);
-      expect(find.text('15'), findsOneWidget);
+      expect(find.text('ش'), findsOneWidget);
+      expect(find.text('۱۵'), findsOneWidget);
 
-      await tester.tap(find.text('15'));
+      await tester.tap(find.text('۱۵'));
       await tester.pumpAndSettle();
 
       expect(tappedDate?.day, equals(15));
@@ -107,10 +107,10 @@ void main() {
         ),
       ));
 
-      expect(find.text('Year 2026 Overview'), findsOneWidget);
-      expect(find.text('Jan'), findsOneWidget);
+      expect(find.text('نمای سال ۲۰۲۶'), findsOneWidget);
+      expect(find.text('فروردین'), findsOneWidget);
 
-      await tester.tap(find.text('May'));
+      await tester.tap(find.text('مرداد'));
       await tester.pumpAndSettle();
 
       expect(tappedMonth?.month, equals(5));
