@@ -4,6 +4,7 @@ import 'package:ritmo/core/domain/agenda/analysis/agenda_gap_calculator.dart';
 import 'package:ritmo/core/domain/agenda/analysis/agenda_overload_detector.dart';
 import 'package:ritmo/core/domain/agenda/analysis/agenda_suggestion_ranker.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/domain/agenda/sleep_window_resolver.dart';
 
 class DayAgendaSnapshotBuilder {
   const DayAgendaSnapshotBuilder({
@@ -18,7 +19,11 @@ class DayAgendaSnapshotBuilder {
   final AgendaOverloadDetector overloadDetector;
   final AgendaSuggestionRanker suggestionRanker;
 
-  DayAgendaSnapshot buildSnapshot(DayAgenda dayAgenda, {DateTime? now}) {
+  DayAgendaSnapshot buildSnapshot(
+    DayAgenda dayAgenda, {
+    DateTime? now,
+    SleepWindowBlock? sleepWindow,
+  }) {
     final currentTime = now ?? DateTime.now();
     final items = dayAgenda.items;
 
@@ -47,21 +52,26 @@ class DayAgendaSnapshotBuilder {
     AgendaItem? next;
 
     final timedItems = items.where((i) => i.isTimed).toList();
+    timedItems.sort((a, b) {
+      final aM = _parseMinutes(a.timeOfDay!);
+      final bM = _parseMinutes(b.timeOfDay!);
+      return aM.compareTo(bM);
+    });
+
     final currentMinutes = (currentTime.hour * 60) + currentTime.minute;
 
     for (final item in timedItems) {
-      final parts = item.timeOfDay!.split(':');
-      if (parts.length != 2) continue;
-      final startH = int.tryParse(parts[0]) ?? 0;
-      final startM = int.tryParse(parts[1]) ?? 0;
-      final startMinutes = (startH * 60) + startM;
-      final duration = item.durationMinutes ?? 30;
+      final startMinutes = _parseMinutes(item.timeOfDay!);
+      var duration = item.durationMinutes ?? 30;
+      if (duration <= 0) duration = 30;
       final endMinutes = startMinutes + duration;
 
       if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
-        current = item;
+        current ??= item;
       } else if (startMinutes > currentMinutes) {
-        next ??= item;
+        if (!item.isCompleted && next == null) {
+          next = item;
+        }
       }
     }
 
@@ -75,6 +85,15 @@ class DayAgendaSnapshotBuilder {
       currentActivity: current,
       nextActivity: next,
       suggestions: suggestions,
+      sleepWindow: sleepWindow,
     );
+  }
+
+  static int _parseMinutes(String timeOfDay) {
+    final parts = timeOfDay.split(':');
+    if (parts.length != 2) return 0;
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = int.tryParse(parts[1]) ?? 0;
+    return (h * 60) + m;
   }
 }

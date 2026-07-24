@@ -2,6 +2,7 @@ import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/analysis/agenda_conflict_detector.dart';
 import 'package:ritmo/core/domain/agenda/analysis/agenda_gap_calculator.dart';
 import 'package:ritmo/core/domain/agenda/analysis/agenda_suggestion_ranker.dart';
+import 'package:ritmo/core/domain/agenda/sleep_window_resolver.dart';
 
 class DayAgendaSnapshot {
   const DayAgendaSnapshot({
@@ -14,6 +15,7 @@ class DayAgendaSnapshot {
     this.currentActivity,
     this.nextActivity,
     required this.suggestions,
+    this.sleepWindow,
   });
 
   final DayAgenda dayAgenda;
@@ -25,6 +27,7 @@ class DayAgendaSnapshot {
   final AgendaItem? currentActivity;
   final AgendaItem? nextActivity;
   final List<AgendaSuggestion> suggestions;
+  final SleepWindowBlock? sleepWindow;
 
   String get dateStr => dayAgenda.dateStr;
   List<AgendaItem> get items => dayAgenda.items;

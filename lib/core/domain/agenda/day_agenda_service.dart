@@ -161,6 +161,9 @@ class DayAgendaService {
     final coursesEnabled = settingsMap['module_courses_enabled'] == 'true';
     final konkurEnabled = settingsMap['module_konkur_enabled'] == 'true' &&
         settingsMap['konkur_show_in_dashboard'] != 'false';
+    final sportsEnabled = settingsMap['module_sports_enabled'] == 'true' ||
+        settingsMap['module_supplementary_sports_enabled'] == 'true';
+    final medicineEnabled = settingsMap['module_medicine_enabled'] == 'true';
 
     // Cycle gates mirror the Home dashboard (conservative: dashboard consent).
     final isFemale = CyclePrivacyGuard.isVisible(settingsMap);
@@ -324,6 +327,38 @@ class DayAgendaService {
         }
       }
     }
+    final sportsPlansByDay = <int, List<Map<String, dynamic>>>{};
+    if (sportsEnabled && opts.wants(AgendaDomain.sport)) {
+      try {
+        final plans = await db.query('ss_workout_plan');
+        for (final p in plans) {
+          final dow = p['dayOfWeek'] as int?;
+          if (dow != null) {
+            sportsPlansByDay.putIfAbsent(dow, () => []).add(Map<String, dynamic>.from(p));
+          }
+        }
+      } catch (e) {
+        debugPrint('DayAgendaService sports query error: $e');
+      }
+    }
+
+    // Preload medicine logs if enabled
+    final medicineLogsByDate = <String, List<Map<String, dynamic>>>{};
+    if (medicineEnabled && opts.wants(AgendaDomain.medicine)) {
+      try {
+        final logs = await db.query('medication_logs');
+        for (final l in logs) {
+          final schedTime = l['scheduledTime'] as int?;
+          if (schedTime != null) {
+            final dt = DateTime.fromMillisecondsSinceEpoch(schedTime);
+            final ds = _dateStr(dt);
+            medicineLogsByDate.putIfAbsent(ds, () => []).add(Map<String, dynamic>.from(l));
+          }
+        }
+      } catch (e) {
+        debugPrint('DayAgendaService medicine query error: $e');
+      }
+    }
 
     return _AgendaContext(
       db: db,
@@ -332,6 +367,8 @@ class DayAgendaService {
       coursesEnabled: coursesEnabled,
       konkurEnabled: konkurEnabled,
       cycleAllowed: cycleAllowed,
+      sportsEnabled: sportsEnabled,
+      medicineEnabled: medicineEnabled,
       routineSource: routineSource,
       completionsByDate: completionsByDate,
       prayerPractices: prayerPractices,
@@ -344,6 +381,8 @@ class DayAgendaService {
       konkurSubjectNames: konkurSubjectNames,
       cycleOutput: cycleOutput,
       goalStepsByDate: goalStepsByDate,
+      sportsPlansByDay: sportsPlansByDay,
+      medicineLogsByDate: medicineLogsByDate,
       cachedHijriDates: cachedHijriDates,
       latitude: latitude,
       longitude: longitude,
@@ -377,11 +416,13 @@ class DayAgendaService {
       AgendaDomain.routine: true,
       AgendaDomain.prayer: ctx.religionEnabled,
       AgendaDomain.mustahab: ctx.religionEnabled,
-      AgendaDomain.worshipDebt: ctx.religionEnabled,
+      AgendaDomain.worshipDebt: ctx.religionEnabled && opts.includeWorshipDebt,
       AgendaDomain.course: ctx.coursesEnabled,
       AgendaDomain.goalStep: true,
       AgendaDomain.konkur: ctx.konkurEnabled,
       AgendaDomain.cycle: ctx.cycleAllowed,
+      AgendaDomain.sport: ctx.sportsEnabled,
+      AgendaDomain.medicine: ctx.medicineEnabled,
     };
 
     if (opts.wants(AgendaDomain.routine)) {
@@ -438,6 +479,14 @@ class DayAgendaService {
     if (ctx.cycleAllowed && opts.wants(AgendaDomain.cycle)) {
       final cycleItem = _collectCycle(ctx, date, dateStr, isToday);
       if (cycleItem != null) items.add(cycleItem);
+    }
+
+    if (ctx.sportsEnabled && opts.wants(AgendaDomain.sport)) {
+      items.addAll(_collectSports(ctx, dateStr, date));
+    }
+
+    if (ctx.medicineEnabled && opts.wants(AgendaDomain.medicine)) {
+      items.addAll(_collectMedicine(ctx, dateStr, isToday));
     }
 
     final filtered = opts.includeCompleted
@@ -1023,6 +1072,63 @@ class DayAgendaService {
     );
   }
 
+  List<AgendaItem> _collectSports(
+    _AgendaContext ctx,
+    String dateStr,
+    DateTime date,
+  ) {
+    final items = <AgendaItem>[];
+    final plans = ctx.sportsPlansByDay[date.weekday] ?? const [];
+    for (final plan in plans) {
+      final id = plan['id'] as String;
+      final estMins = plan['estimatedMinutes'] as int? ?? 45;
+      final muscleGroups = plan['muscleGroups'] as String? ?? 'تمرین ورزشی';
+      items.add(AgendaItem(
+        id: 'sport:plan:$id',
+        domain: AgendaDomain.sport,
+        sourceId: id,
+        title: 'برنامه ورزشی: $muscleGroups',
+        subtitle: '$estMins دقیقه',
+        dateStr: dateStr,
+        durationMinutes: estMins,
+        category: Category.fitness,
+        priority: 1.4,
+        deepLink: AgendaDeepLink(domain: AgendaDomain.sport, targetId: id),
+        meta: {'workoutPlan': plan},
+      ));
+    }
+    return items;
+  }
+
+  List<AgendaItem> _collectMedicine(
+    _AgendaContext ctx,
+    String dateStr,
+    bool isToday,
+  ) {
+    final items = <AgendaItem>[];
+    final logs = ctx.medicineLogsByDate[dateStr] ?? const [];
+    for (final log in logs) {
+      final id = log['id'] as String;
+      final status = log['status'] as String? ?? 'TAKEN';
+      final isDone = status == 'TAKEN';
+      items.add(AgendaItem(
+        id: 'medicine:log:$id',
+        domain: AgendaDomain.medicine,
+        sourceId: id,
+        title: 'یادآور دارو',
+        subtitle: log['note'] as String?,
+        dateStr: dateStr,
+        category: Category.medical,
+        completion: isDone ? AgendaCompletion.done : AgendaCompletion.pending,
+        priority: 2.0,
+        isEssential: true,
+        deepLink: AgendaDeepLink(domain: AgendaDomain.medicine, targetId: id),
+        meta: {'medicationLog': log},
+      ));
+    }
+    return items;
+  }
+
   DateTime? _parseDateTime(String dateStr, String? timeStr, {bool nextDayIfBefore = false, DateTime? referenceTime}) {
     if (timeStr == null || timeStr.isEmpty) return null;
     try {
@@ -1051,6 +1157,8 @@ class _AgendaContext {
     required this.coursesEnabled,
     required this.konkurEnabled,
     required this.cycleAllowed,
+    required this.sportsEnabled,
+    required this.medicineEnabled,
     required this.routineSource,
     required this.completionsByDate,
     required this.prayerPractices,
@@ -1063,6 +1171,8 @@ class _AgendaContext {
     required this.konkurSubjectNames,
     required this.cycleOutput,
     required this.goalStepsByDate,
+    required this.sportsPlansByDay,
+    required this.medicineLogsByDate,
     required this.cachedHijriDates,
     required this.latitude,
     required this.longitude,
@@ -1075,6 +1185,8 @@ class _AgendaContext {
   final bool coursesEnabled;
   final bool konkurEnabled;
   final bool cycleAllowed;
+  final bool sportsEnabled;
+  final bool medicineEnabled;
   final RoutineAgendaSource routineSource;
   final Map<String, Map<String, Map<String, dynamic>>> completionsByDate;
   final List<Map<String, dynamic>> prayerPractices;
@@ -1087,6 +1199,8 @@ class _AgendaContext {
   final Map<String, String> konkurSubjectNames;
   final CycleEngineOutput? cycleOutput;
   final Map<String, List<Map<String, dynamic>>> goalStepsByDate;
+  final Map<int, List<Map<String, dynamic>>> sportsPlansByDay;
+  final Map<String, List<Map<String, dynamic>>> medicineLogsByDate;
   final Map<String, HijriDate> cachedHijriDates;
   final double latitude;
   final double longitude;
