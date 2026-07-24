@@ -17,15 +17,15 @@ class CompletionGateway {
   Future<CompletionOutcome> submit(CompletionRequest request) async {
     try {
       return switch (request) {
-        RoutineCompletion req      => _handleRoutineCompletion(req),
-        RoutineSkip req            => _handleRoutineSkip(req),
-        RoutineSnooze req          => _handleRoutineSnooze(req),
-        CourseSessionCompletion req=> _handleCourseCompletion(req),
-        KonkurSessionCompletion req => _handleKonkurCompletion(req),
-        WorshipCompletion req      => _handleWorshipCompletion(req),
-        GoalStepCompletion req     => _handleGoalStepCompletion(req),
-        MedicationTake req         => _handleMedicationTake(req),
-        MovementCompletion _       => throw UnimplementedError('پرامپت ۰۲۴'),
+        final RoutineCompletion req        => _handleRoutineCompletion(req),
+        final RoutineSkip req              => _handleRoutineSkip(req),
+        final RoutineSnooze req            => _handleRoutineSnooze(req),
+        final CourseSessionCompletion req  => _handleCourseCompletion(req),
+        final KonkurSessionCompletion req  => _handleKonkurCompletion(req),
+        final WorshipCompletion req        => _handleWorshipCompletion(req),
+        final GoalStepCompletion req       => _handleGoalStepCompletion(req),
+        final MedicationTake req           => _handleMedicationTake(req),
+        final MovementCompletion _         => throw UnimplementedError('پرامپت ۰۲۴'),
       };
     } catch (e, st) {
       debugPrint('CompletionGateway submission error: $e\n$st');
