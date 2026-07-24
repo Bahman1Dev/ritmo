@@ -111,6 +111,14 @@ enum WorkoutTier {
       case WorkoutTier.full:    return const Color(0xFF10B981);
     }
   }
+
+  String get description {
+    switch (this) {
+      case WorkoutTier.minimal: return 'تمرین فشرده ۱۰ دقیقه‌ای برای روزهای پرمشغله';
+      case WorkoutTier.light:   return 'تمرین متوازن ۲۵ دقیقه‌ای برای حفظ ریتم';
+      case WorkoutTier.full:    return 'تمرین کامل ۵۰ دقیقه‌ای برای حداکثر نتیجه';
+    }
+  }
 }
 
 enum ProgressionType {

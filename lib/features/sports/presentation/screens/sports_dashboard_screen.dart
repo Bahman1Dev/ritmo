@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/features/sports/presentation/providers/sports_providers.dart';
 import 'package:ritmo/features/sports/domain/entities/sports_entities.dart';
-import 'package:ritmo/features/sports/presentation/screens/workout_session_screen.dart';
+import 'package:ritmo/features/supplementary_sports/presentation/ss_workout_session_screen.dart';
 import 'package:ritmo/features/sports/presentation/screens/readiness_checkin_sheet.dart';
 import 'package:ritmo/features/sports/presentation/screens/progress_screen.dart';
 
@@ -422,9 +422,8 @@ class SportsDashboardScreen extends ConsumerWidget {
   }
 
   void _startWorkout(BuildContext context, WidgetRef ref) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkoutSessionScreen(
-      sessionId: 'default',
-      title: 'تمرین امروز',
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const SSWorkoutSessionScreen(
+      planId: 'default',
     )));
   }
 

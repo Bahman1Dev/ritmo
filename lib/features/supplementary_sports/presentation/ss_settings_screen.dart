@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
-import 'package:ritmo/core/services/alarm_scheduler_service.dart';
+
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/supplementary_sports/data/models/ss_user_profile_model.dart';
@@ -11,6 +11,9 @@ import 'package:ritmo/features/supplementary_sports/presentation/ss_onboarding_f
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/primary_button.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/ss_lottie_player.dart';
 import 'package:ritmo/features/supplementary_sports/supplementary_sports_theme.dart';
+
+import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
+import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -86,42 +89,57 @@ class _SSSettingsScreenState extends State<SSSettingsScreen> {
 
   Future<void> _updateMainRoutineSchedule(bool enabled, TimeOfDay time) async {
     try {
+      const routineId = 'routine_supplementary_sports';
+      final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+      final now = DateTime.now().millisecondsSinceEpoch;
+
       final db = await DatabaseHelper.instance.database;
+      final check = await db.query('routines', where: 'id = ?', whereArgs: [routineId]);
+      final exists = check.isNotEmpty;
 
-      // 1. Ensure Routine exists
-      final check = await db.query('routines', where: 'id = ?', whereArgs: ['routine_supplementary_sports']);
-      if (check.isEmpty) {
-        await db.insert('routines', {
-          'id': 'routine_supplementary_sports',
-          'title': 'ورزش تکمیلی',
-          'description': 'تمرینات ورزشی Fitify',
-          'durationMinutes': 30,
-          'itemType': 'ROUTINE',
-          'createdAt': DateTime.now().millisecondsSinceEpoch,
-        });
-      }
+      final routineData = {
+        'id': routineId,
+        'title': 'ورزش تکمیلی',
+        'description': 'تمرینات ورزشی هوشمند',
+        'category': 'fitness',
+        'routineType': 'timeBased',
+        'notificationLevel': 'normal',
+        'isEssential': 0,
+        'targetDurationMinutes': 30,
+        'isArchived': enabled ? 0 : 1,
+        'displayOrder': 1,
+        'createdAt': exists ? check.first['createdAt'] ?? now : now,
+        'updatedAt': now,
+        'itemType': 'ROUTINE',
+        'reminderOffsetMinutes': 15,
+      };
 
-      // 2. Clear old schedules
-      await db.delete('routine_schedules', where: 'routineId = ?', whereArgs: ['routine_supplementary_sports']);
+      final scheduleData = {
+        'id': RitmoIdFactory.schedule(routineId),
+        'routineId': routineId,
+        'scheduleType': 'RECURRENCE',
+        'timeOfDay': timeStr,
+        'daysOfWeek': '6,7,1,2,3,4,5',
+        'createdAt': exists ? check.first['createdAt'] ?? now : now,
+        'updatedAt': now,
+      };
 
-      // 3. Insert new schedule if enabled
-      if (enabled) {
-        final now = DateTime.now().millisecondsSinceEpoch;
-        final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-        
-        await db.insert('routine_schedules', {
-          'id': 'sched_ss',
-          'routineId': 'routine_supplementary_sports',
-          'scheduleType': 'DAILY',
-          'timeOfDay': timeStr,
-          'daysOfWeek': '[1,2,3,4,5,6,7]',
-          'escalationPolicy': 'NONE',
-          'createdAt': now,
-          'updatedAt': now,
-        });
-
-        // 4. Fire alarm scheduler
-        await AlarmSchedulerService.scheduleNextAlarms();
+      if (exists) {
+        await RitmoExecutionKernel.instance.execute(
+          EditRoutineCommand(
+            routineId: routineId,
+            routineData: routineData,
+            scheduleData: enabled ? scheduleData : null,
+            applyToAll: true,
+          ),
+        );
+      } else if (enabled) {
+        await RitmoExecutionKernel.instance.execute(
+          CreateRoutineCommand(
+            routineData: routineData,
+            scheduleData: scheduleData,
+          ),
+        );
       }
     } catch (e) {
       debugPrint('Error updating main routine schedule: $e');

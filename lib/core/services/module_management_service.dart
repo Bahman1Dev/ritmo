@@ -116,27 +116,36 @@ class ModuleManagementService {
     try {
       final db = await DatabaseHelper.instance.database;
       await db.transaction((txn) async {
-        void safeDelete(String table) async {
+        Future<void> safeDelete(String table) async {
           try {
             await txn.delete(table);
           } catch (_) {}
         }
 
-        void safeDeleteSettingsLike(String pattern) async {
+        Future<void> safeDeleteSettingsLike(String pattern) async {
           try {
             await txn.delete('app_settings', where: 'key LIKE ? AND key != ?', whereArgs: [pattern, key]);
           } catch (_) {}
         }
 
+        Future<void> safeDeleteSettingExact(String exactKey) async {
+          try {
+            await txn.delete('app_settings', where: 'key = ?', whereArgs: [exactKey]);
+          } catch (_) {}
+        }
+
         switch (key) {
           case 'module_religion_enabled':
-            safeDelete('worship_debts');
-            safeDelete('worship_seasons');
-            safeDelete('worship_practices');
-            safeDelete('fasting_debt');
-            safeDeleteSettingsLike('religion_%');
-            safeDeleteSettingsLike('worship_%');
-            safeDeleteSettingsLike('prayer_%');
+            await safeDelete('worship_debts');
+            await safeDelete('worship_seasons');
+            await safeDelete('worship_practices');
+            await safeDelete('fasting_debt');
+            await safeDeleteSettingsLike('religion_%');
+            await safeDeleteSettingsLike('religious_%');
+            await safeDeleteSettingsLike('worship_%');
+            await safeDeleteSettingsLike('prayer_%');
+            await safeDeleteSettingsLike('quran_%');
+            await safeDeleteSettingsLike('fasting_%');
             try {
               await txn.rawDelete("DELETE FROM routine_logs WHERE routineId IN (SELECT id FROM routines WHERE category = 'religious')");
               await txn.delete('routines', where: "category = 'religious'");
@@ -144,26 +153,27 @@ class ModuleManagementService {
             break;
 
           case 'module_medicine_enabled':
-            safeDelete('medications');
-            safeDelete('medication_logs');
-            safeDelete('prn_logs');
-            safeDelete('doctor_visits');
-            safeDelete('blood_sugar_logs');
-            safeDelete('blood_pressure_logs');
-            safeDelete('vital_signs_logs');
-            safeDelete('medical_documents');
-            safeDelete('medical_document_images');
-            safeDelete('vaccinations');
-            safeDelete('allergies');
-            safeDelete('medical_profile');
-            safeDelete('pregnancy_tracker');
-            safeDelete('pregnancy_checkups');
-            safeDelete('pregnancy_symptoms');
-            safeDelete('kick_counts');
-            safeDelete('contraction_timer');
-            safeDeleteSettingsLike('health_%');
-            safeDeleteSettingsLike('medical_%');
-            safeDeleteSettingsLike('medication_%');
+            await safeDelete('medications');
+            await safeDelete('medication_logs');
+            await safeDelete('prn_logs');
+            await safeDelete('doctor_visits');
+            await safeDelete('blood_sugar_logs');
+            await safeDelete('blood_pressure_logs');
+            await safeDelete('vital_signs_logs');
+            await safeDelete('medical_documents');
+            await safeDelete('medical_document_images');
+            await safeDelete('vaccinations');
+            await safeDelete('allergies');
+            await safeDelete('medical_profile');
+            await safeDelete('pregnancy_tracker');
+            await safeDelete('pregnancy_checkups');
+            await safeDelete('pregnancy_symptoms');
+            await safeDelete('kick_counts');
+            await safeDelete('contraction_timer');
+            await safeDeleteSettingsLike('health_%');
+            await safeDeleteSettingsLike('medical_%');
+            await safeDeleteSettingsLike('medication_%');
+            await safeDeleteSettingsLike('medicine_%');
             try {
               await txn.rawDelete("DELETE FROM routine_logs WHERE routineId IN (SELECT id FROM routines WHERE category = 'medical')");
               await txn.delete('routines', where: "category = 'medical'");
@@ -172,16 +182,17 @@ class ModuleManagementService {
 
           case 'module_sports_enabled':
           case 'module_supplementary_sports_enabled':
-            safeDelete('workout_logs');
-            safeDelete('workout_split_days');
-            safeDelete('workout_recovery_logs');
-            safeDelete('ss_user_profile');
-            safeDelete('ss_workout_plans');
-            safeDelete('ss_workout_sessions');
-            safeDelete('ss_exercise_logs');
-            safeDelete('ss_favorites');
-            safeDeleteSettingsLike('sports_%');
-            safeDeleteSettingsLike('ss_%');
+            await safeDelete('workout_logs');
+            await safeDelete('workout_split_days');
+            await safeDelete('workout_recovery_logs');
+            await safeDelete('ss_user_profile');
+            await safeDelete('ss_workout_plans');
+            await safeDelete('ss_workout_sessions');
+            await safeDelete('ss_exercise_logs');
+            await safeDelete('ss_favorites');
+            await safeDeleteSettingsLike('sports_%');
+            await safeDeleteSettingsLike('ss_%');
+            await safeDeleteSettingsLike('workout_%');
             try {
               await txn.rawDelete("DELETE FROM routine_logs WHERE routineId IN (SELECT id FROM routines WHERE category = 'sports')");
               await txn.delete('routines', where: "category = 'sports'");
@@ -189,65 +200,72 @@ class ModuleManagementService {
             break;
 
           case 'module_cycle_enabled':
-            safeDelete('cycle_logs');
-            safeDelete('cycle_periods');
-            safeDelete('cycle_day_logs');
-            safeDelete('cycle_reminders_config');
-            safeDeleteSettingsLike('cycle_%');
+            await safeDelete('cycle_logs');
+            await safeDelete('cycle_periods');
+            await safeDelete('cycle_day_logs');
+            await safeDelete('cycle_reminders_config');
+            await safeDeleteSettingsLike('cycle_%');
+            await safeDeleteSettingsLike('period_%');
+            await safeDeleteSettingExact('show_cycle_in_calendar');
+            await safeDeleteSettingExact('period_duration_days');
+            try {
+              await txn.delete('worship_debts', where: "id LIKE 'debt_cycle_fast_%'");
+            } catch (_) {}
             break;
 
           case 'module_courses_enabled':
-            safeDelete('courses');
-            safeDelete('course_sessions');
-            safeDelete('course_logs');
-            safeDeleteSettingsLike('courses_%');
-            safeDeleteSettingsLike('course_%');
+            await safeDelete('courses');
+            await safeDelete('course_sessions');
+            await safeDelete('course_logs');
+            await safeDeleteSettingsLike('courses_%');
+            await safeDeleteSettingsLike('course_%');
             break;
 
           case 'module_goals_enabled':
-            safeDelete('goals');
-            safeDelete('goal_steps');
-            safeDeleteSettingsLike('goals_%');
-            safeDeleteSettingsLike('goal_%');
+            await safeDelete('goals');
+            await safeDelete('goal_steps');
+            await safeDeleteSettingsLike('goals_%');
+            await safeDeleteSettingsLike('goal_%');
             break;
 
           case 'module_assistant_enabled':
-            safeDelete('assistant_chats');
-            safeDelete('assistant_audit_log');
-            safeDelete('assistant_threads');
-            safeDelete('assistant_suggestions');
-            safeDeleteSettingsLike('assistant_%');
+            await safeDelete('assistant_chats');
+            await safeDelete('assistant_audit_log');
+            await safeDelete('assistant_threads');
+            await safeDelete('assistant_suggestions');
+            await safeDeleteSettingsLike('assistant_%');
             break;
 
           case 'module_konkur_enabled':
-            safeDelete('konkur_subjects');
-            safeDelete('konkur_topics');
-            safeDelete('konkur_mock_exams');
-            safeDelete('konkur_mock_exam_results');
-            safeDelete('konkur_study_sessions');
-            safeDelete('konkur_plan_items');
-            safeDeleteSettingsLike('konkur_%');
+            await safeDelete('konkur_subjects');
+            await safeDelete('konkur_topics');
+            await safeDelete('konkur_mock_exams');
+            await safeDelete('konkur_mock_exam_results');
+            await safeDelete('konkur_study_sessions');
+            await safeDelete('konkur_plan_items');
+            await safeDeleteSettingsLike('konkur_%');
             break;
 
           case 'module_energy_enabled':
-            safeDelete('energy_logs');
-            safeDelete('mood_logs');
-            safeDeleteSettingsLike('energy_%');
-            safeDeleteSettingsLike('mood_%');
+            await safeDelete('energy_logs');
+            await safeDelete('mood_logs');
+            await safeDeleteSettingsLike('energy_%');
+            await safeDeleteSettingsLike('mood_%');
             break;
 
           case 'module_sleep_enabled':
-            safeDelete('sleep_logs');
-            safeDelete('bedtime_diagnostics');
-            safeDeleteSettingsLike('sleep_%');
+            await safeDelete('sleep_logs');
+            await safeDelete('bedtime_diagnostics');
+            await safeDeleteSettingsLike('sleep_%');
+            await safeDeleteSettingsLike('bedtime_%');
             break;
 
           case 'module_progressive_habits_enabled':
-            safeDelete('daily_checkins');
-            safeDelete('daily_reflections');
-            safeDeleteSettingsLike('habit_%');
-            safeDeleteSettingsLike('reflection_%');
-            safeDeleteSettingsLike('checkin_%');
+            await safeDelete('daily_checkins');
+            await safeDelete('daily_reflections');
+            await safeDeleteSettingsLike('habit_%');
+            await safeDeleteSettingsLike('reflection_%');
+            await safeDeleteSettingsLike('checkin_%');
             try {
               await txn.rawDelete("DELETE FROM routine_logs WHERE routineId IN (SELECT id FROM routines WHERE category = 'habits')");
               await txn.delete('routines', where: "category = 'habits'");

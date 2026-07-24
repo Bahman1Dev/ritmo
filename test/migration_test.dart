@@ -220,5 +220,21 @@ void main() {
       expect(allExecutedSql, contains('idx_medlog_routine'));
       expect(allExecutedSql, contains('idx_medlog_time'));
     });
+
+    test('onUpgrade from v49 to v50 alters courses, course_sessions, creates course_active_timers and backfills completedAt', () async {
+      final mockDb = MockDatabase();
+      await DatabaseHelper.instance.onUpgrade(mockDb, 49, 50);
+      final allExecutedSql = mockDb.executedStatements.join('\n').toLowerCase();
+
+      expect(allExecutedSql, contains('alter table course_sessions add column completedat'));
+      expect(allExecutedSql, contains('alter table course_sessions add column isuserscheduled'));
+      expect(allExecutedSql, contains('alter table course_sessions add column activitykind'));
+      expect(allExecutedSql, contains('alter table courses add column adaptivelastappliedat'));
+      expect(allExecutedSql, contains('alter table courses add column masteryscore'));
+      expect(allExecutedSql, contains('alter table courses add column reviewenabled'));
+      expect(allExecutedSql, contains('create table if not exists course_active_timers'));
+      expect(allExecutedSql, contains('update course_sessions'));
+      expect(allExecutedSql, contains('idx_course_sessions_planned'));
+    });
   });
 }

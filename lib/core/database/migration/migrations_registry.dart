@@ -2194,5 +2194,335 @@ class MigrationV49 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV50 extends Migration {
+  @override
+  int get version => 50;
+
+  @override
+  Future<void> up(Database db) async {
+    // 1. New columns for course_sessions
+    final sessionColumns = [
+      'ALTER TABLE course_sessions ADD COLUMN completedAt INTEGER;',
+      'ALTER TABLE course_sessions ADD COLUMN isUserScheduled INTEGER NOT NULL DEFAULT 0;',
+      'ALTER TABLE course_sessions ADD COLUMN plannedStartTime TEXT;',
+      'ALTER TABLE course_sessions ADD COLUMN estimatedDurationMinutes INTEGER;',
+      'ALTER TABLE course_sessions ADD COLUMN sectionTitle TEXT;',
+      'ALTER TABLE course_sessions ADD COLUMN learningObjective TEXT;',
+      'ALTER TABLE course_sessions ADD COLUMN difficulty INTEGER;',
+      "ALTER TABLE course_sessions ADD COLUMN activityKind TEXT NOT NULL DEFAULT 'LEARN';",
+      'ALTER TABLE course_sessions ADD COLUMN understandingScore INTEGER;',
+      'ALTER TABLE course_sessions ADD COLUMN needsReview INTEGER NOT NULL DEFAULT 0;',
+      'ALTER TABLE course_sessions ADD COLUMN keyTakeaway TEXT;',
+      'ALTER TABLE course_sessions ADD COLUMN openQuestion TEXT;',
+      'ALTER TABLE course_sessions ADD COLUMN sourceSessionId TEXT;',
+      'ALTER TABLE course_sessions ADD COLUMN displayOrder INTEGER NOT NULL DEFAULT 0;',
+    ];
+
+    for (final sql in sessionColumns) {
+      try {
+        await db.execute(sql);
+      } catch (_) {}
+    }
+
+    // 2. New columns for courses
+    final courseColumns = [
+      'ALTER TABLE courses ADD COLUMN adaptiveLastAppliedAt INTEGER;',
+      'ALTER TABLE courses ADD COLUMN masteryScore REAL NOT NULL DEFAULT 0;',
+      'ALTER TABLE courses ADD COLUMN reviewEnabled INTEGER NOT NULL DEFAULT 0;',
+    ];
+
+    for (final sql in courseColumns) {
+      try {
+        await db.execute(sql);
+      } catch (_) {}
+    }
+
+    // 3. New table for active study timers
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS course_active_timers (
+            courseSessionId TEXT PRIMARY KEY,
+            courseId TEXT NOT NULL,
+            startedAt INTEGER NOT NULL,
+            pausedAccumulatedMs INTEGER NOT NULL DEFAULT 0,
+            state TEXT NOT NULL DEFAULT 'RUNNING',
+            targetDurationMinutes INTEGER,
+            updatedAt INTEGER NOT NULL,
+            FOREIGN KEY(courseSessionId) REFERENCES course_sessions(id) ON DELETE CASCADE
+        );
+      ''');
+    } catch (_) {}
+
+    // 4. Mandatory backfills
+    try {
+      await db.execute('''
+        UPDATE course_sessions
+        SET completedAt = updatedAt
+        WHERE completionStatus = 'COMPLETED' AND completedAt IS NULL;
+      ''');
+    } catch (_) {}
+
+    try {
+      await db.execute('''
+        UPDATE course_sessions
+        SET displayOrder = sessionNumber
+        WHERE displayOrder = 0;
+      ''');
+    } catch (_) {}
+
+    // 5. Indexes
+    final indexes = [
+      'CREATE INDEX IF NOT EXISTS idx_course_sessions_planned ON course_sessions(plannedDate, completionStatus);',
+      'CREATE INDEX IF NOT EXISTS idx_course_sessions_course_status ON course_sessions(courseId, completionStatus);',
+      'CREATE INDEX IF NOT EXISTS idx_course_sessions_completedAt ON course_sessions(completedAt);',
+      'CREATE INDEX IF NOT EXISTS idx_courses_status ON courses(status, isArchived);',
+      'CREATE INDEX IF NOT EXISTS idx_courses_linkedGoalId ON courses(linkedGoalId);',
+    ];
+
+    for (final sql in indexes) {
+      try {
+        await db.execute(sql);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
+class MigrationV51 extends Migration {
+  @override
+  int get version => 51;
+
+  @override
+  Future<void> up(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS station_bundles (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          description TEXT,
+          category TEXT NOT NULL,
+          itemsJson TEXT NOT NULL,
+          isUserTemplate INTEGER NOT NULL DEFAULT 0,
+          usageCount INTEGER NOT NULL DEFAULT 0,
+          createdAt INTEGER NOT NULL,
+          updatedAt INTEGER NOT NULL
+      );
+    ''');
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
+class MigrationV52 extends Migration {
+  @override
+  int get version => 52;
+
+  @override
+  Future<void> up(Database db) async {
+    try {
+      await db.execute('ALTER TABLE ss_workout_plan ADD COLUMN week INTEGER NOT NULL DEFAULT 1;');
+    } catch (_) {}
+
+    try {
+      await db.execute("ALTER TABLE ss_workout_plan ADD COLUMN executionMode TEXT NOT NULL DEFAULT 'LINEAR';");
+    } catch (_) {}
+
+    try {
+      await db.execute('ALTER TABLE ss_user_profile ADD COLUMN programStartDate TEXT;');
+    } catch (_) {}
+
+    try {
+      await db.execute('ALTER TABLE ss_user_profile ADD COLUMN deloadEveryNWeeks INTEGER NOT NULL DEFAULT 4;');
+    } catch (_) {}
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ss_plan_schedule (
+          id TEXT PRIMARY KEY,
+          planId TEXT NOT NULL,
+          scheduledDate TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'PENDING',
+          sessionId TEXT,
+          shiftedFromDate TEXT,
+          createdAt INTEGER NOT NULL,
+          updatedAt INTEGER NOT NULL,
+          FOREIGN KEY(planId) REFERENCES ss_workout_plan(id) ON DELETE CASCADE
+      );
+    ''');
+    await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_ss_plan_schedule_date ON ss_plan_schedule(scheduledDate);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_ss_plan_schedule_plan ON ss_plan_schedule(planId);');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ss_exercise_pr (
+          id TEXT PRIMARY KEY,
+          exerciseId TEXT NOT NULL,
+          prType TEXT NOT NULL,
+          value REAL NOT NULL,
+          sessionId TEXT,
+          achievedAt INTEGER NOT NULL,
+          UNIQUE(exerciseId, prType)
+      );
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ss_session_set_log (
+          id TEXT PRIMARY KEY,
+          sessionId TEXT NOT NULL,
+          exerciseId TEXT NOT NULL,
+          setNumber INTEGER NOT NULL,
+          weight REAL,
+          reps INTEGER,
+          rir INTEGER,
+          durationSeconds INTEGER,
+          isCompleted INTEGER NOT NULL DEFAULT 1,
+          loggedAt INTEGER NOT NULL,
+          FOREIGN KEY(sessionId) REFERENCES ss_workout_session_log(id) ON DELETE CASCADE
+      );
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_ss_set_log_session ON ss_session_set_log(sessionId);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_ss_set_log_exercise ON ss_session_set_log(exerciseId);');
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
+class MigrationV53 extends Migration {
+  @override
+  int get version => 53;
+
+  @override
+  Future<void> up(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS movement_kinds (
+          code TEXT PRIMARY KEY,
+          titleFa TEXT NOT NULL,
+          emoji TEXT NOT NULL,
+          family TEXT NOT NULL,
+          baseMet REAL NOT NULL,
+          metLow REAL NOT NULL,
+          metHigh REAL NOT NULL,
+          primaryMetric TEXT,
+          secondaryMetric TEXT,
+          isOutdoor INTEGER NOT NULL DEFAULT 0,
+          isSocial INTEGER NOT NULL DEFAULT 0,
+          needsVenue INTEGER NOT NULL DEFAULT 0,
+          seasonMask TEXT,
+          jointImpact INTEGER NOT NULL DEFAULT 1,
+          aliasesFa TEXT,
+          isCustom INTEGER NOT NULL DEFAULT 0,
+          isEnabled INTEGER NOT NULL DEFAULT 1,
+          usageCount INTEGER NOT NULL DEFAULT 0,
+          lastUsedAt INTEGER,
+          sortOrder INTEGER NOT NULL DEFAULT 0,
+          createdAt INTEGER NOT NULL,
+          updatedAt INTEGER NOT NULL
+      );
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_movement_kinds_family ON movement_kinds(family);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_movement_kinds_usage ON movement_kinds(usageCount DESC);');
+
+    await safeAddColumn(db, 'workout_logs', 'kind', 'TEXT');
+    await safeAddColumn(db, 'workout_logs', 'distanceMeters', 'REAL');
+    await safeAddColumn(db, 'workout_logs', 'elevationMeters', 'REAL');
+    await safeAddColumn(db, 'workout_logs', 'laps', 'INTEGER');
+    await safeAddColumn(db, 'workout_logs', 'steps', 'INTEGER');
+    await safeAddColumn(db, 'workout_logs', 'avgHeartRate', 'INTEGER');
+    await safeAddColumn(db, 'workout_logs', 'metMinutes', 'REAL');
+    await safeAddColumn(db, 'workout_logs', 'caloriesKcal', 'REAL');
+    await safeAddColumn(db, 'workout_logs', 'venue', 'TEXT');
+    await safeAddColumn(db, 'workout_logs', 'companions', 'TEXT');
+    await safeAddColumn(db, 'workout_logs', 'sourceModule', 'TEXT');
+    await safeAddColumn(db, 'workout_logs', 'metricsJson', 'TEXT');
+    await safeAddColumn(db, 'workout_logs', 'endedAt', 'INTEGER');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_workout_logs_kind ON workout_logs(kind);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_workout_logs_met ON workout_logs(loggedAt, metMinutes);');
+
+    await safeAddColumn(db, 'routines', 'movementKind', 'TEXT');
+    await safeAddColumn(db, 'routines', 'movementTargetMetric', 'TEXT');
+    await safeAddColumn(db, 'routines', 'movementTargetValue', 'REAL');
+    await safeAddColumn(db, 'routines', 'movementVenue', 'TEXT');
+    await safeAddColumn(db, 'routines', 'movementIsMeetup', 'INTEGER DEFAULT 0');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS movement_budget (
+          id TEXT PRIMARY KEY DEFAULT 'default',
+          weeklyMetMinutesTarget REAL NOT NULL DEFAULT 500,
+          weeklyActiveDaysTarget INTEGER NOT NULL DEFAULT 4,
+          isAutoAdjusted INTEGER NOT NULL DEFAULT 1,
+          updatedAt INTEGER NOT NULL
+      );
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS movement_pr (
+          id TEXT PRIMARY KEY,
+          kind TEXT NOT NULL,
+          prType TEXT NOT NULL,
+          value REAL NOT NULL,
+          logId TEXT,
+          achievedAt INTEGER NOT NULL,
+          UNIQUE(kind, prType)
+      );
+    ''');
+
+    // T7: Migrate legacy workout_logs.type -> kind and compute metMinutes + caloriesKcal
+    try {
+      final legacyRows = await db.query('workout_logs', where: 'kind IS NULL OR kind = ""');
+      for (final row in legacyRows) {
+        final id = row['id'] as String;
+        final rawType = (row['type'] as String? ?? '').toUpperCase();
+        final duration = (row['durationMinutes'] as num? ?? 0).toInt();
+
+        String newKind = 'OTHER';
+        double met = 4.0;
+
+        if (rawType == 'SWIMMING') {
+          newKind = 'SWIMMING';
+          met = 7.0;
+        } else if (rawType == 'CYCLING') {
+          newKind = 'CYCLING';
+          met = 7.5;
+        } else if (rawType == 'RUNNING') {
+          newKind = 'RUNNING';
+          met = 9.0;
+        } else if (rawType == 'WALKING') {
+          newKind = 'WALKING';
+          met = 3.5;
+        } else if (rawType == 'CARDIO') {
+          newKind = 'CARDIO_GENERIC';
+          met = 6.0;
+        } else if (rawType == 'STRENGTH' ||
+            ['CHEST', 'BACK', 'LEGS', 'ABS', 'FULLBODY', 'SHOULDERS', 'ARMS'].contains(rawType)) {
+          newKind = 'STRENGTH_GYM';
+          met = 5.0;
+        }
+
+        final metMins = met * duration;
+        final calories = (met * 3.5 * 70.0 / 200.0) * duration;
+
+        await db.update(
+          'workout_logs',
+          {
+            'kind': newKind,
+            'metMinutes': metMins,
+            'caloriesKcal': calories,
+            'sourceModule': 'MOVEMENT',
+          },
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+    } catch (e) {
+      // Safe catch for empty tables or missing columns during migration
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
 
 

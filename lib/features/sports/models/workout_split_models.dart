@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ritmo/features/sports/domain/entities/sports_entities.dart';
+export 'package:ritmo/features/sports/domain/entities/sports_entities.dart' show WorkoutTier;
 
 /// گروه‌های عضلانی + گزینه‌های ویژه
 enum MuscleGroup {
@@ -53,48 +55,6 @@ enum MuscleGroup {
 
   static MuscleGroup fromCode(String s) => MuscleGroup.values.firstWhere(
       (e) => e.code == s.toUpperCase(), orElse: () => MuscleGroup.rest);
-}
-
-/// سه نسخه‌ی تمرین — مثل تیرهای روتین‌های ریتمو
-enum WorkoutTier {
-  minimal, light, full;
-
-  String get code => name.toUpperCase();
-
-  String get label {
-    switch (this) {
-      case WorkoutTier.minimal: return 'حداقلی';
-      case WorkoutTier.light:   return 'سبک';
-      case WorkoutTier.full:    return 'کامل';
-    }
-  }
-
-  String get description {
-    switch (this) {
-      case WorkoutTier.minimal: return '۱۰ دقیقه — فقط زنجیره رو حفظ کن';
-      case WorkoutTier.light:   return '۲۵ دقیقه — تمرین سبک';
-      case WorkoutTier.full:    return '۵۰ دقیقه — تمرین کامل';
-    }
-  }
-
-  int get defaultMinutes {
-    switch (this) {
-      case WorkoutTier.minimal: return 10;
-      case WorkoutTier.light:   return 25;
-      case WorkoutTier.full:    return 50;
-    }
-  }
-
-  Color get color {
-    switch (this) {
-      case WorkoutTier.minimal: return const Color(0xffFBBF24);
-      case WorkoutTier.light:   return const Color(0xff00D9F6);
-      case WorkoutTier.full:    return const Color(0xff00F5A0);
-    }
-  }
-
-  static WorkoutTier fromCode(String s) => WorkoutTier.values.firstWhere(
-      (e) => e.code == s.toUpperCase(), orElse: () => WorkoutTier.full);
 }
 
 /// محل تمرین

@@ -634,7 +634,7 @@ class DashboardController {
         icon: CupertinoIcons.flag_fill, accentColor: const Color(0xffF59E0B),
         primary: total > 0 ? '${fa(done)}/${fa(total)}' : '—',
         secondary: 'گامهای امروز',
-        backgroundImage: 'assets/images/goals_card_top.png',
+        backgroundImage: 'assets/images/konkur_card_top.png',
       ));
     }
 
@@ -654,7 +654,7 @@ class DashboardController {
         moduleId: 'konkur', title: 'کنکور',
         icon: CupertinoIcons.doc_plaintext, accentColor: const Color(0xff8B5CF6),
         primary: '${fa(todaysKonkurPlanItems.length)} مبحث', secondary: 'برنامهی امروز',
-        backgroundImage: 'assets/images/konkur_card_top.png',
+        backgroundImage: 'assets/images/goals_card_top.png',
       ));
     }
 

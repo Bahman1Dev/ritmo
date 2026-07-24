@@ -140,6 +140,15 @@ class RitmoColors extends ThemeExtension<RitmoColors> {
   final Color iconSecondary;
   final Color shadowColor;
 
+  Color get onSurface => textPrimary;
+  Color get onSurfaceVariant => textSecondary;
+  Color get surfaceVariant => cardFill;
+  Color get outlineVariant => border;
+  Color get secondary => primary;
+  Color get surface => card;
+  Color get background => bg;
+  Color get onBackground => textPrimary;
+
   @override
   RitmoColors copyWith({
     Color? bg,

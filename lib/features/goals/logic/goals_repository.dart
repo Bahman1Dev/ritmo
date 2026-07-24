@@ -1,5 +1,6 @@
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
+import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:ritmo/features/courses/models/course_models.dart';
 import 'package:ritmo/features/goals/models/goal_models.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
@@ -124,14 +125,24 @@ class GoalsRepository {
         'stepId': stepId,
         'goalId': goalId,
         'completed': newVal == 1,
-        'date': ?scheduledDate,
+        'date': scheduledDate,
       },
+    ));
+    RitmoEventBus().fire(RitmoEvent(
+      type: 'GoalChanged',
+      timestamp: DateTime.now(),
+      payload: {'goalId': goalId},
     ));
   }
 
   Future<void> deleteGoal(String goalId) async {
     final db = await DatabaseHelper.instance.database;
     await db.delete('goals', where: 'id = ?', whereArgs: [goalId]);
+    RitmoEventBus().fire(RitmoEvent(
+      type: 'GoalChanged',
+      timestamp: DateTime.now(),
+      payload: {'goalId': goalId},
+    ));
   }
 
   Future<void> updateGoalStatus(String goalId, String status) async {
@@ -142,6 +153,11 @@ class GoalsRepository {
       where: 'id = ?',
       whereArgs: [goalId],
     );
+    RitmoEventBus().fire(RitmoEvent(
+      type: 'GoalChanged',
+      timestamp: DateTime.now(),
+      payload: {'goalId': goalId},
+    ));
   }
 
   Future<void> saveGoal({
@@ -154,7 +170,7 @@ class GoalsRepository {
     List<Map<String, dynamic>>? subGoals,
   }) async {
     final db = await DatabaseHelper.instance.database;
-    final mainGoalId = 'goal_${DateTime.now().millisecondsSinceEpoch}';
+    final mainGoalId = RitmoIdFactory.goal();
     final nowMs = DateTime.now().millisecondsSinceEpoch;
 
     await db.insert('goals', {
@@ -177,7 +193,7 @@ class GoalsRepository {
         final stepTitle = step['title'] as String;
         if (stepTitle.isNotEmpty) {
           await db.insert('goal_steps', {
-            'id': 'step_${mainGoalId}_direct_$i',
+            'id': RitmoIdFactory.goalStep(),
             'goalId': mainGoalId,
             'title': stepTitle,
             'isCompleted': 0,
@@ -194,7 +210,7 @@ class GoalsRepository {
         final sg = subGoals[i];
         final sgTitle = sg['title'] as String;
         if (sgTitle.isNotEmpty) {
-          final subGoalId = 'goal_${mainGoalId}_sub_$i';
+          final subGoalId = RitmoIdFactory.goal();
           await db.insert('goals', {
             'id': subGoalId,
             'parentGoalId': mainGoalId,
@@ -214,7 +230,7 @@ class GoalsRepository {
             final stepTitle = step['title'] as String;
             if (stepTitle.isNotEmpty) {
               await db.insert('goal_steps', {
-                'id': 'step_${subGoalId}_$j',
+                'id': RitmoIdFactory.goalStep(),
                 'goalId': subGoalId,
                 'title': stepTitle,
                 'isCompleted': 0,
@@ -234,7 +250,7 @@ class GoalsRepository {
         final stepTitle = step['title'] as String;
         if (stepTitle.isNotEmpty) {
           await db.insert('goal_steps', {
-            'id': 'step_${mainGoalId}_$i',
+            'id': RitmoIdFactory.goalStep(),
             'goalId': mainGoalId,
             'title': stepTitle,
             'isCompleted': 0,
@@ -246,5 +262,11 @@ class GoalsRepository {
         }
       }
     }
+
+    RitmoEventBus().fire(RitmoEvent(
+      type: 'GoalChanged',
+      timestamp: DateTime.now(),
+      payload: {'goalId': mainGoalId},
+    ));
   }
 }

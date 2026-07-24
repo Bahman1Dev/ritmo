@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show compute, debugPrint;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:ritmo/features/supplementary_sports/data/seed/ss_exercise_animation_map.dart';
 import 'package:ritmo/features/supplementary_sports/data/seed/ss_exercise_farsi_names.dart';
+import 'package:ritmo/features/sports/movement/data/seed/movement_kinds_seed.dart';
 import 'package:sqflite/sqflite.dart';
 
 class SeedService {
@@ -12,6 +13,7 @@ class SeedService {
     await seedWorshipPractices(db);
     await seedIranCities(db);
     await seedSupplementarySports(db);
+    await MovementKindsSeed.seed(db);
   }
 
   static Future<void> seedSettings(Database db) async {

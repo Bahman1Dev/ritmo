@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/analytics/movement_load_calculator.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
+import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/supplementary_sports/data/models/ss_user_profile_model.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/continuity_bar.dart';
@@ -8,7 +10,6 @@ import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/ss_lottie_player.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/stat_card.dart';
 import 'package:ritmo/features/supplementary_sports/supplementary_sports_theme.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// Screen summarizing the results of a completed supplementary sports workout session.
 class SSSessionSummaryScreen extends StatefulWidget {
@@ -89,51 +90,15 @@ class _SSSessionSummaryScreenState extends State<SSSessionSummaryScreen> {
         );
       });
 
-      // 2. Load weight
-      final prefs = await SharedPreferences.getInstance();
-      _userWeight = prefs.getDouble('ss_onboarding_weight') ?? 70.0;
-
-      // 3. Calculate MET calories
-      final results = await db.rawQuery('''
-        SELECT e.category, e.cat_cardio, e.cat_plyometric, e.cat_core, e.cat_stretching, e.cat_yoga
-        FROM ss_workout_session_log s
-        JOIN ss_workout_exercise_crossref c ON s.planId = c.planId
-        JOIN ss_exercise e ON c.exerciseId = e.id
-        WHERE s.id = ?
-      ''', [widget.sessionId]);
-
-      var avgMet = 6.0; // fallback strength MET
-      if (results.isNotEmpty) {
-        var totalMet = 0.0;
-        for (final row in results) {
-          final cat = row['category']?.toString() ?? '';
-          final cardioVal =
-              int.tryParse(row['cat_cardio']?.toString() ?? '0') ?? 0;
-          final plyoVal =
-              int.tryParse(row['cat_plyometric']?.toString() ?? '0') ?? 0;
-          final coreVal = int.tryParse(row['cat_core']?.toString() ?? '0') ?? 0;
-          final stretchVal =
-              int.tryParse(row['cat_stretching']?.toString() ?? '0') ?? 0;
-          final yogaVal = int.tryParse(row['cat_yoga']?.toString() ?? '0') ?? 0;
-
-          var met = 6.0;
-          if (cardioVal >= 4 || plyoVal >= 4 || cat == 'cardio') {
-            met = 8.0;
-          } else if (coreVal >= 4 || cat == 'core') {
-            met = 4.0;
-          } else if (stretchVal >= 4 ||
-              yogaVal >= 4 ||
-              cat == 'stretching' ||
-              cat == 'yoga') {
-            met = 2.5;
-          }
-          totalMet += met;
-        }
-        avgMet = totalMet / results.length;
-      }
-
-      final durationHours = widget.durationSeconds / 3600.0;
-      _caloriesBurned = avgMet * _userWeight * durationHours;
+      // 2. Load weight & MET
+      _userWeight = await MovementLoadCalculator.getUserWeightKg(db);
+      final avgMet = await MovementLoadCalculator.metForSsSession(db, widget.sessionId);
+      final durationMins = (widget.durationSeconds / 60).round();
+      _caloriesBurned = MovementLoadCalculator.calories(
+        met: avgMet,
+        weightKg: _userWeight,
+        durationMinutes: durationMins,
+      );
 
       setState(() {
         _continuity = contList;
@@ -148,53 +113,59 @@ class _SSSessionSummaryScreenState extends State<SSSessionSummaryScreen> {
   }
 
   Future<void> _registerInMainCalendar() async {
+    if (_isRegisteredInCalendar) return;
     setState(() {
       _isRegistering = true;
     });
 
     try {
       final db = await DatabaseHelper.instance.database;
+      final today = DateTime.now();
+      final todayIso = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
-      // 1. Ensure Routine exists in main database
-      final check = await db.query(
-        'routines',
-        where: 'id = ?',
-        whereArgs: ['routine_supplementary_sports'],
+      // 1. Update ss_plan_schedule
+      await db.update(
+        'ss_plan_schedule',
+        {
+          'status': 'COMPLETED',
+          'sessionId': widget.sessionId,
+          'updatedAt': today.millisecondsSinceEpoch,
+        },
+        where: 'scheduledDate = ?',
+        whereArgs: [todayIso],
       );
-      if (check.isEmpty) {
-        await db.insert('routines', {
-          'id': 'routine_supplementary_sports',
-          'title': 'ورزش تکمیلی',
-          'description': 'تمرینات ورزشی Fitify',
-          'durationMinutes': 30,
-          'itemType': 'ROUTINE',
-          'createdAt': DateTime.now().millisecondsSinceEpoch,
+
+      // 2. Anti-duplicate guard for workout_logs today
+      final startOfToday = DateTime(today.year, today.month, today.day).millisecondsSinceEpoch;
+      final startOfTomorrow = DateTime(today.year, today.month, today.day + 1).millisecondsSinceEpoch;
+
+      final existingLogs = await db.query(
+        'workout_logs',
+        where: 'date >= ? AND date < ?',
+        whereArgs: [startOfToday, startOfTomorrow],
+      );
+
+      if (existingLogs.isEmpty) {
+        await db.insert('workout_logs', {
+          'id': RitmoIdFactory.workoutLog(),
+          'date': today.millisecondsSinceEpoch,
+          'activityType': 'ورزش تکمیلی',
+          'durationMinutes': (widget.durationSeconds / 60).round(),
+          'perceivedExertion': 5,
+          'createdAt': today.millisecondsSinceEpoch,
+          'updatedAt': today.millisecondsSinceEpoch,
         });
       }
-
-      // 2. Log completion
-      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-      final compId = 'comp_ss_${DateTime.now().millisecondsSinceEpoch}';
-
-      await db.insert('routine_completions', {
-        'id': compId,
-        'routineId': 'routine_supplementary_sports',
-        'completionDate': todayStr,
-        'completionTime': DateTime.now().millisecondsSinceEpoch,
-        'resultType': 'COMPLETED',
-        'resultSource': 'USER',
-        'durationMinutes': (widget.durationSeconds / 60).round(),
-        'createdAt': DateTime.now().millisecondsSinceEpoch,
-      });
 
       // 3. Fire event to live sync calendar views
       RitmoEventBus().fire(
         RitmoEvent(
-          type: 'RoutineCompleted',
+          type: RitmoEventType.workoutLogChanged.code,
           timestamp: DateTime.now(),
           payload: {
-            'date': todayStr,
-            'routineId': 'routine_supplementary_sports',
+            'date': todayIso,
+            'source': 'supplementary_sports',
+            'sessionId': widget.sessionId,
           },
         ),
       );
@@ -203,20 +174,8 @@ class _SSSessionSummaryScreenState extends State<SSSessionSummaryScreen> {
         _isRegisteredInCalendar = true;
         _isRegistering = false;
       });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'تمرین با موفقیت در تقویم ریتمو ثبت شد! 🗓',
-              style: TextStyle(fontFamily: 'Vazirmatn'),
-            ),
-            backgroundColor: Color(0xFF2E7D5B),
-          ),
-        );
-      }
     } catch (e) {
-      debugPrint('Error registering in calendar: $e');
+      debugPrint('Error registering session in calendar: $e');
       setState(() {
         _isRegistering = false;
       });

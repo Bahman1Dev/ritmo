@@ -101,27 +101,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   }
 
   Future<void> _editCourse() async {
-    final initialValues = {
-      'title': _course.title,
-      'totalSessions': _course.totalSessions,
-      'sessionDurationMinutes': _course.sessionDurationMinutes,
-      'courseType': _course.courseType.name,
-      'unitLabel': _course.unitLabel,
-      'provider': _course.provider,
-      'weeklyTargetSessions': _course.weeklyTargetSessions,
-      'energyRule': _course.energyRule,
-      'preferredDays': _course.preferredDays,
-      'reminderEnabled': _course.reminderEnabled,
-      'preferredTime': _course.preferredTime,
-      'linkedGoalId': _course.linkedGoalId,
-    };
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => CreateCourseSheet(
-        initialValues: initialValues,
+        editingCourse: _course,
         onCourseCreated: _loadCourseData,
       ),
     ).then((_) => _loadCourseData());

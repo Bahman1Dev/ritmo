@@ -2,18 +2,69 @@
 
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/routines/presentation/planner_controller.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_day_of_week_selector.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_duration_picker.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_timeline_picker.dart';
+import 'package:ritmo/features/sports/movement/data/movement_repository.dart';
+import 'package:ritmo/features/sports/movement/domain/movement_kind.dart';
 
-class SportsStep2Form extends StatelessWidget {
+class SportsStep2Form extends StatefulWidget {
   const SportsStep2Form({super.key, required this.controller});
   final PlannerController controller;
 
   @override
+  State<SportsStep2Form> createState() => _SportsStep2FormState();
+}
+
+class _SportsStep2FormState extends State<SportsStep2Form> {
+  List<MovementKind> _availableKinds = [];
+  bool _isLoadingKinds = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadKinds();
+  }
+
+  Future<void> _loadKinds() async {
+    final kinds = await MovementRepository.instance.getKinds();
+    if (mounted) {
+      setState(() {
+        _availableKinds = kinds;
+        _isLoadingKinds = false;
+      });
+    }
+  }
+
+  Widget _buildOpChip(String code, String label, IconData icon) {
+    final colors = context.colors;
+    final isSelected = widget.controller.sportsOpType == code;
+    return Expanded(
+      child: ChoiceChip(
+        avatar: Icon(icon, size: 18, color: isSelected ? Colors.white : colors.onSurface),
+        label: Text(label, style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: isSelected ? Colors.white : colors.onSurface)),
+        selected: isSelected,
+        selectedColor: colors.primary,
+        onSelected: (_) {
+          widget.controller.sportsOpType = code;
+          widget.controller.notifyListeners();
+          setState(() {});
+        },
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final c = widget.controller;
+
+    // Calculate weekly load preview (MET-min)
+    final daysCount = c.recurrenceType == 'EVERY_DAY' ? 7 : (c.recurrenceType == 'CUSTOM_DAYS' ? (c.worshipSelectedDays.length) : 3);
+    final duration = c.sportsDuration > 0 ? c.sportsDuration : 30;
+    final estWeeklyMetMins = daysCount * duration * 4.0; // ~4.0 average MET
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -34,188 +85,79 @@ class SportsStep2Form extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          if (controller.sportsOpType == 'LOG') ...[
-            const Text(
-              'نوع تمرین',
-              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildTypeChip('STRENGTH', '🏋️ بدنسازی/قدرتی'),
-                _buildTypeChip('RUNNING', '🏃 دویدن'),
-                _buildTypeChip('WALKING', '🚶 پیاده‌روی'),
-                _buildTypeChip('YOGA', '🧘 یوگا'),
-                _buildTypeChip('CYCLING', '🚴 دوچرخه‌سوار'),
-                _buildTypeChip('SWIMMING', '🏊 شنا'),
-              ],
-            ),
-            const SizedBox(height: 16),
+          // Kind Selector from MovementRepository
+          const Text(
+            'انتخاب نوع ورزش',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          _isLoadingKinds
+              ? const Center(child: CircularProgressIndicator())
+              : Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _availableKinds.take(12).map((k) {
+                    final isSelected = c.sportsType == k.code;
+                    return ChoiceChip(
+                      label: Text('${k.emoji} ${k.titleFa}', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: isSelected ? Colors.white : colors.onSurface)),
+                      selected: isSelected,
+                      selectedColor: colors.primary,
+                      onSelected: (_) {
+                        c.sportsType = k.code;
+                        c.notifyListeners();
+                        setState(() {});
+                      },
+                    );
+                  }).toList(),
+                ),
+          const SizedBox(height: 16),
+
+          if (c.sportsOpType == 'LOG') ...[
             Text(
-              'مدت تمرین: ${controller.sportsDuration} دقیقه',
-              style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
-            ),
-            Slider(
-              value: controller.sportsDuration.toDouble(),
-              min: 5,
-              max: 180,
-              divisions: 35,
-              activeColor: colors.primary,
-              onChanged: (val) {
-                controller.sportsDuration = val.toInt();
-                controller.notifyListeners();
-              },
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'شدت تمرین',
-              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _buildIntensityChip('LIGHT', 'سبک'),
-                const SizedBox(width: 8),
-                _buildIntensityChip('MEDIUM', 'متوسط'),
-                const SizedBox(width: 8),
-                _buildIntensityChip('HIGH', 'شدید'),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'مکان تمرین',
-              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _buildLocationChip('GYM', '🏟️ باشگاه'),
-                const SizedBox(width: 8),
-                _buildLocationChip('HOME', '🏠 خانه'),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'حس و حال شما',
-              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _buildFeelingChip('خوب', '😊 خوب'),
-                const SizedBox(width: 8),
-                _buildFeelingChip('عالی', '🤩 عالی'),
-                const SizedBox(width: 8),
-                _buildFeelingChip('خسته', '😫 خسته'),
-              ],
+              'می‌خواهید برای همین الان یک لاگ فعالیت حرکتی ثبت کنید.',
+              style: TextStyle(fontFamily: 'Vazirmatn', color: colors.onSurfaceVariant, fontSize: 13),
             ),
           ] else ...[
-            PlannerTimelinePicker(controller: controller),
+            PlannerTimelinePicker(controller: c),
             const SizedBox(height: 20),
-            PlannerDurationPicker(controller: controller),
+            PlannerDurationPicker(controller: c),
             const SizedBox(height: 16),
-            const Text(
-              'روزهای تمرین',
-              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
-            ),
+            const Text('روزهای تمرین در هفته:', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13)),
             const SizedBox(height: 8),
             PlannerDayOfWeekSelector(
-              selectedDays: controller.worshipSelectedDays,
+              selectedDays: c.worshipSelectedDays,
               onChanged: (list) {
-                controller.worshipSelectedDays = list;
-                controller.notifyListeners();
+                c.worshipSelectedDays = list;
+                c.notifyListeners();
+                setState(() {});
               },
+            ),
+            const SizedBox(height: 16),
+
+            // Weekly Load Preview Box (T17 requirement)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.insights_rounded, color: Color(0xFF10B981)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'پیش‌نمایش بار هفتگی: ${daysCount.toPersianDigits()} روز × ${duration.toPersianDigits()} دقیقه ≈ ${estWeeklyMetMins.round().toPersianDigits()} MET-min در هفته ⚡',
+                      style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildOpChip(String opType, String label, IconData icon) {
-    final sel = controller.sportsOpType == opType;
-    return ChoiceChip(
-      avatar: Icon(icon, color: sel ? Colors.white : const Color(0xff10B981), size: 16),
-      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
-      selected: sel,
-      selectedColor: const Color(0xff10B981),
-      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
-      onSelected: (val) {
-        if (val) {
-          controller.sportsOpType = opType;
-          if (opType == 'LOG') {
-            controller.title = 'فعالیت ورزشی';
-          }
-          controller.notifyListeners();
-        }
-      },
-    );
-  }
-
-  Widget _buildTypeChip(String type, String label) {
-    final sel = controller.sportsType == type;
-    return ChoiceChip(
-      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
-      selected: sel,
-      selectedColor: const Color(0xff10B981),
-      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
-      onSelected: (val) {
-        if (val) {
-          controller.sportsType = type;
-          controller.title = label.substring(2);
-          controller.notifyListeners();
-        }
-      },
-    );
-  }
-
-  Widget _buildIntensityChip(String intensity, String label) {
-    final sel = controller.sportsIntensity == intensity;
-    return ChoiceChip(
-      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
-      selected: sel,
-      selectedColor: const Color(0xff10B981),
-      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
-      onSelected: (val) {
-        if (val) {
-          controller.sportsIntensity = intensity;
-          controller.notifyListeners();
-        }
-      },
-    );
-  }
-
-  Widget _buildLocationChip(String loc, String label) {
-    final sel = controller.sportsLocation == loc;
-    return ChoiceChip(
-      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
-      selected: sel,
-      selectedColor: const Color(0xff10B981),
-      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
-      onSelected: (val) {
-        if (val) {
-          controller.sportsLocation = loc;
-          controller.notifyListeners();
-        }
-      },
-    );
-  }
-
-  Widget _buildFeelingChip(String feel, String label) {
-    final sel = controller.sportsFeeling == feel;
-    return ChoiceChip(
-      label: Text(label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
-      selected: sel,
-      selectedColor: const Color(0xff10B981),
-      labelStyle: TextStyle(color: sel ? Colors.white : Colors.black),
-      onSelected: (val) {
-        if (val) {
-          controller.sportsFeeling = feel;
-          controller.notifyListeners();
-        }
-      },
     );
   }
 }

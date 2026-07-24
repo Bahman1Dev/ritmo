@@ -233,7 +233,7 @@ class SSWorkoutSessionScreen extends ConsumerStatefulWidget {
   const SSWorkoutSessionScreen({
     super.key,
     required this.planId,
-    required this.dayName,
+    this.dayName = 'تمرین امروز',
   });
   final String planId;
   final String dayName;

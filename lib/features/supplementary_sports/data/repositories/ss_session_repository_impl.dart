@@ -63,12 +63,12 @@ class SSSessionRepositoryImpl implements SSSessionRepository {
     final db = await DatabaseHelper.instance.database;
     final today = DateTime.now();
     final startOfToday = DateTime(today.year, today.month, today.day).millisecondsSinceEpoch;
-    final endOfToday = DateTime(today.year, today.month, today.day, 23, 59, 59).millisecondsSinceEpoch;
+    final startOfTomorrow = DateTime(today.year, today.month, today.day + 1).millisecondsSinceEpoch;
 
     final result = await db.query(
       'ss_workout_session_log',
-      where: 'startedAt >= ? AND startedAt <= ? AND finishedAt IS NOT NULL',
-      whereArgs: [startOfToday, endOfToday],
+      where: 'startedAt >= ? AND startedAt < ? AND finishedAt IS NOT NULL',
+      whereArgs: [startOfToday, startOfTomorrow],
     );
     return result.isNotEmpty;
   }
@@ -76,36 +76,60 @@ class SSSessionRepositoryImpl implements SSSessionRepository {
   @override
   Future<int> getCurrentStreak() async {
     final db = await DatabaseHelper.instance.database;
+    final today = DateTime.now();
+    final todayMidnight = DateTime(today.year, today.month, today.day);
+
+    final schedules = await db.query(
+      'ss_plan_schedule',
+      orderBy: 'scheduledDate DESC',
+    );
+
     final logs = await db.query(
       'ss_workout_session_log',
       where: 'finishedAt IS NOT NULL',
-      orderBy: 'startedAt DESC',
     );
-    if (logs.isEmpty) return 0;
 
-    final today = DateTime.now();
-    final todayMidnight = DateTime(today.year, today.month, today.day);
-    final yesterdayMidnight = todayMidnight.subtract(const Duration(hours: 26)); // safe yesterday
-    final yesterdayMidnightNormalized = DateTime(yesterdayMidnight.year, yesterdayMidnight.month, yesterdayMidnight.day);
-
-    final loggedMidnights = logs.map((log) {
+    final loggedDates = logs.map((log) {
       final dt = DateTime.fromMillisecondsSinceEpoch(log['startedAt']! as int);
-      return DateTime(dt.year, dt.month, dt.day);
+      return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
     }).toSet();
 
-    if (!loggedMidnights.contains(todayMidnight) && !loggedMidnights.contains(yesterdayMidnightNormalized)) {
-      return 0;
+    final scheduleMap = <String, String>{};
+    for (final row in schedules) {
+      scheduleMap[row['scheduledDate'] as String] = row['status'] as String;
     }
 
     var streak = 0;
-    var check = loggedMidnights.contains(todayMidnight) ? todayMidnight : yesterdayMidnightNormalized;
-    
-    while (loggedMidnights.contains(check)) {
-      streak++;
-      final prev = check.subtract(const Duration(hours: 26));
-      check = DateTime(prev.year, prev.month, prev.day);
+    var checkDate = todayMidnight;
+
+    final todayIso = '${todayMidnight.year}-${todayMidnight.month.toString().padLeft(2, '0')}-${todayMidnight.day.toString().padLeft(2, '0')}';
+    if (!loggedDates.contains(todayIso) && scheduleMap[todayIso] != 'REST') {
+      checkDate = todayMidnight.subtract(const Duration(days: 1));
     }
-    
+
+    while (true) {
+      final dateIso = '${checkDate.year}-${checkDate.month.toString().padLeft(2, '0')}-${checkDate.day.toString().padLeft(2, '0')}';
+      final status = scheduleMap[dateIso];
+
+      if (loggedDates.contains(dateIso) || status == 'COMPLETED' || status == 'SHIFTED') {
+        streak++;
+      } else if (status == 'REST') {
+        // Rest day maintains streak
+      } else {
+        if (schedules.isNotEmpty) {
+          final firstScheduleDate = schedules.last['scheduledDate'] as String;
+          if (dateIso.compareTo(firstScheduleDate) >= 0) {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+
+      checkDate = checkDate.subtract(const Duration(days: 1));
+      if (todayMidnight.difference(checkDate).inDays > 365) break;
+    }
+
     return streak;
   }
 

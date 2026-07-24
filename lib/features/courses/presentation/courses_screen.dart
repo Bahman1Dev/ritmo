@@ -11,6 +11,7 @@ import 'package:ritmo/features/courses/models/course_models.dart';
 import 'package:ritmo/features/courses/presentation/course_detail_screen.dart';
 import 'package:ritmo/features/courses/presentation/widgets/active_courses_section.dart';
 import 'package:ritmo/features/courses/presentation/widgets/ai_courses_assistant_sheet.dart';
+import 'package:ritmo/features/courses/presentation/widgets/ai_syllabus_sheet.dart';
 import 'package:ritmo/features/courses/presentation/widgets/completed_courses_section.dart';
 import 'package:ritmo/features/courses/presentation/widgets/courses_weekly_hero.dart';
 import 'package:ritmo/features/courses/presentation/widgets/create_course_sheet.dart';
@@ -59,14 +60,11 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
       final allCourses = [..._activeCourses, ..._completedCourses];
 
-      // 3. Fetch sessions for all courses
       _courseSessionsMap.clear();
-      final allSessions = <CourseSession>[];
-      for (final course in allCourses) {
-        final sessions = await CoursesRepository.instance.getSessionsForCourse(course.id);
-        _courseSessionsMap[course.id] = sessions;
-        allSessions.addAll(sessions);
-      }
+      final courseIds = allCourses.map((c) => c.id).toSet();
+      final sessionsBatchMap = await CoursesRepository.instance.getSessionsForCourses(courseIds);
+      _courseSessionsMap.addAll(sessionsBatchMap);
+      final allSessions = sessionsBatchMap.values.expand((element) => element).toList();
 
       // 4. Run CoursesEngine
       final engine = CoursesEngine();
@@ -125,6 +123,17 @@ class _CoursesScreenState extends State<CoursesScreen> {
     );
   }
 
+  void _openAiSyllabusSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => AiSyllabusSheet(
+        onImported: _loadAllData,
+      ),
+    ).then((_) => _loadAllData());
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -141,7 +150,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
-            'دوره‌های آموزشی',
+            'دوره‌ها و برنامه‌های آموزشی',
             style: TextStyle(
               fontFamily: 'Vazirmatn',
               fontSize: 18,
@@ -150,7 +159,11 @@ class _CoursesScreenState extends State<CoursesScreen> {
             ),
           ),
           actions: [
-            // AI Courses Assistant Button
+            IconButton(
+              icon: Icon(CupertinoIcons.doc_on_clipboard_fill, color: colors.primary),
+              tooltip: 'ورود سرفصل AI',
+              onPressed: _openAiSyllabusSheet,
+            ),
             IconButton(
               icon: Icon(CupertinoIcons.sparkles, color: colors.primary),
               onPressed: _openAiAssistantSheet,

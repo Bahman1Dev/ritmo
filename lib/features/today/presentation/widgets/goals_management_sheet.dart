@@ -6,6 +6,7 @@ import 'package:ritmo/core/ai/ai_gateway.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/ritmo_date_picker.dart';
+import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:ritmo/features/goals/presentation/widgets/goals_formatters.dart';
 
 class AiSubGoalInput {
@@ -305,7 +306,7 @@ class _GoalsManagementSheetState extends State<GoalsManagementSheet> {
           if (title.isNotEmpty) {
             final dateStr = input.scheduledDate?.toIso8601String().substring(0, 10);
             await db.insert('goal_steps', {
-              'id': 'step_${mainGoalId}_direct_$i',
+              'id': RitmoIdFactory.goalStep(),
               'goalId': mainGoalId,
               'title': title,
               'isCompleted': 0,
@@ -322,7 +323,7 @@ class _GoalsManagementSheetState extends State<GoalsManagementSheet> {
           final sg = _aiSubGoals[i];
           final sgTitle = sg.titleController.text.trim();
           if (sgTitle.isNotEmpty) {
-            final subGoalId = 'goal_${mainGoalId}_sub_$i';
+            final subGoalId = RitmoIdFactory.goal();
             
             await db.insert('goals', {
               'id': subGoalId,
@@ -341,7 +342,7 @@ class _GoalsManagementSheetState extends State<GoalsManagementSheet> {
               if (stepTitle.isNotEmpty) {
                 final dateStr = stepInput.scheduledDate?.toIso8601String().substring(0, 10);
                 await db.insert('goal_steps', {
-                  'id': 'step_${subGoalId}_$j',
+                  'id': RitmoIdFactory.goalStep(),
                   'goalId': subGoalId,
                   'title': stepTitle,
                   'isCompleted': 0,
@@ -362,7 +363,7 @@ class _GoalsManagementSheetState extends State<GoalsManagementSheet> {
           if (title.isNotEmpty) {
             final dateStr = input.scheduledDate?.toIso8601String().substring(0, 10);
             await db.insert('goal_steps', {
-              'id': 'step_${mainGoalId}_$i',
+              'id': RitmoIdFactory.goalStep(),
               'goalId': mainGoalId,
               'title': title,
               'isCompleted': 0,

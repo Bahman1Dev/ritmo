@@ -136,7 +136,7 @@ class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
             title: session.sessionTitle ?? 'جلسه ${session.sessionNumber}',
             source: TimelineSource.courseSession,
             sourceId: session.id,
-            isDone: session.completionStatus == 'COMPLETED',
+            isDone: session.isCompleted,
             subtitle: course.title,
           ));
         }

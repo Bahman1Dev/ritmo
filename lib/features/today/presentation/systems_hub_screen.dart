@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/systems_hub_logic.dart';
 import 'package:ritmo/core/localization/locale_repository.dart';
-import 'package:ritmo/core/services/alarm_scheduler_service.dart';
+
 import 'package:ritmo/core/services/premium_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/theme/theme_repository.dart';
@@ -24,7 +24,7 @@ import 'package:ritmo/features/supplementary_sports/presentation/ss_home_dashboa
 import 'package:ritmo/features/supplementary_sports/presentation/ss_intro_screen.dart';
 import 'package:ritmo/features/wellbeing/presentation/wellbeing_screen.dart';
 import 'package:ritmo/features/worship/presentation/worship_screen.dart';
-import 'package:sqflite/sqflite.dart';
+
 
 
 class SystemsHubScreen extends StatefulWidget {
@@ -605,7 +605,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
           title: 'کنکور',
           description: 'برنامه‌ریزی هوشمند، موفقیت',
           status: _konkurStatus,
-          illustrationAsset: 'assets/images/konkur_card_top.png',
+          illustrationAsset: 'assets/images/goals_card_top.png',
           onTap: () => _handleKonkurTap(colors),
           colors: colors,
           isDarkMode: isDarkMode,
@@ -623,7 +623,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
           title: 'اهداف و برنامه‌ها',
           description: 'برنامه‌ریزی برای بهترین خود',
           status: _goalsStatus,
-          illustrationAsset: 'assets/images/goals_card_top.png',
+          illustrationAsset: 'assets/images/konkur_card_top.png',
           onTap: () => _handleGoalsTap(colors),
           colors: colors,
           isDarkMode: isDarkMode,

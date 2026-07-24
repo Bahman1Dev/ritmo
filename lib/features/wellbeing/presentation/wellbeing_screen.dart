@@ -36,7 +36,7 @@ import 'package:ritmo/features/sleep/presentation/widgets/sleep_target_sheet.dar
 import 'package:ritmo/features/sleep/presentation/widgets/sleep_trends_section.dart';
 import 'package:ritmo/features/today/presentation/widgets/daily_reflection_sheet.dart';
 import 'package:ritmo/features/wellbeing/presentation/widgets/ai_wellbeing_assistant_sheet.dart';
-import 'package:sqflite/sqflite.dart';
+
 
 enum WellbeingSection { energy, sleep, reflection }
 

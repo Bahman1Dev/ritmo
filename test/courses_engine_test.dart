@@ -136,5 +136,73 @@ void main() {
 
       expect(output.studyStreakDays, 2); // 24 and 23 completed -> streak = 2
     });
+
+    test('REGRESSION TEST (C6): completing 3rd session completes course, weeklyDoneSessions must equal 3 (not 0 or 2)', () async {
+      final today = DateTime(2026, 6, 24); // Wed
+
+      // Course is now COMPLETED because all 3 sessions are completed!
+      final completedCourse = Course(
+        id: 'c_full',
+        title: 'Full Course',
+        totalSessions: 3,
+        sessionDurationMinutes: 30,
+        createdAt: 0,
+        updatedAt: 0,
+        courseType: CourseType.video,
+        preferredDays: [6, 1, 3],
+        status: CourseStatus.completed, // Status changed to COMPLETED!
+        completedAt: DateTime(2026, 6, 24, 15).millisecondsSinceEpoch,
+      );
+
+      final s1 = CourseSession(
+        id: 'sess_1',
+        courseId: 'c_full',
+        sessionNumber: 1,
+        plannedDate: '2026-06-20',
+        completionStatus: SessionStatus.completed,
+        completedAt: DateTime(2026, 6, 20, 10).millisecondsSinceEpoch,
+        actualDurationMinutes: 30,
+        createdAt: 0,
+        updatedAt: 0,
+      );
+
+      final s2 = CourseSession(
+        id: 'sess_2',
+        courseId: 'c_full',
+        sessionNumber: 2,
+        plannedDate: '2026-06-22',
+        completionStatus: SessionStatus.completed,
+        completedAt: DateTime(2026, 6, 22, 10).millisecondsSinceEpoch,
+        actualDurationMinutes: 30,
+        createdAt: 0,
+        updatedAt: 0,
+      );
+
+      final s3 = CourseSession(
+        id: 'sess_3',
+        courseId: 'c_full',
+        sessionNumber: 3,
+        plannedDate: '2026-06-24',
+        completionStatus: SessionStatus.completed,
+        completedAt: DateTime(2026, 6, 24, 15).millisecondsSinceEpoch,
+        actualDurationMinutes: 30,
+        createdAt: 0,
+        updatedAt: 0,
+      );
+
+      final engine = CoursesEngine();
+      final output = await engine.calculate(
+        CoursesEngineInput(
+          courses: [completedCourse],
+          sessions: [s1, s2, s3],
+          currentEnergyLevel: 'MEDIUM',
+          today: today,
+        ),
+      );
+
+      // Must be 3 (all sessions completed this week counted, despite course being COMPLETED)
+      expect(output.weeklyDoneSessions, equals(3));
+      expect(output.weeklyStudyMinutes, equals(90));
+    });
   });
 }

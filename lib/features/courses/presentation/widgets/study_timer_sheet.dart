@@ -1,20 +1,20 @@
 import 'dart:async';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/features/courses/logic/course_timer_service.dart';
 import 'package:ritmo/features/courses/logic/courses_repository.dart';
 import 'package:ritmo/features/courses/models/course_models.dart';
 import 'package:ritmo/features/courses/presentation/widgets/course_formatters.dart';
 
 class StudyTimerSheet extends StatefulWidget {
-
   const StudyTimerSheet({
     super.key,
     required this.course,
     required this.session,
     required this.onTimerFinished,
   });
+
   final Course course;
   final CourseSession session;
   final VoidCallback onTimerFinished;
@@ -34,19 +34,34 @@ class _StudyTimerSheetState extends State<StudyTimerSheet> with TickerProviderSt
   @override
   void initState() {
     super.initState();
-    _startTimer();
 
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+    );
+
+    final activeTimer = CourseTimerService.instance.activeTimer;
+    if (activeTimer != null && activeTimer.sessionId == widget.session.id) {
+      _secondsElapsed = CourseTimerService.instance.currentElapsedSeconds;
+      _isRunning = !activeTimer.isPaused;
+    } else {
+      CourseTimerService.instance.startTimer(widget.course.id, widget.session.id);
+      _secondsElapsed = 0;
+      _isRunning = true;
+    }
+
+    if (_isRunning) {
+      _pulseController.repeat(reverse: true);
+    }
+
+    _startTimer();
   }
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isRunning) {
         setState(() {
-          _secondsElapsed++;
+          _secondsElapsed = CourseTimerService.instance.currentElapsedSeconds;
         });
       }
     });
@@ -79,8 +94,10 @@ class _StudyTimerSheetState extends State<StudyTimerSheet> with TickerProviderSt
     setState(() {
       _isRunning = !_isRunning;
       if (_isRunning) {
+        CourseTimerService.instance.resumeTimer();
         _pulseController.repeat(reverse: true);
       } else {
+        CourseTimerService.instance.pauseTimer(_secondsElapsed);
         _pulseController.stop();
       }
     });
@@ -90,7 +107,6 @@ class _StudyTimerSheetState extends State<StudyTimerSheet> with TickerProviderSt
     final elapsedMinutes = (_secondsElapsed / 60).ceil();
     final actualDuration = elapsedMinutes > 0 ? elapsedMinutes : 1;
 
-    // Show a dialog to confirm save, input note
     final colors = context.colors;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -98,58 +114,68 @@ class _StudyTimerSheetState extends State<StudyTimerSheet> with TickerProviderSt
       context: context,
       builder: (context) => Directionality(
         textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: isDarkMode ? const Color(0xff12141C) : Colors.white,
-          title: Text(
-            'ثبت پایان جلسه مطالعه',
-            style: TextStyle(fontFamily: 'Vazirmatn', color: colors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'مدت زمان کل مطالعه: ${toPersianDigits(actualDuration)} دقیقه',
-                style: TextStyle(fontFamily: 'Vazirmatn', color: colors.textPrimary, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _noteController,
-                maxLines: 2,
-                style: TextStyle(fontFamily: 'Vazirmatn', color: colors.textPrimary, fontSize: 13),
-                decoration: RitmoTheme.inputDecoration(
-                  context,
-                  label: 'یادداشت یا خلاصه درس (اختیاری)',
-                  icon: CupertinoIcons.doc_text,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(
-                'ادامه تایمر',
-                style: TextStyle(fontFamily: 'Vazirmatn', color: colors.textSecondary),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          child: RitmoTheme.glassCardLight(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'ثبت و اتمام جلسه مطالعه',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'مدت زمان مطالعه شما: ${toPersianDigits(actualDuration.toString())} دقیقه',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.primary, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _noteController,
+                    maxLines: 3,
+                    style: const TextStyle(fontFamily: 'Vazirmatn', color: Colors.white, fontSize: 12.5),
+                    decoration: InputDecoration(
+                      hintText: 'یادداشت یا خلاصه جلسه (اختیاری)...',
+                      hintStyle: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+                      fillColor: isDarkMode ? Colors.black.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                      filled: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.border)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text('انصراف', style: TextStyle(fontFamily: 'Vazirmatn', color: colors.textSecondary)),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.success,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('تأیید و ذخیره', style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text(
-                'ثبت و ذخیره',
-                style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
 
-    if (result ?? false) {
+    if (result == true) {
+      await CourseTimerService.instance.stopTimer();
       await CoursesRepository.instance.completeSession(
         sessionId: widget.session.id,
         actualDurationMinutes: actualDuration,
@@ -157,14 +183,12 @@ class _StudyTimerSheetState extends State<StudyTimerSheet> with TickerProviderSt
       );
 
       widget.onTimerFinished();
+
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'جلسه مطالعه با موفقیت ثبت شد! ${toPersianDigits(actualDuration)} دقیقه 💪✨',
-              style: const TextStyle(fontFamily: 'Vazirmatn'),
-            ),
+            content: Text('${widget.course.unitLabelResolved} ${widget.session.sessionNumber} با موفقیت تکمیل شد. 🎉'),
             backgroundColor: colors.success,
           ),
         );
@@ -176,134 +200,142 @@ class _StudyTimerSheetState extends State<StudyTimerSheet> with TickerProviderSt
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    return RitmoTheme.glassCardLight(
-      borderRadius: 30,
-      child: Container(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 20,
-          bottom: 24 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 5,
-            decoration: BoxDecoration(
-              color: colors.textSecondary.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            widget.course.title,
-            style: TextStyle(
-              fontFamily: 'Vazirmatn',
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            widget.session.sessionTitle ?? '${widget.course.unitLabelResolved} ${widget.session.sessionNumber}',
-            style: TextStyle(
-              fontFamily: 'Vazirmatn',
-              fontSize: 13,
-              color: colors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 32),
-          // Timer display
-          AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, child) {
-              final scale = 1.0 + (_isRunning ? _pulseController.value * 0.05 : 0.0);
-              return Transform.scale(
-                scale: scale,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: RitmoTheme.glassCardLight(
+        borderRadius: 30,
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.6,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Header bar
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.course.title,
+                        style: TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontSize: 14,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${widget.course.unitLabelResolved} ${widget.session.sessionNumber}',
+                        style: const TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: Icon(CupertinoIcons.xmark_circle_fill, color: colors.textSecondary.withValues(alpha: 0.5)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+
+              // Timer Display
+              ScaleTransition(
+                scale: Tween<double>(begin: 0.98, end: 1.02).animate(_pulseController),
                 child: Container(
-                  width: 180,
-                  height: 180,
+                  width: 200,
+                  height: 200,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xff3B82F6).withValues(alpha: 0.1),
+                    gradient: LinearGradient(
+                      colors: [
+                        colors.primary.withValues(alpha: 0.2),
+                        colors.primary.withValues(alpha: 0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     border: Border.all(
-                      color: const Color(0xff3B82F6).withValues(alpha: 0.3),
-                      width: 4,
+                      color: colors.primary.withValues(alpha: _isRunning ? 0.6 : 0.2),
+                      width: 3,
                     ),
                     boxShadow: [
                       if (_isRunning)
                         BoxShadow(
-                          color: const Color(0xff3B82F6).withValues(alpha: 0.15),
-                          blurRadius: 30,
-                          spreadRadius: _pulseController.value * 10,
+                          color: colors.primary.withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          spreadRadius: 2,
                         ),
                     ],
                   ),
-                  child: Center(
-                    child: Text(
-                      toPersianDigits(_formatTime(_secondsElapsed)),
-                      style: TextStyle(
-                        fontFamily: 'Vazirmatn',
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: colors.textPrimary,
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        toPersianDigits(_formatTime(_secondsElapsed)),
+                        style: TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 40),
-          // Controls
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Pause / Resume
-              GestureDetector(
-                onTap: _togglePlayPause,
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: colors.primary.withValues(alpha: 0.12),
-                  ),
-                  child: Icon(
-                    _isRunning ? CupertinoIcons.pause_fill : CupertinoIcons.play_arrow_solid,
-                    color: colors.primary,
-                    size: 26,
+                      const SizedBox(height: 4),
+                      Text(
+                        _isRunning ? 'در حال مطالعه...' : 'متوقف شده',
+                        style: TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontSize: 12,
+                          color: _isRunning ? colors.success : colors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(width: 32),
-              // Stop / Finish
-              GestureDetector(
-                onTap: _finishSession,
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    // Use warning/orange color. Avoid RED because of clinical rule!
-                    color: colors.warning.withValues(alpha: 0.12),
+
+              // Control Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _togglePlayPause,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isRunning ? Colors.amber.shade700 : colors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    icon: Icon(_isRunning ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill, size: 20, color: Colors.white),
+                    label: Text(
+                      _isRunning ? 'مکس' : 'ادامه',
+                      style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
                   ),
-                  child: Icon(
-                    CupertinoIcons.square_fill,
-                    color: colors.warning,
-                    size: 20,
+                  ElevatedButton.icon(
+                    onPressed: _finishSession,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.success,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    icon: const Icon(CupertinoIcons.checkmark_alt, size: 20, color: Colors.white),
+                    label: const Text(
+                      'اتمام جلسه',
+                      style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
-        ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

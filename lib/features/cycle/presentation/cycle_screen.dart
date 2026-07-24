@@ -74,7 +74,9 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
   List<SymptomForecast> _personalForecasts = [];
   BodyBurdenScore? _burdenScore;
   CycleAdaptiveAdvice? _adaptiveAdvice;
+  // ignore: unused_field
   String? _checkinPromptFa;
+  // ignore: unused_field
   List<CycleAnomaly> _anomalies = [];
 
   bool _isPeriodForgotten(Map<String, dynamic> p) {

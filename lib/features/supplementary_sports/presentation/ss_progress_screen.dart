@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/analytics/movement_load_calculator.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/supplementary_sports/data/models/ss_session_models.dart';
@@ -112,45 +113,18 @@ class _SSProgressScreenState extends State<SSProgressScreen> {
 
       // 4. Calculate total calories using MET table logic
       var totalCalories = 0.0;
-      final prefs = await SharedPreferences.getInstance();
-      final weightVal = prefs.getDouble('ss_onboarding_weight') ?? 70.0;
+      final weightVal = await MovementLoadCalculator.getUserWeightKg(db);
 
       for (final log in allLogs) {
         final logId = log['id'].toString();
         final durationSec = log['durationSeconds'] as int? ?? 0;
-        
-        final exercises = await db.rawQuery('''
-          SELECT e.category, e.cat_cardio, e.cat_plyometric, e.cat_core, e.cat_stretching, e.cat_yoga
-          FROM ss_workout_session_log s
-          JOIN ss_workout_exercise_crossref c ON s.planId = c.planId
-          JOIN ss_exercise e ON c.exerciseId = e.id
-          WHERE s.id = ?
-        ''', [logId]);
-
-        var avgMet = 6.0;
-        if (exercises.isNotEmpty) {
-          var totalMet = 0.0;
-          for (final ex in exercises) {
-            final cat = ex['category']?.toString() ?? '';
-            final cardioVal = int.tryParse(ex['cat_cardio']?.toString() ?? '0') ?? 0;
-            final plyoVal = int.tryParse(ex['cat_plyometric']?.toString() ?? '0') ?? 0;
-            final coreVal = int.tryParse(ex['cat_core']?.toString() ?? '0') ?? 0;
-            final stretchVal = int.tryParse(ex['cat_stretching']?.toString() ?? '0') ?? 0;
-            final yogaVal = int.tryParse(ex['cat_yoga']?.toString() ?? '0') ?? 0;
-
-            var met = 6.0;
-            if (cardioVal >= 4 || plyoVal >= 4 || cat == 'cardio') {
-              met = 8.0;
-            } else if (coreVal >= 4 || cat == 'core') {
-              met = 4.0;
-            } else if (stretchVal >= 4 || yogaVal >= 4 || cat == 'stretching' || cat == 'yoga') {
-              met = 2.5;
-            }
-            totalMet += met;
-          }
-          avgMet = totalMet / exercises.length;
-        }
-        totalCalories += avgMet * weightVal * (durationSec / 3600.0);
+        final durationMins = (durationSec / 60).round();
+        final avgMet = await MovementLoadCalculator.metForSsSession(db, logId);
+        totalCalories += MovementLoadCalculator.calories(
+          met: avgMet,
+          weightKg: weightVal,
+          durationMinutes: durationMins,
+        );
       }
 
       // 5. Calculate streak

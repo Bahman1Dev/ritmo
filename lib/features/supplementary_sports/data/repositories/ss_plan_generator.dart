@@ -16,10 +16,11 @@ class SSPlanGenerator {
   /// Generates a fully personalized workout plan for a specific week (1 to 4)
   /// and saves it to the SQLite database.
   static Future<void> generateWeeklyAndMonthlyPlan(
-    Database db,
+    DatabaseExecutor db,
     SsUserProfile profile, {
     required int week,
     Map<String, ProgressionSignal>? progressionSignals,
+    bool isDeload = false,
   }) async {
     // 1. Determine schedule split (days of the week)
     final workoutDays = <int>[];
@@ -129,7 +130,7 @@ class SSPlanGenerator {
 
   /// Generates a plan for a single specific day using all personalization & progression logic
   static Future<void> generateSingleDayPlan(
-    Database db,
+    DatabaseExecutor db,
     SsUserProfile profile, {
     required int week,
     required int dayOfWeek,

@@ -59,20 +59,61 @@ class PlannerJourneyPreview extends StatelessWidget {
       }
     }
 
+    final selectedStartMin = controller.selectedTime.hour * 60 + controller.selectedTime.minute;
+    final selectedEndMin = selectedStartMin + controller.targetDuration;
+    
+    OccupiedRange? conflictRange;
+    for (final occ in controller.occupiedRanges) {
+      if (occ.title != 'خواب' && selectedStartMin < occ.end && occ.start < selectedEndMin) {
+        conflictRange = occ;
+        break;
+      }
+    }
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (showTitle) ...[
-            Text(
-              'پیش‌نمایش مسیر فعالیت‌ها',
-              style: TextStyle(
-                fontFamily: 'Vazirmatn',
-                fontSize: 12.5,
-                fontWeight: FontWeight.bold,
-                color: colors.textSecondary.withValues(alpha: 0.8),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'پیش‌نمایش مسیر فعالیت‌ها',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textSecondary.withValues(alpha: 0.8),
+                  ),
+                ),
+                if (conflictRange != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xffF59E0B).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xffF59E0B).withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, size: 12, color: Color(0xffF59E0B)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'تداخل با ${conflictRange.title}',
+                          style: const TextStyle(
+                            fontFamily: 'Vazirmatn',
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xffF59E0B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
           ],

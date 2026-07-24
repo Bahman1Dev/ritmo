@@ -106,13 +106,43 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
       _descController.text = t['description'] ?? '';
       _selectedGoalType = t['goalType'] ?? 'MONTHLY';
       
-      final initialSteps = t['steps'] as List<String>?;
-      if (initialSteps != null && initialSteps.isNotEmpty) {
+      if (t['targetDate'] != null && (t['targetDate'] as String).isNotEmpty) {
+        _targetDate = DateTime.tryParse(t['targetDate'] as String);
+      }
+      if (t['parentGoalId'] != null) {
+        _selectedParentGoalId = t['parentGoalId'] as String;
+      }
+
+      final rawSteps = t['steps'] as List<dynamic>?;
+      if (rawSteps != null && rawSteps.isNotEmpty) {
         _stepInputs.clear();
-        for (final title in initialSteps) {
-          _stepInputs.add(GoalStepInput(
-            titleController: TextEditingController(text: title),
-          ));
+        for (final item in rawSteps) {
+          String stepTitle = '';
+          DateTime? date;
+          String? routineId;
+
+          if (item is String) {
+            stepTitle = item;
+          } else if (item is Map) {
+            stepTitle = item['title'] as String? ?? '';
+            if (item['scheduledDate'] != null) {
+              date = DateTime.tryParse(item['scheduledDate'].toString());
+            }
+            if (item['linkedRoutineId'] != null) {
+              routineId = item['linkedRoutineId'] as String?;
+            }
+          }
+
+          if (stepTitle.isNotEmpty) {
+            _stepInputs.add(GoalStepInput(
+              titleController: TextEditingController(text: stepTitle),
+              scheduledDate: date,
+              linkedRoutineId: routineId,
+            ));
+          }
+        }
+        if (_stepInputs.isEmpty) {
+          _stepInputs.add(GoalStepInput(titleController: TextEditingController()));
         }
       }
     }

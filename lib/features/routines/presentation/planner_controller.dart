@@ -16,6 +16,7 @@ import 'package:ritmo/features/health/presentation/widgets/medication_form_sheet
 import 'package:ritmo/features/routines/domain/strategies/planner_save_context.dart';
 import 'package:ritmo/features/routines/domain/strategies/planner_strategy_registry.dart';
 import 'package:ritmo/features/routines/presentation/quick_add_parser.dart';
+import 'package:ritmo/features/sports/models/workout_split_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -358,34 +359,10 @@ class PlannerController extends ChangeNotifier {
           } else {
             itemType = cat == Category.medical ? 'REMINDER' : 'ROUTINE';
           }
-          if (cat == Category.medical && openMedicalSheet != null) {
-            openMedicalSheet!(MedicationFormData(
-              name: title,
-              dose: '',
-              type: 'FIXED',
-              scheduledTimes: [selectedTime],
-              repeatType: 'WEEKDAYS',
-              selectedWeekdays: const [6, 7, 1, 2, 3, 4, 5],
-              intervalDays: 1,
-              startDate: DateTime.now(),
-              stockCount: 30,
-              warningThreshold: 5,
-              minInterval: 4,
-              maxDoses: 4,
-            ));
-          } else if (cat == Category.religious && openWorshipSheet != null) {
-            openWorshipSheet!();
-          } else if (cat == Category.learning && openCourseSheet != null) {
-            openCourseSheet!(initialValues: {'title': title});
-          } else if (cat == Category.free && openCourseSheet != null) {
-            openCourseSheet!(initialValues: {'courseType': 'BOOK', 'title': title});
-          } else if (cat == Category.custom && openGoalSheet != null) {
-            openGoalSheet!({'title': title});
-          } else if (cat == Category.fitness && openSportsScreen != null) {
-            openSportsScreen!();
-          } else {
-            updatePage(1);
+          if (delegateToOwnerModule(context)) {
+            return;
           }
+          updatePage(1);
         },
       );
       return;
@@ -402,52 +379,7 @@ class PlannerController extends ChangeNotifier {
       }
     }
 
-    // Medical: open the unified MedicationFormSheet directly, then jump to preview (page 2)
-    if (cat == Category.medical && openMedicalSheet != null) {
-      openMedicalSheet!(MedicationFormData(
-        name: title,
-        dose: '',
-        type: 'FIXED',
-        scheduledTimes: [selectedTime],
-        repeatType: 'WEEKDAYS',
-        selectedWeekdays: const [6, 7, 1, 2, 3, 4, 5],
-        intervalDays: 1,
-        startDate: DateTime.now(),
-        stockCount: 30,
-        warningThreshold: 5,
-        minInterval: 4,
-        maxDoses: 4,
-      ));
-      return;
-    }
-
-    // Religious: open the AddCustomMustahabSheet directly
-    if (cat == Category.religious && openWorshipSheet != null) {
-      openWorshipSheet!();
-      return;
-    }
-
-    // Course: open the CreateCourseSheet directly
-    if (cat == Category.learning && openCourseSheet != null) {
-      openCourseSheet!(initialValues: {'title': title});
-      return;
-    }
-
-    // Study: open the CreateCourseSheet directly with BOOK prefilled
-    if (cat == Category.free && openCourseSheet != null) {
-      openCourseSheet!(initialValues: {'courseType': 'BOOK', 'title': title});
-      return;
-    }
-
-    // Goal: open the CreateGoalSheet directly
-    if (cat == Category.custom && openGoalSheet != null) {
-      openGoalSheet!({'title': title});
-      return;
-    }
-
-    // Sports: open the SportsScreen directly
-    if (cat == Category.fitness && openSportsScreen != null) {
-      openSportsScreen!();
+    if (delegateToOwnerModule(context)) {
       return;
     }
 
@@ -458,13 +390,20 @@ class PlannerController extends ChangeNotifier {
   void Function([MedicationFormData?])? openMedicalSheet;
 
   /// Callback set by the widget to open AddCustomMustahabSheet in the right context
-  VoidCallback? openWorshipSheet;
+  void Function({Map<String, dynamic>? prefill})? openWorshipSheet;
 
   /// Callback set by the widget to open CreateCourseSheet in the right context
   void Function({Map<String, dynamic>? initialValues})? openCourseSheet;
 
   /// Callback set by the widget to open CreateGoalSheet in the right context
-  void Function([Map<String, dynamic>?])? openGoalSheet;
+  void Function({Map<String, dynamic>? templateData})? openGoalSheet;
+
+  /// Callback set by the widget to open SportsQuickLogSheet in the right context
+  void Function({
+    WorkoutTier? presetTier,
+    List<MuscleGroup>? presetGroups,
+    int? durationMinutes,
+  })? openSportsLogSheet;
 
   /// Callback set by the widget to open SportsScreen in the right context
   VoidCallback? openSportsScreen;
@@ -474,7 +413,7 @@ class PlannerController extends ChangeNotifier {
     openMedicalSheet = opener;
   }
 
-  void setWorshipSheetOpener(VoidCallback opener) {
+  void setWorshipSheetOpener(void Function({Map<String, dynamic>? prefill}) opener) {
     openWorshipSheet = opener;
   }
 
@@ -482,12 +421,103 @@ class PlannerController extends ChangeNotifier {
     openCourseSheet = opener;
   }
 
-  void setGoalSheetOpener(void Function([Map<String, dynamic>?]) opener) {
+  void setGoalSheetOpener(void Function({Map<String, dynamic>? templateData}) opener) {
     openGoalSheet = opener;
+  }
+
+  void setSportsLogSheetOpener(void Function({
+    WorkoutTier? presetTier,
+    List<MuscleGroup>? presetGroups,
+    int? durationMinutes,
+  }) opener) {
+    openSportsLogSheet = opener;
   }
 
   void setSportsScreenOpener(VoidCallback opener) {
     openSportsScreen = opener;
+  }
+
+  Map<String, dynamic> _buildCourseInitialValues() {
+    final formatTimeStr = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+    return {
+      'title': title,
+      'description': description.isNotEmpty ? description : null,
+      'sessionDurationMinutes': targetDuration,
+      'preferredTime': formatTimeStr,
+      'zoneId': selectedZoneId,
+      'energyRule': energyRule,
+      'courseType': selectedCategory == Category.free ? 'BOOK' : courseType,
+    };
+  }
+
+  Map<String, dynamic> _buildGoalTemplateData() {
+    final formatDateStr = '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+    return {
+      'title': title,
+      'description': description.isNotEmpty ? description : null,
+      'goalType': goalType,
+      'targetDate': formatDateStr,
+      'steps': goalSteps.where((s) => s.isNotEmpty).map((s) => {
+        'title': s,
+      }).toList(),
+    };
+  }
+
+  Map<String, dynamic> _buildWorshipPrefill() {
+    final formatTimeStr = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+    return {
+      'title': title,
+      'reminderTime': formatTimeStr,
+      'reminderAnchor': worshipReminderAnchor,
+      'reminderOffsetMinutes': worshipOffsetMinutes,
+      'dailyTarget': worshipDailyTarget,
+      'reminderDaysOfWeek': worshipSelectedDays.join(','),
+      'reminderFrequency': worshipRepeatType,
+    };
+  }
+
+  /// If this item belongs to a dedicated module, opens its canonical sheet and returns true.
+  bool delegateToOwnerModule(BuildContext context) {
+    if (itemType == 'COURSE' ||
+        selectedCategory == Category.learning ||
+        selectedCategory == Category.free) {
+      if (openCourseSheet != null) {
+        openCourseSheet!(initialValues: _buildCourseInitialValues());
+        return true;
+      }
+    }
+
+    if (itemType == 'GOAL' || (selectedCategory == Category.custom && openGoalSheet != null)) {
+      if (openGoalSheet != null) {
+        openGoalSheet!(templateData: _buildGoalTemplateData());
+        return true;
+      }
+    }
+
+    if (selectedCategory == Category.religious && worshipType != 'DEBT') {
+      if (openWorshipSheet != null) {
+        openWorshipSheet!(prefill: _buildWorshipPrefill());
+        return true;
+      }
+    }
+
+    if (selectedCategory == Category.medical) {
+      if (openMedicalSheet != null) {
+        openMedicalSheet!(tempMedicationData);
+        return true;
+      }
+    }
+
+    if (selectedCategory == Category.fitness && sportsOpType == 'LOG') {
+      if (openSportsLogSheet != null) {
+        openSportsLogSheet!(
+          durationMinutes: sportsDuration,
+        );
+        return true;
+      }
+    }
+
+    return false;
   }
 
   void _showActivationDialog({
@@ -1190,25 +1220,7 @@ class PlannerController extends ChangeNotifier {
   }
 
   Future<void> save(BuildContext context) async {
-    // Medical: medication is saved now since the user confirmed on Step 3
-    if (selectedCategory == Category.medical) {
-      if (tempMedicationData != null) {
-        try {
-          await MedicationSaveHelper.save(tempMedicationData!);
-        } catch (e) {
-          debugPrint('Save medical error: $e');
-          RitmoToast.show(context, 'خطا در ثبت دارو: $e', icon: Icons.error_outline, iconColor: Colors.red);
-          return;
-        }
-      }
-      showSuccessAnim = true;
-      notifyListeners();
-      Timer(const Duration(milliseconds: 1400), () {
-        onSaved();
-        if (context.mounted) {
-          Navigator.pop(context);
-        }
-      });
+    if (delegateToOwnerModule(context)) {
       return;
     }
 

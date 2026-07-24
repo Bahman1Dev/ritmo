@@ -26,6 +26,8 @@ class SsUserProfile {
     this.gender,
     this.onboardingCompleted = false,
     this.neighborFriendly = false,
+    this.programStartDate,
+    this.deloadEveryNWeeks = 4,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -72,6 +74,8 @@ class SsUserProfile {
       gender: map['gender']?.toString(),
       onboardingCompleted: (map['onboardingCompleted'] as int? ?? 0) == 1,
       neighborFriendly: (map['neighborFriendly'] as int? ?? 0) == 1,
+      programStartDate: map['programStartDate']?.toString(),
+      deloadEveryNWeeks: map['deloadEveryNWeeks'] as int? ?? 4,
       createdAt: map['createdAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
       updatedAt: map['updatedAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
     );
@@ -89,6 +93,8 @@ class SsUserProfile {
   final String? gender;
   final bool onboardingCompleted;
   final bool neighborFriendly;
+  final String? programStartDate;
+  final int deloadEveryNWeeks;
   final int createdAt;
   final int updatedAt;
 
@@ -106,6 +112,8 @@ class SsUserProfile {
     String? gender,
     bool? onboardingCompleted,
     bool? neighborFriendly,
+    String? programStartDate,
+    int? deloadEveryNWeeks,
     int? createdAt,
     int? updatedAt,
   }) {
@@ -123,6 +131,8 @@ class SsUserProfile {
       gender: gender ?? this.gender,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       neighborFriendly: neighborFriendly ?? this.neighborFriendly,
+      programStartDate: programStartDate ?? this.programStartDate,
+      deloadEveryNWeeks: deloadEveryNWeeks ?? this.deloadEveryNWeeks,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -143,6 +153,8 @@ class SsUserProfile {
       'gender': gender?.toUpperCase(),
       'onboardingCompleted': onboardingCompleted ? 1 : 0,
       'neighborFriendly': neighborFriendly ? 1 : 0,
+      'programStartDate': programStartDate,
+      'deloadEveryNWeeks': deloadEveryNWeeks,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };

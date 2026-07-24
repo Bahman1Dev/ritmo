@@ -1,13 +1,5 @@
-// lib/features/routines/domain/strategies/planner_strategy_registry.dart
-//
-// Maps each planner category to its concrete strategy.
-// The registry is the single source of truth for which strategy handles what.
-
 import 'package:ritmo/core/domain/models.dart';
-import 'package:ritmo/features/routines/domain/strategies/course_strategy.dart';
 import 'package:ritmo/features/routines/domain/strategies/generic_strategy.dart';
-import 'package:ritmo/features/routines/domain/strategies/goal_strategy.dart';
-import 'package:ritmo/features/routines/domain/strategies/medical_strategy.dart';
 import 'package:ritmo/features/routines/domain/strategies/planner_category_strategy.dart';
 import 'package:ritmo/features/routines/domain/strategies/reflection_strategy.dart';
 import 'package:ritmo/features/routines/domain/strategies/sports_strategy.dart';
@@ -18,12 +10,9 @@ class PlannerStrategyRegistry {
 
   /// Ordered list — first strategy whose [matches] returns true wins.
   static final List<PlannerCategoryStrategy> _strategies = [
+    const ReflectionStrategy(), // must come BEFORE GenericStrategy (itemType check)
     const WorshipStrategy(),
     const SportsStrategy(),
-    const MedicalStrategy(),
-    const CourseStrategy(),
-    const GoalStrategy(),
-    const ReflectionStrategy(), // must come BEFORE GenericStrategy (itemType check)
     const GenericStrategy(),    // fallback — always matches
   ];
 

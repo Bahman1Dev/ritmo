@@ -24,6 +24,7 @@ import 'package:ritmo/features/routines/presentation/widgets/planner_journey_pre
 import 'package:ritmo/features/routines/presentation/widgets/planner_natural_input.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_submit_button.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_summary_card.dart';
+import 'package:ritmo/features/sports/presentation/widgets/sports_quick_log_sheet.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_home_dashboard_screen.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:ritmo/features/worship/presentation/widgets/mustahab_section.dart';
@@ -112,24 +113,28 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
       );
     });
 
-    _controller.setWorshipSheetOpener(() {
+    _controller.setWorshipSheetOpener(({prefill}) {
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
         builder: (sheetCtx) {
           return AddCustomMustahabSheet(
-            practice: WorshipPractice(
+            practice: prefill != null ? WorshipPractice(
               id: '',
               practiceType: 'MUSTAHAB',
-              title: _controller.title,
+              title: prefill['title'] as String? ?? '',
               createdAt: 0,
               updatedAt: 0,
-            ),
+              dailyTarget: prefill['dailyTarget'] as int? ?? 1,
+              reminderAnchor: prefill['reminderAnchor'] as String? ?? 'NONE',
+              reminderOffsetMinutes: prefill['reminderOffsetMinutes'] as int? ?? 0,
+            ) : null,
             onSaved: () {
-              // Immediately close both the worship sheet and the planner, triggering save update
               widget.onSaved();
-              Navigator.pop(context);
+              if (mounted) {
+                Navigator.pop(context);
+              }
               RitmoToast.show(
                 context,
                 'مستحب سفارشی با موفقیت افزوده شد.',
@@ -150,14 +155,16 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
             initialValues: initialValues,
             onCourseCreated: () {
               widget.onSaved();
-              Navigator.pop(context);
+              if (mounted) {
+                Navigator.pop(context);
+              }
             },
           );
         },
       );
     });
 
-    _controller.setGoalSheetOpener(([templateData]) {
+    _controller.setGoalSheetOpener(({templateData}) {
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -169,9 +176,25 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
             templateData: templateData,
             onSaved: () {
               widget.onSaved();
-              Navigator.pop(context);
+              if (mounted) {
+                Navigator.pop(context);
+              }
             },
           );
+        },
+      );
+    });
+
+    _controller.setSportsLogSheetOpener(({presetTier, presetGroups, durationMinutes}) {
+      showSportsQuickLogSheet(
+        context,
+        presetTier: presetTier,
+        presetGroups: presetGroups,
+        onLogged: () {
+          widget.onSaved();
+          if (mounted) {
+            Navigator.pop(context);
+          }
         },
       );
     });
@@ -182,7 +205,9 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
         MaterialPageRoute(builder: (context) => const SSHomeDashboardScreen()),
       ).then((_) {
         widget.onSaved();
-        Navigator.pop(context);
+        if (mounted) {
+          Navigator.pop(context);
+        }
       });
     });
 

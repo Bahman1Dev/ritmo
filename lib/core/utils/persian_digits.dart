@@ -10,4 +10,8 @@ class PersianDigits {
   }
 }
 
-String toPersianDigits(String input) => PersianDigits.convert(input);
+String toPersianDigits(Object? input) => PersianDigits.convert(input?.toString() ?? '');
+
+extension PersianDigitsExtension on Object {
+  String toPersianDigits() => PersianDigits.convert(toString());
+}
