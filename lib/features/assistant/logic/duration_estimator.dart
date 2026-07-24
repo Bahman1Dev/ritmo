@@ -88,7 +88,7 @@ class DurationEstimator {
     }
 
     // Standard fallback (30 minutes)
-    return (duration: 30, source: 'llm');
+    return (duration: 30, source: 'fallback');
   }
 
   /// Calculates the median completion duration from sqlite history.

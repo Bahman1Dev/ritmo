@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' hide Category;
+import 'package:ritmo/core/domain/models/completion_result.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/services/sync/sync_module_gate.dart';
 import 'package:sqflite/sqflite.dart';
@@ -69,15 +70,9 @@ class RhythmSnapshotService {
               if (isEssential) {
                 criticalRoutines++;
               }
-              final resType = completion['resultType'] as String? ?? 'FULL';
-              var completionValue = 0.0;
-              if (resType == 'FULL') {
-                completionValue = 1.0;
-              } else if (resType == 'LIGHT') {
-                completionValue = 0.7;
-              } else if (resType == 'MINIMAL') {
-                completionValue = 0.4;
-              }
+              final resType = completion['resultType'] as String?;
+              final partialRatio = (completion['partialRatio'] as num?)?.toDouble();
+              final completionValue = CompletionResult.fromDb(resType).rhythmWeight(partialRatio);
               completedWeight += completionValue * priority;
             }
           }

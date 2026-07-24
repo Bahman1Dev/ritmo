@@ -4,7 +4,6 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/features/sports/movement/data/movement_repository.dart';
 import 'package:ritmo/features/sports/movement/domain/movement_budget.dart';
 import 'package:ritmo/features/sports/movement/domain/movement_kind.dart';
-import 'package:shamsi_date/shamsi_date.dart';
 
 class MovementSuggestion {
   const MovementSuggestion({

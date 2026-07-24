@@ -76,7 +76,7 @@ class RoutineActions {
     }
 
     await RitmoExecutionKernel.instance.execute(
-      SnoozeReminderCommand(reminderId: reminderId, snoozeMinutes: minutes),
+      SnoozeReminderCommand(reminderId: reminderId, snoozeMinutes: minutes, dateStr: dateStr),
     );
 
     // Invalidate the agenda cache for the target date so the UI refreshes correctly

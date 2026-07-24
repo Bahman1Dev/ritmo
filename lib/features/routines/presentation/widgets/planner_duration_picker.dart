@@ -1,6 +1,7 @@
 // lib/features/routines/presentation/widgets/planner_duration_picker.dart
 
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/domain/models/duration_variants.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/routines/presentation/planner_controller.dart';
@@ -134,6 +135,80 @@ class PlannerDurationPicker extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
+            ),
+          ],
+          if (DurationVariants.supportsVariants(controller.targetDuration)) ...[
+            const SizedBox(height: 16),
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: Text(
+                  'نسخه‌های کوچک‌تر (برای روزهای سخت)',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.bold,
+                    color: colors.primary,
+                  ),
+                ),
+                subtitle: const Text(
+                  'اگر روزی نتوانستی کامل انجام دهی، این‌ها زنجیره‌ات را زنده نگه می‌دارند.',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 11,
+                    color: Colors.grey,
+                  ),
+                ),
+                children: [
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('نسخه سبک (۵۰٪)', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11.5, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${toPersianDigits(DurationVariants.light(controller.targetDuration))} دقیقه',
+                                style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.primary, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('نسخه حداقلی (۱۵٪)', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11.5, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${toPersianDigits(DurationVariants.minimal(controller.targetDuration))} دقیقه',
+                                style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: Colors.amber.shade700, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],

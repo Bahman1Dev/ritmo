@@ -41,10 +41,7 @@ class SnoozeReminderHandler
 
     final rem = reminders.first;
     final routineId = rem['routineId']! as String;
-    final origTimeMs = rem['originalTime']! as int;
-    final dateStr = DateTime.fromMillisecondsSinceEpoch(origTimeMs)
-        .toIso8601String()
-        .substring(0, 10);
+    final dateStr = command.dateStr;
 
     await context.txn.update(
       'pending_reminders',

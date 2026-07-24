@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:ritmo/core/domain/models/completion_result.dart';
 import 'package:sqflite/sqflite.dart';
 
 class ProgressionEngine {
@@ -18,7 +19,9 @@ class ProgressionEngine {
     return current;
   }
 
-  Future<void> onCompletion(DatabaseExecutor db, String routineId) async {
+  Future<void> onCompletion(DatabaseExecutor db, String routineId, [CompletionResult? result]) async {
+    if (result != null && !result.advancesProgression) return;
+
     final List<Map<String, dynamic>> results = await db.query(
       'routines',
       where: 'id = ?',

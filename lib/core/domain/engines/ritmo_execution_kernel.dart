@@ -75,9 +75,11 @@ class SnoozeReminderCommand extends KernelCommand {
   const SnoozeReminderCommand({
     required this.reminderId,
     required this.snoozeMinutes,
+    required this.dateStr,
   });
   final String reminderId;
   final int snoozeMinutes;
+  final String dateStr;
 }
 
 class ConfirmReshuffleCommand extends KernelCommand {

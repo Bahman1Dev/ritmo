@@ -10,7 +10,7 @@ import 'package:ritmo/features/calendar/presentation/journey_controller.dart';
 import 'package:ritmo/features/calendar/presentation/models/now_pill_view_model.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_date_formatter.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
-import 'package:ritmo/features/calendar/presentation/widgets/agenda_item_detail_sheet.dart';
+import 'package:ritmo/core/domain/agenda/action_router.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/calendar_search_delegate.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_month_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_scale_switcher.dart';
@@ -142,13 +142,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
       _scrollToTimeString(item.timeOfDay);
     }
 
-    AgendaItemDetailSheet.show(
-      context,
-      item: item,
-      onComplete: () => _controller.completeItem(item),
-      onSkip: () => _controller.skipItem(item),
-      onFocus: () => _scrollToTimeString(item.timeOfDay),
-    );
+    ActionRouter.open(context, item: item);
   }
 
   void _openSmartPanel() {

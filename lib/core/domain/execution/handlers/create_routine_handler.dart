@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
+import 'package:ritmo/core/domain/models/duration_variants.dart';
 import 'package:ritmo/core/domain/engines/routine_occurrence_generator.dart';
 import 'package:ritmo/core/domain/execution/command_context.dart';
 import 'package:ritmo/core/domain/execution/command_handler.dart';
@@ -25,6 +26,19 @@ class CreateRoutineHandler
         (routineMap['progressionCurrent'] == null ||
             routineMap['progressionCurrent'] == 0)) {
       routineMap['progressionCurrent'] = start;
+    }
+
+    final target = routineMap['targetDurationMinutes'] as int? ?? 0;
+    final category = routineMap['category'] as String?;
+    if (DurationVariants.supportsVariants(target) && category != 'medical') {
+      final light = routineMap['lightDurationMinutes'] as int? ?? 0;
+      final minimal = routineMap['minimalDurationMinutes'] as int? ?? 0;
+      if (light <= 0) {
+        routineMap['lightDurationMinutes'] = DurationVariants.light(target);
+      }
+      if (minimal <= 0) {
+        routineMap['minimalDurationMinutes'] = DurationVariants.minimal(target);
+      }
     }
 
     await context.txn.insert('routines', routineMap);

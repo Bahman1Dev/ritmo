@@ -1,74 +1,31 @@
-enum CompletionResultType {
-  full,
-  light,
-  minimal,
-  skipped,
-  cannotNow,
-  snoozed,
-  deferred;
+enum CompletionResult {
+  full('FULL'),
+  light('LIGHT'),
+  minimal('MINIMAL'),
+  partial('PARTIAL'),
+  skipped('SKIPPED');
 
-  String get dbValue {
-    switch (this) {
-      case CompletionResultType.full:
-        return 'FULL';
-      case CompletionResultType.light:
-        return 'LIGHT';
-      case CompletionResultType.minimal:
-        return 'MINIMAL';
-      case CompletionResultType.skipped:
-        return 'SKIPPED';
-      case CompletionResultType.cannotNow:
-        return 'CANNOT_NOW';
-      case CompletionResultType.snoozed:
-        return 'SNOOZED';
-      case CompletionResultType.deferred:
-        return 'DEFERRED';
-    }
-  }
+  const CompletionResult(this.dbValue);
+  final String dbValue;
 
-  static CompletionResultType fromDb(String value) {
-    switch (value.toUpperCase()) {
-      case 'FULL':
-        return CompletionResultType.full;
-      case 'LIGHT':
-        return CompletionResultType.light;
-      case 'MINIMAL':
-        return CompletionResultType.minimal;
-      case 'SKIPPED':
-        return CompletionResultType.skipped;
-      case 'CANNOT_NOW':
-        return CompletionResultType.cannotNow;
-      case 'SNOOZED':
-        return CompletionResultType.snoozed;
-      case 'DEFERRED':
-        return CompletionResultType.deferred;
-      default:
-        return CompletionResultType.full;
-    }
-  }
-}
+  static CompletionResult fromDb(String? v) => switch (v) {
+        'FULL' || 'COMPLETED' => CompletionResult.full,
+        'LIGHT'   => CompletionResult.light,
+        'MINIMAL' => CompletionResult.minimal,
+        'PARTIAL' => CompletionResult.partial,
+        'SKIPPED' => CompletionResult.skipped,
+        _ => CompletionResult.full,
+      };
 
-enum CompletionSource {
-  user,
-  system;
+  /// Weight in daily rhythm calculation.
+  double rhythmWeight([double? partialRatio]) => switch (this) {
+        CompletionResult.full    => 1.0,
+        CompletionResult.light   => 0.7,
+        CompletionResult.minimal => 0.3,
+        CompletionResult.partial => (partialRatio ?? 0.5).clamp(0.1, 0.9),
+        CompletionResult.skipped => 0.0,
+      };
 
-  String get dbValue {
-    switch (this) {
-      case CompletionSource.user:
-        return 'USER';
-      case CompletionSource.system:
-        return 'SYSTEM';
-    }
-  }
-
-  static CompletionSource fromDb(String value) {
-    switch (value.toUpperCase()) {
-      case 'USER':
-        return CompletionSource.user;
-      case 'SYSTEM':
-        return CompletionSource.system;
-      default:
-        return CompletionSource.user;
-    }
-  }
+  bool get keepsStreak => this != CompletionResult.skipped;
+  bool get advancesProgression => this == CompletionResult.full;
 }

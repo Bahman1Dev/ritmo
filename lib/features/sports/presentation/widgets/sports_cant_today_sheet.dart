@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 
 void showSportsCantTodaySheet(BuildContext context, {required ValueChanged<String> onReasonSelected}) {
@@ -64,9 +66,20 @@ class _CantTodaySheet extends StatelessWidget {
 
   Widget _buildOption(BuildContext context, String code, String title, String subtitle) {
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         RitmoHaptics.tap();
-        Navigator.pop(context);
+        try {
+          final db = await DatabaseHelper.instance.database;
+          await db.insert('skip_reasons', {
+            'id': RitmoIdFactory.routine(),
+            'itemId': 'sports_today',
+            'domain': 'sport',
+            'dateStr': DateTime.now().toIso8601String().substring(0, 10),
+            'reason': code,
+            'createdAt': DateTime.now().millisecondsSinceEpoch,
+          });
+        } catch (_) {}
+        if (context.mounted) Navigator.pop(context);
         onReasonSelected(code);
       },
       child: Container(

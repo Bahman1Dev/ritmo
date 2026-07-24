@@ -7,6 +7,7 @@ import 'package:ritmo/core/ai/ai_shared_rules.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/cycle_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
+import 'package:ritmo/core/domain/models/completion_result.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -178,16 +179,9 @@ class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, 
         var sumCompletion = 0.0;
         var sumRhythm = 0.0;
         for (final comp in hCompletions) {
-          final type = comp['resultType'] as String? ?? 'FULL';
-          if (type == 'FULL') {
-            sumCompletion += 1.0;
-          } else if (type == 'LIGHT') {
-            sumCompletion += 0.7;
-          } else if (type == 'MINIMAL') {
-            sumCompletion += 0.4;
-          } else {
-            sumCompletion += 0.0;
-          }
+          final type = comp['resultType'] as String?;
+          final partialRatio = (comp['partialRatio'] as num?)?.toDouble();
+          sumCompletion += CompletionResult.fromDb(type).rhythmWeight(partialRatio);
 
           final date = comp['completionDate'] as String;
           sumRhythm += rhythmMap[date] ?? 50.0;
@@ -252,14 +246,9 @@ class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, 
         var sumCompletion = 0.0;
         var sumRhythm = 0.0;
         for (final comp in wCompletions) {
-          final type = comp['resultType'] as String? ?? 'FULL';
-          if (type == 'FULL') {
-            sumCompletion += 1.0;
-          } else if (type == 'LIGHT') {
-            sumCompletion += 0.7;
-          } else if (type == 'MINIMAL') {
-            sumCompletion += 0.4;
-          }
+          final type = comp['resultType'] as String?;
+          final partialRatio = (comp['partialRatio'] as num?)?.toDouble();
+          sumCompletion += CompletionResult.fromDb(type).rhythmWeight(partialRatio);
 
           final date = comp['completionDate'] as String;
           sumRhythm += rhythmMap[date] ?? 50.0;
@@ -309,7 +298,7 @@ class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, 
       final missedRoutinesCount = routineCompletions.where((comp) {
         final local = toIranLocal(comp['completionTime'] as int);
         final type = comp['resultType'] as String? ?? 'FULL';
-        return local.hour == h && (type == 'CANNOT_NOW' || type == 'SNOOZED');
+        return local.hour == h && type == 'CANNOT_NOW';
       }).length;
 
       hourFatigue[h] = lowEnergyCount + missedRoutinesCount;

@@ -2515,9 +2515,41 @@ class MigrationV53 extends Migration {
           whereArgs: [id],
         );
       }
-    } catch (e) {
-      // Safe catch for empty tables or missing columns during migration
-    }
+    } catch (_) {}
+
+    try {
+      await db.execute("UPDATE routine_completions SET resultType = 'FULL' WHERE resultType = 'COMPLETED';");
+    } catch (_) {}
+
+    try {
+      await db.execute('ALTER TABLE routine_completions ADD COLUMN partialRatio REAL;');
+    } catch (_) {}
+
+    try {
+      await db.execute('''
+        UPDATE routines
+        SET lightDurationMinutes   = MAX(5, MIN(CAST(ROUND(targetDurationMinutes * 0.5) AS INTEGER), targetDurationMinutes - 1)),
+            minimalDurationMinutes = MAX(2, MIN(CAST(ROUND(targetDurationMinutes * 0.15) AS INTEGER), 10))
+        WHERE targetDurationMinutes > 5
+          AND (category IS NULL OR category != 'medical')
+          AND (lightDurationMinutes IS NULL OR lightDurationMinutes = 0);
+      ''');
+    } catch (_) {}
+
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS skip_reasons (
+          id TEXT PRIMARY KEY,
+          itemId TEXT,
+          domain TEXT,
+          dateStr TEXT,
+          reason TEXT,
+          note TEXT,
+          createdAt INTEGER
+        );
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_skip_reasons_item ON skip_reasons(itemId);');
+    } catch (_) {}
   }
 
   @override
