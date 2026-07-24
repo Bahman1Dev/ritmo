@@ -5,9 +5,11 @@ class TimelineUntimedSection extends StatelessWidget {
   const TimelineUntimedSection({
     super.key,
     required this.untimedItems,
+    this.onItemTap,
   });
 
   final List<AgendaItem> untimedItems;
+  final ValueChanged<AgendaItem>? onItemTap;
 
   @override
   Widget build(BuildContext context) {
@@ -45,30 +47,34 @@ class TimelineUntimedSection extends StatelessWidget {
             runSpacing: 6.0,
             children: untimedItems.map((item) {
               final isDone = item.isCompleted;
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
-                decoration: BoxDecoration(
-                  color: isDone
-                      ? Theme.of(context).disabledColor.withValues(alpha: 0.2)
-                      : Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(16.0),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isDone) ...[
-                      const Icon(Icons.check, size: 12),
-                      const SizedBox(width: 4),
-                    ],
-                    Text(
-                      item.title,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        decoration: isDone ? TextDecoration.lineThrough : null,
+              return InkWell(
+                onTap: () => onItemTap?.call(item),
+                borderRadius: BorderRadius.circular(16.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+                  decoration: BoxDecoration(
+                    color: isDone
+                        ? Theme.of(context).disabledColor.withValues(alpha: 0.2)
+                        : Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isDone) ...[
+                        const Icon(Icons.check, size: 12),
+                        const SizedBox(width: 4),
+                      ],
+                      Text(
+                        item.title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          decoration: isDone ? TextDecoration.lineThrough : null,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             }).toList(),

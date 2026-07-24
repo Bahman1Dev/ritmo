@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/agenda/analysis/agenda_conflict_detector.dart';
+import 'package:ritmo/core/domain/agenda/analysis/agenda_gap_calculator.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_free_gaps_section.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_suggestions_section.dart';
@@ -8,16 +11,33 @@ class JourneySmartPanel extends StatefulWidget {
   const JourneySmartPanel({
     super.key,
     required this.snapshot,
+    this.onSelectActivity,
+    this.onSelectFreeGap,
+    this.onSelectConflict,
   });
 
   final DayAgendaSnapshot snapshot;
+  final ValueChanged<AgendaItem>? onSelectActivity;
+  final ValueChanged<TimeGap>? onSelectFreeGap;
+  final ValueChanged<AgendaConflict>? onSelectConflict;
 
-  static Future<void> showAsBottomSheet(BuildContext context, DayAgendaSnapshot snapshot) {
+  static Future<void> showAsBottomSheet(
+    BuildContext context, {
+    required DayAgendaSnapshot snapshot,
+    ValueChanged<AgendaItem>? onSelectActivity,
+    ValueChanged<TimeGap>? onSelectFreeGap,
+    ValueChanged<AgendaConflict>? onSelectConflict,
+  }) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => JourneySmartPanel(snapshot: snapshot),
+      builder: (context) => JourneySmartPanel(
+        snapshot: snapshot,
+        onSelectActivity: onSelectActivity,
+        onSelectFreeGap: onSelectFreeGap,
+        onSelectConflict: onSelectConflict,
+      ),
     );
   }
 
@@ -92,15 +112,33 @@ class _JourneySmartPanelState extends State<JourneySmartPanel> with SingleTicker
               children: [
                 SingleChildScrollView(
                   padding: const EdgeInsets.all(16.0),
-                  child: JourneySummarySection(snapshot: widget.snapshot),
+                  child: JourneySummarySection(
+                    snapshot: widget.snapshot,
+                    onSelectActivity: (item) {
+                      Navigator.maybePop(context);
+                      widget.onSelectActivity?.call(item);
+                    },
+                  ),
                 ),
                 SingleChildScrollView(
                   padding: const EdgeInsets.all(16.0),
-                  child: JourneySuggestionsSection(snapshot: widget.snapshot),
+                  child: JourneySuggestionsSection(
+                    snapshot: widget.snapshot,
+                    onSelectConflict: (conflict) {
+                      Navigator.maybePop(context);
+                      widget.onSelectConflict?.call(conflict);
+                    },
+                  ),
                 ),
                 SingleChildScrollView(
                   padding: const EdgeInsets.all(16.0),
-                  child: JourneyFreeGapsSection(snapshot: widget.snapshot),
+                  child: JourneyFreeGapsSection(
+                    snapshot: widget.snapshot,
+                    onSelectFreeGap: (gap) {
+                      Navigator.maybePop(context);
+                      widget.onSelectFreeGap?.call(gap);
+                    },
+                  ),
                 ),
               ],
             ),

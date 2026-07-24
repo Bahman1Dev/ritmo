@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/features/calendar/presentation/logic/direct_manipulation_eligibility.dart';
 import 'package:ritmo/features/calendar/presentation/logic/timeline_layout_engine.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/timeline_hour_axis.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/timeline_item_card.dart';
@@ -14,6 +16,10 @@ class TimelineGrid extends StatefulWidget {
     this.pxPerMinute = 1.2,
     this.sleepStartMinutes,
     this.sleepEndMinutes,
+    this.highlightedItemId,
+    this.onItemTap,
+    this.onItemMove,
+    this.onItemResize,
   });
 
   final List<AgendaItem> items;
@@ -21,6 +27,10 @@ class TimelineGrid extends StatefulWidget {
   final double pxPerMinute;
   final int? sleepStartMinutes;
   final int? sleepEndMinutes;
+  final String? highlightedItemId;
+  final ValueChanged<AgendaItem>? onItemTap;
+  final Function(AgendaItem item, String newTimeOfDay)? onItemMove;
+  final Function(AgendaItem item, int newDurationMinutes)? onItemResize;
 
   @override
   State<TimelineGrid> createState() => _TimelineGridState();
@@ -29,6 +39,12 @@ class TimelineGrid extends StatefulWidget {
 class _TimelineGridState extends State<TimelineGrid> {
   Timer? _timer;
   DateTime _now = DateTime.now();
+
+  String? _activeDragItemId;
+  int _dragStartMinutes = 0;
+
+  String? _activeResizeItemId;
+  int _resizeDurationMinutes = 30;
 
   @override
   void initState() {
@@ -52,10 +68,13 @@ class _TimelineGridState extends State<TimelineGrid> {
   void _startMinuteTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) {
-        setState(() {
-          _now = DateTime.now();
-        });
+      final newNow = DateTime.now();
+      if (newNow.minute != _now.minute || newNow.hour != _now.hour) {
+        if (mounted) {
+          setState(() {
+            _now = newNow;
+          });
+        }
       }
     });
   }
@@ -63,6 +82,7 @@ class _TimelineGridState extends State<TimelineGrid> {
   @override
   void dispose() {
     _timer?.cancel();
+    _timer = null;
     super.dispose();
   }
 
@@ -78,88 +98,290 @@ class _TimelineGridState extends State<TimelineGrid> {
     return SizedBox(
       height: totalHeight,
       child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TimelineHourAxis(pxPerMinute: widget.pxPerMinute),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final gridWidth = constraints.maxWidth;
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RepaintBoundary(
+            child: TimelineHourAxis(pxPerMinute: widget.pxPerMinute),
+          ),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final gridWidth = constraints.maxWidth;
 
-                  return Stack(
-                    children: [
-                      TimelineGridLines(pxPerMinute: widget.pxPerMinute),
+                TimelineLayoutItem? draggingLayoutItem;
+                if (_activeDragItemId != null) {
+                  for (final item in layoutItems) {
+                    if (item.item.id == _activeDragItemId) {
+                      draggingLayoutItem = item;
+                      break;
+                    }
+                  }
+                }
 
-                      // Optional sleep block layer
-                      if (widget.sleepStartMinutes != null && widget.sleepEndMinutes != null)
-                        _buildSleepBlock(widget.sleepStartMinutes!, widget.sleepEndMinutes!),
+                return Stack(
+                  children: [
+                    RepaintBoundary(
+                      child: TimelineGridLines(pxPerMinute: widget.pxPerMinute),
+                    ),
 
-                      // Past dimmer for today
-                      if (widget.isToday && nowTop > 0)
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          height: nowTop,
-                          child: IgnorePointer(
+                    // Optional sleep block layer
+                    if (widget.sleepStartMinutes != null && widget.sleepEndMinutes != null)
+                      _buildSleepBlock(widget.sleepStartMinutes!, widget.sleepEndMinutes!),
+
+                    // Past dimmer for today
+                    if (widget.isToday && nowTop > 0)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: nowTop,
+                        child: IgnorePointer(
+                          child: Container(
+                            color: Theme.of(context).disabledColor.withValues(alpha: 0.08),
+                          ),
+                        ),
+                      ),
+
+                    // Empty timeline placeholder guidance if no timed items exist
+                    if (widget.items.isEmpty)
+                      Positioned(
+                        top: 100,
+                        left: 16,
+                        right: 16,
+                        child: IgnorePointer(
+                          child: Center(
                             child: Container(
-                              color: Theme.of(context).disabledColor.withValues(alpha: 0.08),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).cardColor.withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                                ),
+                              ),
+                              child: Text(
+                                'هیچ برنامه‌ زمان‌بندی‌شده‌ای برای این روز ثبت نشده است',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context).hintColor,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                           ),
                         ),
+                      ),
 
-                      // Timed Agenda Cards
-                      for (final layoutItem in layoutItems)
-                        Positioned(
-                          top: layoutItem.top,
-                          left: layoutItem.leftFraction * gridWidth,
-                          width: (layoutItem.widthFraction * gridWidth) - 4.0,
-                          height: layoutItem.height,
-                          child: TimelineItemCard(layoutItem: layoutItem),
-                        ),
-
-                      // Live Now Line
-                      if (widget.isToday)
-                        Positioned(
-                          top: nowTop,
-                          left: 0,
-                          right: 0,
-                          child: IgnorePointer(
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 1.0),
+                    // Drop target preview ghost box during drag
+                    if (_activeDragItemId != null && draggingLayoutItem != null)
+                      Positioned(
+                        top: _dragStartMinutes * widget.pxPerMinute,
+                        left: draggingLayoutItem.leftFraction * gridWidth,
+                        width: (draggingLayoutItem.widthFraction * gridWidth) - 4.0,
+                        height: (draggingLayoutItem.durationMinutes) * widget.pxPerMinute,
+                        child: IgnorePointer(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(6.0),
+                              border: Border.all(
+                                color: Colors.blueAccent,
+                                width: 2.0,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Align(
+                                alignment: Alignment.topRight,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Colors.redAccent,
-                                    borderRadius: BorderRadius.circular(4.0),
+                                    color: Colors.blueAccent,
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}',
+                                    toPersianDigits(TimelineSnappingHelper.minutesToTimeString(_dragStartMinutes)),
                                     style: const TextStyle(
+                                      color: Colors.white,
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white,
                                     ),
                                   ),
                                 ),
-                                Expanded(
-                                  child: Container(
-                                    height: 2.0,
-                                    color: Colors.redAccent,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                    ],
-                  );
-                },
-              ),
+                      ),
+
+                    // Timed Agenda Cards
+                    for (final layoutItem in layoutItems)
+                      RepaintBoundary(
+                        key: ValueKey(layoutItem.item.id),
+                        child: _buildPositionedItemCard(layoutItem, gridWidth),
+                      ),
+
+                    // Live Now Line
+                    if (widget.isToday)
+                      Positioned(
+                        top: nowTop,
+                        left: 0,
+                        right: 0,
+                        child: RepaintBoundary(
+                          child: Semantics(
+                            label: 'خط زمان کنونی: ${toPersianDigits('${_now.hour}:${_now.minute}')}',
+                            child: IgnorePointer(
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 1.0),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent,
+                                      borderRadius: BorderRadius.circular(4.0),
+                                    ),
+                                    child: Text(
+                                      toPersianDigits(
+                                        '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}',
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Container(
+                                      height: 2.0,
+                                      color: Colors.redAccent,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPositionedItemCard(TimelineLayoutItem layoutItem, double gridWidth) {
+    final item = layoutItem.item;
+    final isDraggable = DirectManipulationEligibility.isDraggable(item);
+    final isResizable = DirectManipulationEligibility.isResizable(item);
+
+    final isCurrentlyDragging = _activeDragItemId == item.id;
+    final isCurrentlyResizing = _activeResizeItemId == item.id;
+
+    final top = isCurrentlyDragging
+        ? _dragStartMinutes * widget.pxPerMinute
+        : layoutItem.top;
+
+    final height = isCurrentlyResizing
+        ? _resizeDurationMinutes * widget.pxPerMinute
+        : layoutItem.height;
+
+    final displayTime = isCurrentlyDragging
+        ? toPersianDigits(TimelineSnappingHelper.minutesToTimeString(_dragStartMinutes))
+        : null;
+
+    final displayDuration = isCurrentlyResizing ? _resizeDurationMinutes : null;
+
+    return Positioned(
+      top: top,
+      left: layoutItem.leftFraction * gridWidth,
+      width: (layoutItem.widthFraction * gridWidth) - 4.0,
+      height: height,
+      child: TimelineItemCard(
+        layoutItem: layoutItem,
+        isHighlighted: item.id == widget.highlightedItemId,
+        isDraggable: isDraggable,
+        isResizable: isResizable,
+        isDragging: isCurrentlyDragging,
+        isResizing: isCurrentlyResizing,
+        displayTimeOverride: displayTime,
+        displayDurationOverride: displayDuration,
+        onTap: () => widget.onItemTap?.call(item),
+        onDragStart: isDraggable
+            ? (_) {
+                if (mounted) {
+                  setState(() {
+                    _activeDragItemId = item.id;
+                    _dragStartMinutes = layoutItem.startMinutes;
+                  });
+                }
+              }
+            : null,
+        onDragUpdate: isDraggable
+            ? (details) {
+                final deltaMinutes = (details.delta.dy / widget.pxPerMinute).round();
+                final rawStart = _dragStartMinutes + deltaMinutes;
+                final snapped = TimelineSnappingHelper.snapStartMinutes(
+                  rawStart,
+                  durationMinutes: layoutItem.durationMinutes,
+                );
+                if (snapped != _dragStartMinutes && mounted) {
+                  setState(() {
+                    _dragStartMinutes = snapped;
+                  });
+                }
+              }
+            : null,
+        onDragEnd: isDraggable
+            ? (_) {
+                final targetTime = TimelineSnappingHelper.minutesToTimeString(_dragStartMinutes);
+                widget.onItemMove?.call(item, targetTime);
+                if (mounted) {
+                  setState(() {
+                    _activeDragItemId = null;
+                  });
+                }
+              }
+            : null,
+        onResizeStart: isResizable
+            ? (_) {
+                if (mounted) {
+                  setState(() {
+                    _activeResizeItemId = item.id;
+                    _resizeDurationMinutes = layoutItem.durationMinutes;
+                  });
+                }
+              }
+            : null,
+        onResizeUpdate: isResizable
+            ? (details) {
+                final deltaMins = (details.delta.dy / widget.pxPerMinute).round();
+                final rawDuration = _resizeDurationMinutes + deltaMins;
+                final snapped = TimelineSnappingHelper.snapDurationMinutes(
+                  rawDuration,
+                  startMinutes: layoutItem.startMinutes,
+                );
+                if (snapped != _resizeDurationMinutes && mounted) {
+                  setState(() {
+                    _resizeDurationMinutes = snapped;
+                  });
+                }
+              }
+            : null,
+        onResizeEnd: isResizable
+            ? (_) {
+                widget.onItemResize?.call(item, _resizeDurationMinutes);
+                if (mounted) {
+                  setState(() {
+                    _activeResizeItemId = null;
+                  });
+                }
+              }
+            : null,
+      ),
+    );
   }
 
   Widget _buildSleepBlock(int startM, int endM) {

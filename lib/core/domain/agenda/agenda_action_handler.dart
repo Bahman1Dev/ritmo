@@ -300,6 +300,89 @@ class AgendaActionHandler {
     });
   }
 
+  /// Updates start time and/or duration for an agenda item directly.
+  Future<void> updateAgendaItemTimeAndDuration({
+    required AgendaItem item,
+    String? newTimeOfDay,
+    int? newDurationMinutes,
+  }) async {
+    final db = await DatabaseHelper.instance.database;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    await db.transaction((txn) async {
+      if (item.domain == AgendaDomain.routine) {
+        if (newTimeOfDay != null) {
+          await txn.update(
+            'routine_schedules',
+            {
+              'timeOfDay': newTimeOfDay,
+              'updatedAt': nowMs,
+            },
+            where: 'routineId = ?',
+            whereArgs: [item.sourceId],
+          );
+        }
+        if (newDurationMinutes != null) {
+          await txn.update(
+            'routines',
+            {
+              'targetDurationMinutes': newDurationMinutes,
+              'updatedAt': nowMs,
+            },
+            where: 'id = ?',
+            whereArgs: [item.sourceId],
+          );
+        }
+      } else if (item.domain == AgendaDomain.course) {
+        final courseId = item.deepLink.targetId;
+        final updates = <String, dynamic>{'updatedAt': nowMs};
+        if (newTimeOfDay != null) updates['preferredTime'] = newTimeOfDay;
+        if (newDurationMinutes != null) updates['sessionDurationMinutes'] = newDurationMinutes;
+
+        await txn.update(
+          'courses',
+          updates,
+          where: 'id = ?',
+          whereArgs: [courseId],
+        );
+      } else if (item.domain == AgendaDomain.sport) {
+        if (newDurationMinutes != null) {
+          await txn.update(
+            'ss_workout_plan',
+            {
+              'estimatedMinutes': newDurationMinutes,
+              'updatedAt': nowMs,
+            },
+            where: 'id = ?',
+            whereArgs: [item.sourceId],
+          );
+        }
+      } else if (item.domain == AgendaDomain.konkur) {
+        if (newDurationMinutes != null) {
+          await txn.update(
+            'konkur_plan',
+            {
+              'plannedMinutes': newDurationMinutes,
+              'updatedAt': nowMs,
+            },
+            where: 'id = ?',
+            whereArgs: [item.sourceId],
+          );
+        }
+      }
+    });
+
+    final payload = <String, dynamic>{
+      'id': item.id,
+      'domain': item.domain.name,
+      'date': item.dateStr,
+    };
+    if (newTimeOfDay != null) payload['timeOfDay'] = newTimeOfDay;
+    if (newDurationMinutes != null) payload['durationMinutes'] = newDurationMinutes;
+
+    _invalidateAndNotify(item.dateStr, 'RoutineUpdated', payload);
+  }
+
   void notifyWorshipUpdated(String dateStr) {
     _invalidateAndNotify(dateStr, 'WorshipUpdated', {'date': dateStr});
   }

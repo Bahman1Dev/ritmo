@@ -39,13 +39,19 @@ class DayAgendaSnapshotBuilder {
     }
 
     final conflicts = conflictDetector.detectConflicts(items);
-    final freeGaps = gapCalculator.calculateFreeGaps(items);
+    final freeGaps = gapCalculator.calculateFreeGaps(
+      items,
+      now: currentTime,
+      sleepWindow: sleepWindow,
+    );
     final overloadScore = overloadDetector.calculateOverloadScore(items);
     final suggestions = suggestionRanker.generateSuggestions(
       items: items,
       conflicts: conflicts,
       freeGaps: freeGaps,
       overloadScore: overloadScore,
+      now: currentTime,
+      sleepWindow: sleepWindow,
     );
 
     AgendaItem? current;

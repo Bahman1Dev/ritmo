@@ -1,66 +1,376 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:ritmo/core/domain/agenda/agenda_action_handler.dart';
+import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_snapshot_builder.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
+import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
+import 'package:ritmo/features/courses/logic/course_scheduler.dart';
+
+enum JourneyScale { day, week, month, year }
 
 class JourneyController extends ChangeNotifier {
   JourneyController({
     DayAgendaService? agendaService,
     DayAgendaSnapshotBuilder? snapshotBuilder,
     RitmoEventBus? eventBus,
+    AgendaActionHandler? actionHandler,
+    RitmoExecutionKernel? kernel,
   })  : _agendaService = agendaService ?? DayAgendaService.instance,
         _snapshotBuilder = snapshotBuilder ?? const DayAgendaSnapshotBuilder(),
-        _eventBus = eventBus ?? RitmoEventBus() {
+        _eventBus = eventBus ?? RitmoEventBus(),
+        _actionHandler = actionHandler ?? AgendaActionHandler.instance,
+        _kernel = kernel ?? RitmoExecutionKernel.instance {
     _subscription = _eventBus.onEvents.listen(_handleEvent);
   }
 
   final DayAgendaService _agendaService;
   final DayAgendaSnapshotBuilder _snapshotBuilder;
   final RitmoEventBus _eventBus;
+  final AgendaActionHandler _actionHandler;
+  final RitmoExecutionKernel _kernel;
   StreamSubscription<RitmoEvent>? _subscription;
 
+  bool _isDisposed = false;
   DateTime _selectedDate = DateTime.now();
+  JourneyScale _activeScale = JourneyScale.day;
   bool _isLoading = false;
+  bool _isExecutingAction = false;
   DayAgendaSnapshot? _snapshot;
+  Map<String, DayAgendaSnapshot> _rangeSnapshots = {};
   String? _errorMessage;
+  String? _highlightedItemId;
+  int? _focusedMinutes;
+  String? _manipulatingItemId;
+  bool _isDragging = false;
+  bool _isResizing = false;
+  String? _previewTimeOfDay;
+  int? _previewDurationMinutes;
 
   DateTime get selectedDate => _selectedDate;
+  JourneyScale get activeScale => _activeScale;
   bool get isLoading => _isLoading;
+  bool get isExecutingAction => _isExecutingAction;
   DayAgendaSnapshot? get snapshot => _snapshot;
+  Map<String, DayAgendaSnapshot> get rangeSnapshots => _rangeSnapshots;
   String? get errorMessage => _errorMessage;
+  String? get highlightedItemId => _highlightedItemId;
+  int? get focusedMinutes => _focusedMinutes;
+  String? get manipulatingItemId => _manipulatingItemId;
+  bool get isDragging => _isDragging;
+  bool get isResizing => _isResizing;
+  String? get previewTimeOfDay => _previewTimeOfDay;
+  int? get previewDurationMinutes => _previewDurationMinutes;
+  bool get isDisposed => _isDisposed;
 
-  Future<void> loadDate(DateTime date) async {
+  @override
+  void notifyListeners() {
+    if (_isDisposed) return;
+    super.notifyListeners();
+  }
+
+  void highlightItem(String? itemId) {
+    if (_isDisposed) return;
+    _highlightedItemId = itemId;
+    notifyListeners();
+  }
+
+  void focusMinutes(int? minutes) {
+    if (_isDisposed) return;
+    _focusedMinutes = minutes;
+    notifyListeners();
+  }
+
+  void clearFocusAndHighlight() {
+    if (_isDisposed) return;
+    _highlightedItemId = null;
+    _focusedMinutes = null;
+    notifyListeners();
+  }
+
+  void setScale(JourneyScale scale) {
+    if (_isDisposed || _activeScale == scale) return;
+    _activeScale = scale;
+    loadForActiveScale();
+  }
+
+  void selectDate(DateTime date, {JourneyScale? scaleToSet}) {
+    if (_isDisposed) return;
     _selectedDate = date;
+    if (scaleToSet != null) {
+      _activeScale = scaleToSet;
+    }
+    loadForActiveScale();
+  }
+
+  void navigatePeriod(int offset) {
+    if (_isDisposed) return;
+    switch (_activeScale) {
+      case JourneyScale.day:
+        _selectedDate = _selectedDate.add(Duration(days: offset));
+        break;
+      case JourneyScale.week:
+        _selectedDate = _selectedDate.add(Duration(days: 7 * offset));
+        break;
+      case JourneyScale.month:
+        final nextMonth = _selectedDate.month + offset;
+        _selectedDate = DateTime(_selectedDate.year, nextMonth, _selectedDate.day.clamp(1, 28));
+        break;
+      case JourneyScale.year:
+        _selectedDate = DateTime(_selectedDate.year + offset, _selectedDate.month, _selectedDate.day.clamp(1, 28));
+        break;
+    }
+    loadForActiveScale();
+  }
+
+  Future<void> loadForActiveScale() async {
+    if (_isDisposed) return;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final dayAgenda = await _agendaService.agendaForDate(date);
-      _snapshot = _snapshotBuilder.buildSnapshot(dayAgenda);
+      final range = _calculateDateRangeForScale(_activeScale, _selectedDate);
+      final daysMap = await _agendaService.agendaForRange(range.start, range.end);
+      if (_isDisposed) return;
+
+      final newSnapshots = <String, DayAgendaSnapshot>{};
+      for (final entry in daysMap.entries) {
+        newSnapshots[entry.key] = _snapshotBuilder.buildSnapshot(entry.value);
+      }
+
+      _rangeSnapshots = newSnapshots;
+      final selectedKey = _formatDateKey(_selectedDate);
+      _snapshot = _rangeSnapshots[selectedKey];
+
+      // Cleanup stale highlights or manipulation state if item no longer exists
+      if (_snapshot != null) {
+        final currentItemIds = _snapshot!.items.map((i) => i.id).toSet();
+        if (_highlightedItemId != null && !currentItemIds.contains(_highlightedItemId)) {
+          _highlightedItemId = null;
+        }
+        if (_manipulatingItemId != null && !currentItemIds.contains(_manipulatingItemId)) {
+          _manipulatingItemId = null;
+          _isDragging = false;
+          _isResizing = false;
+          _previewTimeOfDay = null;
+          _previewDurationMinutes = null;
+        }
+      }
     } catch (e, stackTrace) {
-      _errorMessage = e.toString();
-      debugPrint('JourneyController loadDate error: $e\n$stackTrace');
+      if (_isDisposed) return;
+      _errorMessage = 'Failed to load schedule: $e';
+      debugPrint('loadForActiveScale error: $e\n$stackTrace');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
+  Future<void> completeItem(AgendaItem item) async {
+    if (_isDisposed || _isExecutingAction) return;
+    _isExecutingAction = true;
+    notifyListeners();
+
+    try {
+      if (item.domain == AgendaDomain.routine) {
+        await _kernel.execute(CompleteOccurrenceCommand(
+          routineId: item.sourceId,
+          dateStr: item.dateStr,
+          resultType: 'COMPLETED',
+          durationMinutes: item.durationMinutes ?? 30,
+        ));
+      } else {
+        await _actionHandler.toggleAgendaItem(item: item, isDone: true);
+      }
+      await refresh();
+    } catch (e, stackTrace) {
+      if (_isDisposed) return;
+      _errorMessage = 'Failed to complete task: $e';
+      debugPrint('completeItem error: $e\n$stackTrace');
+    } finally {
+      if (!_isDisposed) {
+        _isExecutingAction = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> skipItem(AgendaItem item) async {
+    if (_isDisposed || _isExecutingAction) return;
+    _isExecutingAction = true;
+    notifyListeners();
+
+    try {
+      if (item.domain == AgendaDomain.routine) {
+        await _kernel.execute(SkipOccurrenceCommand(
+          routineId: item.sourceId,
+          dateStr: item.dateStr,
+          reason: 'Skipped via Calendar',
+        ));
+      } else {
+        await _actionHandler.toggleAgendaItem(item: item, isDone: false);
+      }
+      await refresh();
+    } catch (e, stackTrace) {
+      if (_isDisposed) return;
+      _errorMessage = 'Failed to skip task: $e';
+      debugPrint('skipItem error: $e\n$stackTrace');
+    } finally {
+      if (!_isDisposed) {
+        _isExecutingAction = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  void startItemDrag(AgendaItem item) {
+    if (_isDisposed) return;
+    _manipulatingItemId = item.id;
+    _isDragging = true;
+    _isResizing = false;
+    _previewTimeOfDay = item.timeOfDay;
+    _previewDurationMinutes = item.durationMinutes;
+    notifyListeners();
+  }
+
+  void updateDragPreview(String timeOfDay) {
+    if (_isDisposed || _previewTimeOfDay == timeOfDay) return;
+    _previewTimeOfDay = timeOfDay;
+    notifyListeners();
+  }
+
+  Future<void> commitItemDrag(AgendaItem item, String newTimeOfDay) async {
+    if (_isDisposed || _isExecutingAction) return;
+    _isExecutingAction = true;
+    notifyListeners();
+
+    try {
+      await _actionHandler.updateAgendaItemTimeAndDuration(
+        item: item,
+        newTimeOfDay: newTimeOfDay,
+      );
+      await refresh();
+    } catch (e, stackTrace) {
+      if (_isDisposed) return;
+      _errorMessage = 'Failed to move task: $e';
+      debugPrint('commitItemDrag error: $e\n$stackTrace');
+    } finally {
+      if (!_isDisposed) {
+        _isExecutingAction = false;
+        cancelManipulation();
+      }
+    }
+  }
+
+  void startItemResize(AgendaItem item) {
+    if (_isDisposed) return;
+    _manipulatingItemId = item.id;
+    _isDragging = false;
+    _isResizing = true;
+    _previewTimeOfDay = item.timeOfDay;
+    _previewDurationMinutes = item.durationMinutes ?? 30;
+    notifyListeners();
+  }
+
+  void updateResizePreview(int durationMinutes) {
+    if (_isDisposed || _previewDurationMinutes == durationMinutes) return;
+    _previewDurationMinutes = durationMinutes;
+    notifyListeners();
+  }
+
+  Future<void> commitItemResize(AgendaItem item, int newDurationMinutes) async {
+    if (_isDisposed || _isExecutingAction) return;
+    _isExecutingAction = true;
+    notifyListeners();
+
+    try {
+      await _actionHandler.updateAgendaItemTimeAndDuration(
+        item: item,
+        newDurationMinutes: newDurationMinutes,
+      );
+      await refresh();
+    } catch (e, stackTrace) {
+      if (_isDisposed) return;
+      _errorMessage = 'Failed to resize task: $e';
+      debugPrint('commitItemResize error: $e\n$stackTrace');
+    } finally {
+      if (!_isDisposed) {
+        _isExecutingAction = false;
+        cancelManipulation();
+      }
+    }
+  }
+
+  void cancelManipulation() {
+    if (_isDisposed) return;
+    _manipulatingItemId = null;
+    _isDragging = false;
+    _isResizing = false;
+    _previewTimeOfDay = null;
+    _previewDurationMinutes = null;
+    notifyListeners();
+  }
+
+  Future<void> loadDate(DateTime date) async {
+    selectDate(date);
+  }
+
   Future<void> refresh() async {
-    await loadDate(_selectedDate);
+    await loadForActiveScale();
   }
 
   void _handleEvent(RitmoEvent event) {
-    refresh();
+    if (_isDisposed) return;
+    if (event.type == 'RoutineCompleted' ||
+        event.type == 'RoutineSkipped' ||
+        event.type == 'RoutineUpdated' ||
+        event.type == 'RoutineCreated' ||
+        event.type == 'RoutineDeleted' ||
+        event.type == 'PrayerCompleted' ||
+        event.type == 'WorshipUpdated' ||
+        event.type == 'CourseSessionCompleted' ||
+        event.type == 'AgendaItemToggled' ||
+        event.type == 'ReshuffleApplied') {
+      refresh();
+    }
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _subscription?.cancel();
+    _subscription = null;
     super.dispose();
+  }
+
+  static ({DateTime start, DateTime end}) _calculateDateRangeForScale(JourneyScale scale, DateTime date) {
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    switch (scale) {
+      case JourneyScale.day:
+        return (start: dateOnly, end: dateOnly);
+      case JourneyScale.week:
+        final sat = CourseScheduler.getSaturdayOfWeek(dateOnly);
+        final fri = sat.add(const Duration(days: 6));
+        return (start: sat, end: fri);
+      case JourneyScale.month:
+        final start = DateTime(dateOnly.year, dateOnly.month, 1);
+        final nextMonth = DateTime(dateOnly.year, dateOnly.month + 1, 1);
+        final end = nextMonth.subtract(const Duration(days: 1));
+        return (start: start, end: end);
+      case JourneyScale.year:
+        final start = DateTime(dateOnly.year, 1, 1);
+        final end = DateTime(dateOnly.year, 12, 31);
+        return (start: start, end: end);
+    }
+  }
+
+  static String _formatDateKey(DateTime dt) {
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
   }
 }

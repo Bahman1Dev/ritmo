@@ -1,6 +1,9 @@
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/analysis/agenda_conflict_detector.dart';
 import 'package:ritmo/core/domain/agenda/analysis/agenda_gap_calculator.dart';
+import 'package:ritmo/core/domain/agenda/analysis/agenda_overload_detector.dart';
+import 'package:ritmo/core/domain/agenda/sleep_window_resolver.dart';
+import 'package:ritmo/features/calendar/presentation/logic/direct_manipulation_eligibility.dart';
 
 class AgendaSuggestion {
   const AgendaSuggestion({
@@ -9,6 +12,9 @@ class AgendaSuggestion {
     required this.priorityScore,
     this.suggestedTimeOfDay,
     this.targetItemId,
+    this.categoryTag = 'general',
+    this.explanationReason = '',
+    this.isActionable = true,
   });
 
   final String id;
@@ -16,61 +22,140 @@ class AgendaSuggestion {
   final double priorityScore;
   final String? suggestedTimeOfDay;
   final String? targetItemId;
+  final String categoryTag;
+  final String explanationReason;
+  final bool isActionable;
 }
 
 class AgendaSuggestionRanker {
-  const AgendaSuggestionRanker();
+  const AgendaSuggestionRanker({
+    this.overloadDetector = const AgendaOverloadDetector(),
+  });
+
+  final AgendaOverloadDetector overloadDetector;
 
   List<AgendaSuggestion> generateSuggestions({
     required List<AgendaItem> items,
     required List<AgendaConflict> conflicts,
     required List<TimeGap> freeGaps,
     required double overloadScore,
+    DateTime? now,
+    SleepWindowBlock? sleepWindow,
   }) {
-    final suggestions = <AgendaSuggestion>[];
+    final rawSuggestions = <AgendaSuggestion>[];
 
-    if (overloadScore > 1.0) {
-      suggestions.add(AgendaSuggestion(
+    // 1. Overload Warning Signal
+    if (overloadScore >= 0.85) {
+      final percent = (overloadScore * 100).round();
+      rawSuggestions.add(AgendaSuggestion(
         id: 'overload_warning',
-        message: 'Day is overloaded (${(overloadScore * 100).toInt()}% scheduled capacity). Consider skipping optional tasks.',
-        priorityScore: 0.95,
+        message: 'برنامه امروز پر شده است ($percent٪ ظرفیت). پیشنهاد می‌شود موارد اختیاری به روز بعد منتقل شوند.',
+        priorityScore: 0.82,
+        categoryTag: 'overloadWarning',
+        explanationReason: 'تکمیل ظرفیت زمانی روز',
+        isActionable: false,
       ));
     }
 
+    // 2. Conflict Resolution Signals
     for (final conflict in conflicts) {
-      final flexibleItem = conflict.itemA.isFlexible ? conflict.itemA : (conflict.itemB.isFlexible ? conflict.itemB : null);
-      if (flexibleItem != null && freeGaps.isNotEmpty) {
-        final targetGap = freeGaps.firstWhere(
-          (gap) => gap.durationMinutes >= (flexibleItem.durationMinutes ?? 15),
-          orElse: () => freeGaps.first,
-        );
-        suggestions.add(AgendaSuggestion(
+      // Find candidate movable item
+      final movableA = DirectManipulationEligibility.isDraggable(conflict.itemA);
+      final movableB = DirectManipulationEligibility.isDraggable(conflict.itemB);
+
+      if (!movableA && !movableB) {
+        // Hard fixed conflict -> Warning only, do not propose invalid move
+        rawSuggestions.add(AgendaSuggestion(
+          id: 'hard_conflict_${conflict.itemA.id}_${conflict.itemB.id}',
+          message: 'تداخل دو برنامه ثابت "${conflict.itemA.title}" و "${conflict.itemB.title}" در ساعت ${conflict.itemA.timeOfDay}.',
+          priorityScore: 0.75,
+          categoryTag: 'conflictWarning',
+          explanationReason: 'برنامه‌های ثابت امکان جابه‌جایی مستقیم ندارند',
+          isActionable: false,
+        ));
+        continue;
+      }
+
+      final movableItem = movableA ? conflict.itemA : conflict.itemB;
+      final itemDuration = movableItem.durationMinutes ?? 30;
+
+      // Find best quality free gap that fits duration and is not in sleep window
+      TimeGap? bestGap;
+      for (final gap in freeGaps) {
+        if (!gap.isUsable || gap.durationMinutes < itemDuration) continue;
+        if (sleepWindow != null && gap.startMinutes >= sleepWindow.startMinutes && gap.startMinutes < sleepWindow.endMinutes) {
+          continue; // Avoid sleep window
+        }
+        if (overloadDetector.isSlotOverloaded(gap.startMinutes, itemDuration, items)) {
+          continue; // Avoid overloaded hours
+        }
+        if (bestGap == null || gap.qualityScore > bestGap.qualityScore) {
+          bestGap = gap;
+        }
+      }
+
+      if (bestGap != null) {
+        final score = 0.88 + (bestGap.qualityScore * 0.10);
+        rawSuggestions.add(AgendaSuggestion(
           id: 'resolve_conflict_${conflict.itemA.id}_${conflict.itemB.id}',
-          message: 'Move flexible task "${flexibleItem.title}" to free slot at ${targetGap.startTimeStr}.',
-          priorityScore: 0.85,
-          suggestedTimeOfDay: targetGap.startTimeStr,
-          targetItemId: flexibleItem.id,
+          message: 'انتقال "${movableItem.title}" به زمان خالی در ساعت ${bestGap.startTimeStr}.',
+          priorityScore: score.clamp(0.0, 1.0),
+          suggestedTimeOfDay: bestGap.startTimeStr,
+          targetItemId: movableItem.id,
+          categoryTag: 'conflictResolution',
+          explanationReason: 'رفع تداخل با انتقال به بازه مناسب',
+          isActionable: true,
         ));
       }
     }
 
-    final untimedFlexible = items.where((i) => !i.isTimed && i.isFlexible && !i.isCompleted).toList();
-    if (untimedFlexible.isNotEmpty && freeGaps.isNotEmpty) {
-      final item = untimedFlexible.first;
-      final suitableGap = freeGaps.firstWhere(
-        (g) => g.durationMinutes >= (item.durationMinutes ?? 30),
-        orElse: () => freeGaps.first,
-      );
-      suggestions.add(AgendaSuggestion(
-        id: 'schedule_untimed_${item.id}',
-        message: 'Schedule "${item.title}" into available gap at ${suitableGap.startTimeStr}.',
-        priorityScore: 0.65,
-        suggestedTimeOfDay: suitableGap.startTimeStr,
-        targetItemId: item.id,
-      ));
+    // 3. Untimed Task Scheduling Signals
+    final untimedPending = items
+        .where((i) => !i.isTimed && !i.isCompleted && DirectManipulationEligibility.isDraggable(i))
+        .toList();
+
+    if (untimedPending.isNotEmpty) {
+      for (final item in untimedPending) {
+        final itemDuration = item.durationMinutes ?? 30;
+        final targetGap = freeGaps.firstWhere(
+          (g) => g.isUsable && g.durationMinutes >= itemDuration && g.qualityScore >= 0.45,
+          orElse: () => const TimeGap(startMinutes: -1, endMinutes: -1),
+        );
+
+        if (targetGap.startMinutes >= 0) {
+          rawSuggestions.add(AgendaSuggestion(
+            id: 'schedule_untimed_${item.id}',
+            message: 'زمان‌بندی "${item.title}" در بازه خالی ساعت ${targetGap.startTimeStr}.',
+            priorityScore: 0.62 + (targetGap.qualityScore * 0.10),
+            suggestedTimeOfDay: targetGap.startTimeStr,
+            targetItemId: item.id,
+            categoryTag: 'untimedSchedule',
+            explanationReason: 'استفاده بهینه از زمان‌های خالی روز',
+            isActionable: true,
+          ));
+        }
+      }
     }
 
-    suggestions.sort((a, b) => b.priorityScore.compareTo(a.priorityScore));
-    return suggestions;
+    // 4. Noise Reduction & Deduplication Thresholding
+    final filtered = <AgendaSuggestion>[];
+    final seenTargetIds = <String>{};
+
+    // Sort by priority score descending
+    rawSuggestions.sort((a, b) => b.priorityScore.compareTo(a.priorityScore));
+
+    for (final sug in rawSuggestions) {
+      if (sug.priorityScore < 0.45) continue; // Suppress weak low-confidence suggestions
+      if (sug.targetItemId != null && seenTargetIds.contains(sug.targetItemId)) {
+        continue; // Deduplicate multiple suggestions for same item
+      }
+      if (sug.targetItemId != null) {
+        seenTargetIds.add(sug.targetItemId!);
+      }
+      filtered.add(sug);
+      if (filtered.length >= 3) break; // Limit top 3 actionable suggestions max
+    }
+
+    return filtered;
   }
 }

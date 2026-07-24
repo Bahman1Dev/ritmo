@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
 
 class JourneySummarySection extends StatelessWidget {
   const JourneySummarySection({
     super.key,
     required this.snapshot,
+    this.onSelectActivity,
   });
 
   final DayAgendaSnapshot snapshot;
+  final ValueChanged<AgendaItem>? onSelectActivity;
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +80,75 @@ class JourneySummarySection extends StatelessWidget {
             ),
           ],
         ),
+        if (snapshot.currentActivity != null) ...[
+          const SizedBox(height: 16),
+          _ActivityRow(
+            label: 'Current Activity',
+            item: snapshot.currentActivity!,
+            color: Colors.green,
+            onTap: () => onSelectActivity?.call(snapshot.currentActivity!),
+          ),
+        ],
+        if (snapshot.nextActivity != null) ...[
+          const SizedBox(height: 8),
+          _ActivityRow(
+            label: 'Next Activity',
+            item: snapshot.nextActivity!,
+            color: Colors.amber,
+            onTap: () => onSelectActivity?.call(snapshot.nextActivity!),
+          ),
+        ],
       ],
+    );
+  }
+}
+
+class _ActivityRow extends StatelessWidget {
+  const _ActivityRow({
+    required this.label,
+    required this.item,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final AgendaItem item;
+  final MaterialColor color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color.shade800),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.title,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const Icon(Icons.chevron_right, size: 20),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/domain/agenda/analysis/agenda_conflict_detector.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
 
 class JourneySuggestionsSection extends StatelessWidget {
   const JourneySuggestionsSection({
     super.key,
     required this.snapshot,
+    this.onSelectConflict,
   });
 
   final DayAgendaSnapshot snapshot;
+  final ValueChanged<AgendaConflict>? onSelectConflict;
 
   @override
   Widget build(BuildContext context) {
@@ -55,17 +58,28 @@ class JourneySuggestionsSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           for (final conflict in conflicts)
-            Container(
-              margin: const EdgeInsets.only(bottom: 6.0),
-              padding: const EdgeInsets.all(10.0),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-              ),
-              child: Text(
-                conflict.description,
-                style: const TextStyle(fontSize: 12),
+            InkWell(
+              onTap: () => onSelectConflict?.call(conflict),
+              borderRadius: BorderRadius.circular(8.0),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 6.0),
+                padding: const EdgeInsets.all(10.0),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8.0),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        conflict.description,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    const Icon(Icons.center_focus_strong, size: 16, color: Colors.orange),
+                  ],
+                ),
               ),
             ),
           const SizedBox(height: 12),
