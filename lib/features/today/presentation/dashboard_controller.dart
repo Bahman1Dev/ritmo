@@ -10,6 +10,18 @@ import 'package:ritmo/core/di/service_locator.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/engines/context_engine.dart';
+import 'dart:async';
+
+import 'package:flutter/cupertino.dart'; // برای CupertinoIcons
+import 'package:flutter/material.dart';
+import 'package:ritmo/core/ai/ai_briefing_service.dart';
+import 'package:ritmo/core/analytics/energy_analytics_engine.dart';
+import 'package:ritmo/core/analytics/reflection_engine.dart';
+import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/di/service_locator.dart';
+import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
+import 'package:ritmo/core/domain/engines/context_engine.dart';
 import 'package:ritmo/core/domain/engines/cycle_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_intelligence_engine.dart';
@@ -23,6 +35,7 @@ import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
 import 'package:ritmo/core/utils/persian_digits.dart'; // toPersianDigits
 import 'package:ritmo/core/utils/snapshot_helper.dart';
 import 'package:ritmo/features/courses/logic/courses_repository.dart';
+import 'package:ritmo/features/worship/logic/worship_repository.dart';
 import 'package:ritmo/features/courses/models/course_models.dart';
 import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
@@ -414,11 +427,10 @@ class DashboardController {
         final worshipDebtsRaw = await db.query('worship_debts', where: 'isArchived = 0');
         worshipDebts = worshipDebtsRaw.map(Map<String, dynamic>.from).toList();
         
-        // Load prayer times
-        final homeCityId = settingsMap['home_city_id'] ?? 'TEHRAN_TEHRAN';
-        prayerTimes = await PrayerTimeProvider.instance.getPrayerTimesForDate(
-          cityId: homeCityId,
-          date: DateTime.now(),
+        // Load prayer times from central WorshipRepository
+        prayerTimes = await WorshipRepository.instance.getPrayerTimesForDate(
+          DateTime.now(),
+          settingsMap: settingsMap,
         );
       } else {
         worshipDebts = [];

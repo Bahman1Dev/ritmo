@@ -20,6 +20,8 @@ class TimelineGrid extends StatefulWidget {
     this.onItemTap,
     this.onItemMove,
     this.onItemResize,
+    this.onSlotTap,
+    this.onZoomScaleUpdate,
   });
 
   final List<AgendaItem> items;
@@ -31,6 +33,8 @@ class TimelineGrid extends StatefulWidget {
   final ValueChanged<AgendaItem>? onItemTap;
   final Function(AgendaItem item, String newTimeOfDay)? onItemMove;
   final Function(AgendaItem item, int newDurationMinutes)? onItemResize;
+  final ValueChanged<String>? onSlotTap;
+  final ValueChanged<double>? onZoomScaleUpdate;
 
   @override
   State<TimelineGrid> createState() => _TimelineGridState();
@@ -120,8 +124,18 @@ class _TimelineGridState extends State<TimelineGrid> {
 
                 return Stack(
                   children: [
-                    RepaintBoundary(
-                      child: TimelineGridLines(pxPerMinute: widget.pxPerMinute),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapUp: (details) {
+                        final tapY = details.localPosition.dy;
+                        final rawMinutes = (tapY / widget.pxPerMinute).round();
+                        final snapped = TimelineSnappingHelper.snapStartMinutes(rawMinutes);
+                        final timeStr = TimelineSnappingHelper.minutesToTimeString(snapped);
+                        widget.onSlotTap?.call(timeStr);
+                      },
+                      child: RepaintBoundary(
+                        child: TimelineGridLines(pxPerMinute: widget.pxPerMinute),
+                      ),
                     ),
 
                     // Optional sleep block layer
@@ -321,6 +335,7 @@ class _TimelineGridState extends State<TimelineGrid> {
             : null,
         onDragUpdate: isDraggable
             ? (details) {
+                _handleAutoEdgeScroll(details.globalPosition);
                 final deltaMinutes = (details.delta.dy / widget.pxPerMinute).round();
                 final rawStart = _dragStartMinutes + deltaMinutes;
                 final snapped = TimelineSnappingHelper.snapStartMinutes(
@@ -382,6 +397,30 @@ class _TimelineGridState extends State<TimelineGrid> {
             : null,
       ),
     );
+  }
+
+  void _handleAutoEdgeScroll(Offset globalPosition) {
+    final scrollable = Scrollable.maybeOf(context);
+    if (scrollable == null) return;
+
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final localPos = renderBox.globalToLocal(globalPosition);
+    final viewportHeight = scrollable.position.viewportDimension;
+    final scrollOffset = scrollable.position.pixels;
+    final targetYInViewport = localPos.dy - scrollOffset;
+
+    const edgeMargin = 50.0;
+    const scrollStep = 25.0;
+
+    if (targetYInViewport < edgeMargin && scrollOffset > 0) {
+      final newOffset = (scrollOffset - scrollStep).clamp(0.0, scrollable.position.maxScrollExtent);
+      scrollable.position.jumpTo(newOffset);
+    } else if (targetYInViewport > viewportHeight - edgeMargin && scrollOffset < scrollable.position.maxScrollExtent) {
+      final newOffset = (scrollOffset + scrollStep).clamp(0.0, scrollable.position.maxScrollExtent);
+      scrollable.position.jumpTo(newOffset);
+    }
   }
 
   Widget _buildSleepBlock(int startM, int endM) {

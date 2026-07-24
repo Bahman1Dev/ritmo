@@ -87,6 +87,8 @@ class TimelineItemCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    Icon(_getDomainIcon(item.domain), size: 12, color: Colors.white70),
+                    const SizedBox(width: 4),
                     if (isDone)
                       const Padding(
                         padding: EdgeInsets.only(right: 4.0),
@@ -154,6 +156,31 @@ class TimelineItemCard extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  static IconData _getDomainIcon(AgendaDomain domain) {
+    switch (domain) {
+      case AgendaDomain.routine:
+        return Icons.sync_rounded;
+      case AgendaDomain.prayer:
+        return Icons.mosque_rounded;
+      case AgendaDomain.mustahab:
+        return Icons.menu_book_rounded;
+      case AgendaDomain.course:
+        return Icons.school_rounded;
+      case AgendaDomain.goalStep:
+        return Icons.track_changes_rounded;
+      case AgendaDomain.konkur:
+        return Icons.assignment_rounded;
+      case AgendaDomain.cycle:
+        return Icons.favorite_rounded;
+      case AgendaDomain.worshipDebt:
+        return Icons.restore_rounded;
+      case AgendaDomain.sport:
+        return Icons.fitness_center_rounded;
+      case AgendaDomain.medicine:
+        return Icons.medication_rounded;
+    }
   }
 
   static Color _getDomainColor(AgendaDomain domain, ThemeData theme) {

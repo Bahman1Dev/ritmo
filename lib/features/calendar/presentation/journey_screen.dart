@@ -14,7 +14,10 @@ import 'package:ritmo/features/calendar/presentation/widgets/journey_week_view.d
 import 'package:ritmo/features/calendar/presentation/widgets/journey_year_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/now_pill.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/timeline_grid.dart';
+import 'package:ritmo/features/calendar/presentation/widgets/calendar_search_delegate.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/timeline_untimed_section.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/courses/logic/course_scheduler.dart';
 
 class JourneyScreen extends StatefulWidget {
@@ -160,6 +163,53 @@ class _JourneyScreenState extends State<JourneyScreen> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
+  void _handleSlotTap(String timeOfDay) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.add_task_rounded, color: Colors.blueAccent),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ثبت برنامه جدید در ساعت ${toPersianDigits(timeOfDay)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'کارت موقت ثبت سریع رویداد در ساعت ${toPersianDigits(timeOfDay)} ایجاد شد.',
+                style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.check),
+                  label: const Text('ثبت رویداد جدید'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   String _getHeaderTitle(JourneyScale scale, DateTime date) {
     switch (scale) {
       case JourneyScale.day:
@@ -238,6 +288,19 @@ class _JourneyScreenState extends State<JourneyScreen> {
                   tooltip: 'Day Insights & Summary',
                   onPressed: _openSmartPanel,
                 ),
+              IconButton(
+                icon: const Icon(Icons.search_rounded),
+                tooltip: 'جستجوی رویدادها',
+                onPressed: () async {
+                  final selected = await showSearch<AgendaItem?>(
+                    context: context,
+                    delegate: CalendarSearchDelegate(items: snapshot?.items ?? []),
+                  );
+                  if (selected != null) {
+                    _openItemDetails(selected);
+                  }
+                },
+              ),
               IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: _controller.refresh,
@@ -320,8 +383,27 @@ class _JourneyScreenState extends State<JourneyScreen> {
                               pxPerMinute: 1.2,
                               highlightedItemId: _controller.highlightedItemId,
                               onItemTap: _openItemDetails,
-                              onItemMove: (item, newTimeOfDay) => _controller.commitItemDrag(item, newTimeOfDay),
-                              onItemResize: (item, newDurationMinutes) => _controller.commitItemResize(item, newDurationMinutes),
+                              onItemMove: (item, newTimeOfDay) async {
+                                await _controller.commitItemDrag(item, newTimeOfDay);
+                                if (mounted) {
+                                  RitmoToast.show(
+                                    context,
+                                    'زمان رویداد به ${toPersianDigits(newTimeOfDay)} تغییر یافت',
+                                    onUndo: () => _controller.undoLastAction(),
+                                  );
+                                }
+                              },
+                              onItemResize: (item, newDurationMinutes) async {
+                                await _controller.commitItemResize(item, newDurationMinutes);
+                                if (mounted) {
+                                  RitmoToast.show(
+                                    context,
+                                    'مدت زمان به ${toPersianDigits(newDurationMinutes.toString())} دقیقه تغییر یافت',
+                                    onUndo: () => _controller.undoLastAction(),
+                                  );
+                                }
+                              },
+                              onSlotTap: _handleSlotTap,
                             ),
                           ),
                         ),

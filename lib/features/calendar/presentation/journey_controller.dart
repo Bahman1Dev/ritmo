@@ -6,6 +6,7 @@ import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_snapshot_builder.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/domain/commands/command_stack.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/features/courses/logic/course_scheduler.dart';
@@ -250,12 +251,17 @@ class JourneyController extends ChangeNotifier {
     _isExecutingAction = true;
     notifyListeners();
 
+    final oldTimeOfDay = item.timeOfDay ?? '08:00';
     try {
-      await _actionHandler.updateAgendaItemTimeAndDuration(
+      final command = _MoveItemCommand(
+        actionHandler: _actionHandler,
         item: item,
+        oldTimeOfDay: oldTimeOfDay,
         newTimeOfDay: newTimeOfDay,
+        onRefresh: refresh,
       );
-      await refresh();
+      await command.execute();
+      CommandStack.instance.push(command);
     } catch (e, stackTrace) {
       if (_isDisposed) return;
       _errorMessage = 'Failed to move task: $e';
@@ -268,33 +274,22 @@ class JourneyController extends ChangeNotifier {
     }
   }
 
-  void startItemResize(AgendaItem item) {
-    if (_isDisposed) return;
-    _manipulatingItemId = item.id;
-    _isDragging = false;
-    _isResizing = true;
-    _previewTimeOfDay = item.timeOfDay;
-    _previewDurationMinutes = item.durationMinutes ?? 30;
-    notifyListeners();
-  }
-
-  void updateResizePreview(int durationMinutes) {
-    if (_isDisposed || _previewDurationMinutes == durationMinutes) return;
-    _previewDurationMinutes = durationMinutes;
-    notifyListeners();
-  }
-
   Future<void> commitItemResize(AgendaItem item, int newDurationMinutes) async {
     if (_isDisposed || _isExecutingAction) return;
     _isExecutingAction = true;
     notifyListeners();
 
+    final oldDuration = item.durationMinutes ?? 30;
     try {
-      await _actionHandler.updateAgendaItemTimeAndDuration(
+      final command = _ResizeItemCommand(
+        actionHandler: _actionHandler,
         item: item,
-        newDurationMinutes: newDurationMinutes,
+        oldDuration: oldDuration,
+        newDuration: newDurationMinutes,
+        onRefresh: refresh,
       );
-      await refresh();
+      await command.execute();
+      CommandStack.instance.push(command);
     } catch (e, stackTrace) {
       if (_isDisposed) return;
       _errorMessage = 'Failed to resize task: $e';
@@ -305,6 +300,15 @@ class JourneyController extends ChangeNotifier {
         cancelManipulation();
       }
     }
+  }
+
+  Future<bool> undoLastAction() async {
+    if (_isDisposed) return false;
+    final success = await CommandStack.instance.undoLast();
+    if (success) {
+      await refresh();
+    }
+    return success;
   }
 
   void cancelManipulation() {
@@ -370,7 +374,97 @@ class JourneyController extends ChangeNotifier {
     }
   }
 
+  void startItemResize(AgendaItem item) {
+    if (_isDisposed) return;
+    _manipulatingItemId = item.id;
+    _isDragging = false;
+    _isResizing = true;
+    _previewTimeOfDay = item.timeOfDay;
+    _previewDurationMinutes = item.durationMinutes ?? 30;
+    notifyListeners();
+  }
+
+  void updateResizePreview(int durationMinutes) {
+    if (_isDisposed || _previewDurationMinutes == durationMinutes) return;
+    _previewDurationMinutes = durationMinutes;
+    notifyListeners();
+  }
+
   static String _formatDateKey(DateTime dt) {
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+  }
+}
+
+class _MoveItemCommand implements UndoableCommand {
+  _MoveItemCommand({
+    required this.actionHandler,
+    required this.item,
+    required this.oldTimeOfDay,
+    required this.newTimeOfDay,
+    required this.onRefresh,
+  });
+
+  final AgendaActionHandler actionHandler;
+  final AgendaItem item;
+  final String oldTimeOfDay;
+  final String newTimeOfDay;
+  final Future<void> Function() onRefresh;
+
+  @override
+  String get description => 'جابه‌جایی رویداد';
+
+  @override
+  Future<void> execute() async {
+    await actionHandler.updateAgendaItemTimeAndDuration(
+      item: item,
+      newTimeOfDay: newTimeOfDay,
+    );
+    await onRefresh();
+  }
+
+  @override
+  Future<void> undo() async {
+    await actionHandler.updateAgendaItemTimeAndDuration(
+      item: item,
+      newTimeOfDay: oldTimeOfDay,
+    );
+    await onRefresh();
+  }
+}
+
+class _ResizeItemCommand implements UndoableCommand {
+  _ResizeItemCommand({
+    required this.actionHandler,
+    required this.item,
+    required this.oldDuration,
+    required this.newDuration,
+    required this.onRefresh,
+  });
+
+  final AgendaActionHandler actionHandler;
+  final AgendaItem item;
+  final int oldDuration;
+  final int newDuration;
+  final Future<void> Function() onRefresh;
+
+  @override
+  String get description => 'تغییر مدت زمان رویداد';
+
+  @override
+  Future<void> execute() async {
+    await actionHandler.updateAgendaItemTimeAndDuration(
+      item: item,
+      newDurationMinutes: newDuration,
+    );
+    await onRefresh();
+  }
+
+  @override
+  Future<void> undo() async {
+    await actionHandler.updateAgendaItemTimeAndDuration(
+      item: item,
+      newDurationMinutes: oldDuration,
+    );
+    await onRefresh();
   }
 }
