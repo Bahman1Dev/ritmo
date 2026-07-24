@@ -10,18 +10,6 @@ import 'package:ritmo/core/di/service_locator.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/engines/context_engine.dart';
-import 'dart:async';
-
-import 'package:flutter/cupertino.dart'; // برای CupertinoIcons
-import 'package:flutter/material.dart';
-import 'package:ritmo/core/ai/ai_briefing_service.dart';
-import 'package:ritmo/core/analytics/energy_analytics_engine.dart';
-import 'package:ritmo/core/analytics/reflection_engine.dart';
-import 'package:ritmo/core/database/database_helper.dart';
-import 'package:ritmo/core/di/service_locator.dart';
-import 'package:ritmo/core/domain/agenda/agenda_item.dart';
-import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
-import 'package:ritmo/core/domain/engines/context_engine.dart';
 import 'package:ritmo/core/domain/engines/cycle_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_intelligence_engine.dart';
@@ -29,7 +17,6 @@ import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/domain/models/daily_behavior.dart';
 import 'package:ritmo/core/domain/models/reflection_context.dart';
 import 'package:ritmo/core/platform/notification_platform.dart';
-import 'package:ritmo/core/services/prayer_time_provider.dart';
 import 'package:ritmo/core/services/snapshot_sync_service.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
 import 'package:ritmo/core/utils/persian_digits.dart'; // toPersianDigits

@@ -1,5 +1,6 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/models.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// AgendaSource for Goal Steps domain.
@@ -56,10 +57,12 @@ class GoalStepsAgendaSource {
         id: 'goalStep_${stepId}_$dateStr',
         sourceId: stepId,
         domain: AgendaDomain.goalStep,
-        type: AgendaItemType.flexible,
+        itemType: AgendaItemType.flexible,
         title: '$goalTitle: $stepTitle',
         dateStr: dateStr,
         durationMinutes: 30,
+        category: Category.personal,
+        deepLink: AgendaDeepLink(domain: AgendaDomain.goalStep, targetId: stepId),
         completion: isDone ? AgendaCompletion.done : AgendaCompletion.pending,
         meta: {'goalStep': row},
       ));

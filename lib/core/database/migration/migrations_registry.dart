@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/database/migration/migration_interface.dart';
+import 'package:ritmo/core/database/schema/tables/ai_tables.dart';
+import 'package:ritmo/core/database/schema/tables/day_plan_tables.dart';
 import 'package:ritmo/core/database/schema/tables/supplementary_sports_tables.dart';
 import 'package:ritmo/core/database/seed/seed_service.dart';
 import 'package:sqflite/sqflite.dart';
@@ -2061,19 +2064,7 @@ class MigrationV44 extends Migration {
   @override
   Future<void> up(Database db) async {
     await db.execute('DROP TABLE IF EXISTS ss_ai_memory;');
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS ai_memory (
-        id TEXT PRIMARY KEY,
-        content TEXT NOT NULL,
-        category TEXT NOT NULL DEFAULT 'general',
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-    ''');
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_ai_memory_created '
-      'ON ai_memory(created_at DESC);',
-    );
+    await AiTables.ensureSchema(db);
   }
 
   @override
@@ -2086,36 +2077,7 @@ class MigrationV45 extends Migration {
 
   @override
   Future<void> up(Database db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS day_plan_commits (
-        id TEXT PRIMARY KEY,
-        date_iso TEXT NOT NULL,
-        plan_json TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        groupId TEXT
-      );
-    ''');
-    try {
-      await db.execute('ALTER TABLE day_plan_commits ADD COLUMN groupId TEXT;');
-    } catch (_) {}
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_day_plan_commits_date '
-      'ON day_plan_commits(date_iso);',
-    );
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS day_plan_templates (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        plan_json TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-    ''');
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_day_plan_templates_title '
-      'ON day_plan_templates(title);',
-    );
+    await DayPlanTables.ensureSchema(db);
   }
 
   @override
@@ -2134,11 +2096,22 @@ class MigrationV46 extends Migration {
     try {
       await db.execute('ALTER TABLE workout_set_logs ADD COLUMN rpe REAL;');
     } catch (_) {}
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_perf_completions_routine_date ON routine_completions(routineId, completionDate);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_perf_occurrences_routine_date ON routine_occurrences(routine_id, date);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_perf_occurrences_date_status ON routine_occurrences(date, status);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_perf_wp_type_active ON worship_practices(type, is_active);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_perf_reminders_routine_state ON pending_reminders(routineId, state);');
+
+    final indexQueries = [
+      'CREATE INDEX IF NOT EXISTS idx_perf_completions_routine_date ON routine_completions(routineId, completionDate);',
+      'CREATE INDEX IF NOT EXISTS idx_perf_occurrences_routine_date ON routine_occurrences(routine_id, date);',
+      'CREATE INDEX IF NOT EXISTS idx_perf_occurrences_date_status ON routine_occurrences(date, status);',
+      'CREATE INDEX IF NOT EXISTS idx_perf_wp_type_active ON worship_practices(practiceType, isActive);',
+      'CREATE INDEX IF NOT EXISTS idx_perf_reminders_routine_state ON pending_reminders(routineId, state);',
+    ];
+
+    for (final sql in indexQueries) {
+      try {
+        await db.execute(sql);
+      } catch (e) {
+        debugPrint('[MIGRATION_V46] Note executing index statement: $e');
+      }
+    }
   }
 
   @override

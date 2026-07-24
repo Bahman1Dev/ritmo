@@ -65,9 +65,9 @@ void main() {
       ));
 
       expect(find.text('Deep Focus Work'), findsOneWidget);
-      expect(find.text('ROUTINE'), findsOneWidget);
+      expect(find.text('روتین'), findsOneWidget);
 
-      await tester.tap(find.text('Complete'));
+      await tester.tap(find.text('تکمیل'));
       await tester.pumpAndSettle();
 
       expect(completed, isTrue);

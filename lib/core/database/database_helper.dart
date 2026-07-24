@@ -6,6 +6,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart';
 import 'package:ritmo/core/database/migration/migration_runner.dart';
 import 'package:ritmo/core/database/schema/schema_manager.dart';
+import 'package:ritmo/core/database/schema/tables/ai_tables.dart';
+import 'package:ritmo/core/database/schema/tables/day_plan_tables.dart';
 import 'package:ritmo/core/database/seed/seed_service.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
@@ -24,6 +26,8 @@ class DatabaseHelper {
     if (_database != null) return _database!;
     _database = await _initDB('ritmo_secure.db');
     await SeedService.seedSupplementarySports(_database!);
+    await AiTables.ensureSchema(_database!);
+    await DayPlanTables.ensureSchema(_database!);
     return _database!;
   }
 

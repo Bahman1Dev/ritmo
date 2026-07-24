@@ -1,5 +1,6 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/features/worship/logic/worship_repository.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -79,11 +80,13 @@ class WorshipAgendaSource {
             id: 'prayer_${key}_$dateStr',
             sourceId: key,
             domain: AgendaDomain.prayer,
-            type: AgendaItemType.fixed,
+            itemType: AgendaItemType.fixed,
             title: title,
             dateStr: dateStr,
             timeOfDay: time,
             durationMinutes: 15,
+            category: Category.religious,
+            deepLink: AgendaDeepLink(domain: AgendaDomain.prayer, targetId: key),
             completion: isDone ? AgendaCompletion.done : AgendaCompletion.pending,
             meta: {'prayer': p, 'log': log, 'prayerTimes': prayerTimes},
           ));
@@ -115,11 +118,13 @@ class WorshipAgendaSource {
             id: 'mustahab_${pId}_$dateStr',
             sourceId: pId,
             domain: AgendaDomain.mustahab,
-            type: AgendaItemType.optional,
+            itemType: AgendaItemType.optional,
             title: title,
             dateStr: dateStr,
             timeOfDay: preferredTime,
             durationMinutes: 20,
+            category: Category.religious,
+            deepLink: AgendaDeepLink(domain: AgendaDomain.mustahab, targetId: pId),
             completion: isDone ? AgendaCompletion.done : AgendaCompletion.pending,
             meta: {'practice': m, 'log': log},
           ));

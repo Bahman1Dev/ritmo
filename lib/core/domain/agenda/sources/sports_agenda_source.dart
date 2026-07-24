@@ -1,5 +1,6 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/models.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// AgendaSource for the Sports & Supplementary Sports domain.
@@ -60,11 +61,13 @@ class SportsAgendaSource {
         id: 'sport_${planId}_$dateStr',
         sourceId: planId,
         domain: AgendaDomain.sport,
-        type: AgendaItemType.flexible,
+        itemType: AgendaItemType.flexible,
         title: title,
         dateStr: dateStr,
         timeOfDay: timeOfDay,
         durationMinutes: duration,
+        category: Category.fitness,
+        deepLink: AgendaDeepLink(domain: AgendaDomain.sport, targetId: planId),
         completion: AgendaCompletion.pending,
         meta: {'workoutPlan': plan},
       ));

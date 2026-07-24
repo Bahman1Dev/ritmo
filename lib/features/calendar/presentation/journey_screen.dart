@@ -221,7 +221,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
       case JourneyScale.month:
         return '${date.year}-${date.month.toString().padLeft(2, '0')}';
       case JourneyScale.year:
-        return 'Year ${date.year}';
+        return 'سال ${toPersianDigits(date.year.toString())}';
     }
   }
 
@@ -257,7 +257,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
                 IconButton(
                   icon: const Icon(Icons.chevron_left),
                   onPressed: () => _controller.navigatePeriod(-1),
-                  tooltip: 'Previous period',
+                  tooltip: 'دوره قبل',
                 ),
                 Expanded(
                   child: Text(
@@ -269,7 +269,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
                   onPressed: () => _controller.navigatePeriod(1),
-                  tooltip: 'Next period',
+                  tooltip: 'دوره بعد',
                 ),
               ],
             ),
@@ -280,12 +280,12 @@ class _JourneyScreenState extends State<JourneyScreen> {
                     _controller.selectDate(DateTime.now());
                     _autoScrollToNow();
                   },
-                  child: const Text('Today', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text('امروز', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               if (snapshot != null)
                 IconButton(
                   icon: const Icon(Icons.space_dashboard_outlined),
-                  tooltip: 'Day Insights & Summary',
+                  tooltip: 'خلاصه روز',
                   onPressed: _openSmartPanel,
                 ),
               IconButton(
@@ -299,6 +299,17 @@ class _JourneyScreenState extends State<JourneyScreen> {
                   if (selected != null) {
                     _openItemDetails(selected);
                   }
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.home_outlined),
+                tooltip: 'داشبورد امروز',
+                onPressed: () {
+                  RitmoEventBus().fire(RitmoEvent(
+                    type: 'navigate_tab',
+                    timestamp: DateTime.now(),
+                    payload: {'index': 2},
+                  ));
                 },
               ),
               IconButton(
@@ -324,11 +335,11 @@ class _JourneyScreenState extends State<JourneyScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text('Error: ${_controller.errorMessage}'),
+                                Text('خطا: ${_controller.errorMessage}'),
                                 const SizedBox(height: 12),
                                 ElevatedButton(
                                   onPressed: _controller.refresh,
-                                  child: const Text('Try Again'),
+                                  child: const Text('بازخوانی'),
                                 ),
                               ],
                             ),
@@ -362,7 +373,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     switch (activeScale) {
       case JourneyScale.day:
         return snapshot == null
-            ? const Center(child: Text('No agenda data found.'))
+            ? const Center(child: Text('هیچ برنامه‌ای برای این روز ثبت نشده'))
             : Stack(
                 children: [
                   Column(

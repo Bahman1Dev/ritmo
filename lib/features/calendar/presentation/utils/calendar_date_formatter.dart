@@ -21,7 +21,8 @@ class CalendarDateFormatter {
     final relLabel = getDayRelativeLabel(date, relativeTo: relativeTo);
 
     if (relLabel != null) {
-      return '$relLabel - $dayNum $monthName';
+      final base = '$relLabel - $dayNum $monthName';
+      return includeYear ? '$base $yearNum' : base;
     }
 
     if (includeYear) {

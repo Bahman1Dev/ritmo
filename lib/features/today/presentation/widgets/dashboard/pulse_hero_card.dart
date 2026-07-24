@@ -299,6 +299,35 @@ class PulseHeroCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(width: RitmoSpacing.xs),
+                    // دکمه باز کردن تقویم برای دیدن گام بعدی
+                    Semantics(
+                      label: 'مشاهده در تقویم',
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => onNavigateToTab?.call(4),
+                          borderRadius: BorderRadius.circular(RitmoRadius.chip),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.circular(RitmoRadius.chip),
+                              border: Border.all(
+                                color: colors.border,
+                                width: 1,
+                              ),
+                            ),
+                            child: Icon(
+                              CupertinoIcons.calendar,
+                              size: 16,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                   if (allCompleted)
                     Icon(CupertinoIcons.checkmark_seal_fill,

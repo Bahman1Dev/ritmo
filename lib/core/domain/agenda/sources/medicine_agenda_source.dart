@@ -1,5 +1,6 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/models.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// AgendaSource for the Medicine domain.
@@ -59,11 +60,13 @@ class MedicineAgendaSource {
         id: 'medicine_${id}_$dateStr',
         sourceId: id,
         domain: AgendaDomain.medicine,
-        type: AgendaItemType.fixed,
+        itemType: AgendaItemType.fixed,
         title: title,
         dateStr: dateStr,
         timeOfDay: timeOfDay,
         durationMinutes: 10,
+        category: Category.medical,
+        deepLink: AgendaDeepLink(domain: AgendaDomain.medicine, targetId: id),
         completion: isDone ? AgendaCompletion.done : AgendaCompletion.pending,
         meta: {'medicationLog': log},
       ));
