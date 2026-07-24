@@ -7,6 +7,9 @@ import 'package:ritmo/core/domain/engines/progression_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/utils/ritmo_id_factory.dart';
+import 'package:ritmo/features/supplementary_sports/movement/data/movement_repository.dart';
+import 'package:ritmo/features/supplementary_sports/movement/domain/movement_event.dart';
+import 'package:ritmo/features/supplementary_sports/movement/domain/movement_kind.dart';
 
 /// Single gateway entry point for all completion and state-change requests across Ritmo.
 class CompletionGateway {
@@ -25,12 +28,25 @@ class CompletionGateway {
         final WorshipCompletion req        => _handleWorshipCompletion(req),
         final GoalStepCompletion req       => _handleGoalStepCompletion(req),
         final MedicationTake req           => _handleMedicationTake(req),
-        final MovementCompletion _         => throw UnimplementedError('پرامپت ۰۲۴'),
+        final MovementCompletion req       => _handleMovementCompletion(req),
       };
     } catch (e, st) {
       debugPrint('CompletionGateway submission error: $e\n$st');
       return CompletionOutcome.failure(e.toString());
     }
+  }
+
+  Future<CompletionOutcome> _handleMovementCompletion(MovementCompletion req) async {
+    final event = MovementEvent(
+      id: RitmoIdFactory.movementLog(),
+      kindCode: req.kindCode,
+      durationMinutes: req.durationMinutes,
+      intensity: MovementIntensity.fromCode(req.intensity),
+      loggedAt: DateTime.tryParse(req.dateStr)?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch,
+    );
+    await MovementRepository.instance.logEvent(event);
+    _notifySuccess(domain: 'movement', itemId: event.id, dateStr: req.dateStr, result: 'FULL');
+    return CompletionOutcome.success(undoToken: event.id);
   }
 
   Future<CompletionOutcome> _handleRoutineCompletion(RoutineCompletion req) async {
@@ -233,7 +249,7 @@ class CompletionGateway {
     DayAgendaService.instance.invalidateDate(dateStr);
     RitmoEventBus().fire(
       RitmoEvent(
-        type: RitmoEventType.workoutLogChanged.code,
+        type: RitmoEventType.completionRecorded.code,
         timestamp: DateTime.now(),
         payload: {
           'domain': domain,

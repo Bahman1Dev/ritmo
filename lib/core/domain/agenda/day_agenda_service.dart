@@ -154,7 +154,7 @@ class DayAgendaService {
 
     final settings = await db.query('app_settings');
     final settingsMap = <String, String>{
-      for (final s in settings) s['key']! as String: s['value']! as String
+      for (final s in settings) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''
     };
 
     final religionEnabled = settingsMap['module_religion_enabled'] == 'true';
@@ -583,6 +583,7 @@ class DayAgendaService {
         title: fajr['title'] as String? ?? 'نماز صبح',
         dateStr: dateStr,
         timeOfDay: timeOfDay,
+        durationMinutes: 10,
         category: Category.religious,
         completion: completion,
         priority: 3,
@@ -628,12 +629,13 @@ class DayAgendaService {
       final start = _parseDateTime(dateStr, prayerTimes['dhuhr']);
       final end = _parseDateTime(dateStr, prayerTimes['maghrib']);
       items.add(AgendaItem(
-        id: 'prayer:${id}_combined',
+        id: 'prayer:${id}:dhuhr_asr',
         domain: AgendaDomain.prayer,
         sourceId: id,
         title: 'نماز ظهر و عصر',
         dateStr: dateStr,
         timeOfDay: timeOfDay,
+        durationMinutes: 20,
         category: Category.religious,
         completion: completion,
         priority: 3,
@@ -679,12 +681,13 @@ class DayAgendaService {
       final start = _parseDateTime(dateStr, prayerTimes['maghrib']);
       final end = _parseDateTime(dateStr, prayerTimes['midnightShari'], nextDayIfBefore: true, referenceTime: start);
       items.add(AgendaItem(
-        id: 'prayer:${id}_combined',
+        id: 'prayer:${id}:maghrib_isha',
         domain: AgendaDomain.prayer,
         sourceId: id,
         title: 'نماز مغرب و عشا',
         dateStr: dateStr,
         timeOfDay: timeOfDay,
+        durationMinutes: 20,
         category: Category.religious,
         completion: completion,
         priority: 3,
@@ -718,6 +721,7 @@ class DayAgendaService {
         title: p['title'] as String? ?? '',
         dateStr: dateStr,
         timeOfDay: timeOfDay,
+        durationMinutes: 10,
         category: Category.religious,
         completion: completion,
         priority: 3,

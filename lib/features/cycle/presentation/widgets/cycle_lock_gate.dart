@@ -59,7 +59,7 @@ class _CycleLockGateState extends State<CycleLockGate> with WidgetsBindingObserv
     try {
       final db = await DatabaseHelper.instance.database;
       final settingsList = await db.query('app_settings');
-      final settingsMap = {for (final s in settingsList) s['key']! as String: s['value']! as String};
+      final settingsMap = {for (final s in settingsList) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''};
       
       final lockEnabled = settingsMap['cycle_lock_enabled'] != 'false';
       
@@ -172,7 +172,7 @@ class _CycleLockGateState extends State<CycleLockGate> with WidgetsBindingObserv
               
               HapticFeedback.mediumImpact();
               final settingsList = await db.query('app_settings');
-              final updatedSettings = {for (final s in settingsList) s['key']! as String: s['value']! as String};
+              final updatedSettings = {for (final s in settingsList) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''};
               
               if (mounted) {
                 setState(() {

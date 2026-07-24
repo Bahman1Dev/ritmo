@@ -1,15 +1,34 @@
 import 'package:flutter/material.dart';
 
 class SupplementarySportsTheme {
-  // --- Colors ---
   static const Color bgLight = Color(0xFFFAFAF8);
   static const Color bgDark = Color(0xFF121212);
-
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color surfaceDark = Color(0xFF1E1E1E);
-
   static const Color textPrimaryLight = Color(0xFF1A1A1A);
   static const Color textPrimaryDark = Color(0xFFF0F0F0);
+
+  const SupplementarySportsTheme({
+    this.bg = bgDark,
+    this.card = surfaceDark,
+    this.textPrimary = textPrimaryDark,
+    this.textSecondary = textSecondaryDark,
+    this.emeraldPrimary = const Color(0xFF10B981),
+    this.surfaceVariant = const Color(0xFF262626),
+    this.surfaceBackground = const Color(0xFF171717),
+    this.cardBorder = const Color(0xFF404040),
+  });
+
+  final Color bg;
+  final Color card;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color emeraldPrimary;
+  final Color surfaceVariant;
+  final Color surfaceBackground;
+  final Color cardBorder;
+
+  static const dark = SupplementarySportsTheme();
 
   static const Color textSecondaryLight = Color(0xFF6B6B6B);
   static const Color textSecondaryDark = Color(0xFFA0A0A0);

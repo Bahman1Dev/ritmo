@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/completion/completion_gateway.dart';
 import 'package:ritmo/core/domain/completion/completion_request.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/domain/models/completion_result.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_study_sheet.dart';
 import 'package:ritmo/features/routines/shared/widgets/routine_niyyah_sheet.dart';
-import 'package:ritmo/features/sports/presentation/widgets/sports_quick_log_sheet.dart';
+import 'package:ritmo/features/supplementary_sports/movement/presentation/movement_log_sheet.dart';
 
 /// Central action router for opening the appropriate action sheet for any AgendaItem.
 class ActionRouter {
@@ -74,7 +75,14 @@ class ActionRouter {
         break;
 
       case AgendaDomain.sport:
-        showSportsQuickLogSheet(context, onLogged: () {});
+        await showMovementLogSheet(
+          context,
+          presetDate: DateTime.tryParse(item.dateStr) ?? DateTime.now(),
+          presetDurationMinutes: item.durationMinutes,
+          onLogged: () {
+            DayAgendaService.instance.invalidateDate(item.dateStr);
+          },
+        );
         break;
 
       case AgendaDomain.goalStep:

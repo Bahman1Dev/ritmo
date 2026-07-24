@@ -40,4 +40,40 @@ class SSProfileRepository {
   void clearCache() {
     _cachedProfile = null;
   }
+
+  /// Load today's recovery log
+  Future<Map<String, dynamic>?> todayRecovery() async {
+    final db = await DatabaseHelper.instance.database;
+    final today = DateTime.now();
+    final dateKey = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final rows = await db.query('workout_recovery_logs', where: 'date = ?', whereArgs: [dateKey], orderBy: 'loggedAt DESC', limit: 1);
+    return rows.isNotEmpty ? rows.first : null;
+  }
+
+  /// Save today's recovery log
+  Future<void> saveRecovery({required int soreness, required int fatigue, required int hydration}) async {
+    final db = await DatabaseHelper.instance.database;
+    final today = DateTime.now();
+    final dateKey = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final nowMs = today.millisecondsSinceEpoch;
+
+    await db.insert(
+      'workout_recovery_logs',
+      {
+        'id': 'rec_$nowMs',
+        'date': dateKey,
+        'soreness': soreness,
+        'fatigue': fatigue,
+        'hydration': hydration,
+        'loggedAt': nowMs,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Returns true if recovery is logged for today
+  Future<bool> isTodayRecoveryLogged() async {
+    final rec = await todayRecovery();
+    return rec != null;
+  }
 }

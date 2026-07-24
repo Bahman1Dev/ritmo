@@ -15,4 +15,6 @@ class RitmoHaptics {
   
   // Subtle: scroll snap، slider tick
   static void subtle() => HapticFeedback.selectionClick();
+
+  static void selection() => tap();
 }

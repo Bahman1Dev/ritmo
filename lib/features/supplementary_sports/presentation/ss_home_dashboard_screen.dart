@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/features/supplementary_sports/presentation/ss_movement_tab_screen.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_onboarding_flow.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_plan_day_detail_screen.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_plan_overview_screen.dart';
@@ -92,19 +93,22 @@ class _SSHomeDashboardScreenState extends State<SSHomeDashboardScreen> {
       SSPlanOverviewScreen(
         onNavigateToTab: _navigateToTab,
       ),
+      SSMovementTabScreen(
+        onNavigateToTab: _navigateToTab,
+      ),
       SSProgressScreen(onNavigateToTab: _navigateToTab),
     ];
   }
 
   void _onTabSelected(int index) {
     setState(() {
-      _selectedIndex = index.clamp(0, 2);
+      _selectedIndex = index.clamp(0, 3);
     });
   }
 
   void _navigateToTab(int index) {
     setState(() {
-      _selectedIndex = index.clamp(0, 2);
+      _selectedIndex = index.clamp(0, 3);
     });
   }
 
@@ -140,14 +144,19 @@ class _SSHomeDashboardScreenState extends State<SSHomeDashboardScreen> {
             unselectedLabelStyle: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12),
             items: const [
               BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home_rounded),
-                label: 'خانه',
+                icon: Icon(Icons.local_fire_department),
+                activeIcon: Icon(Icons.local_fire_department_rounded),
+                label: 'امروز',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.calendar_month_outlined),
                 activeIcon: Icon(Icons.calendar_month_rounded),
                 label: 'برنامه',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.directions_walk),
+                activeIcon: Icon(Icons.directions_walk_rounded),
+                label: 'حرکت',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_outline),

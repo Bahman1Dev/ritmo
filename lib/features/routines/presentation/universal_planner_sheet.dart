@@ -18,13 +18,13 @@ import 'package:ritmo/features/routines/presentation/forms/sports_step2_form.dar
 // Extracted components & controller
 import 'package:ritmo/features/routines/presentation/planner_controller.dart';
 import 'package:ritmo/features/routines/presentation/widgets/confetti_widget.dart';
+import 'package:ritmo/features/supplementary_sports/movement/presentation/movement_log_sheet.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_category_grid.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_header.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_journey_preview.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_natural_input.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_submit_button.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_summary_card.dart';
-import 'package:ritmo/features/sports/presentation/widgets/sports_quick_log_sheet.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_home_dashboard_screen.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:ritmo/features/worship/presentation/widgets/mustahab_section.dart';
@@ -185,11 +185,10 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
       );
     });
 
-    _controller.setSportsLogSheetOpener(({presetTier, presetGroups, durationMinutes}) {
-      showSportsQuickLogSheet(
+    _controller.setSportsLogSheetOpener(({durationMinutes}) {
+      showMovementLogSheet(
         context,
-        presetTier: presetTier,
-        presetGroups: presetGroups,
+        presetDurationMinutes: durationMinutes,
         onLogged: () {
           widget.onSaved();
           if (mounted) {

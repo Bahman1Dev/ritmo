@@ -141,7 +141,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
 
       // Load settings
       final settingsList = await db.query('app_settings');
-      _settings = {for (final s in settingsList) s['key']! as String: s['value']! as String};
+      _settings = {for (final s in settingsList) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''};
 
       // Seed cycle consent settings if they do not exist
       final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -172,7 +172,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
       }
       if (consentSeedChanged) {
         final updatedSettingsList = await db.query('app_settings');
-        _settings = {for (final s in updatedSettingsList) s['key']! as String: s['value']! as String};
+        _settings = {for (final s in updatedSettingsList) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''};
       }
 
       // Migrate settings if legacy settings exist but new ones do not
@@ -195,7 +195,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
       }
       if (settingsChanged) {
         final updatedSettingsList = await db.query('app_settings');
-        _settings = {for (final s in updatedSettingsList) s['key']! as String: s['value']! as String};
+        _settings = {for (final s in updatedSettingsList) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''};
       }
 
       // Load cycle periods

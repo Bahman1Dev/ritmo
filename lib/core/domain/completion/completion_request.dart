@@ -114,7 +114,15 @@ class MedicationTake extends CompletionRequest {
 }
 
 class MovementCompletion extends CompletionRequest {
-  MovementCompletion() {
-    throw UnimplementedError('پرامپت ۰۲۴');
-  }
+  const MovementCompletion({
+    required this.kindCode,
+    required this.durationMinutes,
+    required this.dateStr,
+    this.intensity = 'MEDIUM',
+  });
+
+  final String kindCode;
+  final int durationMinutes;
+  final String dateStr;
+  final String intensity;
 }

@@ -2556,5 +2556,41 @@ class MigrationV53 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV54 extends Migration {
+  @override
+  int get version => 54;
+
+  @override
+  Future<void> up(Database db) async {
+    // 1. Data Migration from legacy workout_split_days to ss_user_profile
+    try {
+      final legacySplitRows = await db.query('workout_split_days');
+      if (legacySplitRows.isNotEmpty) {
+        final daysCount = legacySplitRows.where((r) => (r['isRest'] as int? ?? 0) == 0).length;
+        if (daysCount > 0) {
+          await db.execute('''
+            UPDATE ss_user_profile 
+            SET workoutDaysPerWeek = ? 
+            WHERE id = 'default' AND (workoutDaysPerWeek IS NULL OR workoutDaysPerWeek = 0);
+          ''', [daysCount]);
+        }
+      }
+    } catch (_) {}
+
+    // 2. Drop obsolete workout_split_days table
+    try {
+      await db.execute('DROP TABLE IF EXISTS workout_split_days;');
+    } catch (_) {}
+
+    // 3. Drop duplicate set log table ss_workout_set_log if exists
+    try {
+      await db.execute('DROP TABLE IF EXISTS ss_workout_set_log;');
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
 
 

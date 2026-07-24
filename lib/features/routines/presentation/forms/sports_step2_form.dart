@@ -7,8 +7,8 @@ import 'package:ritmo/features/routines/presentation/planner_controller.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_day_of_week_selector.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_duration_picker.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_timeline_picker.dart';
-import 'package:ritmo/features/sports/movement/data/movement_repository.dart';
-import 'package:ritmo/features/sports/movement/domain/movement_kind.dart';
+import 'package:ritmo/features/supplementary_sports/movement/data/movement_repository.dart';
+import 'package:ritmo/features/supplementary_sports/movement/domain/movement_kind.dart';
 
 class SportsStep2Form extends StatefulWidget {
   const SportsStep2Form({super.key, required this.controller});

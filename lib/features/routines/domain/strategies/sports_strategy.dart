@@ -8,7 +8,7 @@ import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:ritmo/features/routines/domain/strategies/planner_category_strategy.dart';
 import 'package:ritmo/features/routines/domain/strategies/planner_save_context.dart';
-import 'package:ritmo/features/sports/movement/presentation/movement_log_sheet.dart';
+import 'package:ritmo/features/supplementary_sports/movement/presentation/movement_log_sheet.dart';
 
 class SportsStrategy implements PlannerCategoryStrategy {
   const SportsStrategy();
@@ -27,14 +27,9 @@ class SportsStrategy implements PlannerCategoryStrategy {
     final c = ctx as PlannerSaveContext;
     final now = DateTime.now().millisecondsSinceEpoch;
 
-    // --- Case A: LOG mode (Delegate to canonical MovementLogSheet) ---
+    // --- Case A: LOG mode ---
     if (c.sportsOpType == 'LOG') {
-      showMovementLogSheet(
-        context,
-        presetDate: c.selectedDate,
-        presetDurationMinutes: c.sportsDuration > 0 ? c.sportsDuration : 30,
-        presetVenue: c.sportsLocation.isNotEmpty ? c.sportsLocation : null,
-      );
+      showMovementLogSheet(context);
       return;
     }
 

@@ -12,7 +12,8 @@ enum RitmoEventType {
   worshipChanged('WorshipChanged'),
   worshipPracticeChanged('WorshipPracticeChanged'),
   workoutLogChanged('WorkoutLogChanged'),
-  reflectionSaved('ReflectionSaved');
+  reflectionSaved('ReflectionSaved'),
+  completionRecorded('CompletionRecorded');
 
   const RitmoEventType(this.code);
   final String code;

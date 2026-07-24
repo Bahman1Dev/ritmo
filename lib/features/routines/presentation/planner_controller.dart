@@ -16,7 +16,6 @@ import 'package:ritmo/features/health/presentation/widgets/medication_form_sheet
 import 'package:ritmo/features/routines/domain/strategies/planner_save_context.dart';
 import 'package:ritmo/features/routines/domain/strategies/planner_strategy_registry.dart';
 import 'package:ritmo/features/routines/presentation/quick_add_parser.dart';
-import 'package:ritmo/features/sports/models/workout_split_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -398,10 +397,8 @@ class PlannerController extends ChangeNotifier {
   /// Callback set by the widget to open CreateGoalSheet in the right context
   void Function({Map<String, dynamic>? templateData})? openGoalSheet;
 
-  /// Callback set by the widget to open SportsQuickLogSheet in the right context
+  /// Callback set by the widget to open MovementLogSheet in the right context
   void Function({
-    WorkoutTier? presetTier,
-    List<MuscleGroup>? presetGroups,
     int? durationMinutes,
   })? openSportsLogSheet;
 
@@ -426,8 +423,6 @@ class PlannerController extends ChangeNotifier {
   }
 
   void setSportsLogSheetOpener(void Function({
-    WorkoutTier? presetTier,
-    List<MuscleGroup>? presetGroups,
     int? durationMinutes,
   }) opener) {
     openSportsLogSheet = opener;

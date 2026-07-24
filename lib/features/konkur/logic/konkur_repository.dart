@@ -135,7 +135,7 @@ class KonkurRepository {
   Future<Map<String, String>> getAppSettings() async {
     final db = await _database;
     final maps = await db.query('app_settings');
-    return {for (final item in maps) item['key']! as String: item['value']! as String};
+    return {for (final item in maps) if (item['key'] != null) item['key'].toString(): item['value']?.toString() ?? ''};
   }
 
   // WRITE/UPDATE METHODS

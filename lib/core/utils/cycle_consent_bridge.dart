@@ -9,7 +9,7 @@ class CycleConsentBridge {
     
     // Load app settings
     final settingsList = await db.query('app_settings');
-    final settingsMap = {for (final s in settingsList) s['key']! as String: s['value']! as String};
+    final settingsMap = {for (final s in settingsList) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''};
 
     final isFemale = CyclePrivacyGuard.isVisible(settingsMap);
     final cycleEnabled = settingsMap['module_cycle_enabled'] == 'true';
@@ -34,9 +34,11 @@ class CycleConsentBridge {
       return false;
     }
 
-    // Check if today falls within the latest period
     final latestPeriod = periods.first;
-    final start = DateTime.parse(latestPeriod['startDate']! as String);
+    final startStr = latestPeriod['startDate'] as String?;
+    if (startStr == null) return false;
+    final start = DateTime.tryParse(startStr);
+    if (start == null) return false;
     final endStr = latestPeriod['endDate'] as String?;
 
     if (endStr != null) {
@@ -54,7 +56,7 @@ class CycleConsentBridge {
     final db = await DatabaseHelper.instance.database;
     
     final settingsList = await db.query('app_settings');
-    final settingsMap = {for (final s in settingsList) s['key']! as String: s['value']! as String};
+    final settingsMap = {for (final s in settingsList) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''};
 
     final isFemale = CyclePrivacyGuard.isVisible(settingsMap);
     final cycleEnabled = settingsMap['module_cycle_enabled'] == 'true';
@@ -67,7 +69,7 @@ class CycleConsentBridge {
   static Future<bool> isWorshipSuspended() async {
     final db = await DatabaseHelper.instance.database;
     final settingsList = await db.query('app_settings');
-    final settingsMap = {for (final s in settingsList) s['key']! as String: s['value']! as String};
+    final settingsMap = {for (final s in settingsList) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''};
 
     final worshipConsent = settingsMap['cycle_consent_worship'] == 'true';
     if (!worshipConsent) return false;
@@ -79,7 +81,7 @@ class CycleConsentBridge {
   static Future<BodyRhythmInfluence?> bodyRhythmInfluence({required String forSystem}) async {
     final db = await DatabaseHelper.instance.database;
     final settingsList = await db.query('app_settings');
-    final settingsMap = {for (final s in settingsList) s['key']! as String: s['value']! as String};
+    final settingsMap = {for (final s in settingsList) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''};
 
     final isFemale = CyclePrivacyGuard.isVisible(settingsMap);
     final cycleEnabled = settingsMap['module_cycle_enabled'] == 'true';
