@@ -116,7 +116,16 @@ class KonkurTables {
         topicId TEXT,
         plannedMinutes INTEGER NOT NULL DEFAULT 0,
         status TEXT NOT NULL DEFAULT 'PENDING',
-        createdAt INTEGER NOT NULL
+        createdAt INTEGER NOT NULL,
+        plannedMode TEXT,
+        priorityScore REAL,
+        planningReason TEXT,
+        isLocked INTEGER NOT NULL DEFAULT 0,
+        isUserEdited INTEGER NOT NULL DEFAULT 0,
+        carryOverCount INTEGER NOT NULL DEFAULT 0,
+        sourceType TEXT DEFAULT 'AUTO',
+        recommendedEnergy TEXT,
+        energyNote TEXT
       );
     ''');
     await db.execute('CREATE INDEX index_konkur_plan_dateIso ON konkur_plan_items(dateIso);');

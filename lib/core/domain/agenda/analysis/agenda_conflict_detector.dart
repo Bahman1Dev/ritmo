@@ -51,11 +51,11 @@ class AgendaConflictDetector {
         final itemA = timedItems[i];
         final itemB = timedItems[j];
 
-        final startA = _parseStartMinutes(itemA.timeOfDay!);
+        final startA = _parseStartMinutes(itemA.timeOfDay);
         final durationA = (itemA.durationMinutes ?? 0) <= 0 ? 15 : itemA.durationMinutes!;
         final endA = startA + durationA;
 
-        final startB = _parseStartMinutes(itemB.timeOfDay!);
+        final startB = _parseStartMinutes(itemB.timeOfDay);
         final durationB = (itemB.durationMinutes ?? 0) <= 0 ? 15 : itemB.durationMinutes!;
         final endB = startB + durationB;
 
@@ -123,11 +123,12 @@ class AgendaConflictDetector {
     return (end - start).clamp(0, 1440);
   }
 
-  static int _parseStartMinutes(String timeOfDay) {
-    final parts = timeOfDay.split(':');
-    if (parts.length != 2) return 0;
-    final h = int.tryParse(parts[0]) ?? 0;
-    final m = int.tryParse(parts[1]) ?? 0;
+  static int _parseStartMinutes(String? timeOfDay) {
+    if (timeOfDay == null) return 0;
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(timeOfDay.trim());
+    if (match == null) return 0;
+    final h = int.tryParse(match.group(1)!) ?? 0;
+    final m = int.tryParse(match.group(2)!) ?? 0;
     return (h * 60) + m;
   }
 }

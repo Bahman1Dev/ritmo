@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/domain/models/energy_context.dart';
 import 'package:ritmo/features/konkur/logic/konkur_planner.dart';
+import 'package:ritmo/features/konkur/logic/konkur_replan_service.dart';
 import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_formatters.dart';
@@ -9,18 +11,20 @@ import 'package:ritmo/features/konkur/presentation/widgets/konkur_study_sheet.da
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_today_progress_bar.dart';
 
 class KonkurTodaySection extends StatefulWidget {
-
   const KonkurTodaySection({
     super.key,
     required this.subjects,
     required this.topics,
     required this.todayPlanItems,
     required this.onRefresh,
+    this.energyContext,
   });
+
   final List<KonkurSubject> subjects;
   final List<KonkurTopic> topics;
   final List<KonkurPlanItem> todayPlanItems;
   final VoidCallback onRefresh;
+  final EnergyContext? energyContext;
 
   @override
   State<KonkurTodaySection> createState() => _KonkurTodaySectionState();
@@ -191,7 +195,7 @@ class _KonkurTodaySectionState extends State<KonkurTodaySection> {
       final repo = KonkurRepository.instance;
       final settings = await repo.getAppSettings();
       final examDateStr = settings['konkur_exam_date'] ?? '';
-      
+
       if (examDateStr.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -206,21 +210,14 @@ class _KonkurTodaySectionState extends State<KonkurTodaySection> {
         return;
       }
 
-      final examDate = DateTime.parse(examDateStr);
-      final dailyTarget = int.tryParse(settings['konkur_daily_target_minutes'] ?? '180') ?? 180;
-      
-      final cleanSubjects = await repo.getSubjects();
-      final cleanTopics = await repo.getTopics();
-
-      final newPlan = KonkurPlanner.buildPlan(
-        subjects: cleanSubjects,
-        topics: cleanTopics,
-        examDate: examDate,
-        from: DateTime.now().add(const Duration(days: 1)),
-        dailyTargetMinutes: dailyTarget,
+      await const KonkurReplanService().rebuildFuturePlan(
+        repository: repo,
+        today: DateTime.now(),
+        preserveToday: true,
+        preserveLocked: true,
+        preserveUserEdited: true,
+        energyContext: widget.energyContext,
       );
-
-      await repo.savePlanItems(newPlan, keepToday: true);
       widget.onRefresh();
 
       if (mounted) {
@@ -251,6 +248,76 @@ class _KonkurTodaySectionState extends State<KonkurTodaySection> {
         });
       }
     }
+  }
+
+  void _showReasonExplanationSheet(KonkurPlanItem item, KonkurTopic topic) {
+    final colors = context.colors;
+    final reasonText = item.planningReason ?? 'انتخاب شده بر اساس اولویت‌بندی هوشمند الگوریتم';
+    final modeLabel = switch (item.plannedMode) {
+      'STUDY' => 'یادگیری مفهومی 📚',
+      'TEST' => 'تمرین و تست‌زنی 📝',
+      'REVIEW' => 'مرور و تثبیت 🔁',
+      _ => 'مطالعه 📖',
+    };
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: colors.card,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.psychology, color: Color(0xFF8B5CF6)),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'چرا این مبحث برنامه‌ریزی شد؟',
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'مبحث: ${topic.name}',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, fontWeight: FontWeight.bold, color: colors.textPrimary),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'حالت پیشنهادی: $modeLabel',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.textSecondary),
+              ),
+              const Divider(height: 24),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  reasonText,
+                  style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.textPrimary, height: 1.5),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _openStudySheet(KonkurTopic topic) {
@@ -508,6 +575,34 @@ class _KonkurTodaySectionState extends State<KonkurTodaySection> {
                           fontFamily: 'Vazirmatn',
                           fontSize: 11,
                           color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () => _showReasonExplanationSheet(item, topic),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.help_outline, size: 11, color: Color(0xFF8B5CF6)),
+                              SizedBox(width: 2),
+                              Text(
+                                'چرا این؟',
+                                style: TextStyle(
+                                  fontFamily: 'Vazirmatn',
+                                  fontSize: 10,
+                                  color: Color(0xFF8B5CF6),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],

@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
+import 'package:ritmo/core/analytics/assistant_engine.dart';
 import 'package:ritmo/core/analytics/konkur_engine.dart';
+import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/models/energy_context.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
 import 'package:ritmo/core/utils/ritmo_date_picker.dart';
 import 'package:ritmo/core/ux/ritmo_directional_icon.dart';
 import 'package:ritmo/core/ux/ritmo_empty_state.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
+import 'package:ritmo/features/konkur/logic/konkur_planner.dart';
 import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/ai_konkur_assistant_sheet.dart'; // Will be created in K15
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_budget_section.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_exams_section.dart';
+import 'package:ritmo/features/konkur/presentation/widgets/konkur_field_picker_sheet.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_formatters.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_hero.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_setup_flow.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_stats_section.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_today_section.dart';
-
-import 'package:ritmo/features/konkur/presentation/widgets/konkur_field_picker_sheet.dart';
 
 class KonkurScreen extends StatefulWidget {
   const KonkurScreen({super.key});
@@ -40,9 +44,12 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
   List<KonkurMockExam> _mockExams = [];
   List<KonkurMockResult> _mockResults = [];
   List<KonkurPlanItem> _planItems = [];
+  List<KonkurPlanItem> _carryOverItems = [];
   Map<String, String> _settings = {};
 
   KonkurEngineOutput? _engineOutput;
+  EnergyContext? _energyContext;
+  bool _isEnergyBannerDismissed = false;
 
   @override
   void initState() {
@@ -144,6 +151,128 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
     );
   }
 
+  Widget _buildEnergyBanner(RitmoColors colors) {
+    if (_isEnergyBannerDismissed || _energyContext == null || _energyContext!.farsiNote.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade700.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.shade600.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.bolt_outlined, color: Colors.amber.shade800, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _energyContext!.farsiNote,
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 12,
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close, size: 16, color: colors.textSecondary),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () {
+              setState(() {
+                _isEnergyBannerDismissed = true;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCarryOverBanner() {
+    if (_carryOverItems.isEmpty) return const SizedBox.shrink();
+
+    final countStr = toPersianDigits(_carryOverItems.length.toString());
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3CD),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFCA28)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.history, color: Color(0xFFF57F17)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$countStr آیتم مطالعاتی از روزهای قبل باقی مانده — به امروز منتقل شود؟',
+              style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: Color(0xFF5D4037)),
+            ),
+          ),
+          TextButton(
+            onPressed: () => _applyCarryForward(_carryOverItems),
+            child: const Text('انتقال', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: Color(0xFF8B5CF6))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _applyCarryForward(List<KonkurPlanItem> overdue) async {
+    final repo = KonkurRepository.instance;
+    final todayAllocated = await repo.getTodayPlannedMinutes();
+    final dailyTargetStr = _settings['konkur_daily_target_minutes'] ?? '180';
+    final dailyTargetMinutes = int.tryParse(dailyTargetStr) ?? 180;
+
+    final carried = KonkurPlanner.carryForward(
+      overdueItems: overdue,
+      today: DateTime.now(),
+      dailyTargetMinutes: dailyTargetMinutes,
+      alreadyAllocatedMinutes: todayAllocated,
+    );
+
+    if (carried.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ظرفیت امروز پر است', style: TextStyle(fontFamily: 'Vazirmatn')),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    for (final item in carried) {
+      await repo.insertPlanItem(item);
+    }
+    // Mark originals as SKIPPED
+    for (final item in overdue) {
+      await repo.updatePlanItemStatus(item.id, 'SKIPPED');
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${toPersianDigits(carried.length.toString())} آیتم با موفقیت به امروز منتقل شدند', style: const TextStyle(fontFamily: 'Vazirmatn')),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+      setState(() {
+        _carryOverItems = [];
+      });
+      await _loadAllData();
+    }
+  }
+
   Future<void> _loadAllData() async {
     setState(() {
       _isLoading = true;
@@ -164,6 +293,7 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
         _mockExams = await repo.getMockExams();
         _mockResults = await repo.getMockResults();
         _planItems = await repo.getPlanItems();
+        _carryOverItems = await repo.getPendingCarryOverItems();
 
         // Auto-seed if field set but no subjects present
         final fieldStr = _settings['konkur_field'] ?? 'RIYAZI';
@@ -188,6 +318,32 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
             planItems: _planItems,
           ),
         );
+
+        // 4. Calculate AssistantEngine output for EnergyContext
+        final db = await DatabaseHelper.instance.database;
+        final energyLogs = await db.query('energy_logs', orderBy: 'loggedAt DESC', limit: 10);
+        final sleepLogs = await db.query('sleep_logs', orderBy: 'date DESC', limit: 10);
+        final isFemale = CyclePrivacyGuard.isVisible(_settings);
+        final cycleConsent = _settings['cycle_consent_dashboard'] == 'true';
+        final isEnergyTuned = _settings['cycle_setup_done'] == 'true';
+
+        final assistantOutput = await AssistantEngine().calculate(
+          AssistantEngineInput(
+            routines: const [],
+            routineCompletions: const [],
+            sleepLogs: sleepLogs,
+            energyLogs: energyLogs,
+            moodLogs: const [],
+            goals: const [],
+            goalSteps: const [],
+            konkurStudySessions: const [],
+            today: DateTime.now(),
+            isUserFemale: isFemale,
+            cycleConsent: cycleConsent,
+            isEnergyTuned: isEnergyTuned,
+          ),
+        );
+        _energyContext = assistantOutput.todayEnergyContext;
       }
     } catch (_) {}
 
@@ -359,6 +515,7 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
                       : Column(
 
                       children: [
+                        _buildEnergyBanner(colors),
                         // Countdown Hero
                         KonkurHero(
                           data: _engineOutput!,
@@ -388,11 +545,17 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
                           // 1. TODAY / PLAN SECTION
                           SingleChildScrollView(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            child: KonkurTodaySection(
-                              subjects: _subjects,
-                              topics: _topics,
-                              todayPlanItems: _engineOutput!.todayPlanItems,
-                              onRefresh: _loadAllData,
+                            child: Column(
+                              children: [
+                                _buildCarryOverBanner(),
+                                KonkurTodaySection(
+                                  subjects: _subjects,
+                                  topics: _topics,
+                                  todayPlanItems: _engineOutput!.todayPlanItems,
+                                  onRefresh: _loadAllData,
+                                  energyContext: _energyContext,
+                                ),
+                              ],
                             ),
                           ),
 

@@ -120,6 +120,18 @@ class KonkurRepository {
     return maps.map(KonkurPlanItem.fromMap).toList();
   }
 
+  Future<List<KonkurPlanItem>> getPendingCarryOverItems() async {
+    final db = await _database;
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final results = await db.query(
+      'konkur_plan_items',
+      where: "status = 'PENDING' AND dateIso < ?",
+      whereArgs: [todayStr],
+      orderBy: 'dateIso ASC',
+    );
+    return results.map(KonkurPlanItem.fromMap).toList();
+  }
+
   Future<Map<String, String>> getAppSettings() async {
     final db = await _database;
     final maps = await db.query('app_settings');
@@ -232,23 +244,108 @@ class KonkurRepository {
     await db.update('konkur_plan_items', {'status': status}, where: 'id = ?', whereArgs: [itemId]);
   }
 
-  Future<void> savePlanItems(List<KonkurPlanItem> items, {bool keepToday = true}) async {
+  Future<List<KonkurStudySession>> getRecentStudySessions({int days = 14}) async {
     final db = await _database;
+    final cutoffDate = DateTime.now().subtract(Duration(days: days));
+    final cutoffStr = _formatDate(cutoffDate);
+    final maps = await db.query(
+      'konkur_study_sessions',
+      where: 'dateIso >= ?',
+      whereArgs: [cutoffStr],
+      orderBy: 'dateIso DESC, createdAt DESC',
+    );
+    return maps.map(KonkurStudySession.fromMap).toList();
+  }
+
+  Future<void> savePlanItems(List<KonkurPlanItem> items, {bool keepToday = true}) async {
+    await savePlanItemsSmart(items, preserveToday: keepToday);
+  }
+
+  Future<void> savePlanItemsSmart(
+    List<KonkurPlanItem> items, {
+    bool preserveToday = true,
+    bool preserveLocked = true,
+    bool preserveUserEdited = true,
+  }) async {
+    final db = await _database;
+    final todayStr = _formatDate(DateTime.now());
+
     await db.transaction((txn) async {
-      // Clear future pending plan items to allow replanning
-      final todayStr = _formatDate(DateTime.now());
-      if (keepToday) {
-        await txn.delete('konkur_plan_items', where: 'dateIso > ? AND status = ?', whereArgs: [todayStr, 'PENDING']);
+      final whereClauses = <String>[];
+      final whereArgs = <dynamic>[];
+
+      if (preserveToday) {
+        whereClauses.add('dateIso > ?');
+        whereArgs.add(todayStr);
       } else {
-        await txn.delete('konkur_plan_items', where: 'dateIso >= ? AND status = ?', whereArgs: [todayStr, 'PENDING']);
+        whereClauses.add('dateIso >= ?');
+        whereArgs.add(todayStr);
       }
-      
+
+      whereClauses.add("status = 'PENDING'");
+
+      if (preserveLocked) {
+        whereClauses.add('(isLocked IS NULL OR isLocked = 0)');
+      }
+
+      if (preserveUserEdited) {
+        whereClauses.add('(isUserEdited IS NULL OR isUserEdited = 0)');
+      }
+
+      final whereSql = whereClauses.join(' AND ');
+      await txn.delete('konkur_plan_items', where: whereSql, whereArgs: whereArgs);
+
       final batch = txn.batch();
       for (final item in items) {
         batch.insert('konkur_plan_items', item.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
       }
       await batch.commit(noResult: true);
     });
+  }
+
+  Future<Map<String, int>> getPendingCarryOverCountByTopic() async {
+    final db = await _database;
+    final todayStr = _formatDate(DateTime.now());
+    final result = await db.rawQuery(
+      "SELECT topicId, COUNT(*) as carryCount FROM konkur_plan_items WHERE dateIso < ? AND status = 'PENDING' AND topicId IS NOT NULL GROUP BY topicId",
+      [todayStr],
+    );
+    final map = <String, int>{};
+    for (final row in result) {
+      final tid = row['topicId'] as String?;
+      final count = row['carryCount'] as int? ?? 0;
+      if (tid != null) map[tid] = count;
+    }
+    return map;
+  }
+
+  Future<Map<String, int>> getLastStudiedAtByTopic() async {
+    final topics = await getTopics();
+    final map = <String, int>{};
+    for (final t in topics) {
+      if (t.lastStudiedAt != null) {
+        map[t.id] = t.lastStudiedAt!;
+      }
+    }
+    return map;
+  }
+
+  Future<Map<String, double>> getRecentSubjectPerformance() async {
+    final results = await getMockResults();
+    final map = <String, double>{};
+    for (final res in results) {
+      map[res.subjectId] = res.percentage;
+    }
+    return map;
+  }
+
+  Future<List<KonkurTopic>> getUpcomingReviewDueTopics({required DateTime today}) async {
+    final topics = await getTopics();
+    final todayStr = _formatDate(today);
+    return topics.where((t) {
+      if (t.nextReviewDate == null || t.nextReviewDate!.isEmpty) return false;
+      return t.nextReviewDate!.compareTo(todayStr) <= 0;
+    }).toList();
   }
 
   Future<void> updateAppSetting(String key, String value) async {

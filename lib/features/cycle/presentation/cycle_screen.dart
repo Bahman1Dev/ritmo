@@ -24,6 +24,16 @@ import 'package:ritmo/features/cycle/logic/cycle_correlation.dart';
 import 'package:ritmo/core/utils/cycle_consent_bridge.dart';
 import 'package:ritmo/core/services/cycle_notification_service.dart';
 import 'package:lottie/lottie.dart';
+import 'package:ritmo/features/cycle/models/cycle_intelligence_models.dart';
+import 'package:ritmo/features/cycle/logic/cycle_data_quality_engine.dart';
+import 'package:ritmo/features/cycle/logic/cycle_personal_pattern_engine.dart';
+import 'package:ritmo/features/cycle/logic/cycle_burden_engine.dart';
+import 'package:ritmo/features/cycle/logic/cycle_load_balancer.dart';
+import 'package:ritmo/features/cycle/logic/cycle_checkin_orchestrator.dart';
+import 'package:ritmo/features/cycle/logic/cycle_anomaly_detector.dart';
+import 'package:ritmo/features/cycle/presentation/widgets/cycle_prediction_confidence_card.dart';
+import 'package:ritmo/features/cycle/presentation/widgets/cycle_burden_card.dart';
+import 'package:ritmo/features/cycle/presentation/widgets/cycle_personal_forecast_card.dart';
 
 class CycleScreen extends StatefulWidget {
   const CycleScreen({super.key});
@@ -59,6 +69,13 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
   Map<String, dynamic>? _forgottenPeriod;
   bool _startSetup = false;
   List<SymptomStat> _symptomStats = [];
+  PredictionConfidence? _predictionConfidence;
+  DataQualityReport? _dataQualityReport;
+  List<SymptomForecast> _personalForecasts = [];
+  BodyBurdenScore? _burdenScore;
+  CycleAdaptiveAdvice? _adaptiveAdvice;
+  String? _checkinPromptFa;
+  List<CycleAnomaly> _anomalies = [];
 
   bool _isPeriodForgotten(Map<String, dynamic> p) {
     if (p['endDate'] != null) return false;
@@ -234,6 +251,58 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
           nextPeriodWindowStart: _engineOutput!.nextPeriodWindowStart,
           consentReminders: consentReminders,
           pregnancyMode: pregnancyMode,
+        );
+
+        final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+        _dataQualityReport = await CycleDataQualityEngine.evaluateDataQuality(
+          db: db,
+          periodRows: _periods,
+          todayIso: todayStr,
+        );
+
+        final confLevel = _periods.length >= 5 && !_dataQualityReport!.hasForgottenOpenPeriod
+            ? PredictionConfidenceLevel.high
+            : (_periods.length >= 2 ? PredictionConfidenceLevel.medium : PredictionConfidenceLevel.low);
+        final confScore = _periods.length >= 5 ? 0.90 : (_periods.length >= 2 ? 0.65 : 0.35);
+        _predictionConfidence = PredictionConfidence(
+          level: confLevel,
+          score: confScore,
+          reasonsFa: _dataQualityReport!.warningsFa.isNotEmpty
+              ? _dataQualityReport!.warningsFa
+              : ['${_periods.length} چرخه ثبت‌شده و الگوی نسبتاً پایدار'],
+        );
+
+        _personalForecasts = await CyclePersonalPatternEngine.computePersonalForecasts(
+          db: db,
+          periodRows: _periods,
+          avgCycleLength: _engineOutput!.stats.avgCycleLength,
+        );
+
+        final latestLog = _dayLogs.isNotEmpty ? _dayLogs.first : null;
+        final symptomsStr = latestLog?['symptoms'] as String? ?? '';
+        final loggedSymptoms = symptomsStr.isNotEmpty ? symptomsStr.split(',') : <String>[];
+
+        _burdenScore = CycleBurdenEngine.calculateBurden(
+          phase: _engineOutput!.currentPhase,
+          dayOfPeriod: _engineOutput!.dayOfPeriod,
+          flowIntensity: latestLog?['flowLevel'] as String?,
+          loggedSymptoms: loggedSymptoms,
+          energyTag: null,
+          sleepHours: null,
+        );
+
+        _adaptiveAdvice = CycleLoadBalancer.generateAdvice(_burdenScore!);
+
+        _checkinPromptFa = CycleCheckinOrchestrator.checkinPromptFa(
+          phase: _engineOutput!.currentPhase,
+          dataQuality: _dataQualityReport!,
+          pmsWindowStart: _engineOutput!.pmsWindowStart,
+          now: DateTime.now(),
+        );
+
+        _anomalies = CycleAnomalyDetector.detectAnomalies(
+          periodRows: _periods,
+          avgCycleLength: _engineOutput!.stats.avgCycleLength,
         );
       }
 
@@ -1355,8 +1424,18 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
                       _buildOrbCard(colors, isDark),
                       const SizedBox(height: 16),
                       _buildNextPeriodPredictionCard(colors, isDark),
+                      if (_predictionConfidence != null && _dataQualityReport != null)
+                        CyclePredictionConfidenceCard(
+                          confidence: _predictionConfidence!,
+                          dataQuality: _dataQualityReport!,
+                        ),
                       const SizedBox(height: 16),
                       _buildQuickActionButtons(colors, isDark),
+                      if (_burdenScore != null && _adaptiveAdvice != null)
+                        CycleBurdenCard(
+                          burden: _burdenScore!,
+                          advice: _adaptiveAdvice!,
+                        ),
                       const SizedBox(height: 16),
                       _buildCycleSyncingWorkoutCard(colors, isDark),
                       const SizedBox(height: 16),
@@ -1371,6 +1450,8 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
                               : const SizedBox();
                         },
                       ),
+                      if (_personalForecasts.isNotEmpty)
+                        CyclePersonalForecastCard(forecasts: _personalForecasts),
                       if (_engineOutput != null) ...[
                         CycleSosSection(
                           engineOutput: _engineOutput,
@@ -1791,6 +1872,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
     final isTodayOvulation = _checkIsOvulationDay(today);
     final isTodayFertile = _checkIsFertileDay(today);
     final isTodayPms = _checkIsPmsDay(today);
+    final activePeriodDay = _calculateActivePeriodDay(today);
 
     var phaseText = '';
     var remainingText = '';
@@ -1800,7 +1882,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
 
     if (isTodayPeriod) {
       phaseText = 'دوران قاعدگی (پریود)';
-      remainingText = 'روز ${_toPersianDigits(_engineOutput?.dayOfPeriod.toString() ?? '1')} دوره خونریزی';
+      remainingText = 'روز ${_toPersianDigits(activePeriodDay.toString())} دوره خونریزی';
       phaseColor = const Color(0xffF43F5E);
       emoji = '🩸';
       statusTip = 'بدن شما در حال پاکسازی طبیعی است. استراحت کافی، نوشیدن آب ولرم و دمنوش‌های ملایم به کاهش انقباضات کمک می‌کند.';
@@ -1831,8 +1913,11 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
     }
 
     final totalCycleLength = _engineOutput?.stats.avgCycleLength ?? 28.0;
-    final currentDay = _engineOutput?.dayOfCycle ?? 1;
-    final progress = totalCycleLength > 0 ? (currentDay / totalCycleLength).clamp(0.0, 1.0) : 0.0;
+    final avgPeriodDuration = _engineOutput?.stats.avgPeriodDuration ?? 7.0;
+    final currentDay = isTodayPeriod ? activePeriodDay : (_engineOutput?.dayOfCycle ?? 1);
+    final totalDays = isTodayPeriod ? avgPeriodDuration : totalCycleLength;
+    final progress = totalDays > 0 ? (currentDay / totalDays).clamp(0.05, 1.0) : 0.1;
+
     return RitmoTheme.glassCardLight(
       child: Container(
         width: double.infinity,
@@ -1860,8 +1945,8 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
                 ),
                 // Ring CustomPaint
                 SizedBox(
-                  height: 130,
-                  width: 130,
+                  height: 136,
+                  width: 136,
                   child: CustomPaint(
                     painter: _CycleProgressRingPainter(
                       percentage: progress,
@@ -1901,7 +1986,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
                         Text(
                           _toPersianDigits(
                             phase == CyclePhase.menstrual
-                                ? (_engineOutput?.dayOfPeriod.toString() ?? '1')
+                                ? activePeriodDay.toString()
                                 : (_engineOutput?.dayOfCycle.toString() ?? '12'),
                           ),
                           style: TextStyle(
@@ -2895,6 +2980,31 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
       }
     }
     return false;
+  }
+
+  int _calculateActivePeriodDay(DateTime date) {
+    final cleanDate = DateTime(date.year, date.month, date.day);
+    for (final p in _periods) {
+      final pStart = DateTime.parse(p['startDate'] as String);
+      final start = DateTime(pStart.year, pStart.month, pStart.day);
+      final endStr = p['endDate'] as String?;
+      final end = endStr != null ? DateTime.parse(endStr) : null;
+      final cleanEnd = end != null ? DateTime(end.year, end.month, end.day) : null;
+
+      if (!cleanDate.isBefore(start)) {
+        if (cleanEnd != null) {
+          if (!cleanDate.isAfter(cleanEnd)) {
+            return cleanDate.difference(start).inDays + 1;
+          }
+        } else {
+          final pDur = int.tryParse(_settings['cycle_avg_period'] ?? '6') ?? 6;
+          if (cleanDate.difference(start).inDays < pDur) {
+            return cleanDate.difference(start).inDays + 1;
+          }
+        }
+      }
+    }
+    return (_engineOutput?.dayOfPeriod ?? 0) > 0 ? _engineOutput!.dayOfPeriod : 1;
   }
 
   bool _checkIsPredictedDay(DateTime date) {
@@ -4474,11 +4584,11 @@ class _CycleProgressRingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) / 2 - 6;
-    const strokeWidth = 7.0;
+    const strokeWidth = 8.0;
 
     // Background track
     final paintBg = Paint()
-      ..color = activeColor.withValues(alpha: isDark ? 0.08 : 0.05)
+      ..color = activeColor.withValues(alpha: isDark ? 0.20 : 0.12)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth;
     canvas.drawCircle(center, radius, paintBg);
@@ -4490,11 +4600,11 @@ class _CycleProgressRingPainter extends CustomPainter {
     final paintActive = Paint()
       ..shader = SweepGradient(
         colors: [
-          activeColor.withValues(alpha: 0.15),
+          activeColor.withValues(alpha: 0.35),
           activeColor,
           activeColor,
         ],
-        stops: const [0.0, 0.7, 1.0],
+        stops: const [0.0, 0.5, 1.0],
         transform: const GradientRotation(-math.pi / 2),
       ).createShader(rect)
       ..style = PaintingStyle.stroke
@@ -4520,12 +4630,12 @@ class _CycleProgressRingPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final thumbShadowPaint = Paint()
-      ..color = activeColor.withValues(alpha: 0.85)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5)
+      ..color = activeColor
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6)
       ..style = PaintingStyle.fill;
 
-    canvas.drawCircle(Offset(thumbX, thumbY), 8, thumbShadowPaint);
-    canvas.drawCircle(Offset(thumbX, thumbY), 4, thumbPaint);
+    canvas.drawCircle(Offset(thumbX, thumbY), 9, thumbShadowPaint);
+    canvas.drawCircle(Offset(thumbX, thumbY), 4.5, thumbPaint);
   }
 
   @override

@@ -1,5 +1,6 @@
 
 import 'dart:convert';
+import 'package:ritmo/core/domain/models/energy_context.dart';
 
 enum KonkurField {
   riyazi,
@@ -504,7 +505,6 @@ class KonkurMockResult {
 }
 
 class KonkurPlanItem {
-
   KonkurPlanItem({
     required this.id,
     required this.dateIso,
@@ -513,6 +513,15 @@ class KonkurPlanItem {
     this.plannedMinutes = 0,
     this.status = 'PENDING',
     required this.createdAt,
+    this.plannedMode,
+    this.priorityScore,
+    this.planningReason,
+    this.isLocked = false,
+    this.isUserEdited = false,
+    this.carryOverCount = 0,
+    this.sourceType = 'AUTO',
+    this.recommendedEnergy,
+    this.energyNote,
   });
 
   factory KonkurPlanItem.fromMap(Map<String, dynamic> map) {
@@ -524,8 +533,18 @@ class KonkurPlanItem {
       plannedMinutes: map['plannedMinutes'] as int? ?? 0,
       status: map['status'] as String? ?? 'PENDING',
       createdAt: map['createdAt'] as int,
+      plannedMode: map['plannedMode'] as String?,
+      priorityScore: (map['priorityScore'] as num?)?.toDouble(),
+      planningReason: map['planningReason'] as String?,
+      isLocked: (map['isLocked'] as int? ?? 0) == 1,
+      isUserEdited: (map['isUserEdited'] as int? ?? 0) == 1,
+      carryOverCount: map['carryOverCount'] as int? ?? 0,
+      sourceType: map['sourceType'] as String? ?? 'AUTO',
+      recommendedEnergy: map['recommendedEnergy'] as String?,
+      energyNote: map['energyNote'] as String?,
     );
   }
+
   final String id;
   final String dateIso; // 'YYYY-MM-DD'
   final String? subjectId;
@@ -533,9 +552,19 @@ class KonkurPlanItem {
   final int plannedMinutes;
   final String status; // PENDING, DONE, SKIPPED
   final int createdAt;
+  final String? plannedMode; // STUDY, TEST, REVIEW
+  final double? priorityScore;
+  final String? planningReason;
+  final bool isLocked;
+  final bool isUserEdited;
+  final int carryOverCount;
+  final String? sourceType; // AUTO, REVIEW, EXAM_RESCUE, USER
+  final String? recommendedEnergy; // LOW, MEDIUM, HIGH
+  final String? energyNote;
 
   bool isToday(DateTime today) {
-    final todayStr = '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final todayStr =
+        '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
     return dateIso == todayStr;
   }
 
@@ -548,6 +577,143 @@ class KonkurPlanItem {
       'plannedMinutes': plannedMinutes,
       'status': status,
       'createdAt': createdAt,
+      'plannedMode': plannedMode,
+      'priorityScore': priorityScore,
+      'planningReason': planningReason,
+      'isLocked': isLocked ? 1 : 0,
+      'isUserEdited': isUserEdited ? 1 : 0,
+      'carryOverCount': carryOverCount,
+      'sourceType': sourceType,
+      'recommendedEnergy': recommendedEnergy,
+      'energyNote': energyNote,
     };
   }
+
+  KonkurPlanItem copyWith({
+    String? id,
+    String? dateIso,
+    String? subjectId,
+    String? topicId,
+    int? plannedMinutes,
+    String? status,
+    int? createdAt,
+    String? plannedMode,
+    double? priorityScore,
+    String? planningReason,
+    String? note,
+    bool? isLocked,
+    bool? isUserEdited,
+    int? carryOverCount,
+    String? sourceType,
+    String? recommendedEnergy,
+    String? energyNote,
+  }) {
+    return KonkurPlanItem(
+      id: id ?? this.id,
+      dateIso: dateIso ?? this.dateIso,
+      subjectId: subjectId ?? this.subjectId,
+      topicId: topicId ?? this.topicId,
+      plannedMinutes: plannedMinutes ?? this.plannedMinutes,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      plannedMode: plannedMode ?? this.plannedMode,
+      priorityScore: priorityScore ?? this.priorityScore,
+      planningReason: note ?? planningReason ?? this.planningReason,
+      isLocked: isLocked ?? this.isLocked,
+      isUserEdited: isUserEdited ?? this.isUserEdited,
+      carryOverCount: carryOverCount ?? this.carryOverCount,
+      sourceType: sourceType ?? this.sourceType,
+      recommendedEnergy: recommendedEnergy ?? this.recommendedEnergy,
+      energyNote: energyNote ?? this.energyNote,
+    );
+  }
 }
+
+class KonkurPlanningContext {
+  KonkurPlanningContext({
+    required this.subjects,
+    required this.topics,
+    required this.studySessions,
+    required this.mockExams,
+    required this.mockResults,
+    required this.existingPlanItems,
+    required this.today,
+    this.planningHorizonDays = 14,
+    this.dailyCapacityMinutes = 180,
+    this.preferredField = KonkurField.riyazi,
+    this.energyProfile = 'MEDIUM',
+    this.pendingCarryOverMap = const {},
+    this.energyContext,
+  });
+
+  final List<KonkurSubject> subjects;
+  final List<KonkurTopic> topics;
+  final List<KonkurStudySession> studySessions;
+  final List<KonkurMockExam> mockExams;
+  final List<KonkurMockResult> mockResults;
+  final List<KonkurPlanItem> existingPlanItems;
+  final DateTime today;
+  final int planningHorizonDays;
+  final int dailyCapacityMinutes;
+  final KonkurField preferredField;
+  final String energyProfile; // LOW, MEDIUM, HIGH
+  final Map<String, int> pendingCarryOverMap; // topicId -> carryOverCount
+  final EnergyContext? energyContext;
+}
+
+class KonkurTopicPriority {
+  KonkurTopicPriority({
+    required this.topicId,
+    required this.score,
+    required this.primaryReason,
+    required this.reasons,
+    required this.recommendedMode,
+    required this.recommendedBlockMinutes,
+    required this.urgencyLevel,
+    required this.isReviewDue,
+    required this.isWeakArea,
+    required this.isHighYield,
+  });
+
+  final String topicId;
+  final double score;
+  final String primaryReason;
+  final List<String> reasons;
+  final String recommendedMode; // STUDY, TEST, REVIEW
+  final int recommendedBlockMinutes;
+  final int urgencyLevel; // 1..5
+  final bool isReviewDue;
+  final bool isWeakArea;
+  final bool isHighYield;
+}
+
+class KonkurDailyCapacity {
+  KonkurDailyCapacity({
+    required this.dateIso,
+    required this.totalMinutes,
+    required this.deepWorkMinutes,
+    required this.lightWorkMinutes,
+    required this.maxBlocks,
+    required this.energyLevel,
+  });
+
+  final String dateIso;
+  final int totalMinutes;
+  final int deepWorkMinutes;
+  final int lightWorkMinutes;
+  final int maxBlocks;
+  final String energyLevel; // LOW, MEDIUM, HIGH
+}
+
+class KonkurPlanExplanation {
+  KonkurPlanExplanation({
+    required this.itemId,
+    required this.summary,
+    required this.bullets,
+  });
+
+  final String itemId;
+  final String summary;
+  final List<String> bullets;
+}
+

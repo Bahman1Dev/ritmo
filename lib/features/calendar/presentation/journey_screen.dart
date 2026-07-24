@@ -452,9 +452,10 @@ class _JourneyScreenState extends State<JourneyScreen> {
                     switchInCurve: CalendarTokens.curveDefault,
                     switchOutCurve: CalendarTokens.curveDefault,
                     child: _controller.isLoading
-                        ? const Center(child: CircularProgressIndicator())
+                        ? const Center(key: ValueKey('journey_loading'), child: CircularProgressIndicator())
                         : _controller.errorMessage != null
                             ? Center(
+                                key: const ValueKey('journey_error'),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -468,7 +469,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
                                 ),
                               )
                             : KeyedSubtree(
-                                key: ValueKey(activeScale),
+                                key: ValueKey('${activeScale.name}_${selectedDate.year}_${selectedDate.month}_${selectedDate.day}'),
                                 child: _buildScaleContent(
                                   activeScale: activeScale,
                                   selectedDate: selectedDate,

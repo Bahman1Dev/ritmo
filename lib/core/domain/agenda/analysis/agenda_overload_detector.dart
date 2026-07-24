@@ -30,7 +30,7 @@ class AgendaOverloadDetector {
     final timed = items.where((i) => i.isTimed && !i.isCompleted).toList();
 
     for (final item in timed) {
-      final startM = _parseStartMinutes(item.timeOfDay!);
+      final startM = _parseStartMinutes(item.timeOfDay);
       final durM = (item.durationMinutes ?? 0) <= 0 ? 30 : item.durationMinutes!;
       final endM = startM + durM;
 
@@ -61,11 +61,12 @@ class AgendaOverloadDetector {
     return false;
   }
 
-  static int _parseStartMinutes(String timeOfDay) {
-    final parts = timeOfDay.split(':');
-    if (parts.length != 2) return 0;
-    final h = int.tryParse(parts[0]) ?? 0;
-    final m = int.tryParse(parts[1]) ?? 0;
+  static int _parseStartMinutes(String? timeOfDay) {
+    if (timeOfDay == null) return 0;
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(timeOfDay.trim());
+    if (match == null) return 0;
+    final h = int.tryParse(match.group(1)!) ?? 0;
+    final m = int.tryParse(match.group(2)!) ?? 0;
     return (h * 60) + m;
   }
 }

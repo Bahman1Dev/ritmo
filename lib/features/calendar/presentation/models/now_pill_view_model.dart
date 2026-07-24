@@ -1,5 +1,6 @@
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
 
 class NowPillViewModel {
   const NowPillViewModel({
@@ -30,8 +31,10 @@ class NowPillViewModel {
     final next = snapshot.nextActivity;
 
     if (current != null) {
-      final timeStr = current.timeOfDay ?? '';
-      final durStr = current.durationMinutes != null ? ' (${current.durationMinutes}m)' : '';
+      final timeStr = current.timeOfDay != null ? toPersianDigits(current.timeOfDay!) : '';
+      final durStr = current.durationMinutes != null
+          ? ' (${toPersianDigits(current.durationMinutes.toString())} دقیقه)'
+          : '';
       return NowPillViewModel(
         isVisible: true,
         isCurrent: true,
@@ -50,7 +53,9 @@ class NowPillViewModel {
       final nextStartMinutes = (startH * 60) + startM;
       final diffMinutes = nextStartMinutes - currentMinutes;
 
-      final diffText = diffMinutes > 0 ? 'In ${diffMinutes}m' : next.timeOfDay ?? '';
+      final diffText = diffMinutes > 0
+          ? 'تا ${toPersianDigits(diffMinutes.toString())} دقیقه دیگر'
+          : (next.timeOfDay != null ? toPersianDigits(next.timeOfDay!) : '');
       return NowPillViewModel(
         isVisible: true,
         isCurrent: false,

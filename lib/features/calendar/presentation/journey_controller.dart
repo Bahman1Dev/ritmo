@@ -10,6 +10,7 @@ import 'package:ritmo/core/domain/commands/command_stack.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/features/courses/logic/course_scheduler.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 
 enum JourneyScale { day, week, month, year }
 
@@ -117,19 +118,24 @@ class JourneyController extends ChangeNotifier {
         _selectedDate = _selectedDate.add(Duration(days: 7 * offset));
         break;
       case JourneyScale.month:
-        final nextMonth = _selectedDate.month + offset;
-        _selectedDate = DateTime(_selectedDate.year, nextMonth, _selectedDate.day.clamp(1, 28));
+        final j = Jalali.fromDateTime(_selectedDate);
+        final nextJ = j.addMonths(offset);
+        _selectedDate = nextJ.toDateTime();
         break;
       case JourneyScale.year:
-        _selectedDate = DateTime(_selectedDate.year + offset, _selectedDate.month, _selectedDate.day.clamp(1, 28));
+        final j = Jalali.fromDateTime(_selectedDate);
+        final nextJ = Jalali(j.year + offset, j.month, j.day.clamp(1, 29));
+        _selectedDate = nextJ.toDateTime();
         break;
     }
     loadForActiveScale();
   }
 
-  Future<void> loadForActiveScale() async {
+  Future<void> loadForActiveScale({bool isBackgroundRefresh = false}) async {
     if (_isDisposed) return;
-    _isLoading = true;
+    if (!isBackgroundRefresh && _snapshot == null) {
+      _isLoading = true;
+    }
     _errorMessage = null;
     notifyListeners();
 
@@ -326,7 +332,7 @@ class JourneyController extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    await loadForActiveScale();
+    await loadForActiveScale(isBackgroundRefresh: true);
   }
 
   void _handleEvent(RitmoEvent event) {
@@ -355,6 +361,7 @@ class JourneyController extends ChangeNotifier {
 
   static ({DateTime start, DateTime end}) _calculateDateRangeForScale(JourneyScale scale, DateTime date) {
     final dateOnly = DateTime(date.year, date.month, date.day);
+    final j = Jalali.fromDateTime(dateOnly);
     switch (scale) {
       case JourneyScale.day:
         return (start: dateOnly, end: dateOnly);
@@ -363,14 +370,13 @@ class JourneyController extends ChangeNotifier {
         final fri = sat.add(const Duration(days: 6));
         return (start: sat, end: fri);
       case JourneyScale.month:
-        final start = DateTime(dateOnly.year, dateOnly.month, 1);
-        final nextMonth = DateTime(dateOnly.year, dateOnly.month + 1, 1);
-        final end = nextMonth.subtract(const Duration(days: 1));
-        return (start: start, end: end);
+        final startJ = Jalali(j.year, j.month, 1);
+        final endJ = Jalali(j.year, j.month, startJ.monthLength);
+        return (start: startJ.toDateTime(), end: endJ.toDateTime());
       case JourneyScale.year:
-        final start = DateTime(dateOnly.year, 1, 1);
-        final end = DateTime(dateOnly.year, 12, 31);
-        return (start: start, end: end);
+        final startJ = Jalali(j.year, 1, 1);
+        final endJ = Jalali(j.year, 12, Jalali(j.year, 12, 1).monthLength);
+        return (start: startJ.toDateTime(), end: endJ.toDateTime());
     }
   }
 

@@ -2151,3 +2151,48 @@ class MigrationV47 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV48 extends Migration {
+  @override
+  int get version => 48;
+
+  @override
+  Future<void> up(Database db) async {
+    final columns = [
+      'ALTER TABLE konkur_plan_items ADD COLUMN plannedMode TEXT;',
+      'ALTER TABLE konkur_plan_items ADD COLUMN priorityScore REAL;',
+      'ALTER TABLE konkur_plan_items ADD COLUMN planningReason TEXT;',
+      'ALTER TABLE konkur_plan_items ADD COLUMN isLocked INTEGER NOT NULL DEFAULT 0;',
+      'ALTER TABLE konkur_plan_items ADD COLUMN isUserEdited INTEGER NOT NULL DEFAULT 0;',
+      'ALTER TABLE konkur_plan_items ADD COLUMN carryOverCount INTEGER NOT NULL DEFAULT 0;',
+      "ALTER TABLE konkur_plan_items ADD COLUMN sourceType TEXT DEFAULT 'AUTO';",
+      'ALTER TABLE konkur_plan_items ADD COLUMN recommendedEnergy TEXT;',
+    ];
+
+    for (final sql in columns) {
+      try {
+        await db.execute(sql);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
+class MigrationV49 extends Migration {
+  @override
+  int get version => 49;
+
+  @override
+  Future<void> up(Database db) async {
+    try {
+      await db.execute('ALTER TABLE konkur_plan_items ADD COLUMN energyNote TEXT;');
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
+
+

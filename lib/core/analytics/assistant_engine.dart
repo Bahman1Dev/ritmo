@@ -1,4 +1,5 @@
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
+import 'package:ritmo/core/domain/models/energy_context.dart';
 import 'package:ritmo/features/assistant/models/assistant_models.dart';
 
 class AssistantEngineInput { // from CycleConsentBridge.isEnergyTuned
@@ -44,11 +45,13 @@ class AssistantEngineOutput {
     required this.nextActions,
     required this.systemHighlights,
     required this.dynamicSuggestions,
+    this.todayEnergyContext,
   });
   final DailyBriefing dailyBriefing;
   final List<NextAction> nextActions;
   final List<BriefingItem> systemHighlights;
   final List<String> dynamicSuggestions;
+  final EnergyContext? todayEnergyContext;
 }
 
 class AssistantEngine implements CachedEngine<AssistantEngineInput, AssistantEngineOutput> {
@@ -227,12 +230,15 @@ class AssistantEngine implements CachedEngine<AssistantEngineInput, AssistantEng
     }
 
     // 4. Dynamic Suggestions
-    final suggestions = <String>[
-      'وضعیت خواب دیشب من چطور بود؟',
-      'روتین‌های باقی‌مانده امروز من چیست؟',
-      'تحلیل اهداف عقب‌افتاده من',
-      'چگونه انرژی خودم را بهبود دهم؟',
-    ];
+    final suggestions = _buildDynamicSuggestions(
+      input,
+      hasSleepData: lastNightSleep != null,
+      hasLowEnergy: latestEnergy?['energyLevel'] == 'LOW',
+      overdueGoalsCount: overdueSteps.length,
+      remainingRoutines: totalRoutines - todayCompletionsCount,
+      hasKonkurData: input.konkurStudySessions.isNotEmpty,
+      todayKonkurSessionCount: konkurStudyToday.length,
+    );
 
     // Apply configuration toggles
     final finalBriefing = DailyBriefing(
@@ -247,12 +253,79 @@ class AssistantEngine implements CachedEngine<AssistantEngineInput, AssistantEng
 
     final finalActions = input.isProactiveEnabled ? actions : <NextAction>[];
 
+    final energyLevel = latestEnergy?['energyLevel'] as String? ?? 'MEDIUM';
+    final sleepHours = lastNightSleep != null
+        ? (lastNightSleep['durationMinutes'] as int? ?? 0) / 60.0
+        : 7.0;
+
+    final energyCtx = EnergyContext(
+      energyLevel: energyLevel,
+      sleepHoursLastNight: sleepHours,
+      isCycleRestDay: input.isUserFemale && input.cycleConsent && input.isEnergyTuned,
+    );
+
     return AssistantEngineOutput(
       dailyBriefing: finalBriefing,
       nextActions: finalActions,
       systemHighlights: input.isBriefingEnabled ? highlights : [],
       dynamicSuggestions: suggestions,
+      todayEnergyContext: energyCtx,
     );
+  }
+
+  List<String> _buildDynamicSuggestions(AssistantEngineInput input, {
+    required bool hasSleepData,
+    required bool hasLowEnergy,
+    required int overdueGoalsCount,
+    required int remainingRoutines,
+    required bool hasKonkurData,
+    required int todayKonkurSessionCount,
+  }) {
+    final suggestions = <String>[];
+
+    // Sleep-based
+    if (!hasSleepData) {
+      suggestions.add('خواب دیشب من چند ساعت بود؟ ثبتش کن');
+    } else {
+      suggestions.add('کیفیت خواب من در این هفته چطور بوده؟');
+    }
+
+    // Energy-based
+    if (hasLowEnergy) {
+      suggestions.add('با انرژی پایین امروز چه کارهایی انجام بدم؟');
+    } else {
+      suggestions.add('انرژی من الان در چه سطحیه؟');
+    }
+
+    // Goals-based
+    if (overdueGoalsCount > 2) {
+      suggestions.add('$overdueGoalsCount گام هدف عقب مونده — کمکم کن اولویت‌بندی کنم');
+    } else if (overdueGoalsCount > 0) {
+      suggestions.add('اهداف عقب‌افتاده‌ام رو با هم بررسی کنیم');
+    } else {
+      suggestions.add('هدف جدیدی بهم پیشنهاد بده');
+    }
+
+    // Routines-based
+    if (remainingRoutines > 3) {
+      suggestions.add('$remainingRoutines روتین باقی مونده — مهم‌ترینشون چیه؟');
+    } else if (remainingRoutines > 0) {
+      suggestions.add('روتین‌های باقی‌مانده امروزم چیه؟');
+    } else {
+      suggestions.add('همه روتین‌های امروز انجام شد! قدم بعدی چیه؟');
+    }
+
+    // Konkur-based
+    if (hasKonkurData) {
+      if (todayKonkurSessionCount == 0) {
+        suggestions.add('امروز هنوز مطالعه کنکور ثبت نکردم — الان کدوم مبحث بخونم؟');
+      } else {
+        suggestions.add('پیشرفت مطالعه کنکورم امروز چطوره؟');
+      }
+    }
+
+    // Always cap at 5
+    return suggestions.take(5).toList();
   }
 
   @override

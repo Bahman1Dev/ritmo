@@ -74,67 +74,53 @@ class TimelineLayoutEngine {
       return b.durationMinutes.compareTo(a.durationMinutes);
     });
 
-    final clusters = <List<_RawEntry>>[];
+    // 1. Assign each entry to the first available lane with no time overlap
+    final lanes = <List<_RawEntry>>[];
     for (final entry in rawEntries) {
-      if (clusters.isEmpty) {
-        clusters.add([entry]);
-      } else {
-        var added = false;
-        for (final cluster in clusters) {
-          final clusterMaxEnd = cluster.map((e) => e.endMinutes).reduce(max);
-          if (entry.startMinutes < clusterMaxEnd) {
-            cluster.add(entry);
-            added = true;
-            break;
-          }
+      var placed = false;
+      for (var i = 0; i < lanes.length; i++) {
+        final lane = lanes[i];
+        final hasOverlap = lane.any((other) =>
+            entry.startMinutes < other.endMinutes && entry.endMinutes > other.startMinutes);
+        if (!hasOverlap) {
+          lane.add(entry);
+          entry.laneIndex = i;
+          placed = true;
+          break;
         }
-        if (!added) {
-          clusters.add([entry]);
-        }
+      }
+      if (!placed) {
+        lanes.add([entry]);
+        entry.laneIndex = lanes.length - 1;
       }
     }
 
+    // 2. Compute local concurrency and layout items
     final result = <TimelineLayoutItem>[];
+    for (final entry in rawEntries) {
+      final overlappingEntries = rawEntries.where((other) =>
+          entry.startMinutes < other.endMinutes && entry.endMinutes > other.startMinutes).toList();
 
-    for (final cluster in clusters) {
-      final lanes = <List<_RawEntry>>[];
-      for (final entry in cluster) {
-        var placed = false;
-        for (var i = 0; i < lanes.length; i++) {
-          final lane = lanes[i];
-          final lastInLane = lane.last;
-          if (entry.startMinutes >= lastInLane.endMinutes) {
-            lane.add(entry);
-            entry.laneIndex = i;
-            placed = true;
-            break;
-          }
-        }
-        if (!placed) {
-          lanes.add([entry]);
-          entry.laneIndex = lanes.length - 1;
-        }
-      }
+      final maxLaneInGroup = overlappingEntries.fold<int>(
+        entry.laneIndex,
+        (maxIdx, other) => max(maxIdx, other.laneIndex),
+      );
+      final totalLanes = maxLaneInGroup + 1;
 
-      final totalLanes = lanes.length;
+      final top = entry.startMinutes * pxPerMinute;
+      final rawHeight = entry.durationMinutes * pxPerMinute;
+      final maxHeight = totalTimelineHeight - top;
+      final height = max(rawHeight, minItemHeight).clamp(minItemHeight, maxHeight);
 
-      for (final entry in cluster) {
-        final top = entry.startMinutes * pxPerMinute;
-        final rawHeight = entry.durationMinutes * pxPerMinute;
-        // Safety ceiling: never let a card taller than the full timeline.
-        final maxHeight = totalTimelineHeight - top;
-        final height = max(rawHeight, minItemHeight).clamp(minItemHeight, maxHeight);
-
-        result.add(TimelineLayoutItem(
-          item: entry.item,
-          top: top,
-          height: height,
-          laneIndex: entry.laneIndex,
-          totalLanes: totalLanes,
-          startMinutes: entry.startMinutes,
-          durationMinutes: entry.durationMinutes,
-        ));
-      }
+      result.add(TimelineLayoutItem(
+        item: entry.item,
+        top: top,
+        height: height,
+        laneIndex: entry.laneIndex,
+        totalLanes: totalLanes,
+        startMinutes: entry.startMinutes,
+        durationMinutes: entry.durationMinutes,
+      ));
     }
 
     return result;

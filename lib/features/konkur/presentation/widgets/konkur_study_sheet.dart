@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
+import 'package:ritmo/features/konkur/logic/konkur_review_policy.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_formatters.dart';
 
 class KonkurStudySheet extends StatefulWidget {
-
   const KonkurStudySheet({
     super.key,
     this.initialTopic,
@@ -15,12 +15,15 @@ class KonkurStudySheet extends StatefulWidget {
     required this.subjects,
     required this.topics,
     required this.onSaved,
+    this.preSelectedTopicId,
   });
+
   final KonkurTopic? initialTopic;
   final String? initialMode;
   final List<KonkurSubject> subjects;
   final List<KonkurTopic> topics;
   final VoidCallback onSaved;
+  final String? preSelectedTopicId;
 
   @override
   State<KonkurStudySheet> createState() => _KonkurStudySheetState();
@@ -53,10 +56,15 @@ class _KonkurStudySheetState extends State<KonkurStudySheet> {
   void initState() {
     super.initState();
     _currentMode = widget.initialMode ?? 'STUDY';
-    
-    // Preset initial topic if provided
-    if (widget.initialTopic != null) {
-      _selectedTopic = widget.initialTopic;
+
+    // Preset initial or preSelected topic if provided
+    final preSelected = widget.initialTopic ??
+        (widget.preSelectedTopicId != null
+            ? widget.topics.where((t) => t.id == widget.preSelectedTopicId).firstOrNull
+            : null);
+
+    if (preSelected != null) {
+      _selectedTopic = preSelected;
       _selectedSubject = widget.subjects.firstWhere(
         (s) => s.id == _selectedTopic!.subjectId,
         orElse: () => widget.subjects.first,
@@ -192,17 +200,19 @@ class _KonkurStudySheetState extends State<KonkurStudySheet> {
       await repo.insertStudySession(session);
 
       // Increment phase-specific completed minutes and update topic mastery / lastStudiedAt
-      int conceptAdd = _currentMode == 'STUDY' ? duration : 0;
-      int practiceAdd = _currentMode == 'TEST' ? duration : 0;
-      int reviewAdd = _currentMode == 'REVIEW' ? duration : 0;
+      final conceptAdd = _currentMode == 'STUDY' ? duration : 0;
+      final practiceAdd = _currentMode == 'TEST' ? duration : 0;
+      final reviewAdd = _currentMode == 'REVIEW' ? duration : 0;
 
       final targetMastery = _promotedMastery ?? _selectedTopic!.masteryLevel;
-      final tomorrowStr = DateTime.now().add(const Duration(days: 1)).toIso8601String().substring(0, 10);
-      final nextRev = _selectedOutcome == 'NEEDS_REVIEW'
-          ? tomorrowStr
-          : (targetMastery == MasteryLevel.mastered
-              ? DateTime.now().add(const Duration(days: 7)).toIso8601String().substring(0, 10)
-              : _selectedTopic!.nextReviewDate);
+      final calculatedNextRevDate = const KonkurReviewPolicy().computeNextReviewDate(
+        outcome: _selectedOutcome,
+        currentMastery: targetMastery,
+        from: DateTime.now(),
+      );
+      final nextRev = calculatedNextRevDate != null
+          ? calculatedNextRevDate.toIso8601String().substring(0, 10)
+          : _selectedTopic!.nextReviewDate;
 
       final updatedTopic = KonkurTopic(
         id: _selectedTopic!.id,

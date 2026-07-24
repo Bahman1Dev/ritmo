@@ -52,7 +52,7 @@ class AgendaGapCalculator {
     } else {
       final intervals = <_TimeInterval>[];
       for (final item in timedItems) {
-        final start = _parseStartMinutes(item.timeOfDay!);
+        final start = _parseStartMinutes(item.timeOfDay);
         final duration = (item.durationMinutes ?? 0) <= 0 ? 15 : item.durationMinutes!;
         intervals.add(_TimeInterval(start, start + duration));
       }
@@ -173,11 +173,12 @@ class AgendaGapCalculator {
     return 'فرصت کوتاه';
   }
 
-  static int _parseStartMinutes(String timeOfDay) {
-    final parts = timeOfDay.split(':');
-    if (parts.length != 2) return 0;
-    final h = int.tryParse(parts[0]) ?? 0;
-    final m = int.tryParse(parts[1]) ?? 0;
+  static int _parseStartMinutes(String? timeOfDay) {
+    if (timeOfDay == null) return 0;
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(timeOfDay.trim());
+    if (match == null) return 0;
+    final h = int.tryParse(match.group(1)!) ?? 0;
+    final m = int.tryParse(match.group(2)!) ?? 0;
     return (h * 60) + m;
   }
 }

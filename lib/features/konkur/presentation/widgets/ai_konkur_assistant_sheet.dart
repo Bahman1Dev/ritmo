@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/ai/memory/assistant_memory_binding.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/features/konkur/logic/konkur_ai_helper.dart';
 import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
+import 'package:ritmo/features/konkur/presentation/widgets/konkur_study_sheet.dart';
 
 class AiKonkurAssistantSheet extends StatefulWidget {
-
   const AiKonkurAssistantSheet({
     super.key,
     required this.subjects,
@@ -15,6 +17,7 @@ class AiKonkurAssistantSheet extends StatefulWidget {
     required this.perSubjectTrend,
     required this.onRefresh,
   });
+
   final List<KonkurSubject> subjects;
   final List<KonkurTopic> topics;
   final Map<String, List<double>> perSubjectTrend;
@@ -25,17 +28,63 @@ class AiKonkurAssistantSheet extends StatefulWidget {
 }
 
 class _AiKonkurAssistantSheetState extends State<AiKonkurAssistantSheet> {
+  late final String _sessionId;
   String? _activeAction; // 'DECONSTRUCT', 'RECOMMEND_TOPIC', 'PLAN_DIST', 'ANALYZE_EXAMS'
   bool _isLoading = false;
   String _aiTextResponse = '';
+
+  // Recommended Topic State
+  KonkurTopic? _recommendedTopic;
+  KonkurSubject? _recommendedSubject;
 
   // 1. Deconstruct Subject State
   KonkurSubject? _selectedDeconstructSub;
   List<Map<String, dynamic>> _suggestedTopics = []; // List of { "name": String, "questions": int, "selected": bool }
 
+  void _triggerMemoryConsolidation() {
+    unawaited(AssistantMemoryBinding.triggerConsolidation(
+      sessionId: _sessionId,
+      domain: 'konkur',
+    ));
+  }
+
+  void _closeSheet() {
+    _triggerMemoryConsolidation();
+    Navigator.pop(context);
+  }
+
+  KonkurTopic? _extractRecommendedTopic(String aiResponse) {
+    for (final topic in widget.topics) {
+      if (aiResponse.contains(topic.name)) {
+        return topic;
+      }
+    }
+    return null;
+  }
+
+  void _openStudySheet() {
+    if (_recommendedTopic == null) return;
+    final topicId = _recommendedTopic!.id;
+    final parentContext = Navigator.of(context).context;
+    _triggerMemoryConsolidation();
+    Navigator.pop(context); // close assistant sheet
+    showModalBottomSheet(
+      context: parentContext,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => KonkurStudySheet(
+        subjects: widget.subjects,
+        topics: widget.topics,
+        preSelectedTopicId: topicId,
+        onSaved: widget.onRefresh,
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    _sessionId = 'konkur_${DateTime.now().millisecondsSinceEpoch}';
     if (widget.subjects.isNotEmpty) {
       _selectedDeconstructSub = widget.subjects.first;
     }
@@ -61,7 +110,11 @@ JSON Schema:
 ''';
 
     try {
-      final res = await KonkurAiHelper.askAssistant(sysPrompt, userPrompt);
+      final res = await KonkurAiHelper.askAssistant(
+        sysPrompt,
+        userPrompt,
+        sessionId: _sessionId,
+      );
       if (res != null) {
         var cleanJson = res.trim();
         if (cleanJson.startsWith('```')) {
@@ -119,7 +172,7 @@ JSON Schema:
 
       widget.onRefresh();
       if (mounted) {
-        Navigator.pop(context);
+        _closeSheet();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('مباحث پیشنهادی هوش مصنوعی با موفقیت ثبت شدند! 🚀', style: TextStyle(fontFamily: 'Vazirmatn')),
@@ -160,9 +213,16 @@ Student Live Progress & Context:
     setState(() {
       _isLoading = true;
       _aiTextResponse = '';
+      _recommendedTopic = null;
+      _recommendedSubject = null;
     });
 
-    const sysPrompt = 'You are the Ritmo Konkur AI Assistant. Help the student choose the absolute best topic to study right now.';
+    const sysPrompt = '''You are the Ritmo Konkur AI Assistant.
+Help the student choose the best topic to study right now.
+If you learn important facts about the student's strengths or weaknesses,
+mark them as memory operations using <memory_ops>...</memory_ops> tags.
+Example: <memory_ops>[{"op":"upsert","key":"weakness_subject","value":"chemistry","domain":"konkur"}]</memory_ops>
+''';
     
     final topicsSummary = widget.topics.map((t) {
       final sub = widget.subjects.firstWhere((s) => s.id == t.subjectId, orElse: () => KonkurSubject(id: '', name: 'درس', createdAt: 0, updatedAt: 0));
@@ -177,10 +237,20 @@ Please recommend one high-priority topic to study right now, explain why based o
 ''';
 
     try {
-      final res = await KonkurAiHelper.askAssistant(sysPrompt, userPrompt);
+      final res = await KonkurAiHelper.askAssistant(
+        sysPrompt,
+        userPrompt,
+        sessionId: _sessionId,
+      );
       if (res != null) {
+        final topic = _extractRecommendedTopic(res);
+        final sub = topic != null
+            ? widget.subjects.where((s) => s.id == topic.subjectId).firstOrNull
+            : null;
         setState(() {
           _aiTextResponse = res;
+          _recommendedTopic = topic;
+          _recommendedSubject = sub;
         });
       }
     } catch (_) {}
@@ -197,7 +267,12 @@ Please recommend one high-priority topic to study right now, explain why based o
       _aiTextResponse = '';
     });
 
-    const sysPrompt = "You are the Ritmo Konkur AI Assistant. Analyze the student's mock exam scores trend. Provide supportive coaching and highlight weakest areas to focus on. NEVER estimate country rank/grade.";
+    const sysPrompt = '''You are the Ritmo Konkur AI Assistant.
+Analyze the student's mock exam scores trend. Provide supportive coaching and highlight weakest areas to focus on. NEVER estimate country rank/grade.
+If you learn important facts about the student's strengths or weaknesses,
+mark them as memory operations using <memory_ops>...</memory_ops> tags.
+Example: <memory_ops>[{"op":"upsert","key":"weakness_subject","value":"chemistry","domain":"konkur"}]</memory_ops>
+''';
 
     final trendsSummary = widget.perSubjectTrend.entries.map((e) {
       final sub = widget.subjects.firstWhere((s) => s.id == e.key, orElse: () => KonkurSubject(id: '', name: 'درس نامشخص', createdAt: 0, updatedAt: 0));
@@ -213,7 +288,11 @@ Please write a short analysis in Farsi. Point out progress, highlight which subj
 ''';
 
     try {
-      final res = await KonkurAiHelper.askAssistant(sysPrompt, userPrompt);
+      final res = await KonkurAiHelper.askAssistant(
+        sysPrompt,
+        userPrompt,
+        sessionId: _sessionId,
+      );
       if (res != null) {
         setState(() {
           _aiTextResponse = res;
@@ -244,7 +323,11 @@ Please suggest a healthy weekly study schedule (e.g. which days to focus on math
 ''';
 
     try {
-      final res = await KonkurAiHelper.askAssistant(sysPrompt, userPrompt);
+      final res = await KonkurAiHelper.askAssistant(
+        sysPrompt,
+        userPrompt,
+        sessionId: _sessionId,
+      );
       if (res != null) {
         setState(() {
           _aiTextResponse = res;
@@ -316,7 +399,7 @@ Please suggest a healthy weekly study schedule (e.g. which days to focus on math
                 else
                   IconButton(
                     icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: _closeSheet,
                   ),
               ],
             ),
@@ -510,12 +593,52 @@ Please suggest a healthy weekly study schedule (e.g. which days to focus on math
               ),
             ),
           ),
+          if (_activeAction == 'RECOMMEND_TOPIC' && _recommendedTopic != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_stories, color: Color(0xFF8B5CF6)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'موضوع پیشنهادی: ${_recommendedSubject != null ? "${_recommendedSubject!.name} • " : ""}${_recommendedTopic!.name}',
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: _openStudySheet,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8B5CF6),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    ),
+                    child: const Text('شروع جلسه', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           OutlinedButton(
             onPressed: () {
               setState(() {
                 _activeAction = null;
                 _aiTextResponse = '';
+                _recommendedTopic = null;
+                _recommendedSubject = null;
               });
             },
             style: OutlinedButton.styleFrom(

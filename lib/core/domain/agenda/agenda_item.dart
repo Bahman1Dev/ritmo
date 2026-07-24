@@ -80,9 +80,23 @@ class AgendaItem {
     this.meta = const {},
     AgendaItemType? itemType,
   }) : itemType = itemType ??
-            ((timeOfDay != null && timeOfDay.isNotEmpty) || isEssential
+            (_isValidTime(timeOfDay)
                 ? AgendaItemType.fixed
                 : AgendaItemType.flexible);
+
+  static bool _isValidTime(String? timeOfDay) {
+    final value = timeOfDay?.trim();
+    if (value == null || value.isEmpty) return false;
+
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value);
+    if (match == null) return false;
+
+    final hour = int.tryParse(match.group(1)!);
+    final minute = int.tryParse(match.group(2)!);
+    if (hour == null || minute == null) return false;
+
+    return hour >= 0 && hour < 24 && minute >= 0 && minute < 60;
+  }
 
   /// Domain-prefixed unique id, e.g. `"course:<sessionId>"`.
   final String id;
@@ -125,19 +139,7 @@ class AgendaItem {
 
   final AgendaItemType itemType;
 
-  bool get hasValidTimeOfDay {
-    final value = timeOfDay?.trim();
-    if (value == null || value.isEmpty) return false;
-
-    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value);
-    if (match == null) return false;
-
-    final hour = int.tryParse(match.group(1)!);
-    final minute = int.tryParse(match.group(2)!);
-    if (hour == null || minute == null) return false;
-
-    return hour >= 0 && hour < 24 && minute >= 0 && minute < 60;
-  }
+  bool get hasValidTimeOfDay => _isValidTime(timeOfDay);
 
   bool get isTimed => hasValidTimeOfDay;
 

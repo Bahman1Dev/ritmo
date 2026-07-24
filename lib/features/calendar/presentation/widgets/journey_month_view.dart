@@ -23,11 +23,15 @@ class JourneyMonthView extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final now = DateTime.now();
 
-    final firstOfMonth = DateTime(selectedDate.year, selectedDate.month, 1);
-    final lastOfMonth = DateTime(selectedDate.year, selectedDate.month + 1, 0);
+    final jalaliSelected = Jalali.fromDateTime(selectedDate);
+    final jalaliFirst = Jalali(jalaliSelected.year, jalaliSelected.month, 1);
+    final monthLength = jalaliFirst.monthLength;
 
-    final firstGridDay = CourseScheduler.getSaturdayOfWeek(firstOfMonth);
-    final totalDays = lastOfMonth.difference(firstGridDay).inDays + 1;
+    final firstOfMonthDate = jalaliFirst.toDateTime();
+    final lastOfMonthDate = Jalali(jalaliSelected.year, jalaliSelected.month, monthLength).toDateTime();
+
+    final firstGridDay = CourseScheduler.getSaturdayOfWeek(firstOfMonthDate);
+    final totalDays = lastOfMonthDate.difference(firstGridDay).inDays + 1;
     final gridDayCount = (totalDays / 7).ceil() * 7;
 
     final gridDays = List.generate(gridDayCount, (i) => firstGridDay.add(Duration(days: i)));
@@ -73,7 +77,8 @@ class JourneyMonthView extends StatelessWidget {
                 itemCount: gridDays.length,
                 itemBuilder: (context, index) {
                   final day = gridDays[index];
-                  final isCurrentMonth = day.month == selectedDate.month;
+                  final jDay = Jalali.fromDateTime(day);
+                  final isCurrentMonth = jDay.year == jalaliSelected.year && jDay.month == jalaliSelected.month;
                   final isSelected = _isSameDay(day, selectedDate);
                   final isToday = _isSameDay(day, now);
 
@@ -81,8 +86,7 @@ class JourneyMonthView extends StatelessWidget {
                   final snapshot = rangeSnapshots[dateKey];
                   final totalItems = snapshot?.items.length ?? 0;
 
-                  final jalaliDay = Jalali.fromDateTime(day).day;
-                  final dayNumStr = toPersianDigits(jalaliDay.toString());
+                  final dayNumStr = toPersianDigits(jDay.day.toString());
 
                   final dotCount = totalItems == 0 ? 0 : (totalItems <= 2 ? 1 : (totalItems <= 4 ? 2 : 3));
 

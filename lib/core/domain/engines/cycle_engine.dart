@@ -296,7 +296,9 @@ class CycleEngine implements CachedEngine<CycleEngineInput, CycleEngineOutput> {
     double sd,
     List<int> cycleLengths,
   ) {
-    final daysSinceStart = now.difference(startDate).inDays;
+    final cleanNow = DateTime(now.year, now.month, now.day);
+    final cleanStart = DateTime(startDate.year, startDate.month, startDate.day);
+    final daysSinceStart = cleanNow.difference(cleanStart).inDays;
 
     var dayOfCycle = (daysSinceStart % L) + 1;
     var dayOfPeriod = 0;
@@ -306,7 +308,8 @@ class CycleEngine implements CachedEngine<CycleEngineInput, CycleEngineOutput> {
     var isBleeding = false;
     if (daysSinceStart >= 0) {
       if (endDate != null) {
-        if (!now.isAfter(endDate)) {
+        final cleanEnd = DateTime(endDate.year, endDate.month, endDate.day);
+        if (!cleanNow.isAfter(cleanEnd)) {
           isBleeding = true;
           dayOfPeriod = daysSinceStart + 1;
         }

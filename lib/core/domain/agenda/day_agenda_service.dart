@@ -510,12 +510,23 @@ class DayAgendaService {
   void _sortItems(List<AgendaItem> items) {
     items.sort((a, b) {
       if (a.isTimed && b.isTimed) {
-        return a.timeOfDay!.compareTo(b.timeOfDay!);
+        final aM = _parseMinutes(a.timeOfDay);
+        final bM = _parseMinutes(b.timeOfDay);
+        return aM.compareTo(bM);
       }
       if (a.isTimed) return -1;
       if (b.isTimed) return 1;
       return b.priority.compareTo(a.priority);
     });
+  }
+
+  static int _parseMinutes(String? timeOfDay) {
+    if (timeOfDay == null) return 0;
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(timeOfDay.trim());
+    if (match == null) return 0;
+    final h = int.tryParse(match.group(1)!) ?? 0;
+    final m = int.tryParse(match.group(2)!) ?? 0;
+    return (h * 60) + m;
   }
 
   // ---------------------------------------------------------------------------

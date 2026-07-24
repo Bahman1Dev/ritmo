@@ -59,15 +59,15 @@ class DayAgendaSnapshotBuilder {
 
     final timedItems = items.where((i) => i.isTimed).toList();
     timedItems.sort((a, b) {
-      final aM = _parseMinutes(a.timeOfDay!);
-      final bM = _parseMinutes(b.timeOfDay!);
+      final aM = _parseMinutes(a.timeOfDay);
+      final bM = _parseMinutes(b.timeOfDay);
       return aM.compareTo(bM);
     });
 
     final currentMinutes = (currentTime.hour * 60) + currentTime.minute;
 
     for (final item in timedItems) {
-      final startMinutes = _parseMinutes(item.timeOfDay!);
+      final startMinutes = _parseMinutes(item.timeOfDay);
       var duration = item.durationMinutes ?? 30;
       if (duration <= 0) duration = 30;
       final endMinutes = startMinutes + duration;
@@ -95,11 +95,12 @@ class DayAgendaSnapshotBuilder {
     );
   }
 
-  static int _parseMinutes(String timeOfDay) {
-    final parts = timeOfDay.split(':');
-    if (parts.length != 2) return 0;
-    final h = int.tryParse(parts[0]) ?? 0;
-    final m = int.tryParse(parts[1]) ?? 0;
+  static int _parseMinutes(String? timeOfDay) {
+    if (timeOfDay == null) return 0;
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(timeOfDay.trim());
+    if (match == null) return 0;
+    final h = int.tryParse(match.group(1)!) ?? 0;
+    final m = int.tryParse(match.group(2)!) ?? 0;
     return (h * 60) + m;
   }
 }

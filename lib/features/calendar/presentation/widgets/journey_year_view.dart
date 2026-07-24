@@ -25,6 +25,7 @@ class JourneyYearView extends StatelessWidget {
     final jalaliSelected = Jalali.fromDateTime(selectedDate);
     final jalaliYear = jalaliSelected.year;
     final jalaliYearStr = toPersianDigits(jalaliYear.toString());
+    final jalaliNow = Jalali.fromDateTime(now);
 
     const jalaliMonthNames = [
       'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
@@ -68,21 +69,22 @@ class JourneyYearView extends StatelessWidget {
                 itemCount: 12,
                 itemBuilder: (context, index) {
                   final monthNumber = index + 1;
-                  final monthDate = DateTime(selectedDate.year, monthNumber, 1);
+                  final monthDate = Jalali(jalaliYear, monthNumber, 1).toDateTime();
 
-                  final isSelectedMonth = monthNumber == selectedDate.month;
-                  final isCurrentMonth = selectedDate.year == now.year && monthNumber == now.month;
+                  final isSelectedMonth = jalaliSelected.year == jalaliYear && jalaliSelected.month == monthNumber;
+                  final isCurrentMonth = jalaliNow.year == jalaliYear && jalaliNow.month == monthNumber;
 
                   int monthTaskCount = 0;
                   int monthCompletedCount = 0;
 
                   for (final entry in rangeSnapshots.entries) {
-                    final parts = entry.key.split('-');
-                    if (parts.length == 3 &&
-                        int.tryParse(parts[0]) == selectedDate.year &&
-                        int.tryParse(parts[1]) == monthNumber) {
-                      monthTaskCount += entry.value.items.length;
-                      monthCompletedCount += entry.value.completedCount;
+                    final dt = DateTime.tryParse(entry.key);
+                    if (dt != null) {
+                      final j = Jalali.fromDateTime(dt);
+                      if (j.year == jalaliYear && j.month == monthNumber) {
+                        monthTaskCount += entry.value.items.length;
+                        monthCompletedCount += entry.value.completedCount;
+                      }
                     }
                   }
 

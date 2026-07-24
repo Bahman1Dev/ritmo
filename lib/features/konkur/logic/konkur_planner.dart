@@ -1,19 +1,23 @@
-import 'dart:math';
-
+import 'package:ritmo/core/domain/models/energy_context.dart';
+import 'package:ritmo/features/konkur/logic/konkur_planning_engine.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
 
-/// Service responsible for generating study plans, spaced repetition schedules,
-/// and progress metrics for Konkur preparation.
+/// Thin compatibility wrapper for Konkur study plan generation.
+/// Real planning logic is handled by [KonkurPlanningEngine].
 class KonkurPlanner {
-  /// Build a balanced study plan without last-day dump spikes.
-  /// Uses Windowed Backfill (horizon capped between 7 and 30 days)
-  /// and checks DAG prerequisites before scheduling topics.
+  /// Build an adaptive, exam-aware, spaced-repetition study plan.
   static List<KonkurPlanItem> buildPlan({
     required List<KonkurSubject> subjects,
     required List<KonkurTopic> topics,
     required DateTime examDate,
     required DateTime from,
     required int dailyTargetMinutes,
+    List<KonkurStudySession> studySessions = const [],
+    List<KonkurMockExam> mockExams = const [],
+    List<KonkurMockResult> mockResults = const [],
+    List<KonkurPlanItem> existingPlanItems = const [],
+    String energyLevel = 'MEDIUM',
+    EnergyContext? energyContext,
   }) {
     final cleanFrom = DateTime(from.year, from.month, from.day);
     final cleanExam = DateTime(examDate.year, examDate.month, examDate.day);
@@ -21,113 +25,21 @@ class KonkurPlanner {
     final daysUntilExam = cleanExam.difference(cleanFrom).inDays + 1;
     if (daysUntilExam <= 0) return [];
 
-    final topicMap = {for (final t in topics) t.id: t};
+    final context = KonkurPlanningContext(
+      subjects: subjects,
+      topics: topics,
+      studySessions: studySessions,
+      mockExams: mockExams,
+      mockResults: mockResults,
+      existingPlanItems: existingPlanItems,
+      today: cleanFrom,
+      planningHorizonDays: daysUntilExam.clamp(7, 30),
+      dailyCapacityMinutes: dailyTargetMinutes,
+      energyProfile: energyLevel,
+      energyContext: energyContext,
+    );
 
-    // Filter candidate topics: not mastered and prerequisites met (DAG check)
-    final candidates =
-        topics.where((t) {
-          if (t.masteryLevel == MasteryLevel.mastered) return false;
-          return _arePrerequisitesMet(t, topicMap);
-        }).toList();
-
-    if (candidates.isEmpty) return [];
-
-    // Calculate subject importance map
-    final subjectImportance = {
-      for (final s in subjects) s.id: s.importanceFactor,
-    };
-
-    // Calculate priority for each topic
-    final priorityList = <MapEntry<KonkurTopic, double>>[];
-    for (final topic in candidates) {
-      final imp = subjectImportance[topic.subjectId] ?? 1.0;
-      var priority = topic.examQuestionCount * imp;
-
-      if (topic.masteryLevel == MasteryLevel.learning) {
-        priority *= 1.3;
-      } else if (topic.masteryLevel == MasteryLevel.needsReview) {
-        priority *= 1.5;
-      }
-      priorityList.add(MapEntry(topic, priority));
-    }
-
-    // Sort descending by priority
-    priorityList.sort((a, b) => b.value.compareTo(a.value));
-    final sortedTopics = priorityList.map((e) => e.key).toList();
-
-    final planItems = <KonkurPlanItem>[];
-
-    // Windowed Backfill: effective horizon is capped between 7 and 30 days
-    final effectiveHorizon = max(7, min(daysUntilExam, 30));
-
-    // Cap backfill to max 30% of daily capacity
-    final maxBackfillMinutesPerDay = (dailyTargetMinutes * 0.30).round();
-    final regularStudyMinutesPerDay =
-        dailyTargetMinutes - maxBackfillMinutesPerDay;
-
-    var topicIndex = 0;
-
-    // Distribute topics day by day across effectiveHorizon
-    for (var dayOffset = 0; dayOffset < effectiveHorizon; dayOffset++) {
-      final currentDay = cleanFrom.add(Duration(days: dayOffset));
-      final dateStr = _formatDateIso(currentDay);
-      var allocatedMinutesToday = 0;
-
-      while (allocatedMinutesToday < regularStudyMinutesPerDay &&
-          topicIndex < sortedTopics.length) {
-        final topic = sortedTopics[topicIndex];
-        final remainingMinutes = max(
-          30,
-          topic.studyTargetMinutes - topic.studyCompletedMinutes,
-        );
-
-        // Flexible Pomodoro session: 45 to 60 minutes
-        final sessionMinutes = min(
-          60,
-          min(regularStudyMinutesPerDay - allocatedMinutesToday, remainingMinutes),
-        );
-
-        if (sessionMinutes < 15) break;
-
-        planItems.add(
-          KonkurPlanItem(
-            id: 'plan_${dateStr}_${topic.id}_$dayOffset',
-            dateIso: dateStr,
-            subjectId: topic.subjectId,
-            topicId: topic.id,
-            plannedMinutes: sessionMinutes,
-            createdAt: DateTime.now().millisecondsSinceEpoch,
-          ),
-        );
-
-        allocatedMinutesToday += sessionMinutes;
-
-        if (sessionMinutes >= remainingMinutes) {
-          topicIndex++;
-        } else {
-          break; // Continue this topic on subsequent day
-        }
-      }
-    }
-
-    return planItems;
-  }
-
-  /// Checks if all prerequisite topics are sufficiently completed.
-  static bool _arePrerequisitesMet(
-    KonkurTopic topic,
-    Map<String, KonkurTopic> topicMap,
-  ) {
-    if (topic.prerequisiteTopicIds.isEmpty) return true;
-    for (final prereqId in topic.prerequisiteTopicIds) {
-      final prereq = topicMap[prereqId];
-      if (prereq == null) continue;
-      if (prereq.progressPercentage < 0.6 &&
-          prereq.masteryLevel == MasteryLevel.notStarted) {
-        return false; // Prerequisite not met
-      }
-    }
-    return true;
+    return const KonkurPlanningEngine().buildPlan(context);
   }
 
   /// Generates Spaced Repetition review slots (+2 days, +10 days, +30 days)
@@ -153,8 +65,11 @@ class KonkurPlanner {
               dateIso: dateStr,
               subjectId: topic.subjectId,
               topicId: topic.id,
-              plannedMinutes: 30, // 30 mins spaced repetition slot
+              plannedMinutes: 30,
               createdAt: DateTime.now().millisecondsSinceEpoch,
+              plannedMode: 'REVIEW',
+              sourceType: 'REVIEW',
+              planningReason: 'مرور سررسید شده منحنی یادگیری',
             ),
           );
         }
@@ -183,6 +98,36 @@ class KonkurPlanner {
           (item) => item.dateIso.compareTo(todayStr) < 0 && item.status == 'PENDING',
         )
         .length;
+  }
+
+  static List<KonkurPlanItem> carryForward({
+    required List<KonkurPlanItem> overdueItems,
+    required DateTime today,
+    required int dailyTargetMinutes,
+    required int alreadyAllocatedMinutes,
+  }) {
+    final todayStr = _formatDateIso(today);
+    final remaining = dailyTargetMinutes - alreadyAllocatedMinutes;
+    if (remaining <= 0) return [];
+
+    var budget = remaining;
+    final carried = <KonkurPlanItem>[];
+
+    for (final item in overdueItems) {
+      if (budget <= 0) break;
+      final mins = item.plannedMinutes.clamp(15, budget);
+      carried.add(item.copyWith(
+        id: 'carry_${todayStr}_${item.id}',
+        dateIso: todayStr,
+        plannedMinutes: mins,
+        note: 'انتقال از ${item.dateIso}',
+        status: 'PENDING',
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      ));
+      budget -= mins;
+    }
+
+    return carried;
   }
 
   static String _formatDateIso(DateTime dt) {

@@ -233,10 +233,7 @@ class _TimelineGridState extends State<TimelineGrid> {
 
                     // Timed Agenda Cards
                     for (final layoutItem in layoutItems)
-                      RepaintBoundary(
-                        key: ObjectKey(layoutItem),
-                        child: _buildPositionedItemCard(layoutItem, gridWidth),
-                      ),
+                      _buildPositionedItemCard(layoutItem, gridWidth),
 
                     // Live Now Line
                     if (widget.isToday)
@@ -435,11 +432,14 @@ class _TimelineGridState extends State<TimelineGrid> {
     }
 
     return Positioned(
+      key: ValueKey('item_${layoutItem.item.id}_${layoutItem.startMinutes}_${layoutItem.laneIndex}'),
       top: top,
       left: layoutItem.leftFraction * gridWidth,
       width: cardWidth,
       height: cardHeight,
-      child: contentWidget,
+      child: RepaintBoundary(
+        child: contentWidget,
+      ),
     );
   }
 

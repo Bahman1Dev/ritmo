@@ -86,7 +86,7 @@ class NowPill extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'الان: ',
+                        isCurrent ? 'الان: ' : 'بعدی: ',
                         style: TextStyle(
                           fontSize: CalendarTokens.textBody,
                           fontWeight: FontWeight.w600,
@@ -108,7 +108,7 @@ class NowPill extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        ' · ${toPersianDigits(viewModel.timeLabel)}',
+                        ' · ${viewModel.timeLabel}',
                         style: TextStyle(
                           fontSize: CalendarTokens.textMeta,
                           fontWeight: FontWeight.w400,
