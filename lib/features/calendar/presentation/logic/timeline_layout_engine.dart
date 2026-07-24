@@ -45,7 +45,15 @@ class TimelineLayoutEngine {
     for (final item in timed) {
       final startM = _parseStartMinutes(item.timeOfDay!);
       var durM = item.durationMinutes ?? defaultDurationMinutes;
-      if (durM <= 0) durM = defaultDurationMinutes;
+
+      // Routines, habits, or items without explicit short duration constraints (>= 3 hours or <= 0)
+      // visually render as a compact 30-minute card on the timeline grid.
+      // Any large duration is capped at a maximum of 60 minutes (1 hour) to keep the timeline clean.
+      if (durM <= 0 || durM >= 180) {
+        durM = defaultDurationMinutes; // 30 mins
+      } else if (durM > 60) {
+        durM = 60; // Max 1 hour slot
+      }
 
       rawEntries.add(_RawEntry(
         item: item,

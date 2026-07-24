@@ -253,9 +253,9 @@ class RoutineAgendaSource {
 
       var dur = r['targetDurationMinutes'] as int?;
       var isEstimated = false;
-      if (dur == null || dur <= 0) {
+      if (dur == null || dur <= 0 || dur >= 180) {
         final avg = avgDurations[routineId] ?? categoryAvgDurations[catStr] ?? 30.0;
-        dur = avg.round();
+        dur = avg.round().clamp(5, 45);
         isEstimated = true;
       }
 

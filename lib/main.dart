@@ -33,20 +33,28 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (!kIsWeb) {
-    final handle = PluginUtilities.getCallbackHandle(notificationActionDispatcher)!.toRawHandle();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('notification_action_callback_handle', handle);
-    await prefs.setInt('digest_notif_count', 0);
+    Future.microtask(() async {
+      try {
+        final handle = PluginUtilities.getCallbackHandle(notificationActionDispatcher)?.toRawHandle();
+        if (handle != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('notification_action_callback_handle', handle);
+          await prefs.setInt('digest_notif_count', 0);
+        }
 
-    Workmanager().initialize(ritmoCallbackDispatcher);
-    Workmanager().registerPeriodicTask(
-      'ritmo_periodic_reschedule',
-      'ritmoRescheduleTask',
-      frequency: const Duration(hours: 6),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-      constraints: Constraints(networkType: NetworkType.notRequired),
-      backoffPolicy: BackoffPolicy.linear,
-    );
+        Workmanager().initialize(ritmoCallbackDispatcher);
+        Workmanager().registerPeriodicTask(
+          'ritmo_periodic_reschedule',
+          'ritmoRescheduleTask',
+          frequency: const Duration(hours: 6),
+          existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+          constraints: Constraints(networkType: NetworkType.notRequired),
+          backoffPolicy: BackoffPolicy.linear,
+        );
+      } catch (e) {
+        debugPrint('[BackgroundInit] Note: $e');
+      }
+    });
   }
 
   ErrorWidget.builder = (details) {
