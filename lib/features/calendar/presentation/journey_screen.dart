@@ -455,14 +455,17 @@ class _JourneyScreenState extends State<JourneyScreen> {
                                   ],
                                 ),
                               )
-                            : _buildScaleContent(
-                                activeScale: activeScale,
-                                selectedDate: selectedDate,
-                                snapshot: snapshot,
-                                untimedItems: untimedItems,
-                                timedItems: timedItems,
-                                pillViewModel: pillViewModel,
-                                isToday: isToday,
+                            : KeyedSubtree(
+                                key: ValueKey('${activeScale.name}_${selectedDate.year}_${selectedDate.month}_${selectedDate.day}'),
+                                child: _buildScaleContent(
+                                  activeScale: activeScale,
+                                  selectedDate: selectedDate,
+                                  snapshot: snapshot,
+                                  untimedItems: untimedItems,
+                                  timedItems: timedItems,
+                                  pillViewModel: pillViewModel,
+                                  isToday: isToday,
+                                ),
                               ),
                   ),
                 ),
