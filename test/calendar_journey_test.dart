@@ -94,7 +94,7 @@ void main() {
         ),
       ));
 
-      expect(find.text('نمای هفتگی'), findsOneWidget);
+      expect(find.text('برنامه هفتگی'), findsOneWidget);
       expect(find.text('شنبه'), findsWidgets);
       expect(find.text('جمعه'), findsWidgets);
 

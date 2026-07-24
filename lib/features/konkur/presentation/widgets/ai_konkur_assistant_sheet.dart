@@ -133,6 +133,28 @@ JSON Schema:
     });
   }
 
+  Future<String> _buildEnhancedContextPrompt() async {
+    try {
+      final repo = KonkurRepository.instance;
+      final planned = await repo.getTodayPlannedMinutes();
+      final actual = await repo.getTodayActualMinutes();
+
+      final needsReviewTopics = widget.topics.where((t) =>
+        t.masteryLevel == MasteryLevel.needsReview ||
+        (t.nextReviewDate != null && t.nextReviewDate!.compareTo(DateTime.now().toIso8601String().substring(0, 10)) <= 0)
+      ).map((t) => t.name).take(3).join(', ');
+
+      return '''
+
+Student Live Progress & Context:
+- Today planned study: $planned minutes, completed study: $actual minutes.
+- Topics needing immediate review: ${needsReviewTopics.isEmpty ? 'None' : needsReviewTopics}
+''';
+    } catch (_) {
+      return '';
+    }
+  }
+
   // 2. Recommend Topic Right Now
   Future<void> _runRecommendTopic() async {
     setState(() {
@@ -140,14 +162,17 @@ JSON Schema:
       _aiTextResponse = '';
     });
 
-    const sysPrompt = 'You are the Ritmo Konkur AI Assistant. Help the student choose what topic to study right now. Be encouraging and supportive.';
+    const sysPrompt = 'You are the Ritmo Konkur AI Assistant. Help the student choose the absolute best topic to study right now.';
     
-    final subjectsSummary = widget.subjects.map((s) => '${s.name} (importance coefficient: ${s.importanceFactor})').join(', ');
-    final topicsSummary = widget.topics.map((t) => '${t.name} (mastery: ${t.masteryLevel.code}, questions: ${t.examQuestionCount})').join(', ');
+    final topicsSummary = widget.topics.map((t) {
+      final sub = widget.subjects.firstWhere((s) => s.id == t.subjectId, orElse: () => KonkurSubject(id: '', name: 'درس', createdAt: 0, updatedAt: 0));
+      return '- ${sub.name}: ${t.name} (${t.examQuestionCount} questions in Konkur, target ${t.studyTargetMinutes} min)';
+    }).join('\n');
 
+    final extraContext = await _buildEnhancedContextPrompt();
     final userPrompt = '''
-Subjects: $subjectsSummary
 Topics: $topicsSummary
+$extraContext
 Please recommend one high-priority topic to study right now, explain why based on importance coefficient or question budget, and give a brief supportive tip. Write in Farsi.
 ''';
 
@@ -179,9 +204,11 @@ Please recommend one high-priority topic to study right now, explain why based o
       return '${sub.name}: scores history ${e.value}';
     }).join('\n');
 
+    final extraContext = await _buildEnhancedContextPrompt();
     final userPrompt = '''
 Student Mock Exam Score Trends:
 $trendsSummary
+$extraContext
 Please write a short analysis in Farsi. Point out progress, highlight which subject needs more focus, and write a motivational closing. Remember, never estimate rank.
 ''';
 
@@ -209,8 +236,10 @@ Please write a short analysis in Farsi. Point out progress, highlight which subj
     const sysPrompt = 'You are the Ritmo Konkur AI Assistant. Help the student allocate and plan their study topics across weekdays.';
 
     final subjectsSummary = widget.subjects.map((s) => s.name).join(', ');
+    final extraContext = await _buildEnhancedContextPrompt();
     final userPrompt = '''
 Subjects list: $subjectsSummary
+$extraContext
 Please suggest a healthy weekly study schedule (e.g. which days to focus on math, chemistry, etc.) to keep balanced preparation. Write a friendly, motivating recommendation in Farsi.
 ''';
 
@@ -514,7 +543,7 @@ Please suggest a healthy weekly study schedule (e.g. which days to focus on math
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<KonkurSubject>(
-            initialValue: _selectedDeconstructSub,
+            value: _selectedDeconstructSub,
             decoration: const InputDecoration(border: OutlineInputBorder()),
             items: widget.subjects.map((sub) {
               return DropdownMenuItem(

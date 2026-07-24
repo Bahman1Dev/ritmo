@@ -223,7 +223,7 @@ class _RitmoAppState extends State<RitmoApp> {
                 return AppLockGate(child: child!);
               },
               home: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 650),
+                duration: kDebugMode ? const Duration(milliseconds: 100) : const Duration(milliseconds: 650),
                 switchInCurve: Curves.easeInOut,
                 switchOutCurve: Curves.easeInOut,
                 child: _showSplash

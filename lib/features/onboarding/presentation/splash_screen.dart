@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -104,8 +105,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     stopwatch.stop();
     final elapsedMs = stopwatch.elapsedMilliseconds;
 
-    // Enforce minimum splash display duration of 1.5 seconds (1500 ms)
-    const minDurationMs = 1500;
+    // In debug mode (development & Hot Restart), bypass artificial delay for instant reload
+    const minDurationMs = kDebugMode ? 0 : 1500;
     if (elapsedMs < minDurationMs) {
       final remainingMs = minDurationMs - elapsedMs;
       await Future.delayed(Duration(milliseconds: remainingMs));

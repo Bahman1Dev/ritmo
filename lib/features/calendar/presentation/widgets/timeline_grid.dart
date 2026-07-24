@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/calendar/presentation/logic/direct_manipulation_eligibility.dart';
@@ -123,6 +125,7 @@ class _TimelineGridState extends State<TimelineGrid> {
                 }
 
                 return Stack(
+                  clipBehavior: Clip.hardEdge,
                   children: [
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
@@ -231,7 +234,7 @@ class _TimelineGridState extends State<TimelineGrid> {
                     // Timed Agenda Cards
                     for (final layoutItem in layoutItems)
                       RepaintBoundary(
-                        key: ValueKey(layoutItem.item.id),
+                        key: ObjectKey(layoutItem),
                         child: _buildPositionedItemCard(layoutItem, gridWidth),
                       ),
 
@@ -308,94 +311,135 @@ class _TimelineGridState extends State<TimelineGrid> {
 
     final displayDuration = isCurrentlyResizing ? _resizeDurationMinutes : null;
 
+    final cardWidth = (layoutItem.widthFraction * gridWidth) - 4.0;
+    final cardHeight = max(height, 28.0);
+
+    final itemCard = TimelineItemCard(
+      layoutItem: layoutItem,
+      isHighlighted: item.id == widget.highlightedItemId,
+      isDraggable: isDraggable,
+      isResizable: isResizable,
+      isDragging: isCurrentlyDragging,
+      isResizing: isCurrentlyResizing,
+      displayTimeOverride: displayTime,
+      displayDurationOverride: displayDuration,
+      onTap: () => widget.onItemTap?.call(item),
+      onResizeStart: isResizable
+          ? (_) {
+              if (mounted) {
+                setState(() {
+                  _activeResizeItemId = item.id;
+                  _resizeDurationMinutes = layoutItem.durationMinutes;
+                });
+              }
+            }
+          : null,
+      onResizeUpdate: isResizable
+          ? (details) {
+              final deltaMins = (details.delta.dy / widget.pxPerMinute).round();
+              final rawDuration = _resizeDurationMinutes + deltaMins;
+              final snapped = TimelineSnappingHelper.snapDurationMinutes(
+                rawDuration,
+                startMinutes: layoutItem.startMinutes,
+              );
+              if (snapped != _resizeDurationMinutes && mounted) {
+                setState(() {
+                  _resizeDurationMinutes = snapped;
+                });
+              }
+            }
+          : null,
+      onResizeEnd: isResizable
+          ? (_) {
+              widget.onItemResize?.call(item, _resizeDurationMinutes);
+              if (mounted) {
+                setState(() {
+                  _activeResizeItemId = null;
+                });
+              }
+            }
+          : null,
+    );
+
+    final sizedItemCard = SizedBox(
+      width: cardWidth,
+      height: cardHeight,
+      child: itemCard,
+    );
+
+    Widget contentWidget;
+    if (isDraggable) {
+      contentWidget = LongPressDraggable<AgendaItem>(
+        data: item,
+        delay: const Duration(milliseconds: 400),
+        hapticFeedbackOnStart: true,
+        feedback: Material(
+          elevation: 12,
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.transparent,
+          child: Opacity(
+            opacity: 0.85,
+            child: Transform.scale(
+              scale: 1.05,
+              child: SizedBox(
+                width: cardWidth,
+                height: cardHeight,
+                child: TimelineItemCard(
+                  layoutItem: layoutItem,
+                  isGhost: true,
+                ),
+              ),
+            ),
+          ),
+        ),
+        childWhenDragging: Opacity(
+          opacity: 0.25,
+          child: sizedItemCard,
+        ),
+        onDragStarted: () {
+          HapticFeedback.mediumImpact();
+          if (mounted) {
+            setState(() {
+              _activeDragItemId = item.id;
+              _dragStartMinutes = layoutItem.startMinutes;
+            });
+          }
+        },
+        onDragUpdate: (details) {
+          _handleAutoEdgeScroll(details.globalPosition);
+          final deltaMinutes = (details.delta.dy / widget.pxPerMinute).round();
+          final rawStart = _dragStartMinutes + deltaMinutes;
+          final snapped = TimelineSnappingHelper.snapStartMinutes(
+            rawStart,
+            durationMinutes: layoutItem.durationMinutes,
+          );
+          if (snapped != _dragStartMinutes && mounted) {
+            setState(() {
+              _dragStartMinutes = snapped;
+            });
+          }
+        },
+        onDragEnd: (details) {
+          final targetTime = TimelineSnappingHelper.minutesToTimeString(_dragStartMinutes);
+          widget.onItemMove?.call(item, targetTime);
+          if (mounted) {
+            setState(() {
+              _activeDragItemId = null;
+            });
+          }
+        },
+        child: sizedItemCard,
+      );
+    } else {
+      contentWidget = sizedItemCard;
+    }
+
     return Positioned(
       top: top,
       left: layoutItem.leftFraction * gridWidth,
-      width: (layoutItem.widthFraction * gridWidth) - 4.0,
-      height: height,
-      child: TimelineItemCard(
-        layoutItem: layoutItem,
-        isHighlighted: item.id == widget.highlightedItemId,
-        isDraggable: isDraggable,
-        isResizable: isResizable,
-        isDragging: isCurrentlyDragging,
-        isResizing: isCurrentlyResizing,
-        displayTimeOverride: displayTime,
-        displayDurationOverride: displayDuration,
-        onTap: () => widget.onItemTap?.call(item),
-        onDragStart: isDraggable
-            ? (_) {
-                if (mounted) {
-                  setState(() {
-                    _activeDragItemId = item.id;
-                    _dragStartMinutes = layoutItem.startMinutes;
-                  });
-                }
-              }
-            : null,
-        onDragUpdate: isDraggable
-            ? (details) {
-                _handleAutoEdgeScroll(details.globalPosition);
-                final deltaMinutes = (details.delta.dy / widget.pxPerMinute).round();
-                final rawStart = _dragStartMinutes + deltaMinutes;
-                final snapped = TimelineSnappingHelper.snapStartMinutes(
-                  rawStart,
-                  durationMinutes: layoutItem.durationMinutes,
-                );
-                if (snapped != _dragStartMinutes && mounted) {
-                  setState(() {
-                    _dragStartMinutes = snapped;
-                  });
-                }
-              }
-            : null,
-        onDragEnd: isDraggable
-            ? (_) {
-                final targetTime = TimelineSnappingHelper.minutesToTimeString(_dragStartMinutes);
-                widget.onItemMove?.call(item, targetTime);
-                if (mounted) {
-                  setState(() {
-                    _activeDragItemId = null;
-                  });
-                }
-              }
-            : null,
-        onResizeStart: isResizable
-            ? (_) {
-                if (mounted) {
-                  setState(() {
-                    _activeResizeItemId = item.id;
-                    _resizeDurationMinutes = layoutItem.durationMinutes;
-                  });
-                }
-              }
-            : null,
-        onResizeUpdate: isResizable
-            ? (details) {
-                final deltaMins = (details.delta.dy / widget.pxPerMinute).round();
-                final rawDuration = _resizeDurationMinutes + deltaMins;
-                final snapped = TimelineSnappingHelper.snapDurationMinutes(
-                  rawDuration,
-                  startMinutes: layoutItem.startMinutes,
-                );
-                if (snapped != _resizeDurationMinutes && mounted) {
-                  setState(() {
-                    _resizeDurationMinutes = snapped;
-                  });
-                }
-              }
-            : null,
-        onResizeEnd: isResizable
-            ? (_) {
-                widget.onItemResize?.call(item, _resizeDurationMinutes);
-                if (mounted) {
-                  setState(() {
-                    _activeResizeItemId = null;
-                  });
-                }
-              }
-            : null,
-      ),
+      width: cardWidth,
+      height: cardHeight,
+      child: contentWidget,
     );
   }
 

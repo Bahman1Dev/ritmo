@@ -2120,6 +2120,33 @@ class MigrationV46 extends Migration {
 
 
 
+class MigrationV47 extends Migration {
+  @override
+  int get version => 47;
 
+  @override
+  Future<void> up(Database db) async {
+    // Add sessionOutcome to study sessions
+    try {
+      await db.execute('ALTER TABLE konkur_study_sessions ADD COLUMN sessionOutcome TEXT;');
+    } catch (_) {}
 
+    // Add phase target/completed columns to konkur_topics (in case they weren't applied)
+    for (final col in [
+      'ALTER TABLE konkur_topics ADD COLUMN conceptTargetMinutes INTEGER NOT NULL DEFAULT 0;',
+      'ALTER TABLE konkur_topics ADD COLUMN conceptCompletedMinutes INTEGER NOT NULL DEFAULT 0;',
+      'ALTER TABLE konkur_topics ADD COLUMN practiceTargetMinutes INTEGER NOT NULL DEFAULT 0;',
+      'ALTER TABLE konkur_topics ADD COLUMN practiceCompletedMinutes INTEGER NOT NULL DEFAULT 0;',
+      'ALTER TABLE konkur_topics ADD COLUMN reviewTargetMinutes INTEGER NOT NULL DEFAULT 0;',
+      'ALTER TABLE konkur_topics ADD COLUMN reviewCompletedMinutes INTEGER NOT NULL DEFAULT 0;',
+    ]) {
+      try {
+        await db.execute(col);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
 

@@ -6,6 +6,7 @@ import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_formatters.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_study_sheet.dart';
+import 'package:ritmo/features/konkur/presentation/widgets/konkur_today_progress_bar.dart';
 
 class KonkurTodaySection extends StatefulWidget {
 
@@ -30,6 +31,11 @@ class _KonkurTodaySectionState extends State<KonkurTodaySection> {
   int _daysBehindCount = 0;
   bool _isReplanning = false;
 
+  int _todayPlannedMinutes = 0;
+  int _todayActualMinutes = 0;
+  int _todayCompletedItems = 0;
+  int _todayTotalItems = 0;
+
   @override
   void initState() {
     super.initState();
@@ -39,7 +45,9 @@ class _KonkurTodaySectionState extends State<KonkurTodaySection> {
   @override
   void didUpdateWidget(covariant KonkurTodaySection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _loadEnergyAndScheduleStats();
+    if (oldWidget.todayPlanItems.length != widget.todayPlanItems.length) {
+      _loadEnergyAndScheduleStats();
+    }
   }
 
   Future<void> _loadEnergyAndScheduleStats() async {
@@ -48,21 +56,36 @@ class _KonkurTodaySectionState extends State<KonkurTodaySection> {
       
       // 1. Fetch latest energy level
       final energyLogs = await db.query('energy_logs', orderBy: 'loggedAt DESC', limit: 1);
+      String energy = 'MEDIUM';
       if (energyLogs.isNotEmpty) {
-        if (mounted) {
-          setState(() {
-            _energyLevel = energyLogs.first['energyLevel'] as String? ?? 'MEDIUM';
-          });
-        }
+        energy = energyLogs.first['energyLevel'] as String? ?? 'MEDIUM';
       }
 
-      // 2. Fetch all plan items to calculate daysBehind
+      // 2. Fetch today metrics & all plan items for daysBehind
       final repo = KonkurRepository.instance;
-      final allPlanItems = await repo.getPlanItems();
+      final results = await Future.wait([
+        repo.getTodayPlannedMinutes(),
+        repo.getTodayActualMinutes(),
+        repo.getTodayCompletedItemCount(),
+        repo.getTodayTotalItemCount(),
+        repo.getPlanItems(),
+      ]);
+
+      final plannedMins = results[0] as int;
+      final actualMins = results[1] as int;
+      final compCount = results[2] as int;
+      final totCount = results[3] as int;
+      final allPlanItems = results[4] as List<KonkurPlanItem>;
+
       final behind = KonkurPlanner.daysBehind(planItems: allPlanItems, today: DateTime.now());
       
       if (mounted) {
         setState(() {
+          _energyLevel = energy;
+          _todayPlannedMinutes = plannedMins;
+          _todayActualMinutes = actualMins;
+          _todayCompletedItems = compCount;
+          _todayTotalItems = totCount;
           _daysBehindCount = behind;
         });
       }
@@ -70,23 +93,71 @@ class _KonkurTodaySectionState extends State<KonkurTodaySection> {
   }
 
   Future<void> _quickComplete(KonkurPlanItem item) async {
-    final session = KonkurStudySession(
-      id: 'sess_${DateTime.now().millisecondsSinceEpoch}',
-      topicId: item.topicId,
-      subjectId: item.subjectId,
-      dateIso: DateTime.now().toIso8601String().substring(0, 10),
-      durationMinutes: item.plannedMinutes,
-      note: 'ثبت سریع از صفحه داشبورد امروز کنکور',
-      createdAt: DateTime.now().millisecondsSinceEpoch,
+    final minutesController = TextEditingController(text: '0');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('ثبت سریع', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('چند دقیقه واقعاً مطالعه کردی؟', style: TextStyle(fontFamily: 'Vazirmatn')),
+              const SizedBox(height: 12),
+              TextField(
+                controller: minutesController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'زمان واقعی مطالعه (دقیقه)',
+                  hintText: '0',
+                  border: OutlineInputBorder(),
+                ),
+                style: const TextStyle(fontFamily: 'Vazirmatn'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'JUST_CHECK'),
+              child: const Text('فقط تیک بزن (بدون ثبت زمان)', style: TextStyle(fontFamily: 'Vazirmatn')),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6)),
+              onPressed: () => Navigator.pop(ctx, minutesController.text.trim()),
+              child: const Text('ثبت زمان و تیک', style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white)),
+            ),
+          ],
+        );
+      },
     );
+
+    if (result == null) return;
 
     try {
       final repo = KonkurRepository.instance;
-      await repo.insertStudySession(session);
+      int mins = 0;
+      if (result != 'JUST_CHECK') {
+        mins = int.tryParse(result) ?? 0;
+      }
+      if (mins < 0) mins = 0;
+
+      if (mins > 0) {
+        final session = KonkurStudySession(
+          id: 'sess_${DateTime.now().millisecondsSinceEpoch}',
+          topicId: item.topicId,
+          subjectId: item.subjectId,
+          dateIso: DateTime.now().toIso8601String().substring(0, 10),
+          durationMinutes: mins,
+          note: 'ثبت سریع از صفحه داشبورد امروز کنکور',
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+        );
+        await repo.insertStudySession(session);
+      }
+
       await repo.updatePlanItemStatus(item.id, 'DONE');
-      
       widget.onRefresh();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -145,18 +216,18 @@ class _KonkurTodaySectionState extends State<KonkurTodaySection> {
         subjects: cleanSubjects,
         topics: cleanTopics,
         examDate: examDate,
-        from: DateTime.now(),
+        from: DateTime.now().add(const Duration(days: 1)),
         dailyTargetMinutes: dailyTarget,
       );
 
-      await repo.savePlanItems(newPlan);
+      await repo.savePlanItems(newPlan, keepToday: true);
       widget.onRefresh();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'برنامه مطالعاتی کنکور با موفقیت مجدداً چیده شد! 🧭',
+              'برنامه از فردا به روز شد — برنامه امروز دست نخورد 📅',
               style: TextStyle(fontFamily: 'Vazirmatn'),
             ),
           ),
@@ -207,6 +278,20 @@ class _KonkurTodaySectionState extends State<KonkurTodaySection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Today Planned vs Actual Progress Bar
+          KonkurTodayProgressBar(
+            plannedMinutes: _todayPlannedMinutes,
+            actualMinutes: _todayActualMinutes,
+            completedItems: _todayCompletedItems,
+            totalItems: _todayTotalItems,
+            colors: colors,
+          ),
+          const SizedBox(height: 8),
+
+          // Quick Action Strip
+          _buildQuickActionStrip(colors),
+          const SizedBox(height: 12),
+
           // Header / Replanning card
           _buildSummaryCard(colors),
           const SizedBox(height: 12),
@@ -485,6 +570,80 @@ class _KonkurTodaySectionState extends State<KonkurTodaySection> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildQuickActionStrip(RitmoColors colors) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B5CF6),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                builder: (ctx) => KonkurStudySheet(
+                  subjects: widget.subjects,
+                  topics: widget.topics,
+                  onSaved: widget.onRefresh,
+                  initialMode: 'STUDY',
+                ),
+              );
+            },
+            icon: const Icon(Icons.play_circle_fill, size: 16),
+            label: const Text('+ مطالعه', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, fontWeight: FontWeight.bold)),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                builder: (ctx) => KonkurStudySheet(
+                  subjects: widget.subjects,
+                  topics: widget.topics,
+                  onSaved: widget.onRefresh,
+                  initialMode: 'TEST',
+                ),
+              );
+            },
+            icon: const Icon(Icons.assignment_turned_in, size: 16),
+            label: const Text('+ آزمون', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, fontWeight: FontWeight.bold)),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.amber.shade900,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              side: BorderSide(color: Colors.amber.shade700),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: _isReplanning ? null : _replanSchedule,
+            icon: const Icon(Icons.auto_fix_high, size: 16),
+            label: Text(_isReplanning ? 'تنظیم...' : '⚡ بازتنظیم', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ],
     );
   }
 }

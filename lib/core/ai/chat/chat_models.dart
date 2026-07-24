@@ -102,6 +102,7 @@ class ChatSession {
 
   ChatSession({
     required this.id,
+    this.title = '',
     required this.createdAt,
     required this.lastMessageAt,
     this.summary,
@@ -111,6 +112,7 @@ class ChatSession {
 
   factory ChatSession.fromMap(Map<String, dynamic> m) => ChatSession(
     id: m['id'] as String,
+    title: m['title'] as String? ?? '',
     createdAt: DateTime.fromMillisecondsSinceEpoch(m['created_at'] as int? ?? 0),
     lastMessageAt: DateTime.fromMillisecondsSinceEpoch(m['last_message_at'] as int? ?? 0),
     summary: m['summary'] as String?,
@@ -118,6 +120,7 @@ class ChatSession {
     chatType: m['chat_type'] as String? ?? 'assistant',
   );
   final String id;
+  final String title;
   final DateTime createdAt;
   final DateTime lastMessageAt;
   final String? summary;

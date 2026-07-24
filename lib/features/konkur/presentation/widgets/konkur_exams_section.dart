@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/ritmo_date_picker.dart';
+import 'package:ritmo/features/konkur/logic/konkur_exam_actions.dart';
 import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_formatters.dart';
@@ -175,9 +176,19 @@ class _KonkurExamsSectionState extends State<KonkurExamsSection> {
                   underline: const SizedBox.shrink(),
                   icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF8B5CF6)),
                   items: widget.subjects.map((sub) {
+                    final trend = widget.perSubjectTrend[sub.id] ?? [];
                     return DropdownMenuItem(
                       value: sub,
-                      child: Text(sub.name, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, fontWeight: FontWeight.bold)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(sub.name, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, fontWeight: FontWeight.bold)),
+                          if (trend.length >= 2) ...[
+                            const SizedBox(width: 6),
+                            _buildTrendBadge(sub, trend),
+                          ],
+                        ],
+                      ),
                     );
                   }).toList(),
                   onChanged: (sub) {
@@ -372,12 +383,50 @@ class _KonkurExamsSectionState extends State<KonkurExamsSection> {
     );
   }
 
+  Widget _buildTrendBadge(KonkurSubject subject, List<double> trend) {
+    if (trend.length < 2) return const SizedBox.shrink();
+
+    final last = trend.last;
+    final prev = trend[trend.length - 2];
+    final diff = last - prev;
+
+    var label = '➡️ پایدار';
+    Color badgeColor = Colors.grey;
+
+    if (diff > 5) {
+      label = '📈 صعودی';
+      badgeColor = Colors.green;
+    } else if (diff < -5) {
+      label = '📉 نزولی';
+      badgeColor = Colors.red;
+    } else {
+      final mean = trend.reduce((a, b) => a + b) / trend.length;
+      final variance = trend.fold<double>(0.0, (acc, val) => acc + (val - mean) * (val - mean)) / trend.length;
+      if (variance > 100) {
+        label = '〰️ نوسانی';
+        badgeColor = Colors.amber.shade800;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: badgeColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, fontWeight: FontWeight.bold, color: badgeColor),
+      ),
+    );
+  }
+
   Widget _buildTableHeader(String label, RitmoColors colors) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         label,
-        textAlign: label == 'درس' ? Alignment.centerRight.hashCode == 0 ? TextAlign.left : TextAlign.right : TextAlign.center,
+        textAlign: label == 'درس' ? TextAlign.right : TextAlign.center,
         style: TextStyle(
           fontFamily: 'Vazirmatn',
           fontSize: 10,
@@ -510,6 +559,7 @@ class _AddMockExamSheetState extends State<_AddMockExamSheet> {
       await repo.insertMockExam(exam);
 
       // 2. Insert subject results
+      final newResults = <KonkurMockResult>[];
       for (final sub in widget.subjects) {
         final correct = int.tryParse(_correctControllers[sub.id]!.text) ?? 0;
         final wrong = int.tryParse(_wrongControllers[sub.id]!.text) ?? 0;
@@ -530,12 +580,138 @@ class _AddMockExamSheetState extends State<_AddMockExamSheet> {
           createdAt: DateTime.now().millisecondsSinceEpoch,
         );
 
+        newResults.add(result);
         await repo.insertMockResult(result);
       }
 
       widget.onSaved();
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        final parentCtx = context;
+        Navigator.pop(parentCtx);
+
+        final mockResults = await repo.getMockResults();
+        final mockExams = await repo.getMockExams();
+        final examDatesMap = {for (final e in mockExams) e.id: e.examDate};
+        final perSubjectTrend = <String, List<double>>{};
+        for (final subject in widget.subjects) {
+          final res = mockResults.where((r) => r.subjectId == subject.id).toList();
+          res.sort((a, b) => (examDatesMap[a.mockExamId] ?? '').compareTo(examDatesMap[b.mockExamId] ?? ''));
+          perSubjectTrend[subject.id] = res.map((r) => r.percentage).toList();
+        }
+
+        final actions = KonkurExamActions.generateActions(
+          subjects: widget.subjects,
+          results: newResults,
+          perSubjectTrend: perSubjectTrend,
+        );
+
+        if (actions.isNotEmpty && parentCtx.mounted) {
+          _showActionPackSheet(parentCtx, actions);
+        }
+      }
     } catch (_) {}
+  }
+
+  void _showActionPackSheet(BuildContext context, List<KonkurExamAction> actions) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[400],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'اقدامات پیشنهادی بر اساس این آزمون 🎯',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: actions.length,
+                  itemBuilder: (c, i) {
+                    final act = actions[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: act.color.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: act.color.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(act.icon, style: const TextStyle(fontSize: 22)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  act.subjectName,
+                                  style: TextStyle(
+                                    fontFamily: 'Vazirmatn',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: act.color,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  act.description,
+                                  style: const TextStyle(
+                                    fontFamily: 'Vazirmatn',
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B5CF6),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('باشه، فهمیدم', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override

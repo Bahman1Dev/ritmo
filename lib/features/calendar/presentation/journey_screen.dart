@@ -456,7 +456,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
                                 ),
                               )
                             : KeyedSubtree(
-                                key: ValueKey('${activeScale.name}_${selectedDate.year}_${selectedDate.month}_${selectedDate.day}'),
+                                key: ValueKey(activeScale),
                                 child: _buildScaleContent(
                                   activeScale: activeScale,
                                   selectedDate: selectedDate,
@@ -504,6 +504,9 @@ class _JourneyScreenState extends State<JourneyScreen> {
                           controller: _scrollController,
                           child: SingleChildScrollView(
                             controller: _scrollController,
+                            padding: EdgeInsets.only(
+                              bottom: MediaQuery.of(context).padding.bottom + kBottomNavigationBarHeight + 80,
+                            ),
                             child: TimelineGrid(
                               items: timedItems,
                               isToday: isToday,

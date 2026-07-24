@@ -98,6 +98,7 @@ class KonkurTables {
         testsWrong INTEGER NOT NULL DEFAULT 0,
         testsBlank INTEGER NOT NULL DEFAULT 0,
         note TEXT,
+        sessionOutcome TEXT,
         createdAt INTEGER NOT NULL
       );
     ''');

@@ -46,13 +46,14 @@ class TimelineLayoutEngine {
       final startM = _parseStartMinutes(item.timeOfDay!);
       var durM = item.durationMinutes ?? defaultDurationMinutes;
 
-      // Routines, habits, or items without explicit short duration constraints (>= 3 hours or <= 0)
-      // visually render as a compact 30-minute card on the timeline grid.
-      // Any large duration is capped at a maximum of 60 minutes (1 hour) to keep the timeline clean.
-      if (durM <= 0 || durM >= 180) {
+      // Hard-cap: nothing is allowed to be taller than 60 minutes on the visual grid.
+      // This prevents bad DB data (e.g. 1440-minute all-day routines) from
+      // covering the entire timeline. Invalid or zero durations fall back to the
+      // default slot size.
+      if (durM <= 0) {
         durM = defaultDurationMinutes; // 30 mins
       } else if (durM > 60) {
-        durM = 60; // Max 1 hour slot
+        durM = 60; // Hard visual cap at 1 hour
       }
 
       rawEntries.add(_RawEntry(
@@ -116,7 +117,9 @@ class TimelineLayoutEngine {
       for (final entry in cluster) {
         final top = entry.startMinutes * pxPerMinute;
         final rawHeight = entry.durationMinutes * pxPerMinute;
-        final height = max(rawHeight, minItemHeight);
+        // Safety ceiling: never let a card taller than the full timeline.
+        final maxHeight = totalTimelineHeight - top;
+        final height = max(rawHeight, minItemHeight).clamp(minItemHeight, maxHeight);
 
         result.add(TimelineLayoutItem(
           item: entry.item,

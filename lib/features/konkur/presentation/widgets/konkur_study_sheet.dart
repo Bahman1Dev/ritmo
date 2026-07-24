@@ -11,11 +11,13 @@ class KonkurStudySheet extends StatefulWidget {
   const KonkurStudySheet({
     super.key,
     this.initialTopic,
+    this.initialMode,
     required this.subjects,
     required this.topics,
     required this.onSaved,
   });
   final KonkurTopic? initialTopic;
+  final String? initialMode;
   final List<KonkurSubject> subjects;
   final List<KonkurTopic> topics;
   final VoidCallback onSaved;
@@ -26,7 +28,7 @@ class KonkurStudySheet extends StatefulWidget {
 
 class _KonkurStudySheetState extends State<KonkurStudySheet> {
   // Mode selection
-  String _currentMode = 'STUDY'; // STUDY, TEST, REVIEW
+  late String _currentMode; // STUDY, TEST, REVIEW
 
   // Topic Selection
   KonkurSubject? _selectedSubject;
@@ -45,10 +47,12 @@ class _KonkurStudySheetState extends State<KonkurStudySheet> {
 
   // Mastery promotion on save
   MasteryLevel? _promotedMastery;
+  String? _selectedOutcome; // UNDERSTOOD, PARTIAL, NEEDS_REVIEW, NEEDS_PRACTICE
 
   @override
   void initState() {
     super.initState();
+    _currentMode = widget.initialMode ?? 'STUDY';
     
     // Preset initial topic if provided
     if (widget.initialTopic != null) {
@@ -178,6 +182,7 @@ class _KonkurStudySheetState extends State<KonkurStudySheet> {
       testsBlank: _currentMode == 'TEST' ? blank : 0,
       note: 'ثبت خودکار از تایمر کنکور ritmo',
       createdAt: DateTime.now().millisecondsSinceEpoch,
+      sessionOutcome: _selectedOutcome,
     );
 
     try {
@@ -186,29 +191,44 @@ class _KonkurStudySheetState extends State<KonkurStudySheet> {
       // Save study session
       await repo.insertStudySession(session);
 
-      // Upgrade mastery level if selected
-      if (_promotedMastery != null && _promotedMastery != _selectedTopic!.masteryLevel) {
-        final updatedTopic = KonkurTopic(
-          id: _selectedTopic!.id,
-          subjectId: _selectedTopic!.subjectId,
-          parentTopicId: _selectedTopic!.parentTopicId,
-          name: _selectedTopic!.name,
-          progressPercentage: _promotedMastery == MasteryLevel.mastered ? 100.0 : 50.0,
-          studyTargetMinutes: _selectedTopic!.studyTargetMinutes,
-          studyCompletedMinutes: _selectedTopic!.studyCompletedMinutes + duration,
-          createdAt: _selectedTopic!.createdAt,
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-          examQuestionCount: _selectedTopic!.examQuestionCount,
-          masteryLevel: _promotedMastery!,
-          lastStudiedAt: DateTime.now().millisecondsSinceEpoch,
-          nextReviewDate: _promotedMastery == MasteryLevel.mastered
-              ? DateTime.now().add(const Duration(days: 7)).toIso8601String().substring(0, 10) // lightner 7 days review
-              : _selectedTopic!.nextReviewDate,
-          plannedDate: _selectedTopic!.plannedDate,
-          orderIndex: _selectedTopic!.orderIndex,
-        );
-        await repo.updateTopic(updatedTopic);
-      }
+      // Increment phase-specific completed minutes and update topic mastery / lastStudiedAt
+      int conceptAdd = _currentMode == 'STUDY' ? duration : 0;
+      int practiceAdd = _currentMode == 'TEST' ? duration : 0;
+      int reviewAdd = _currentMode == 'REVIEW' ? duration : 0;
+
+      final targetMastery = _promotedMastery ?? _selectedTopic!.masteryLevel;
+      final tomorrowStr = DateTime.now().add(const Duration(days: 1)).toIso8601String().substring(0, 10);
+      final nextRev = _selectedOutcome == 'NEEDS_REVIEW'
+          ? tomorrowStr
+          : (targetMastery == MasteryLevel.mastered
+              ? DateTime.now().add(const Duration(days: 7)).toIso8601String().substring(0, 10)
+              : _selectedTopic!.nextReviewDate);
+
+      final updatedTopic = KonkurTopic(
+        id: _selectedTopic!.id,
+        subjectId: _selectedTopic!.subjectId,
+        parentTopicId: _selectedTopic!.parentTopicId,
+        name: _selectedTopic!.name,
+        progressPercentage: targetMastery == MasteryLevel.mastered ? 100.0 : 50.0,
+        studyTargetMinutes: _selectedTopic!.studyTargetMinutes,
+        studyCompletedMinutes: _selectedTopic!.studyCompletedMinutes,
+        createdAt: _selectedTopic!.createdAt,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+        examQuestionCount: _selectedTopic!.examQuestionCount,
+        masteryLevel: targetMastery,
+        lastStudiedAt: DateTime.now().millisecondsSinceEpoch,
+        nextReviewDate: nextRev,
+        plannedDate: _selectedTopic!.plannedDate,
+        orderIndex: _selectedTopic!.orderIndex,
+        prerequisiteTopicIds: _selectedTopic!.prerequisiteTopicIds,
+        conceptCompletedMinutes: _selectedTopic!.conceptCompletedMinutes + conceptAdd,
+        conceptTargetMinutes: _selectedTopic!.conceptTargetMinutes,
+        practiceCompletedMinutes: _selectedTopic!.practiceCompletedMinutes + practiceAdd,
+        practiceTargetMinutes: _selectedTopic!.practiceTargetMinutes,
+        reviewCompletedMinutes: _selectedTopic!.reviewCompletedMinutes + reviewAdd,
+        reviewTargetMinutes: _selectedTopic!.reviewTargetMinutes,
+      );
+      await repo.updateTopic(updatedTopic);
 
       // Mark matching plan item for today as DONE
       final todayStr = DateTime.now().toIso8601String().substring(0, 10);
@@ -225,12 +245,19 @@ class _KonkurStudySheetState extends State<KonkurStudySheet> {
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context);
+        String outcomeNote = '';
+        if (_selectedOutcome == 'NEEDS_REVIEW') {
+          outcomeNote = '\nمرور این مبحث در برنامه فردا ثبت خواهد شد 🔁';
+        } else if (_selectedOutcome == 'NEEDS_PRACTICE') {
+          outcomeNote = '\nپیشنهاد: آزمونک تمرینی برای این مبحث بزن 📝';
+        }
+
         messenger.showSnackBar(
           SnackBar(
             backgroundColor: colors.success,
-            content: const Text(
-              'جلسه با موفقیت ثبت شد. خدا قوت! 💪',
-              style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white),
+            content: Text(
+              'جلسه با موفقیت ثبت شد. خدا قوت! 💪$outcomeNote',
+              style: const TextStyle(fontFamily: 'Vazirmatn', color: Colors.white),
             ),
           ),
         );
@@ -309,7 +336,7 @@ class _KonkurStudySheetState extends State<KonkurStudySheet> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<KonkurSubject>(
-                  initialValue: _selectedSubject,
+                  value: _selectedSubject,
                   decoration: const InputDecoration(
                     labelText: 'درس',
                     labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12),
@@ -334,7 +361,7 @@ class _KonkurStudySheetState extends State<KonkurStudySheet> {
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonFormField<KonkurTopic>(
-                  initialValue: _selectedTopic,
+                  value: _selectedTopic,
                   decoration: const InputDecoration(
                     labelText: 'مبحث',
                     labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12),
@@ -460,6 +487,43 @@ class _KonkurStudySheetState extends State<KonkurStudySheet> {
             ),
           ],
           const SizedBox(height: 20),
+          // Outcome Picker on Complete
+          Text(
+            'نتیجه جلسه:',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('✅ کاملاً فهمیدم', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10)),
+                selected: _selectedOutcome == 'UNDERSTOOD',
+                selectedColor: Colors.green.withValues(alpha: 0.2),
+                onSelected: (sel) => setState(() => _selectedOutcome = sel ? 'UNDERSTOOD' : null),
+              ),
+              ChoiceChip(
+                label: const Text('🔵 تا حدی فهمیدم', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10)),
+                selected: _selectedOutcome == 'PARTIAL',
+                selectedColor: Colors.blue.withValues(alpha: 0.2),
+                onSelected: (sel) => setState(() => _selectedOutcome = sel ? 'PARTIAL' : null),
+              ),
+              ChoiceChip(
+                label: const Text('🔁 باید مرور بشه', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10)),
+                selected: _selectedOutcome == 'NEEDS_REVIEW',
+                selectedColor: Colors.orange.withValues(alpha: 0.2),
+                onSelected: (sel) => setState(() => _selectedOutcome = sel ? 'NEEDS_REVIEW' : null),
+              ),
+              ChoiceChip(
+                label: const Text('📝 تمرین بیشتر لازمه', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10)),
+                selected: _selectedOutcome == 'NEEDS_PRACTICE',
+                selectedColor: const Color(0xFF8B5CF6).withValues(alpha: 0.2),
+                onSelected: (sel) => setState(() => _selectedOutcome = sel ? 'NEEDS_PRACTICE' : null),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           // Mastery Level Picker on Complete
           if (_selectedTopic != null) ...[
             Text(

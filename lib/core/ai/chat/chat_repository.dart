@@ -41,6 +41,7 @@ class ChatRepository {
 
     await db.insert('chat_sessions', {
       'id': session.id,
+      'title': '',
       'created_at': session.createdAt.millisecondsSinceEpoch,
       'last_message_at': session.lastMessageAt.millisecondsSinceEpoch,
       'summary': null,

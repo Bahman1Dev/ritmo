@@ -157,12 +157,16 @@ class KonkurRepository {
     await db.update('konkur_plan_items', {'status': status}, where: 'id = ?', whereArgs: [itemId]);
   }
 
-  Future<void> savePlanItems(List<KonkurPlanItem> items) async {
+  Future<void> savePlanItems(List<KonkurPlanItem> items, {bool keepToday = true}) async {
     final db = await _database;
     await db.transaction((txn) async {
       // Clear future pending plan items to allow replanning
       final todayStr = _formatDate(DateTime.now());
-      await txn.delete('konkur_plan_items', where: 'dateIso >= ? AND status = ?', whereArgs: [todayStr, 'PENDING']);
+      if (keepToday) {
+        await txn.delete('konkur_plan_items', where: 'dateIso > ? AND status = ?', whereArgs: [todayStr, 'PENDING']);
+      } else {
+        await txn.delete('konkur_plan_items', where: 'dateIso >= ? AND status = ?', whereArgs: [todayStr, 'PENDING']);
+      }
       
       final batch = txn.batch();
       for (final item in items) {
@@ -216,6 +220,46 @@ class KonkurRepository {
         );
       }
     });
+  }
+
+  Future<int> getTodayPlannedMinutes() async {
+    final db = await _database;
+    final todayStr = _formatDate(DateTime.now());
+    final result = await db.rawQuery(
+      'SELECT SUM(plannedMinutes) as total FROM konkur_plan_items WHERE dateIso = ?',
+      [todayStr],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<int> getTodayActualMinutes() async {
+    final db = await _database;
+    final todayStr = _formatDate(DateTime.now());
+    final result = await db.rawQuery(
+      'SELECT SUM(durationMinutes) as total FROM konkur_study_sessions WHERE dateIso = ?',
+      [todayStr],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<int> getTodayCompletedItemCount() async {
+    final db = await _database;
+    final todayStr = _formatDate(DateTime.now());
+    final result = await db.rawQuery(
+      "SELECT COUNT(*) as total FROM konkur_plan_items WHERE dateIso = ? AND status = 'DONE'",
+      [todayStr],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<int> getTodayTotalItemCount() async {
+    final db = await _database;
+    final todayStr = _formatDate(DateTime.now());
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as total FROM konkur_plan_items WHERE dateIso = ?',
+      [todayStr],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
   static String _formatDate(DateTime dt) {

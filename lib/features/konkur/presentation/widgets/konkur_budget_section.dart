@@ -26,6 +26,7 @@ class KonkurBudgetSection extends StatefulWidget {
 }
 
 class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
+  MasteryLevel? _selectedMasteryFilter;
   final _subjectNameController = TextEditingController();
   final _subjectFactorController = TextEditingController(text: '1.0');
   final _subjectQuestionsController = TextEditingController(text: '0');
@@ -33,6 +34,9 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
   final _topicNameController = TextEditingController();
   final _topicQuestionsController = TextEditingController(text: '0');
   final _topicTargetMinutesController = TextEditingController(text: '120');
+  final _topicConceptTargetController = TextEditingController(text: '0');
+  final _topicPracticeTargetController = TextEditingController(text: '0');
+  final _topicReviewTargetController = TextEditingController(text: '0');
 
   @override
   void dispose() {
@@ -42,6 +46,9 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
     _topicNameController.dispose();
     _topicQuestionsController.dispose();
     _topicTargetMinutesController.dispose();
+    _topicConceptTargetController.dispose();
+    _topicPracticeTargetController.dispose();
+    _topicReviewTargetController.dispose();
     super.dispose();
   }
 
@@ -241,32 +248,60 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
     _topicNameController.clear();
     _topicQuestionsController.text = '0';
     _topicTargetMinutesController.text = '120';
+    _topicConceptTargetController.text = '0';
+    _topicPracticeTargetController.text = '0';
+    _topicReviewTargetController.text = '0';
 
     showDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(
           title: Text('افزودن مبحث جدید به ${sub.name}', style: const TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 15)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _topicNameController,
-                decoration: const InputDecoration(labelText: 'نام مبحث', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _topicQuestionsController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'تعداد تست احتمالی در کنکور', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _topicTargetMinutesController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'زمان هدف مطالعه (دقیقه)', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _topicNameController,
+                  decoration: const InputDecoration(labelText: 'نام مبحث', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _topicQuestionsController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'تعداد تست احتمالی در کنکور', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _topicTargetMinutesController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'زمان هدف مطالعه (دقیقه)', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
+                ),
+                const SizedBox(height: 12),
+                ExpansionTile(
+                  title: const Text('تنظیم هدف فازبندی (اختیاری)', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold)),
+                  children: [
+                    TextField(
+                      controller: _topicConceptTargetController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'زمان هدف مطالعه مفهومی (دقیقه — اختیاری)', hintText: '0 = بدون هدف مشخص', labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11)),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _topicPracticeTargetController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'زمان هدف تمرین/تست (دقیقه — اختیاری)', labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11)),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _topicReviewTargetController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'زمان هدف مرور (دقیقه — اختیاری)', labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -279,6 +314,9 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
                 if (_topicNameController.text.isEmpty) return;
                 final qCount = int.tryParse(_topicQuestionsController.text) ?? 0;
                 final targetMins = int.tryParse(_topicTargetMinutesController.text) ?? 120;
+                final conceptTarget = int.tryParse(_topicConceptTargetController.text) ?? 0;
+                final practiceTarget = int.tryParse(_topicPracticeTargetController.text) ?? 0;
+                final reviewTarget = int.tryParse(_topicReviewTargetController.text) ?? 0;
 
                 final topic = KonkurTopic(
                   id: 'topic_${DateTime.now().millisecondsSinceEpoch}',
@@ -288,6 +326,9 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
                   createdAt: DateTime.now().millisecondsSinceEpoch,
                   updatedAt: DateTime.now().millisecondsSinceEpoch,
                   examQuestionCount: qCount,
+                  conceptTargetMinutes: conceptTarget,
+                  practiceTargetMinutes: practiceTarget,
+                  reviewTargetMinutes: reviewTarget,
                 );
 
                 await KonkurRepository.instance.insertTopic(topic);
@@ -307,32 +348,60 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
     _topicNameController.text = topic.name;
     _topicQuestionsController.text = topic.examQuestionCount.toString();
     _topicTargetMinutesController.text = topic.studyTargetMinutes.toString();
+    _topicConceptTargetController.text = topic.conceptTargetMinutes.toString();
+    _topicPracticeTargetController.text = topic.practiceTargetMinutes.toString();
+    _topicReviewTargetController.text = topic.reviewTargetMinutes.toString();
 
     showDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(
           title: Text('ویرایش مبحث (${topic.name})', style: const TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 14)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _topicNameController,
-                decoration: const InputDecoration(labelText: 'نام مبحث', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _topicQuestionsController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'تعداد تست احتمالی در کنکور', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _topicTargetMinutesController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'زمان هدف مطالعه (دقیقه)', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _topicNameController,
+                  decoration: const InputDecoration(labelText: 'نام مبحث', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _topicQuestionsController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'تعداد تست احتمالی در کنکور', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _topicTargetMinutesController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'زمان هدف مطالعه (دقیقه)', labelStyle: TextStyle(fontFamily: 'Vazirmatn')),
+                ),
+                const SizedBox(height: 12),
+                ExpansionTile(
+                  title: const Text('تنظیم هدف فازبندی (اختیاری)', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold)),
+                  children: [
+                    TextField(
+                      controller: _topicConceptTargetController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'زمان هدف مطالعه مفهومی (دقیقه — اختیاری)', hintText: '0 = بدون هدف مشخص', labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11)),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _topicPracticeTargetController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'زمان هدف تمرین/تست (دقیقه — اختیاری)', labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11)),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _topicReviewTargetController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'زمان هدف مرور (دقیقه — اختیاری)', labelStyle: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
           actions: [
             IconButton(
@@ -367,6 +436,9 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
                 if (_topicNameController.text.isEmpty) return;
                 final qCount = int.tryParse(_topicQuestionsController.text) ?? 0;
                 final targetMins = int.tryParse(_topicTargetMinutesController.text) ?? 120;
+                final conceptTarget = int.tryParse(_topicConceptTargetController.text) ?? 0;
+                final practiceTarget = int.tryParse(_topicPracticeTargetController.text) ?? 0;
+                final reviewTarget = int.tryParse(_topicReviewTargetController.text) ?? 0;
 
                 final updated = KonkurTopic(
                   id: topic.id,
@@ -384,6 +456,13 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
                   nextReviewDate: topic.nextReviewDate,
                   plannedDate: topic.plannedDate,
                   orderIndex: topic.orderIndex,
+                  prerequisiteTopicIds: topic.prerequisiteTopicIds,
+                  conceptCompletedMinutes: topic.conceptCompletedMinutes,
+                  conceptTargetMinutes: conceptTarget,
+                  practiceCompletedMinutes: topic.practiceCompletedMinutes,
+                  practiceTargetMinutes: practiceTarget,
+                  reviewCompletedMinutes: topic.reviewCompletedMinutes,
+                  reviewTargetMinutes: reviewTarget,
                 );
 
                 await KonkurRepository.instance.updateTopic(updated);
@@ -426,7 +505,11 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
         children: [
           // Budget Coverage Bar
           _buildBudgetProgressHeader(budgetPercent, colors),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // Mastery Filter Bar
+          _buildMasteryFilterBar(colors),
+          const SizedBox(height: 12),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -463,7 +546,10 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
               itemBuilder: (context, index) {
                 final subject = widget.subjects[index];
                 final readiness = widget.perSubjectReadiness[subject.id] ?? 0.0;
-                final subTopics = widget.topics.where((t) => t.subjectId == subject.id).toList();
+                final subTopics = widget.topics
+                    .where((t) => t.subjectId == subject.id)
+                    .where((t) => _selectedMasteryFilter == null || t.masteryLevel == _selectedMasteryFilter)
+                    .toList();
                 return _buildSubjectExpansionTile(subject, readiness, subTopics, colors);
               },
             ),
@@ -472,7 +558,41 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
     );
   }
 
+  Widget _buildMasteryFilterBar(RitmoColors colors) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          FilterChip(
+            label: const Text('همه', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11)),
+            selected: _selectedMasteryFilter == null,
+            onSelected: (_) => setState(() => _selectedMasteryFilter = null),
+          ),
+          const SizedBox(width: 6),
+          ...MasteryLevel.values.map((lvl) {
+            return Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: FilterChip(
+                avatar: Text(lvl.emoji),
+                label: Text(lvl.label, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 11)),
+                selected: _selectedMasteryFilter == lvl,
+                onSelected: (sel) => setState(() => _selectedMasteryFilter = sel ? lvl : null),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBudgetProgressHeader(int percent, RitmoColors colors) {
+    final totalTargetMins = widget.topics.fold(0, (acc, t) => acc + t.studyTargetMinutes);
+    final totalCompletedMins = widget.topics.fold(0, (acc, t) => acc + t.studyCompletedMinutes);
+    final masteredCount = widget.topics.where((t) => t.masteryLevel == MasteryLevel.mastered).length;
+
+    final completedHours = (totalCompletedMins / 60).toStringAsFixed(1);
+    final targetHours = (totalTargetMins / 60).toStringAsFixed(1);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -511,10 +631,19 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
               minHeight: 8,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'هدف: شروع و یادگیری تمام مباحث متناسب با ضریب و بودجه سؤالات کنکور.',
-            style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: colors.textSecondary),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'زمان مطالعه: ${toPersianDigits(completedHours)} از ${toPersianDigits(targetHours)} ساعت',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: colors.textSecondary, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'مسلط: ${toPersianDigits(masteredCount)} از ${toPersianDigits(widget.topics.length)} مبحث',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: colors.textSecondary, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
         ],
       ),
@@ -697,6 +826,7 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
                     ),
                   ],
                 ),
+                _buildTopicPhaseBar(topic, colors),
               ],
             ),
           ),
@@ -760,6 +890,88 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopicPhaseBar(KonkurTopic topic, RitmoColors colors) {
+    if (topic.conceptTargetMinutes == 0 &&
+        topic.practiceTargetMinutes == 0 &&
+        topic.reviewTargetMinutes == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final conceptFill = topic.conceptTargetMinutes > 0
+        ? (topic.conceptCompletedMinutes / topic.conceptTargetMinutes).clamp(0.0, 1.0)
+        : 0.0;
+    final practiceFill = topic.practiceTargetMinutes > 0
+        ? (topic.practiceCompletedMinutes / topic.practiceTargetMinutes).clamp(0.0, 1.0)
+        : 0.0;
+    final reviewFill = topic.reviewTargetMinutes > 0
+        ? (topic.reviewCompletedMinutes / topic.reviewTargetMinutes).clamp(0.0, 1.0)
+        : 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: conceptFill,
+                    minHeight: 4,
+                    backgroundColor: colors.border,
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text('مفهومی', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 9, color: Colors.grey)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: practiceFill,
+                    minHeight: 4,
+                    backgroundColor: colors.border,
+                    color: const Color(0xFF8B5CF6),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text('تمرین', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 9, color: Colors.grey)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: reviewFill,
+                    minHeight: 4,
+                    backgroundColor: colors.border,
+                    color: colors.success,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text('مرور', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 9, color: Colors.grey)),
+              ],
+            ),
           ),
         ],
       ),

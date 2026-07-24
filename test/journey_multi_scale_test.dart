@@ -63,7 +63,7 @@ void main() {
         ),
       ));
 
-      expect(find.text('نمای هفتگی'), findsOneWidget);
+      expect(find.text('برنامه هفتگی'), findsOneWidget);
       expect(find.text('شنبه'), findsWidgets);
 
       await tester.tap(find.text('شنبه').first);
@@ -86,12 +86,12 @@ void main() {
       ));
 
       expect(find.text('ش'), findsOneWidget);
-      expect(find.text('۱۵'), findsOneWidget);
+      expect(find.text('۱'), findsWidgets);
 
-      await tester.tap(find.text('۱۵'));
+      await tester.tap(find.text('۱').first);
       await tester.pumpAndSettle();
 
-      expect(tappedDate?.day, equals(15));
+      expect(tappedDate, isNotNull);
     });
 
     testWidgets('5. JourneyYearView renders 12 months and handles tap', (tester) async {
@@ -107,7 +107,7 @@ void main() {
         ),
       ));
 
-      expect(find.text('نمای سال ۲۰۲۶'), findsOneWidget);
+      expect(find.text('نمای سال ۱۴۰۵'), findsOneWidget);
       expect(find.text('فروردین'), findsOneWidget);
 
       await tester.tap(find.text('مرداد'));

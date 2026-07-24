@@ -112,6 +112,9 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
     setState(() {});
   }
 
+  bool _isNavBarVisible = true;
+  double _lastScrollOffset = 0;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,26 +133,58 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
           Positioned.fill(
             child: SafeArea(
               bottom: false,
-              child: IndexedStack(
-                index: _currentIndex,
-                children: List.generate(5, (index) => _screens[index] ?? const SizedBox.shrink()),
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollUpdateNotification) {
+                    final metrics = notification.metrics;
+                    if (metrics.axis == Axis.vertical) {
+                      final current = metrics.pixels;
+                      final delta = current - _lastScrollOffset;
+
+                      if (metrics.pixels <= 0) {
+                        if (!_isNavBarVisible) {
+                          setState(() => _isNavBarVisible = true);
+                        }
+                      } else if (delta > 8 && _isNavBarVisible) {
+                        setState(() => _isNavBarVisible = false);
+                      } else if (delta < -8 && !_isNavBarVisible) {
+                        setState(() => _isNavBarVisible = true);
+                      }
+                      _lastScrollOffset = current;
+                    }
+                  }
+                  return false;
+                },
+                child: IndexedStack(
+                  index: _currentIndex,
+                  children: List.generate(5, (index) => _screens[index] ?? const SizedBox.shrink()),
+                ),
               ),
             ),
           ),
 
           // Redesigned Glassmorphic Premium Floating Dock (Centered & Compact)
-          // Hide when the keyboard is open (viewInsets.bottom > 0)
+          // Hide when the keyboard is open or when scrolling down
           if (MediaQuery.of(context).viewInsets.bottom == 0)
             Positioned(
               left: 0,
               right: 0,
               bottom: 16 + MediaQuery.of(context).padding.bottom,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 380),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _buildCustomBottomBar(),
+              child: AnimatedSlide(
+                offset: _isNavBarVisible ? Offset.zero : const Offset(0, 2),
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeInOut,
+                child: AnimatedOpacity(
+                  opacity: _isNavBarVisible ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 180),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 380),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _buildCustomBottomBar(),
+                      ),
+                    ),
                   ),
                 ),
               ),

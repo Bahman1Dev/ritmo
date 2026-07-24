@@ -253,7 +253,10 @@ class RoutineAgendaSource {
 
       var dur = r['targetDurationMinutes'] as int?;
       var isEstimated = false;
-      if (dur == null || dur <= 0 || dur >= 180) {
+      // Cap: routines longer than 60 min are treated as unestimated and
+      // replaced with an AI-average (clamped to 5-45 min) so they never
+      // produce an oversized card on the timeline.
+      if (dur == null || dur <= 0 || dur > 60) {
         final avg = avgDurations[routineId] ?? categoryAvgDurations[catStr] ?? 30.0;
         dur = avg.round().clamp(5, 45);
         isEstimated = true;

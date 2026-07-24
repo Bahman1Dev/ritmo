@@ -457,16 +457,24 @@ class DashboardController {
         await sl<NotificationPlatform>().stopForegroundService();
       }
 
-      // Load AI Daily Briefing
-      isBriefingLoading = true;
-      try {
-        briefing = await AiBriefingService.instance.getOrRefresh();
-      } catch (e) {
-        debugPrint('[BRIEFING] failed in loadP1: $e');
-        briefing = await AiBriefingService.instance.getCached();
-      } finally {
-        isBriefingLoading = false;
-      }
+      // Load AI Daily Briefing asynchronously to avoid blocking initial load & Hot Restart
+      briefing = await AiBriefingService.instance.getCached();
+      isBriefingLoading = false;
+
+      // Refresh in background with a 6-second timeout
+      unawaited(
+        AiBriefingService.instance
+            .getOrRefresh()
+            .timeout(const Duration(seconds: 6), onTimeout: () => briefing)
+            .then((newBriefing) {
+          if (newBriefing != null) {
+            briefing = newBriefing;
+          }
+        }).catchError((e) {
+          debugPrint('[BRIEFING] background refresh note: $e');
+          return null;
+        }),
+      );
 
       await _buildModuleSummaries(db);
     } catch (e, stack) {

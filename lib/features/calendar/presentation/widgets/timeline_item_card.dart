@@ -13,6 +13,8 @@ class TimelineItemCard extends StatelessWidget {
     this.isResizable = false,
     this.isDragging = false,
     this.isResizing = false,
+    this.isGhost = false,
+    this.isDimmed = false,
     this.displayTimeOverride,
     this.displayDurationOverride,
     this.onTap,
@@ -30,6 +32,8 @@ class TimelineItemCard extends StatelessWidget {
   final bool isResizable;
   final bool isDragging;
   final bool isResizing;
+  final bool isGhost;
+  final bool isDimmed;
   final String? displayTimeOverride;
   final int? displayDurationOverride;
   final VoidCallback? onTap;
@@ -54,7 +58,7 @@ class TimelineItemCard extends StatelessWidget {
 
     final surfaceColor = isDone
         ? theme.cardColor.withValues(alpha: 0.5)
-        : (isDragging
+        : (isDragging || isGhost
             ? domainColor.withValues(alpha: 0.20)
             : domainColor.withValues(alpha: isDark ? 0.12 : CalendarTokens.alphaDomainFill));
 
@@ -64,17 +68,19 @@ class TimelineItemCard extends StatelessWidget {
 
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Stack(
-        children: [
-          // Main Card Body
-          GestureDetector(
-            onTap: onTap,
-            onVerticalDragStart: isDraggable ? onDragStart : null,
-            onVerticalDragUpdate: isDraggable ? onDragUpdate : null,
-            onVerticalDragEnd: isDraggable ? onDragEnd : null,
-            child: AnimatedContainer(
-              duration: CalendarTokens.durationMicro,
-              curve: CalendarTokens.curveDefault,
+      child: Opacity(
+        opacity: isDimmed ? 0.25 : (isGhost ? 0.85 : 1.0),
+        child: Stack(
+          children: [
+            // Main Card Body — GestureDetector only handles onTap so scroll passes through
+            GestureDetector(
+              behavior: HitTestBehavior.deferToChild,
+              onTap: onTap,
+              child: AnimatedContainer(
+                width: double.infinity,
+                height: double.infinity,
+                duration: CalendarTokens.durationMicro,
+                curve: CalendarTokens.curveDefault,
               decoration: BoxDecoration(
                 color: surfaceColor,
                 borderRadius: BorderRadius.circular(12.0),
@@ -117,9 +123,13 @@ class TimelineItemCard extends StatelessWidget {
                     // Card Content
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: layoutItem.height < 36 ? 2.0 : 5.0,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Row(
@@ -215,7 +225,8 @@ class TimelineItemCard extends StatelessWidget {
                 ),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

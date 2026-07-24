@@ -338,6 +338,8 @@ class KonkurStudySession {
     this.testsBlank = 0,
     this.note,
     required this.createdAt,
+    this.sessionOutcome,
+    this.sessionQuality,
   });
 
   factory KonkurStudySession.fromMap(Map<String, dynamic> map) {
@@ -354,6 +356,8 @@ class KonkurStudySession {
       testsBlank: map['testsBlank'] as int? ?? 0,
       note: map['note'] as String?,
       createdAt: map['createdAt'] as int,
+      sessionOutcome: map['sessionOutcome'] as String?,
+      sessionQuality: map['sessionQuality'] as String?,
     );
   }
   final String id;
@@ -368,6 +372,8 @@ class KonkurStudySession {
   final int testsBlank;
   final String? note;
   final int createdAt;
+  final String? sessionOutcome;
+  final String? sessionQuality;
 
   double get netPercent {
     if (mode != 'TEST') return 0;
@@ -388,6 +394,8 @@ class KonkurStudySession {
       'testsBlank': testsBlank,
       'note': note,
       'createdAt': createdAt,
+      'sessionOutcome': sessionOutcome,
+      'sessionQuality': sessionQuality,
     };
   }
 }

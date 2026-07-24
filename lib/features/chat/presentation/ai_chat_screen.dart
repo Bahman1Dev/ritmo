@@ -715,13 +715,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
         _isLoading = true;
         _dayPlanningStepMessage = '🧠 در حال تحلیل و آغاز چیدمان برنامه...';
       });
-      _textController.clear();
+      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+      final tomorrowStr = DateTime.now().add(const Duration(days: 1)).toIso8601String().substring(0, 10);
+      final targetDateStr = text.contains('فردا') ? tomorrowStr : todayStr;
 
       try {
-        final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-        final tomorrowStr = DateTime.now().add(const Duration(days: 1)).toIso8601String().substring(0, 10);
-        final targetDateStr = text.contains('فردا') ? tomorrowStr : todayStr;
-
         var queryToCompose = text;
         if (_pendingDayPlanDraft != null) {
           queryToCompose = 'بر اساس سوال قبل که پاسخش این است: "$text"، کل برنامه روز را کامل کن و سوال دیگری نپرس.';
@@ -910,6 +908,13 @@ class _AiChatScreenState extends State<AiChatScreen> {
         _isLoading = false;
         _dayPlanningStepMessage = null;
       });
+
+      _showTopToast(
+        'برای چیدمان برنامه روز، لطفاً کارهای امروزتان را بنویسید (مثلاً: ۹ تا ۱۷ سرکارم)',
+        CupertinoIcons.info,
+        context.colors.primary,
+      );
+      return;
     }
 
     _textController.clear();
