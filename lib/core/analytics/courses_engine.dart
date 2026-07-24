@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
+import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/features/courses/logic/course_scheduler.dart';
 import 'package:ritmo/features/courses/models/course_models.dart';
 
@@ -43,8 +43,8 @@ class CoursesEngine implements CachedEngine<CoursesEngineInput, CoursesEngineOut
     final activeCourses = input.courses.where((c) => c.status == CourseStatus.active && !c.isArchived).toList();
     final activeCourseIds = activeCourses.map((c) => c.id).toSet();
 
-    debugPrint('ENGINE DEBUG: activeCourses size = ${activeCourses.length}');
-    debugPrint('ENGINE DEBUG: activeCourseIds = $activeCourseIds');
+    RitmoLog.debug('COURSES', 'activeCourses size = ${activeCourses.length}');
+    RitmoLog.debug('COURSES', 'activeCourseIds = $activeCourseIds');
 
     final todayStr = _formatDate(input.today);
 
@@ -59,21 +59,21 @@ class CoursesEngine implements CachedEngine<CoursesEngineInput, CoursesEngineOut
     // Filter active sessions
     final activeSessions = input.sessions.where((s) => activeCourseIds.contains(s.courseId)).toList();
 
-    debugPrint('ENGINE DEBUG: activeSessions size = ${activeSessions.length}');
+    RitmoLog.debug('COURSES', 'activeSessions size = ${activeSessions.length}');
 
     // 1. weeklyDoneSessions & weeklyStudyMinutes
     var weeklyDone = 0;
     var weeklyMinutes = 0;
 
     for (final session in activeSessions) {
-      debugPrint('ENGINE LOOP DEBUG: session id = ${session.id}, isCompleted = ${session.isCompleted}, completionStatus = ${session.completionStatus}, updatedAt = ${session.updatedAt}');
+      RitmoLog.debug('COURSES', 'session id = ${session.id}, isCompleted = ${session.isCompleted}, completionStatus = ${session.completionStatus}, updatedAt = ${session.updatedAt}');
       if (session.isCompleted) {
         final compTime = session.updatedAt;
-        debugPrint('ENGINE LOOP DEBUG: satStartMs = $satStartMs, compTime = $compTime, nextSatStartMs = $nextSatStartMs');
+        RitmoLog.debug('COURSES', 'satStartMs = $satStartMs, compTime = $compTime, nextSatStartMs = $nextSatStartMs');
         if (compTime >= satStartMs && compTime < nextSatStartMs) {
           weeklyDone++;
           weeklyMinutes += session.actualDurationMinutes ?? 0;
-          debugPrint('ENGINE LOOP DEBUG: incremented weeklyDone = $weeklyDone');
+          RitmoLog.debug('COURSES', 'incremented weeklyDone = $weeklyDone');
         }
       }
     }
