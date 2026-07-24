@@ -45,6 +45,7 @@ class KonkurTables {
           conceptTargetMinutes INTEGER NOT NULL DEFAULT 0,
           practiceTargetMinutes INTEGER NOT NULL DEFAULT 0,
           reviewTargetMinutes INTEGER NOT NULL DEFAULT 0,
+          chapter TEXT,
           FOREIGN KEY(subjectId) REFERENCES konkur_subjects(id) ON DELETE CASCADE,
           FOREIGN KEY(parentTopicId) REFERENCES konkur_topics(id) ON DELETE CASCADE
       );

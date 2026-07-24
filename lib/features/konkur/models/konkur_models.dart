@@ -224,6 +224,7 @@ class KonkurTopic {
     this.practiceTargetMinutes = 0,
     this.reviewCompletedMinutes = 0,
     this.reviewTargetMinutes = 0,
+    this.chapter,
   });
 
   factory KonkurTopic.fromMap(Map<String, dynamic> map) {
@@ -259,6 +260,7 @@ class KonkurTopic {
       practiceTargetMinutes: map['practiceTargetMinutes'] as int? ?? 0,
       reviewCompletedMinutes: map['reviewCompletedMinutes'] as int? ?? 0,
       reviewTargetMinutes: map['reviewTargetMinutes'] as int? ?? 0,
+      chapter: map['chapter'] as String?,
     );
   }
   final String id;
@@ -283,6 +285,7 @@ class KonkurTopic {
   final int practiceTargetMinutes;
   final int reviewCompletedMinutes;
   final int reviewTargetMinutes;
+  final String? chapter;
 
   bool isDue(DateTime today) {
     if (nextReviewDate == null || nextReviewDate!.isEmpty) return false;
@@ -319,8 +322,10 @@ class KonkurTopic {
       'practiceTargetMinutes': practiceTargetMinutes,
       'reviewCompletedMinutes': reviewCompletedMinutes,
       'reviewTargetMinutes': reviewTargetMinutes,
+      'chapter': chapter,
     };
   }
+
 }
 
 class KonkurStudySession {
