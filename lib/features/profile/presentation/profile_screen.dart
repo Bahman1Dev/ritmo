@@ -16,6 +16,7 @@ import 'package:ritmo/core/localization/locale_repository.dart';
 import 'package:ritmo/core/security/app_lock_service.dart';
 import 'package:ritmo/core/services/alarm_scheduler_service.dart';
 import 'package:ritmo/core/services/device_service.dart';
+import 'package:ritmo/core/services/module_management_service.dart';
 import 'package:ritmo/core/services/foreground_notification_updater.dart';
 import 'package:ritmo/core/services/premium_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
@@ -894,7 +895,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       await db.insert('app_settings', {'key': 'user_gender', 'value': genderTemp, 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
                       await db.insert('app_settings', {'key': 'user_age', 'value': ageTemp.toString(), 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
                       if (!isFemaleSelected) {
-                        await db.insert('app_settings', {'key': 'module_cycle_enabled', 'value': 'false', 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
+                        await ModuleManagementService.instance.setModuleEnabled('module_cycle_enabled', false);
                       }
 
                       await AlarmSchedulerService.scheduleNextAlarms();

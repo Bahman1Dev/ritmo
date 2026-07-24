@@ -10,6 +10,8 @@ import 'package:ritmo/core/services/premium_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/theme/theme_repository.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
+import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/services/module_management_service.dart';
 import 'package:ritmo/features/assistant/presentation/assistant_screen.dart';
 import 'package:ritmo/features/courses/presentation/courses_screen.dart';
 import 'package:ritmo/features/cycle/presentation/cycle_screen.dart';
@@ -88,6 +90,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
   @override
   void initState() {
     super.initState();
+    RitmoEvents.routineChanges.addListener(_onRoutineChanges);
     _loadAllData();
 
     _controller = AnimationController(
@@ -125,8 +128,15 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
     _controller.forward();
   }
 
+  void _onRoutineChanges() {
+    if (mounted) {
+      _loadAllData();
+    }
+  }
+
   @override
   void dispose() {
+    RitmoEvents.routineChanges.removeListener(_onRoutineChanges);
     _controller.dispose();
     super.dispose();
   }
@@ -496,12 +506,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
           description: 'سلامت بانوان',
           status: _cycleEnabled ? ModuleStatus.active : ModuleStatus.inactive,
           illustrationAsset: 'assets/images/cycle_card_top.png',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CycleScreen()),
-            ).then((_) => _loadAllData());
-          },
+          onTap: () => _handleCycleTap(colors),
           colors: colors,
           isDarkMode: isDarkMode,
           overlayText: true,
@@ -896,6 +901,30 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
     );
   }
 
+  void _handleCycleTap(RitmoColors colors) {
+    if (_cycleEnabled) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const CycleScreen()),
+      ).then((_) => _loadAllData());
+    } else {
+      _showActivationSheet(
+        title: 'فعال‌سازی سیستم چرخه بدن',
+        description: 'با فعال‌سازی این سیستم، می‌توانید فازهای چرخه زیستی، پیش‌بینی هوشمند و نوسانات هورمونی خود را پایش کرده و بینش‌های سلامتی اختصاصی دریافت کنید.',
+        icon: CupertinoIcons.heart_fill,
+        iconColor: const Color(0xffEC4899),
+        settingKey: 'module_cycle_enabled',
+        onActivated: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CycleScreen()),
+          ).then((_) => _loadAllData());
+        },
+        colors: colors,
+      );
+    }
+  }
+
   void _handleMedicineTap(RitmoColors colors) {
     if (_medicineEnabled) {
       Navigator.push(
@@ -1183,22 +1212,9 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                   child: TextButton(
                     onPressed: () async {
                       Navigator.pop(context);
-                      try {
-                        final db = await DatabaseHelper.instance.database;
-                        await db.insert(
-                          'app_settings',
-                          {
-                            'key': settingKey,
-                            'value': 'true',
-                            'updatedAt': DateTime.now().millisecondsSinceEpoch,
-                          },
-                          conflictAlgorithm: ConflictAlgorithm.replace,
-                        );
-                        await _loadAllData();
-                        onActivated();
-                      } catch (e) {
-                        debugPrint('Error enabling module: $e');
-                      }
+                      await ModuleManagementService.instance.setModuleEnabled(settingKey, true);
+                      await _loadAllData();
+                      onActivated();
                     },
                     style: TextButton.styleFrom(
                       backgroundColor: colors.primary,
@@ -1224,9 +1240,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
   }
 
   Future<void> _toggleModule(String key, bool value) async {
-    final db = await DatabaseHelper.instance.database;
     if (!mounted) return;
-    final now = DateTime.now().millisecondsSinceEpoch;
 
     if (key == 'module_medicine_enabled' && !value) {
       final confirm = await showDialog<bool>(
@@ -1257,38 +1271,56 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
       if (confirm != true) return;
     }
 
-    await db.update(
-      'app_settings',
-      {'value': value.toString(), 'updatedAt': now},
-      where: 'key = ?',
-      whereArgs: [key],
+    await ModuleManagementService.instance.setModuleEnabled(key, value);
+    await _loadAllData();
+  }
+
+  Future<void> _confirmAndResetModule(String key, String moduleTitle) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: const Color(0xff1A1D29),
+          title: Text('⚠️ بازنشانی سیستم $moduleTitle', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 16, fontWeight: FontWeight.bold)),
+          content: Text(
+            'آیا از بازنشانی داده‌های سیستم «$moduleTitle» اطمینان دارید؟ تمام ثبت‌ها، تاریخچه و اطلاعات این سیستم پاک خواهد شد و قابل بازگردانی نیست.',
+            style: const TextStyle(height: 1.6, fontFamily: 'Vazirmatn', fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('انصراف', style: TextStyle(color: Color(0xff9AA0AE), fontFamily: 'Vazirmatn')),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('بله، بازنشانی کن', style: TextStyle(color: Color(0xffE5736B), fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
+            ),
+          ],
+        ),
+      ),
     );
 
-    if (!value) {
-      final categoryName = key == 'module_religion_enabled'
-          ? 'religious'
-          : key == 'module_medicine_enabled'
-              ? 'medical'
-              : '';
-
-      if (categoryName.isNotEmpty) {
-        final routines = await db.query('routines', where: 'category = ?', whereArgs: [categoryName]);
-        for (final r in routines) {
-          final id = r['id']! as String;
-          await AlarmSchedulerService.cancelAllAlarmsForRoutine(id);
-        }
+    if (confirm == true) {
+      await ModuleManagementService.instance.resetModuleData(key);
+      await _loadAllData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('داده‌های سیستم «$moduleTitle» با موفقیت بازنشانی گردید.', style: const TextStyle(fontFamily: 'Vazirmatn')),
+            backgroundColor: const Color(0xff10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
-    } else {
-      await AlarmSchedulerService.scheduleNextAlarms();
     }
-
-    await _loadAllData();
   }
 
   Widget _buildSwitchOption({
     required String title,
     required bool value,
     required ValueChanged<bool> onChanged,
+    required VoidCallback onReset,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xff1C1F2E);
@@ -1296,7 +1328,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: isDark ? 0.03 : 0.05),
           borderRadius: BorderRadius.circular(16),
@@ -1314,6 +1346,34 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                 ),
               ),
             ),
+            InkWell(
+              onTap: onReset,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(CupertinoIcons.arrow_counterclockwise, size: 12, color: Colors.redAccent),
+                    const SizedBox(width: 4),
+                    Text(
+                      'ریست',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.redAccent.shade100 : Colors.redAccent.shade700,
+                        fontFamily: 'Vazirmatn',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             CupertinoSwitch(
               value: value,
               activeTrackColor: const Color(0xff5B8AF5),
@@ -1401,6 +1461,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                   await _toggleModule('module_religion_enabled', val);
                   setSheetState(() => _religionEnabled = val);
                 },
+                onReset: () => _confirmAndResetModule('module_religion_enabled', 'عبادت'),
               ),
               _buildSwitchOption(
                 title: 'دارو و سلامت 💊',
@@ -1409,6 +1470,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                   await _toggleModule('module_medicine_enabled', val);
                   setSheetState(() => _medicineEnabled = val);
                 },
+                onReset: () => _confirmAndResetModule('module_medicine_enabled', 'دارو و سلامت'),
               ),
               _buildSwitchOption(
                 title: 'ورزش 🏃',
@@ -1417,6 +1479,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                   await _toggleModule('module_sports_enabled', val);
                   setSheetState(() => _sportsEnabled = val);
                 },
+                onReset: () => _confirmAndResetModule('module_sports_enabled', 'ورزش'),
               ),
               if (_isFemale)
                 _buildSwitchOption(
@@ -1426,6 +1489,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                     await _toggleModule('module_cycle_enabled', val);
                     setSheetState(() => _cycleEnabled = val);
                   },
+                  onReset: () => _confirmAndResetModule('module_cycle_enabled', 'چرخه بدن'),
                 ),
               _buildSwitchOption(
                 title: 'دوره‌های آموزشی 🎓',
@@ -1434,6 +1498,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                   await _toggleModule('module_courses_enabled', val);
                   setSheetState(() => _coursesEnabled = val);
                 },
+                onReset: () => _confirmAndResetModule('module_courses_enabled', 'دوره‌های آموزشی'),
               ),
               _buildSwitchOption(
                 title: 'اهداف و برنامه‌ها 🎯',
@@ -1442,6 +1507,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                   await _toggleModule('module_goals_enabled', val);
                   setSheetState(() => _goalsEnabled = val);
                 },
+                onReset: () => _confirmAndResetModule('module_goals_enabled', 'اهداف و برنامه‌ها'),
               ),
               _buildSwitchOption(
                 title: 'دستیار هوشمند 💬',
@@ -1450,6 +1516,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                   await _toggleModule('module_assistant_enabled', val);
                   setSheetState(() => _assistantEnabled = val);
                 },
+                onReset: () => _confirmAndResetModule('module_assistant_enabled', 'دستیار هوشمند'),
               ),
               _buildSwitchOption(
                 title: 'کنکور 📚',
@@ -1458,6 +1525,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                   await _toggleModule('module_konkur_enabled', val);
                   setSheetState(() => _konkurEnabled = val);
                 },
+                onReset: () => _confirmAndResetModule('module_konkur_enabled', 'کنکور'),
               ),
               _buildSwitchOption(
                 title: 'انرژی و خلق روزانه ⚡',
@@ -1466,6 +1534,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                   await _toggleModule('module_energy_enabled', val);
                   setSheetState(() => _energyEnabled = val);
                 },
+                onReset: () => _confirmAndResetModule('module_energy_enabled', 'انرژی و خلق روزانه'),
               ),
               _buildSwitchOption(
                 title: 'خواب و بیداری 😴',
@@ -1474,6 +1543,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                   await _toggleModule('module_sleep_enabled', val);
                   setSheetState(() => _sleepEnabled = val);
                 },
+                onReset: () => _confirmAndResetModule('module_sleep_enabled', 'خواب و بیداری'),
               ),
               _buildSwitchOption(
                 title: 'عادات پیش‌رونده 📈',
@@ -1482,6 +1552,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                   await _toggleModule('module_progressive_habits_enabled', val);
                   setSheetState(() => _progressiveHabitsEnabled = val);
                 },
+                onReset: () => _confirmAndResetModule('module_progressive_habits_enabled', 'عادات پیش‌رونده'),
               ),
             ],
           );

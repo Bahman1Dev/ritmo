@@ -8,6 +8,8 @@ import 'package:ritmo/core/analytics/mood_engine.dart';
 import 'package:ritmo/core/analytics/reflection_engine.dart';
 import 'package:ritmo/core/analytics/sleep_engine.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/services/module_management_service.dart';
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/cycle_consent_bridge.dart';
@@ -117,11 +119,19 @@ class _WellbeingScreenState extends State<WellbeingScreen>
         curve: Curves.easeInOut,
       );
     });
+    RitmoEvents.routineChanges.addListener(_onRoutineChanges);
     _loadAllData();
+  }
+
+  void _onRoutineChanges() {
+    if (mounted) {
+      _loadAllData();
+    }
   }
 
   @override
   void dispose() {
+    RitmoEvents.routineChanges.removeListener(_onRoutineChanges);
     _tabController.dispose();
     _pageController.dispose();
     super.dispose();
@@ -294,16 +304,7 @@ class _WellbeingScreenState extends State<WellbeingScreen>
 
   Future<void> _activateModule(String settingKey) async {
     try {
-      final db = await DatabaseHelper.instance.database;
-      await db.insert(
-        'app_settings',
-        {
-          'key': settingKey,
-          'value': 'true',
-          'updatedAt': DateTime.now().millisecondsSinceEpoch,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      await ModuleManagementService.instance.setModuleEnabled(settingKey, true);
       await _loadAllData();
     } catch (e) {
       debugPrint('Error activating module $settingKey: $e');

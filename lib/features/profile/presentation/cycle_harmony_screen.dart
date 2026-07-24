@@ -7,6 +7,7 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/engine_enums.dart';
 import 'package:ritmo/core/domain/engines/hormonal_intelligence_engine.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/services/module_management_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/ritmo_date_picker.dart';
 import 'package:ritmo/core/ux/ritmo_directional_icon.dart';
@@ -81,13 +82,7 @@ class _CycleHarmonyScreenState extends State<CycleHarmonyScreen> {
   }
 
   Future<void> _toggleCycleModule(bool enabled) async {
-    final db = await DatabaseHelper.instance.database;
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    await db.rawUpdate(
-      "UPDATE app_settings SET value = ?, updatedAt = ? WHERE key = 'module_cycle_enabled'",
-      [if (enabled) 'true' else 'false', nowMs],
-    );
-    RitmoEvents.notifyRoutineChanged();
+    await ModuleManagementService.instance.setModuleEnabled('module_cycle_enabled', enabled);
     _loadData();
   }
 
