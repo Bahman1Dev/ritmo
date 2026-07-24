@@ -17,6 +17,8 @@ import 'package:ritmo/features/konkur/presentation/widgets/konkur_setup_flow.dar
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_stats_section.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_today_section.dart';
 
+import 'package:ritmo/features/konkur/presentation/widgets/konkur_field_picker_sheet.dart';
+
 class KonkurScreen extends StatefulWidget {
   const KonkurScreen({super.key});
 
@@ -55,6 +57,93 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
+  Future<void> _seedAndReload(KonkurField field) async {
+    setState(() => _isLoading = true);
+    await KonkurRepository.instance.seedCurriculum(field);
+    await _loadAllData();
+  }
+
+  Future<void> _showFieldPicker() async {
+    final selectedField = await KonkurFieldPickerSheet.show(context);
+    if (selectedField != null) {
+      await _seedAndReload(selectedField);
+    }
+  }
+
+  Color _colorForField(KonkurField field) => switch (field) {
+    KonkurField.riyazi  => const Color(0xFF3B82F6),
+    KonkurField.tajrobi => const Color(0xFF10B981),
+    KonkurField.ensani  => const Color(0xFFF59E0B),
+    KonkurField.honar   => const Color(0xFFEC4899),
+    KonkurField.zaban   => const Color(0xFF8B5CF6),
+  };
+
+  String _labelForField(KonkurField field) => switch (field) {
+    KonkurField.riyazi  => '📐 رشته ریاضی',
+    KonkurField.tajrobi => '🧬 رشته تجربی',
+    KonkurField.ensani  => '📚 رشته انسانی',
+    KonkurField.honar   => '🎨 رشته هنر',
+    KonkurField.zaban   => '🗣️ رشته زبان',
+  };
+
+  Widget _buildEmptyCurriculumState(BuildContext context, RitmoColors colors) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('🎓', style: TextStyle(fontSize: 64)),
+            const SizedBox(height: 16),
+            Text(
+              'رشته خودت رو انتخاب کن',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'سرفصل‌های کامل کنکور به صورت خودکار اضافه میشه',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 14,
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ...KonkurField.values.map((field) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _seedAndReload(field),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _colorForField(field),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text(
+                    _labelForField(field),
+                    style: const TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _loadAllData() async {
     setState(() {
       _isLoading = true;
@@ -75,6 +164,15 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
         _mockExams = await repo.getMockExams();
         _mockResults = await repo.getMockResults();
         _planItems = await repo.getPlanItems();
+
+        // Auto-seed if field set but no subjects present
+        final fieldStr = _settings['konkur_field'] ?? 'RIYAZI';
+        if (_subjects.isEmpty && fieldStr != 'UNSET') {
+          final field = KonkurField.fromString(fieldStr);
+          await repo.seedCurriculum(field);
+          _subjects = await repo.getSubjects();
+          _topics = await repo.getTopics();
+        }
 
         // 3. Run KonkurEngine locally
         final engine = KonkurEngine();
@@ -114,6 +212,7 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
           initialDailyTargetMinutes: int.tryParse(_settings['konkur_daily_target_minutes'] ?? '180') ?? 180,
           initialShowInDashboard: _settings['konkur_show_in_dashboard'] == 'true',
           onSaved: _loadAllData,
+          onOpenCurriculumPicker: _showFieldPicker,
           onReset: () async {
             final confirm = await showDialog<bool>(
               context: context,
@@ -223,6 +322,11 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
           ),
           actions: [
             IconButton(
+              icon: const Icon(Icons.school_outlined, color: Color(0xFF8B5CF6)),
+              tooltip: 'بارگذاری سرفصل‌های کنکور',
+              onPressed: _showFieldPicker,
+            ),
+            IconButton(
               icon: const Icon(Icons.psychology, color: Color(0xFF8B5CF6)),
               tooltip: 'دستیار هوش مصنوعی کنکور',
               onPressed: _showAiAssistantSheet,
@@ -248,9 +352,12 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
                     ],
                   ),
                 )
-              : _engineOutput == null
-                  ? const Center(child: Text('خطا در بارگذاری خروجی موتور کنکور'))
-                  : Column(
+              : _subjects.isEmpty
+                  ? _buildEmptyCurriculumState(context, colors)
+                  : _engineOutput == null
+                      ? const Center(child: Text('خطا در بارگذاری خروجی موتور کنکور'))
+                      : Column(
+
                       children: [
                         // Countdown Hero
                         KonkurHero(
@@ -341,12 +448,14 @@ class _KonkurSettingsSheet extends StatefulWidget {
     required this.initialShowInDashboard,
     required this.onSaved,
     required this.onReset,
+    this.onOpenCurriculumPicker,
   });
   final String initialExamDateIso;
   final int initialDailyTargetMinutes;
   final bool initialShowInDashboard;
   final VoidCallback onSaved;
   final VoidCallback onReset;
+  final VoidCallback? onOpenCurriculumPicker;
 
   @override
   State<_KonkurSettingsSheet> createState() => _KonkurSettingsSheetState();
@@ -423,6 +532,17 @@ class _KonkurSettingsSheetState extends State<_KonkurSettingsSheet> {
             ],
           ),
           const SizedBox(height: 16),
+          // Curriculum Picker Button
+          ListTile(
+            title: const Text('بارگذاری سرفصل‌های کنکور', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, fontWeight: FontWeight.bold)),
+            subtitle: Text('افزودن دروس و مباحث استاندارد کنکور بر اساس رشته تحصیلی.', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: colors.textSecondary)),
+            trailing: const Icon(Icons.school, color: Color(0xFF8B5CF6)),
+            onTap: () {
+              Navigator.pop(context);
+              widget.onOpenCurriculumPicker?.call();
+            },
+          ),
+          const Divider(),
           // Exam Date Row
           ListTile(
             title: const Text('تاریخ برگزاری کنکور', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, fontWeight: FontWeight.bold)),
@@ -474,6 +594,7 @@ class _KonkurSettingsSheetState extends State<_KonkurSettingsSheet> {
               });
             },
           ),
+
           const Divider(),
           // Reset Button
           ListTile(

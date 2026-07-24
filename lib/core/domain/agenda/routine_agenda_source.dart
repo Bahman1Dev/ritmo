@@ -180,32 +180,56 @@ class RoutineAgendaSource {
     }
   }
 
+  static String? _normalizeTimeOfDay(String? raw) {
+    if (raw == null) return null;
+    final value = raw.trim();
+
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value);
+    if (match == null) return null;
+
+    final hour = int.tryParse(match.group(1)!);
+    final minute = int.tryParse(match.group(2)!);
+    if (hour == null || minute == null) return null;
+    if (hour < 0 || hour >= 24 || minute < 0 || minute >= 60) return null;
+
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  }
+
   /// Resolves the concrete `HH:mm` for a routine schedule, honoring prayer
   /// anchors (anchor time + offset) via [prayerTimes].
   static String? resolveTime(
     Map<String, dynamic> schedule,
     Map<String, String> prayerTimes,
   ) {
-    final timeStr = schedule['timeOfDay'] as String?;
-    if (timeStr != null && timeStr.isNotEmpty) return timeStr;
+    final rawTime = schedule['timeOfDay'] as String?;
+    final normalizedDirect = _normalizeTimeOfDay(rawTime);
+    if (normalizedDirect != null) return normalizedDirect;
 
     final anchorEvent = schedule['anchorEvent'] as String?;
     if (anchorEvent != null) {
       final adhanTimeStr = prayerTimes[_mapAnchorToKey(anchorEvent)];
-      if (adhanTimeStr != null) {
-        final parts = adhanTimeStr.split(':');
-        if (parts.length == 2) {
-          final h = int.tryParse(parts[0]) ?? 0;
-          final m = int.tryParse(parts[1]) ?? 0;
-          final offset = schedule['anchorOffsetMinutes'] as int? ?? 0;
-          var total = h * 60 + m + offset;
-          if (total < 0) total += 24 * 60;
-          final rh = (total ~/ 60) % 24;
-          final rm = total % 60;
-          return '${rh.toString().padLeft(2, '0')}:${rm.toString().padLeft(2, '0')}';
+      final normalizedAnchor = _normalizeTimeOfDay(adhanTimeStr);
+
+      if (normalizedAnchor != null) {
+        final parts = normalizedAnchor.split(':');
+        final h = int.parse(parts[0]);
+        final m = int.parse(parts[1]);
+
+        final offset = schedule['anchorOffsetMinutes'] as int? ?? 0;
+        var total = h * 60 + m + offset;
+
+        while (total < 0) {
+          total += 24 * 60;
         }
+        total = total % (24 * 60);
+
+        final rh = total ~/ 60;
+        final rm = total % 60;
+
+        return '${rh.toString().padLeft(2, '0')}:${rm.toString().padLeft(2, '0')}';
       }
     }
+
     return null;
   }
 
@@ -253,13 +277,16 @@ class RoutineAgendaSource {
 
       var dur = r['targetDurationMinutes'] as int?;
       var isEstimated = false;
-      // Cap: routines longer than 60 min are treated as unestimated and
-      // replaced with an AI-average (clamped to 5-45 min) so they never
-      // produce an oversized card on the timeline.
-      if (dur == null || dur <= 0 || dur > 60) {
+
+      // Only estimate when duration is missing or invalid.
+      // Do NOT replace legitimate long routines with a fake shorter average.
+      if (dur == null || dur <= 0) {
         final avg = avgDurations[routineId] ?? categoryAvgDurations[catStr] ?? 30.0;
-        dur = avg.round().clamp(5, 45);
+        dur = avg.round().clamp(5, 120);
         isEstimated = true;
+      } else {
+        // Keep the real duration, just prevent absurd broken values.
+        dur = dur.clamp(5, 12 * 60);
       }
 
       items.add(AgendaItem(

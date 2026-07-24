@@ -43,18 +43,22 @@ class TimelineLayoutEngine {
 
     final rawEntries = <_RawEntry>[];
     for (final item in timed) {
-      final startM = _parseStartMinutes(item.timeOfDay!);
+      final startM = _tryParseStartMinutes(item.timeOfDay);
+      if (startM == null) {
+        // Ignore invalid timed items here; they should fall back to untimed behavior upstream.
+        continue;
+      }
+
       var durM = item.durationMinutes ?? defaultDurationMinutes;
 
-      // Hard-cap: nothing is allowed to be taller than 60 minutes on the visual grid.
-      // This prevents bad DB data (e.g. 1440-minute all-day routines) from
-      // covering the entire timeline. Invalid or zero durations fall back to the
-      // default slot size.
+      // Only repair invalid/empty durations — do NOT destroy valid long events.
       if (durM <= 0) {
-        durM = defaultDurationMinutes; // 30 mins
-      } else if (durM > 60) {
-        durM = 60; // Hard visual cap at 1 hour
+        durM = defaultDurationMinutes;
       }
+
+      // Respect real duration, but keep it within the same day.
+      final maxDurationForDay = (1440 - startM).clamp(1, 1440);
+      durM = durM.clamp(5, maxDurationForDay);
 
       rawEntries.add(_RawEntry(
         item: item,
@@ -136,11 +140,18 @@ class TimelineLayoutEngine {
     return result;
   }
 
-  static int _parseStartMinutes(String timeOfDay) {
-    final parts = timeOfDay.split(':');
-    if (parts.length != 2) return 0;
-    final h = int.tryParse(parts[0]) ?? 0;
-    final m = int.tryParse(parts[1]) ?? 0;
+  static int? _tryParseStartMinutes(String? timeOfDay) {
+    if (timeOfDay == null) return null;
+
+    final value = timeOfDay.trim();
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value);
+    if (match == null) return null;
+
+    final h = int.tryParse(match.group(1)!);
+    final m = int.tryParse(match.group(2)!);
+    if (h == null || m == null) return null;
+    if (h < 0 || h >= 24 || m < 0 || m >= 60) return null;
+
     return (h * 60) + m;
   }
 }

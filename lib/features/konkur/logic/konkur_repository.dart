@@ -1,12 +1,87 @@
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/features/konkur/data/konkur_curriculum.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 
 class KonkurRepository {
   KonkurRepository._init();
   static final KonkurRepository instance = KonkurRepository._init();
 
   Future<Database> get _database async => DatabaseHelper.instance.database;
+
+  /// Seeds the database with the complete Konkur curriculum for a given field.
+  /// Only inserts if no subjects exist yet for this field (idempotent).
+  Future<void> seedCurriculum(KonkurField field) async {
+    final existing = await getSubjects();
+    final curriculum = KonkurCurriculum.byField[field] ?? [];
+    if (curriculum.isEmpty) return;
+
+    final existingNames = existing.map((s) => s.name).toSet();
+    final newSubjects = curriculum.where((sData) => !existingNames.contains(sData.name));
+    if (newSubjects.isEmpty && existing.isNotEmpty) return; // already seeded
+
+    const uuid = Uuid();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    int orderIdx = existing.length;
+
+    for (final subjectData in curriculum) {
+      if (existingNames.contains(subjectData.name)) continue;
+
+      final subjectId = uuid.v4();
+      final subject = KonkurSubject(
+        id: subjectId,
+        name: subjectData.name,
+        importanceFactor: subjectData.defaultCoefficient,
+        createdAt: now,
+        updatedAt: now,
+        examQuestionCount: subjectData.defaultExamQuestions,
+        orderIndex: orderIdx++,
+        colorHex: _defaultColorForField(field),
+        isPreset: true,
+      );
+      await insertSubject(subject);
+
+      int topicOrderIdx = 0;
+      for (final topicData in subjectData.topics) {
+        final totalEst = topicData.estimatedMinutes;
+        final conceptTarget = (totalEst * 0.5).round();
+        final practiceTarget = (totalEst * 0.3).round();
+        final reviewTarget = (totalEst * 0.2).round();
+
+        final topic = KonkurTopic(
+          id: uuid.v4(),
+          subjectId: subjectId,
+          name: topicData.name,
+          chapter: topicData.chapter,
+          studyTargetMinutes: totalEst,
+          examQuestionCount: topicData.examQuestions,
+          masteryLevel: topicData.defaultMastery,
+          createdAt: now,
+          updatedAt: now,
+          orderIndex: topicOrderIdx++,
+          conceptTargetMinutes: conceptTarget,
+          practiceTargetMinutes: practiceTarget,
+          reviewTargetMinutes: reviewTarget,
+        );
+        await insertTopic(topic);
+      }
+    }
+
+    await updateAppSetting('konkur_field', field.code);
+    await updateAppSetting('konkur_setup_done', 'true');
+  }
+
+  String _defaultColorForField(KonkurField field) {
+    return switch (field) {
+      KonkurField.riyazi  => '#3B82F6',  // blue
+      KonkurField.tajrobi => '#10B981',  // emerald
+      KonkurField.ensani  => '#F59E0B',  // amber
+      KonkurField.honar   => '#EC4899',  // pink
+      KonkurField.zaban   => '#8B5CF6',  // purple
+    };
+  }
+
 
   // READ METHODS
   Future<List<KonkurSubject>> getSubjects() async {

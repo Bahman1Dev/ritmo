@@ -738,8 +738,52 @@ class _KonkurBudgetSectionState extends State<KonkurBudgetSection> {
                 style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.textSecondary),
               ),
             )
-          else
-            ...subTopics.map((topic) => _buildTopicRow(topic, subject.name, colors)),
+          else ...[
+            Builder(
+              builder: (context) {
+                final Map<String, List<KonkurTopic>> topicsByChapter = {};
+                for (final topic in subTopics) {
+                  final chapterName = topic.chapter ?? 'سرفصل‌های عمومی';
+                  topicsByChapter.putIfAbsent(chapterName, () => []).add(topic);
+                }
+
+                final List<Widget> chapterWidgets = [];
+                for (final entry in topicsByChapter.entries) {
+                  chapterWidgets.add(
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12, bottom: 4, right: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.key,
+                            style: TextStyle(
+                              fontFamily: 'Vazirmatn',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                          Divider(
+                            thickness: 0.5,
+                            height: 8,
+                            color: colors.border.withValues(alpha: 0.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                  for (final topic in entry.value) {
+                    chapterWidgets.add(_buildTopicRow(topic, subject.name, colors));
+                  }
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: chapterWidgets,
+                );
+              },
+            ),
+          ],
           const Divider(height: 16),
           Align(
             alignment: Alignment.centerRight,

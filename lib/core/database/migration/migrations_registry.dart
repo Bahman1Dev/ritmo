@@ -2139,6 +2139,7 @@ class MigrationV47 extends Migration {
       'ALTER TABLE konkur_topics ADD COLUMN practiceCompletedMinutes INTEGER NOT NULL DEFAULT 0;',
       'ALTER TABLE konkur_topics ADD COLUMN reviewTargetMinutes INTEGER NOT NULL DEFAULT 0;',
       'ALTER TABLE konkur_topics ADD COLUMN reviewCompletedMinutes INTEGER NOT NULL DEFAULT 0;',
+      'ALTER TABLE konkur_topics ADD COLUMN chapter TEXT;',
     ]) {
       try {
         await db.execute(col);

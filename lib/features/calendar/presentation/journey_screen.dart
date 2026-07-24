@@ -115,13 +115,25 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
+  int? _tryParseMinutes(String? timeStr) {
+    if (timeStr == null) return null;
+
+    final value = timeStr.trim();
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value);
+    if (match == null) return null;
+
+    final h = int.tryParse(match.group(1)!);
+    final m = int.tryParse(match.group(2)!);
+    if (h == null || m == null) return null;
+    if (h < 0 || h >= 24 || m < 0 || m >= 60) return null;
+
+    return (h * 60) + m;
+  }
+
   void _scrollToTimeString(String? timeStr) {
-    if (timeStr == null) return;
-    final parts = timeStr.split(':');
-    if (parts.length != 2) return;
-    final h = int.tryParse(parts[0]) ?? 0;
-    final m = int.tryParse(parts[1]) ?? 0;
-    _scrollToMinutesValue((h * 60) + m);
+    final minutes = _tryParseMinutes(timeStr);
+    if (minutes == null) return;
+    _scrollToMinutesValue(minutes);
   }
 
   void _openItemDetails(AgendaItem item) {

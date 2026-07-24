@@ -311,7 +311,7 @@ class _TimelineGridState extends State<TimelineGrid> {
 
     final displayDuration = isCurrentlyResizing ? _resizeDurationMinutes : null;
 
-    final cardWidth = (layoutItem.widthFraction * gridWidth) - 4.0;
+    final cardWidth = ((layoutItem.widthFraction * gridWidth) - 4.0).clamp(44.0, gridWidth);
     final cardHeight = max(height, 28.0);
 
     final itemCard = TimelineItemCard(
