@@ -604,7 +604,7 @@ class _RoutineCreateFlowState extends State<RoutineCreateFlow> {
                     EditRoutineCommand(
                       routineId: id,
                       routineData: _originalRoutineData!,
-                      scheduleData: _originalScheduleData!,
+                      scheduleData: _originalScheduleData,
                       applyToAll: _lastSavedEditScope == 'all',
                     ),
                   );

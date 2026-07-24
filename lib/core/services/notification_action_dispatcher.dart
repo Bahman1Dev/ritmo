@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/services/alarm_scheduler_service.dart';
 import 'package:ritmo/core/services/foreground_notification_updater.dart';
 import 'package:sqflite/sqflite.dart';
@@ -58,6 +60,11 @@ void notificationActionDispatcher() {
             await db.insert('app_settings', {'key': 'realm_override_until_ms', 'value': untilMs.toString(), 'updatedAt': nowMs}, conflictAlgorithm: ConflictAlgorithm.replace);
           }
           
+          RitmoEventBus().fire(RitmoEvent(
+            type: 'ZoneChanged',
+            timestamp: DateTime.now(),
+            payload: {},
+          ));
           RitmoEvents.notifyRoutineChanged();
           await ForegroundNotificationUpdater.update();
         }
@@ -73,6 +80,11 @@ void notificationActionDispatcher() {
           
           await db.insert('app_settings', {'key': 'default_energy_level', 'value': energy.toUpperCase(), 'updatedAt': nowMs}, conflictAlgorithm: ConflictAlgorithm.replace);
           
+          RitmoEventBus().fire(RitmoEvent(
+            type: 'EnergyLogged',
+            timestamp: DateTime.now(),
+            payload: {},
+          ));
           RitmoEvents.notifyRoutineChanged();
           await ForegroundNotificationUpdater.update();
         }
@@ -102,7 +114,7 @@ class NotificationActionHandler {
       );
 
       if (reminders.isEmpty) {
-        debugPrint('NotificationActionHandler: Reminder not found: $reminderId');
+        RitmoLog.warning('NOTIF', 'Reminder not found: $reminderId');
         return;
       }
 
@@ -114,7 +126,7 @@ class NotificationActionHandler {
       final date = DateTime.fromMillisecondsSinceEpoch(originalTime);
       final dateStr = date.toIso8601String().substring(0, 10);
 
-      debugPrint('NotificationActionHandler: Processing action $action for reminder $reminderId (routine: $routineId, date: $dateStr)');
+      RitmoLog.info('NOTIF', 'Processing action $action for reminder $reminderId (routine: $routineId, date: $dateStr)');
 
       // 2. Perform database actions based on action type
       switch (action) {
@@ -192,14 +204,14 @@ class NotificationActionHandler {
           }
 
         default:
-          debugPrint('NotificationActionHandler: Unknown action: $action');
+          RitmoLog.warning('NOTIF', 'Unknown action: $action');
       }
 
       // Re-trigger alarm synchronization to dismiss or reschedule alarms
       await AlarmSchedulerService.scheduleNextAlarms();
       
     } catch (e, stacktrace) {
-      debugPrint('NotificationActionHandler: Error handling action $action: $e\n$stacktrace');
+      RitmoLog.error('NOTIF', 'Error handling action $action', e, stacktrace);
     }
   }
 }

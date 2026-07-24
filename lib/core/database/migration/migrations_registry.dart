@@ -2005,6 +2005,147 @@ class MigrationV42 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV43 extends Migration {
+  @override
+  int get version => 43;
+
+  @override
+  Future<void> up(Database db) async {
+    await db.execute('DROP TABLE IF EXISTS assistant_chats;');
+    await db.execute('DROP TABLE IF EXISTS assistant_threads;');
+    await db.execute("DELETE FROM app_settings WHERE key = 'assistant_memory_summary';");
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_sessions (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        last_message_at INTEGER NOT NULL,
+        summary TEXT,
+        message_count INTEGER NOT NULL DEFAULT 0,
+        chat_type TEXT DEFAULT 'assistant'
+      );
+    ''');
+    try {
+      await db.execute("ALTER TABLE chat_sessions ADD COLUMN chat_type TEXT DEFAULT 'assistant';");
+    } catch (_) {}
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_chat_sessions_last '
+      'ON chat_sessions(last_message_at DESC);',
+    );
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        timestamp INTEGER NOT NULL,
+        tokens_used INTEGER,
+        actions TEXT,
+        FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+      );
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_chat_session_time '
+      'ON chat_messages(session_id, timestamp);',
+    );
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
+class MigrationV44 extends Migration {
+  @override
+  int get version => 44;
+
+  @override
+  Future<void> up(Database db) async {
+    await db.execute('DROP TABLE IF EXISTS ss_ai_memory;');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ai_memory (
+        id TEXT PRIMARY KEY,
+        content TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'general',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_ai_memory_created '
+      'ON ai_memory(created_at DESC);',
+    );
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
+class MigrationV45 extends Migration {
+  @override
+  int get version => 45;
+
+  @override
+  Future<void> up(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS day_plan_commits (
+        id TEXT PRIMARY KEY,
+        date_iso TEXT NOT NULL,
+        plan_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        groupId TEXT
+      );
+    ''');
+    try {
+      await db.execute('ALTER TABLE day_plan_commits ADD COLUMN groupId TEXT;');
+    } catch (_) {}
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_day_plan_commits_date '
+      'ON day_plan_commits(date_iso);',
+    );
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS day_plan_templates (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        plan_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_day_plan_templates_title '
+      'ON day_plan_templates(title);',
+    );
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
+class MigrationV46 extends Migration {
+  @override
+  int get version => 46;
+
+  @override
+  Future<void> up(Database db) async {
+    try {
+      await db.execute('ALTER TABLE routines ADD COLUMN reminderOffsetMinutes INTEGER DEFAULT 0;');
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE workout_set_logs ADD COLUMN rpe REAL;');
+    } catch (_) {}
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_perf_completions_routine_date ON routine_completions(routineId, completionDate);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_perf_occurrences_routine_date ON routine_occurrences(routine_id, date);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_perf_occurrences_date_status ON routine_occurrences(date, status);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_perf_wp_type_active ON worship_practices(type, is_active);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_perf_reminders_routine_state ON pending_reminders(routineId, state);');
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
+
 
 
 

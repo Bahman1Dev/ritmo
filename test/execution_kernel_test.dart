@@ -7,6 +7,7 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/reshuffle_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
+import 'package:ritmo/core/domain/execution/post_commit_pipeline.dart';
 import 'package:ritmo/core/platform/alarm_platform.dart';
 import 'package:ritmo/core/platform/notification_platform.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -560,7 +561,7 @@ void main() {
       expect(occurrences.isEmpty, true);
 
       // Verify Event Bus
-      expect(firedEvents.any((e) => e.type == 'RoutineEdited' && e.payload['routineId'] == routineId), true);
+      expect(firedEvents.any((e) => e.type == 'RoutineDeleted' && e.payload['routineId'] == routineId), true);
     });
 
     test("4. CompleteOccurrenceCommand logs completion, updates status, and cancels today's remaining alarms", () async {
@@ -848,5 +849,38 @@ void main() {
       expect(routine['progressionCurrent'], 15);
       expect(routine['progressionDoneSinceAdvance'], 0);
     });
+
+    test('9. PostCommitPipeline continues after one task failure (failure isolation)', () async {
+      final calls = <String>[];
+
+      final tasks = <Future<void> Function()>[
+        () async {
+          calls.add('first');
+          throw Exception('boom');
+        },
+        () async {
+          calls.add('second');
+        },
+      ];
+
+      await PostCommitPipeline.run(tasks);
+
+      expect(calls, ['first', 'second']);
+    });
+
+    test('10. PostCommitPipeline executes all tasks in order', () async {
+      final calls = <int>[];
+
+      final tasks = <Future<void> Function()>[
+        () async => calls.add(1),
+        () async => calls.add(2),
+        () async => calls.add(3),
+      ];
+
+      await PostCommitPipeline.run(tasks);
+
+      expect(calls, [1, 2, 3]);
+    });
   });
 }
+

@@ -1,7 +1,5 @@
 import 'dart:math';
 
-import 'package:ritmo/core/analytics/goals_engine.dart';
-import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
 import 'package:sqflite/sqflite.dart';
 
 class ProgressionEngine {
@@ -58,20 +56,6 @@ class ProgressionEngine {
         where: 'id = ?',
         whereArgs: [routineId],
       );
-    }
-
-    // Invalidate GoalsEngine if any goal step is linked to this routine
-    try {
-      final List<Map<String, dynamic>> matchingSteps = await db.query(
-        'goal_steps',
-        where: 'linkedRoutineId = ?',
-        whereArgs: [routineId],
-      );
-      if (matchingSteps.isNotEmpty) {
-        RitmoEngineBus.instance.invalidate(GoalsEngine);
-      }
-    } catch (e) {
-      // Ignore database errors during execution
     }
   }
 }
