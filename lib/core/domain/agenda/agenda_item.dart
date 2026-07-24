@@ -14,6 +14,16 @@ enum AgendaDomain {
   konkur,
   cycle,
   worshipDebt,
+  sport,
+  medicine,
+}
+
+/// Explicit classification of an agenda item's scheduling constraints.
+enum AgendaItemType {
+  fixed,
+  flexible,
+  floating,
+  optional,
 }
 
 /// Completion / lifecycle state of an agenda item for its date.
@@ -51,7 +61,7 @@ class AgendaDeepLink {
 /// without a rewrite.
 class AgendaItem {
 
-  const AgendaItem({
+  AgendaItem({
     required this.id,
     required this.domain,
     required this.sourceId,
@@ -68,7 +78,12 @@ class AgendaItem {
     this.windowStart,
     this.windowEnd,
     this.meta = const {},
-  });
+    AgendaItemType? itemType,
+  }) : itemType = itemType ??
+            ((timeOfDay != null && timeOfDay.isNotEmpty) || isEssential
+                ? AgendaItemType.fixed
+                : AgendaItemType.flexible);
+
   /// Domain-prefixed unique id, e.g. `"course:<sessionId>"`.
   final String id;
 
@@ -108,7 +123,35 @@ class AgendaItem {
   /// `meta['schedule']` = raw schedule map.
   final Map<String, dynamic> meta;
 
+  final AgendaItemType itemType;
+
   bool get isTimed => timeOfDay != null && timeOfDay!.isNotEmpty;
+
+  bool get isAllDay => !isTimed;
+
+  bool get isFixed => itemType == AgendaItemType.fixed;
+
+  bool get isFlexible => itemType == AgendaItemType.flexible;
+
+  bool get isFloating => itemType == AgendaItemType.floating;
+
+  bool get isOptional => itemType == AgendaItemType.optional;
+
+  bool get isOvernight {
+    if (!isTimed) return false;
+    final parts = timeOfDay!.split(':');
+    if (parts.length != 2) return false;
+    final startH = int.tryParse(parts[0]) ?? 0;
+    final startM = int.tryParse(parts[1]) ?? 0;
+    final dur = durationMinutes ?? 0;
+    final totalEndMinutes = (startH * 60) + startM + dur;
+    if (totalEndMinutes >= 1440) return true;
+
+    if (windowStart != null && windowEnd != null) {
+      if (windowEnd!.day != windowStart!.day) return true;
+    }
+    return false;
+  }
 
   bool get isCompleted =>
       completion == AgendaCompletion.done ||
@@ -121,6 +164,7 @@ class AgendaQueryOptions {
   const AgendaQueryOptions({
     this.includeCompleted = true,
     this.domains = const {},
+    this.includeWorshipDebt = false,
   });
   /// Whether to include items that are already completed (Calendar: true,
   /// Home pending-lists: false).
@@ -129,7 +173,15 @@ class AgendaQueryOptions {
   /// If non-empty, restrict collection to these domains only.
   final Set<AgendaDomain> domains;
 
-  bool wants(AgendaDomain domain) => domains.isEmpty || domains.contains(domain);
+  /// Explicit policy flag: whether to include worship debt items (default: false).
+  final bool includeWorshipDebt;
+
+  bool wants(AgendaDomain domain) {
+    if (domain == AgendaDomain.worshipDebt && !includeWorshipDebt) {
+      return false;
+    }
+    return domains.isEmpty || domains.contains(domain);
+  }
 }
 
 /// The assembled agenda for a single day.
