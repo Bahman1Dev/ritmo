@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_snapshot_builder.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/models.dart';
@@ -9,10 +10,44 @@ import 'package:ritmo/features/calendar/presentation/logic/direct_manipulation_e
 import 'package:ritmo/features/calendar/presentation/logic/today_calendar_convergence_helper.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_date_formatter.dart';
 
+class DummyBuildContext implements BuildContext {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class FakeDayAgendaService implements DayAgendaService {
+  @override
+  Future<DayAgenda> agendaForDate(DateTime date, {AgendaQueryOptions? options}) async {
+    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    return DayAgenda(dateStr: dateStr, items: []);
+  }
+
+  @override
+  Future<Map<String, DayAgenda>> agendaForRange(DateTime start, DateTime end, {AgendaQueryOptions? options}) async {
+    final map = <String, DayAgenda>{};
+    var current = start;
+    while (!current.isAfter(end)) {
+      final key = '${current.year}-${current.month.toString().padLeft(2, '0')}-${current.day.toString().padLeft(2, '0')}';
+      map[key] = DayAgenda(dateStr: key, items: []);
+      current = current.add(const Duration(days: 1));
+    }
+    return map;
+  }
+
+  @override
+  void invalidateDate(String dateStr) {}
+
+  @override
+  void invalidateAll() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   group('Phase 10 — Release Candidate Closure & Production Readiness Tests', () {
     test('1. Navigation & Period Offset Math is consistent across scales', () {
-      final controller = JourneyController();
+      final controller = JourneyController(agendaService: FakeDayAgendaService());
       final baseDate = DateTime(2026, 7, 24);
       controller.selectDate(baseDate, scaleToSet: JourneyScale.day);
 
@@ -41,37 +76,22 @@ void main() {
       expect(title, contains('۱۴۰۵'));
     });
 
-    testWidgets('3. Open-in-Context deep-linking resolves target dates and items safely', (tester) async {
+    test('3. Open-in-Context deep-linking resolves target dates and items safely', () async {
       final eventBus = RitmoEventBus();
-      final helper = TodayCalendarConvergenceHelper(eventBus: eventBus);
+      final helper = TodayCalendarConvergenceHelper(agendaService: FakeDayAgendaService(), eventBus: eventBus);
 
-      RitmoEvent? capturedEvent;
-      final sub = eventBus.onEvents.listen((e) {
-        if (e.type == 'navigate_tab') capturedEvent = e;
-      });
+      final future = eventBus.onEvents.firstWhere((e) => e.type == 'navigate_tab');
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) {
-              helper.openCalendarInContext(
-                context,
-                date: DateTime(2026, 7, 24),
-                itemId: 'routine:exercise',
-              );
-              return const SizedBox.shrink();
-            },
-          ),
-        ),
-      ));
+      helper.openCalendarInContext(
+        DummyBuildContext(),
+        date: DateTime(2026, 7, 24),
+        itemId: 'routine:exercise',
+      );
 
-      await tester.pumpAndSettle();
-
+      final capturedEvent = await future;
       expect(capturedEvent, isNotNull);
-      expect(capturedEvent!.payload['index'], equals(4));
-      expect(capturedEvent!.payload['itemId'], equals('routine:exercise'));
-
-      await sub.cancel();
+      expect(capturedEvent.payload['index'], equals(4));
+      expect(capturedEvent.payload['itemId'], equals('routine:exercise'));
     });
 
     test('4. Full Snapshot Pipeline remains resilient under sparse and dense inputs', () {
