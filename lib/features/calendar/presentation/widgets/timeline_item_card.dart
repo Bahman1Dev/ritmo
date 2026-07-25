@@ -122,78 +122,80 @@ class TimelineItemCard extends StatelessWidget {
 
                     // Card Content
                     Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 6.0,
-                          vertical: layoutItem.height < 48 ? 1.0 : 4.0,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  _getDomainIcon(item.domain),
-                                  size: 12,
-                                  color: isDone
-                                      ? theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4)
-                                      : domainColor,
-                                ),
-                                const SizedBox(width: CalendarTokens.spacingXs),
-                                if (isDone)
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: CalendarTokens.spacingXs),
-                                    child: Icon(
-                                      Icons.check_circle_rounded,
-                                      size: 12,
-                                      color: theme.colorScheme.primary.withValues(alpha: 0.8),
+                      child: ClipRect(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6.0,
+                            vertical: layoutItem.height < 58 ? 2.0 : 4.0,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    _getDomainIcon(item.domain),
+                                    size: 12,
+                                    color: isDone
+                                        ? theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4)
+                                        : domainColor,
+                                  ),
+                                  const SizedBox(width: CalendarTokens.spacingXs),
+                                  if (isDone)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: CalendarTokens.spacingXs),
+                                      child: Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 12,
+                                        color: theme.colorScheme.primary.withValues(alpha: 0.8),
+                                      ),
+                                    ),
+                                  Expanded(
+                                    child: Text(
+                                      item.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: layoutItem.height < 36 ? 11.0 : CalendarTokens.textBody,
+                                        fontWeight: isDone ? FontWeight.w400 : FontWeight.w600,
+                                        color: isDone
+                                            ? theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.45)
+                                            : theme.textTheme.bodyLarge?.color,
+                                        fontFamily: 'Vazirmatn',
+                                      ),
                                     ),
                                   ),
-                                Expanded(
-                                  child: Text(
-                                    item.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: layoutItem.height < 36 ? 11.0 : CalendarTokens.textBody,
-                                      fontWeight: isDone ? FontWeight.w400 : FontWeight.w600,
-                                      color: isDone
-                                          ? theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.45)
-                                          : theme.textTheme.bodyLarge?.color,
-                                      fontFamily: 'Vazirmatn',
+                                  if (isDraggable && layoutItem.height >= 36)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 2.0),
+                                      child: Icon(
+                                        Icons.drag_indicator_rounded,
+                                        size: 13,
+                                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.35),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                if (isDraggable && layoutItem.height >= 36)
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 2.0),
-                                    child: Icon(
-                                      Icons.drag_indicator_rounded,
-                                      size: 13,
-                                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.35),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            if (layoutItem.height >= 48 && effectiveTime != null) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                toPersianDigits(
-                                  '$effectiveTime${effectiveDuration != null ? ' ($effectiveDuration دقیقه)' : ''}',
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: CalendarTokens.textMeta,
-                                  fontWeight: FontWeight.w500,
-                                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.60),
-                                  fontFamily: 'Vazirmatn',
-                                ),
+                                ],
                               ),
+                              if (layoutItem.height >= 58 && effectiveTime != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  toPersianDigits(
+                                    '$effectiveTime${effectiveDuration != null ? ' ($effectiveDuration دقیقه)' : ''}',
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: CalendarTokens.textMeta,
+                                    fontWeight: FontWeight.w500,
+                                    color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.60),
+                                    fontFamily: 'Vazirmatn',
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),
