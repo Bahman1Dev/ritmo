@@ -13,7 +13,6 @@ class ModuleManagementService {
   static const List<String> allModuleKeys = [
     'module_religion_enabled',
     'module_medicine_enabled',
-    'module_sports_enabled',
     'module_supplementary_sports_enabled',
     'module_cycle_enabled',
     'module_courses_enabled',

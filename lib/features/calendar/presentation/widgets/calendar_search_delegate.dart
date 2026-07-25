@@ -1,19 +1,25 @@
+// lib/features/calendar/presentation/widgets/calendar_search_delegate.dart
+
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/domain/agenda/action_router.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
+import 'package:ritmo/features/registry/domain/registry_entry.dart';
 
 class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
   CalendarSearchDelegate({
     required this.items,
+    this.registryEntries = const [],
     this.onItemSelected,
   });
 
   final List<AgendaItem> items;
+  final List<RegistryEntry> registryEntries;
   final ValueChanged<AgendaItem>? onItemSelected;
 
   @override
-  String get searchFieldLabel => 'جستجوی رویدادها...';
+  String get searchFieldLabel => 'جستجوی رویدادها و برنامه‌ها...';
 
   @override
   List<Widget>? buildActions(BuildContext context) {
@@ -48,53 +54,132 @@ class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
     return _buildList(context);
   }
 
+  static String _normalizeFa(String s) {
+    return s
+        .replaceAll('ي', 'ی')
+        .replaceAll('ك', 'ک')
+        .replaceAll('\u200c', ' ')
+        .replaceAll(RegExp(r'[\u064B-\u0652]'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim()
+        .toLowerCase();
+  }
+
   Widget _buildList(BuildContext context) {
     final theme = Theme.of(context);
-    final results = query.trim().isEmpty
+    final q = _normalizeFa(query);
+
+    final todayResults = q.isEmpty
         ? items
-        : items.where((i) => i.title.contains(query) || (i.subtitle?.contains(query) ?? false)).toList();
+        : items
+            .where((i) =>
+                _normalizeFa(i.title).contains(q) ||
+                (i.subtitle != null && _normalizeFa(i.subtitle!).contains(q)))
+            .toList();
+
+    final allRegistryResults = q.isEmpty
+        ? registryEntries
+        : registryEntries
+            .where((r) =>
+                _normalizeFa(r.title).contains(q) ||
+                (r.subtitle != null && _normalizeFa(r.subtitle!).contains(q)))
+            .toList();
+
+    if (todayResults.isEmpty && allRegistryResults.isEmpty) {
+      return const Directionality(
+        textDirection: TextDirection.rtl,
+        child: Center(
+          child: Text(
+            'رویداد یا برنامه‌ای یافت نشد',
+            style: TextStyle(fontFamily: 'Vazirmatn'),
+          ),
+        ),
+      );
+    }
 
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: results.isEmpty
-          ? const Center(
+      child: ListView(
+        padding: const EdgeInsets.all(CalendarTokens.spacingM),
+        children: [
+          if (todayResults.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
               child: Text(
-                'رویدادی یافت نشد',
-                style: TextStyle(fontFamily: 'Vazirmatn'),
+                'در این روز (${toPersianDigits(todayResults.length.toString())})',
+                style: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
               ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(CalendarTokens.spacingM),
-              itemCount: results.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final item = results[index];
-                final timeStr = item.timeOfDay != null ? toPersianDigits(item.timeOfDay!) : 'تمام‌روز';
-
-                return ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.event_note_rounded, color: theme.colorScheme.primary, size: 20),
-                  ),
-                  title: Text(
-                    item.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn'),
-                  ),
-                  subtitle: Text(
-                    '$timeStr ${item.subtitle != null && item.subtitle!.isNotEmpty ? "• ${item.subtitle}" : ""}',
-                    style: const TextStyle(fontFamily: 'Vazirmatn'),
-                  ),
-                  onTap: () {
-                    close(context, item);
-                    onItemSelected?.call(item);
-                  },
-                );
-              },
             ),
+            for (final item in todayResults)
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.event_note_rounded, color: theme.colorScheme.primary, size: 20),
+                ),
+                title: Text(
+                  item.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn'),
+                ),
+                subtitle: Text(
+                  '${item.timeOfDay != null ? toPersianDigits(item.timeOfDay!) : "تمام‌روز"} ${item.subtitle != null && item.subtitle!.isNotEmpty ? "• ${item.subtitle}" : ""}',
+                  style: const TextStyle(fontFamily: 'Vazirmatn'),
+                ),
+                onTap: () {
+                  close(context, item);
+                  onItemSelected?.call(item);
+                },
+              ),
+          ],
+
+          if (allRegistryResults.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+              child: Text(
+                'همهٔ برنامه‌ها (${toPersianDigits(allRegistryResults.length.toString())})',
+                style: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+            ),
+            for (final entry in allRegistryResults)
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: entry.domain.color(context).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(entry.domain.icon, color: entry.domain.color(context), size: 20),
+                ),
+                title: Text(
+                  entry.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn'),
+                ),
+                subtitle: Text(
+                  '${entry.domain.faLabel} · ${entry.scheduleSummary}',
+                  style: const TextStyle(fontFamily: 'Vazirmatn'),
+                ),
+                onTap: () {
+                  close(context, null);
+                  ActionRouter.open(context, item: entry.agendaProxy);
+                },
+              ),
+          ],
+        ],
+      ),
     );
   }
 }

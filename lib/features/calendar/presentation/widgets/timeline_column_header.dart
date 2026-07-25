@@ -53,36 +53,64 @@ class TimelineColumnHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    final activeGradient = LinearGradient(
+      begin: Alignment.topRight,
+      end: Alignment.bottomLeft,
+      colors: [
+        CalendarTokens.emerald.withValues(alpha: 0.22),
+        CalendarTokens.emerald.withValues(alpha: 0.08),
+      ],
+    );
+
+    final inactiveGradient = LinearGradient(
+      begin: Alignment.topRight,
+      end: Alignment.bottomLeft,
+      colors: [
+        colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+      ],
+    );
+
     return AnimatedContainer(
       duration: CalendarTokens.durationStandard,
-      height: CalendarTokens.columnHeaderHeight,
+      height: CalendarTokens.columnHeaderHeight - 6.0,
+      margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
       padding: const EdgeInsets.symmetric(
         horizontal: CalendarTokens.spacingM,
-        vertical: CalendarTokens.spacingS,
+        vertical: 6.0,
       ),
       decoration: BoxDecoration(
-        color: isActive
-            ? CalendarTokens.emerald.withValues(alpha: CalendarTokens.alphaDomainFill)
-            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: CalendarTokens.alphaCardBorder * 1.5),
-          ),
+        gradient: isActive ? activeGradient : inactiveGradient,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(
+          color: isActive
+              ? CalendarTokens.emerald.withValues(alpha: 0.65)
+              : colorScheme.outlineVariant.withValues(alpha: 0.22),
+          width: isActive ? 1.5 : 1.0,
         ),
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                  color: CalendarTokens.emerald.withValues(alpha: 0.25),
+                  blurRadius: 14,
+                  spreadRadius: 0,
+                )
+              ]
+            : null,
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(CalendarTokens.spacingXs + 2),
+            padding: const EdgeInsets.all(6.0),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isActive
-                  ? CalendarTokens.emerald.withValues(alpha: CalendarTokens.alphaDomainActive)
-                  : Colors.transparent,
+                  ? CalendarTokens.emerald.withValues(alpha: 0.30)
+                  : colorScheme.onSurfaceVariant.withValues(alpha: 0.12),
             ),
             child: Icon(
               icon,
-              size: 20,
+              size: 18,
               color: isActive ? CalendarTokens.emerald : colorScheme.onSurfaceVariant,
             ),
           ),
@@ -92,20 +120,45 @@ class TimelineColumnHeader extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontSize: 15.0,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Vazirmatn',
-                    color: isActive ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Vazirmatn',
+                        color: isActive ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (isActive) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: CalendarTokens.emerald,
+                          boxShadow: [
+                            BoxShadow(
+                              color: CalendarTokens.emerald,
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 Text(
                   toPersianDigits(rangeLabel),
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: CalendarTokens.textLabel,
-                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    color: isActive
+                        ? CalendarTokens.emerald.withValues(alpha: 0.90)
+                        : colorScheme.onSurfaceVariant.withValues(alpha: 0.70),
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                     fontFamily: 'Vazirmatn',
                   ),
                 ),

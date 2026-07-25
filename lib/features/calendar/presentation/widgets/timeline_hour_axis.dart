@@ -90,8 +90,8 @@ class TimelineGridLines extends StatelessWidget {
           pxPerMinute: pxPerMinute,
           rangeStartMinutes: rangeStartMinutes,
           rangeEndMinutes: rangeEndMinutes,
-          lineColor: theme.dividerColor.withValues(alpha: 0.08),
-          halfHourLineColor: theme.dividerColor.withValues(alpha: 0.04),
+          lineColor: theme.dividerColor.withValues(alpha: 0.18),
+          halfHourLineColor: theme.dividerColor.withValues(alpha: 0.08),
         ),
       ),
     );

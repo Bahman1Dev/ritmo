@@ -55,6 +55,9 @@ class TimelineItemCard extends StatelessWidget {
 
     final effectiveTime = displayTimeOverride ?? item.timeOfDay;
     final effectiveDuration = displayDurationOverride ?? item.durationMinutes;
+    final effectiveCardHeight = isResizing && displayDurationOverride != null
+        ? displayDurationOverride! * CalendarTokens.pxPerMinuteSplit
+        : layoutItem.height;
 
     final surfaceColor = isDone
         ? theme.cardColor.withValues(alpha: 0.5)
@@ -65,6 +68,17 @@ class TimelineItemCard extends StatelessWidget {
     final accentBarColor = isDone
         ? theme.colorScheme.outline.withValues(alpha: 0.35)
         : domainColor;
+
+    final cardGradient = isDone
+        ? null
+        : LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              domainColor.withValues(alpha: isDark ? 0.28 : 0.18),
+              domainColor.withValues(alpha: isDark ? 0.14 : 0.08),
+            ],
+          );
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -82,14 +96,15 @@ class TimelineItemCard extends StatelessWidget {
                 duration: CalendarTokens.durationMicro,
                 curve: CalendarTokens.curveDefault,
               decoration: BoxDecoration(
-                color: surfaceColor,
+                color: isDone ? surfaceColor : null,
+                gradient: cardGradient,
                 borderRadius: BorderRadius.circular(12.0),
                 border: Border.all(
                   color: isHighlighted
                       ? theme.colorScheme.primary
                       : (isDragging || isResizing
                           ? domainColor
-                          : theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder)),
+                          : domainColor.withValues(alpha: isDark ? 0.45 : 0.32)),
                   width: (isHighlighted || isDragging || isResizing) ? 1.5 : 1.0,
                 ),
                 boxShadow: (isDragging || isResizing)
@@ -126,7 +141,7 @@ class TimelineItemCard extends StatelessWidget {
                         child: Padding(
                           padding: EdgeInsets.symmetric(
                             horizontal: 6.0,
-                            vertical: layoutItem.height < 58 ? 2.0 : 4.0,
+                            vertical: effectiveCardHeight < 58 ? 2.0 : 4.0,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,7 +173,7 @@ class TimelineItemCard extends StatelessWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        fontSize: layoutItem.height < 36 ? 11.0 : CalendarTokens.textBody,
+                                        fontSize: effectiveCardHeight < 36 ? 11.0 : CalendarTokens.textBody,
                                         fontWeight: isDone ? FontWeight.w400 : FontWeight.w600,
                                         color: isDone
                                             ? theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.45)
@@ -167,7 +182,7 @@ class TimelineItemCard extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  if (isDraggable && layoutItem.height >= 36)
+                                  if (isDraggable && effectiveCardHeight >= 36)
                                     Padding(
                                       padding: const EdgeInsets.only(right: 2.0),
                                       child: Icon(
@@ -178,7 +193,7 @@ class TimelineItemCard extends StatelessWidget {
                                     ),
                                 ],
                               ),
-                              if (layoutItem.height >= 58 && effectiveTime != null) ...[
+                              if (effectiveCardHeight >= 58 && effectiveTime != null) ...[
                                 const SizedBox(height: 2),
                                 Text(
                                   toPersianDigits(

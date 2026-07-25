@@ -7,6 +7,7 @@ import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:ritmo/core/utils/text_similarity.dart';
 import 'package:ritmo/features/supplementary_sports/movement/domain/movement_event.dart';
 import 'package:ritmo/features/supplementary_sports/movement/domain/movement_kind.dart';
+import 'package:ritmo/features/supplementary_sports/movement/data/seed/movement_kinds_seed.dart';
 import 'package:sqflite/sqflite.dart';
 
 class PRCheckResult {
@@ -40,12 +41,22 @@ class MovementRepository {
       whereArgs.add(family.code);
     }
 
-    final rows = await db.query(
+    var rows = await db.query(
       'movement_kinds',
       where: whereClause,
       whereArgs: whereArgs,
       orderBy: 'usageCount DESC, sortOrder ASC, titleFa ASC',
     );
+
+    if (rows.isEmpty) {
+      await MovementKindsSeed.seed(db);
+      rows = await db.query(
+        'movement_kinds',
+        where: whereClause,
+        whereArgs: whereArgs,
+        orderBy: 'usageCount DESC, sortOrder ASC, titleFa ASC',
+      );
+    }
 
     return rows.map((r) => MovementKind.fromMap(r)).toList();
   }

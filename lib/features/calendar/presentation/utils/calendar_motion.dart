@@ -13,7 +13,7 @@ class CalendarMotion {
 
   /// آیا انیمیشن‌ها باید کاهش یابند؟
   static bool reduced(BuildContext context) =>
-      MediaQuery.of(context).disableAnimations || _userReduceMotion;
+      MediaQuery.maybeDisableAnimationsOf(context) ?? _userReduceMotion;
 
   static Duration d(BuildContext context, Duration base) =>
       reduced(context) ? Duration.zero : base;

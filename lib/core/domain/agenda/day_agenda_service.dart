@@ -161,8 +161,7 @@ class DayAgendaService {
     final coursesEnabled = settingsMap['module_courses_enabled'] == 'true';
     final konkurEnabled = settingsMap['module_konkur_enabled'] == 'true' &&
         settingsMap['konkur_show_in_dashboard'] != 'false';
-    final sportsEnabled = settingsMap['module_sports_enabled'] == 'true' ||
-        settingsMap['module_supplementary_sports_enabled'] == 'true';
+    final sportsEnabled = settingsMap['module_supplementary_sports_enabled'] == 'true';
     final medicineEnabled = settingsMap['module_medicine_enabled'] == 'true';
 
     // Cycle gates mirror the Home dashboard (conservative: dashboard consent).

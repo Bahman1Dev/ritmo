@@ -11,6 +11,7 @@ import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:ritmo/features/supplementary_sports/movement/data/movement_repository.dart';
 import 'package:ritmo/features/supplementary_sports/movement/domain/movement_event.dart';
 import 'package:ritmo/features/supplementary_sports/movement/domain/movement_kind.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 import 'package:ritmo/features/supplementary_sports/movement/presentation/movement_custom_kind_sheet.dart';
 
 Future<void> showMovementLogSheet(
@@ -373,22 +374,58 @@ class _MovementLogSheetState extends State<MovementLogSheet> {
 
                     // Display Kinds Grid/List
                     _isLoadingKinds
-                        ? const Center(child: CupertinoActivityIndicator())
-                        : Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _displayKinds.map((k) {
-                              final isSelected = _selectedKind?.code == k.code;
-                              return ChoiceChip(
-                                label: Text('${k.emoji} ${k.titleFa}', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: isSelected ? Colors.white : colors.onSurface)),
-                                selected: isSelected,
-                                selectedColor: colors.primary,
-                                onSelected: (val) {
-                                  if (val) setState(() => _selectedKind = k);
-                                },
-                              );
-                            }).toList(),
-                          ),
+                        ? const Center(child: Padding(padding: EdgeInsets.all(16), child: CupertinoActivityIndicator()))
+                        : (_displayKinds.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Text(
+                                  'ورزشی در این دسته یافت نشد. می‌توانید با «نوع دلخواه» اضافه کنید.',
+                                  style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.onSurfaceVariant),
+                                ),
+                              )
+                            : Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: _displayKinds.map((k) {
+                                  final isSelected = _selectedKind?.code == k.code;
+                                  return InkWell(
+                                    onTap: () => setState(() => _selectedKind = k),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 150),
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? CalendarTokens.emerald.withValues(alpha: 0.22)
+                                            : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.30),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isSelected
+                                              ? CalendarTokens.emerald
+                                              : colors.outlineVariant.withValues(alpha: 0.20),
+                                          width: isSelected ? 1.5 : 1.0,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(k.emoji, style: const TextStyle(fontSize: 14)),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            k.titleFa,
+                                            style: TextStyle(
+                                              fontFamily: 'Vazirmatn',
+                                              fontSize: 13,
+                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                              color: isSelected ? CalendarTokens.emerald : colors.onSurface,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              )),
                     const SizedBox(height: 24),
                     const Divider(),
                     const SizedBox(height: 16),
@@ -585,8 +622,21 @@ class _MovementLogSheetState extends State<MovementLogSheet> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: colors.surfaceVariant.withValues(alpha: 0.6),
-                border: Border(top: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.3))),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF1E2630)
+                    : Theme.of(context).colorScheme.surfaceContainerHigh,
+                border: Border(
+                  top: BorderSide(
+                    color: Theme.of(context).dividerColor.withValues(alpha: 0.15),
+                  ),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -597,17 +647,32 @@ class _MovementLogSheetState extends State<MovementLogSheet> {
                     children: [
                       Text(
                         '≈ ${_calculatedCalories.round().toPersianDigits()} کالری',
-                        style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: colors.primary, fontSize: 13),
+                        style: const TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontWeight: FontWeight.bold,
+                          color: CalendarTokens.emerald,
+                          fontSize: 13,
+                        ),
                       ),
-                      Text('·', style: TextStyle(color: colors.onSurfaceVariant)),
+                      Text('·', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                       Text(
                         '${_calculatedMetMinutes.round().toPersianDigits()} MET-min',
-                        style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: colors.primary, fontSize: 13),
+                        style: TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 13,
+                        ),
                       ),
-                      Text('·', style: TextStyle(color: colors.onSurfaceVariant)),
+                      Text('·', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                       Text(
                         '${((_calculatedMetMinutes / 500.0) * 100).round().toPersianDigits()}٪ بودجه هفته',
-                        style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: colors.secondary, fontSize: 13),
+                        style: TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber.shade400,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
@@ -619,15 +684,27 @@ class _MovementLogSheetState extends State<MovementLogSheet> {
                     height: 52,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        backgroundColor: (_selectedKind == null || _isSaving)
+                            ? Theme.of(context).disabledColor.withValues(alpha: 0.15)
+                            : CalendarTokens.emerald,
+                        disabledBackgroundColor: Theme.of(context).disabledColor.withValues(alpha: 0.15),
+                        foregroundColor: Colors.white,
+                        elevation: _selectedKind == null ? 0 : 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                       onPressed: (_selectedKind == null || _isSaving) ? null : _saveLog,
                       child: _isSaving
                           ? const CupertinoActivityIndicator(color: Colors.white)
                           : const Text(
                               'ثبت و ذخیره فعالیت',
-                              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                              style: TextStyle(
+                                fontFamily: 'Vazirmatn',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
                             ),
                     ),
                   ),

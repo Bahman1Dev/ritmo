@@ -4,7 +4,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
+import 'package:ritmo/core/domain/completion/completion_gateway.dart';
+import 'package:ritmo/core/domain/completion/completion_request.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
+import 'package:ritmo/core/domain/models/completion_result.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 
 class RoutineActions {
@@ -16,11 +19,11 @@ class RoutineActions {
     int? durationMinutes,
     VoidCallback? onDone,
   }) async {
-    await RitmoExecutionKernel.instance.execute(
-      CompleteOccurrenceCommand(
+    await CompletionGateway.instance.submit(
+      RoutineCompletion(
         routineId: routineId,
         dateStr: dateStr,
-        resultType: resultType,
+        result: CompletionResult.fromDb(resultType),
         durationMinutes: durationMinutes ?? 0,
       ),
     );

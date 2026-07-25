@@ -322,7 +322,26 @@ class TimelineSplitDayViewState extends State<TimelineSplitDayView> {
                             side: HourAxisSide.leading,
                           ),
                         ),
-                        const SizedBox(width: CalendarTokens.columnGap),
+                        SizedBox(
+                          width: CalendarTokens.columnGap,
+                          child: Center(
+                            child: Container(
+                              width: 1.0,
+                              height: 720 * CalendarTokens.pxPerMinuteSplit,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Theme.of(context).dividerColor.withValues(alpha: 0.0),
+                                    Theme.of(context).dividerColor.withValues(alpha: 0.22),
+                                    Theme.of(context).dividerColor.withValues(alpha: 0.0),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                         // Afternoon Column (Left in RTL, side: HourAxisSide.leading -> Hour Axis on RIGHT)
                         Expanded(
                           child: _buildColumnGrid(

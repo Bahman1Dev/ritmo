@@ -1,13 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/agenda/action_feedback.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/completion/completion_gateway.dart';
+import 'package:ritmo/core/domain/completion/completion_outcome.dart';
 import 'package:ritmo/core/domain/completion/completion_request.dart';
+import 'package:ritmo/core/domain/completion/snooze_policy.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/domain/models/completion_result.dart';
+import 'package:ritmo/core/services/ritmo_timer_service.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
+import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
+import 'package:ritmo/features/konkur/models/konkur_models.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_study_sheet.dart';
+import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
+import 'package:ritmo/features/routines/shared/routine_actions.dart';
+import 'package:ritmo/features/routines/shared/widgets/routine_details_sheet.dart';
 import 'package:ritmo/features/routines/shared/widgets/routine_niyyah_sheet.dart';
 import 'package:ritmo/features/supplementary_sports/movement/presentation/movement_log_sheet.dart';
+import 'package:ritmo/features/today/presentation/active_timer_overlay.dart';
+
+class DurationBounds {
+  static int sanitize(int? minutes, {int fallback = 30}) {
+    final val = minutes ?? fallback;
+    return val.clamp(1, 1440);
+  }
+}
 
 /// Central action router for opening the appropriate action sheet for any AgendaItem.
 class ActionRouter {
@@ -16,60 +36,44 @@ class ActionRouter {
   static Future<void> open(BuildContext context, {required AgendaItem item}) async {
     switch (item.domain) {
       case AgendaDomain.routine:
-        final routineMap = item.meta['routine'] as Map<String, dynamic>?;
-        if (routineMap != null) {
-          final routine = Routine.fromMap(routineMap);
-          RoutineNiyyahSheet.show(
-            context: context,
-            routine: routine,
-            onStartTimer: (selectedMode) async {},
-            onCompleteInstantly: (modeStr, duration) async {
-              await CompletionGateway.instance.submit(
-                RoutineCompletion(
-                  routineId: routine.id,
-                  dateStr: item.dateStr,
-                  result: CompletionResult.fromDb(modeStr),
-                  durationMinutes: duration,
-                ),
-              );
-            },
-            onSnooze: () {},
-            onEdit: () {},
-            onViewDetails: () {},
-          );
-        }
+        await _handleRoutineAction(context, item);
         break;
 
       case AgendaDomain.course:
-        await CompletionGateway.instance.submit(
-          CourseSessionCompletion(
-            sessionId: item.sourceId,
-            courseId: item.meta['courseId'] as String? ?? '',
-            dateStr: item.dateStr,
+        await _showDomainConfirmationSheet(
+          context,
+          item: item,
+          title: item.title,
+          domainLabel: 'دوره / کلاس',
+          successMessage: 'حضور در جلسه دوره ثبت شد',
+          onConfirm: () => CompletionGateway.instance.submit(
+            CourseSessionCompletion(
+              sessionId: item.sourceId,
+              courseId: item.meta['courseId'] as String? ?? '',
+              dateStr: item.dateStr,
+            ),
           ),
         );
         break;
 
       case AgendaDomain.konkur:
-        await showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => KonkurStudySheet(
-            subjects: const [],
-            topics: const [],
-            onSaved: () {},
-          ),
-        );
+        await _handleKonkurAction(context, item);
         break;
 
       case AgendaDomain.prayer:
       case AgendaDomain.mustahab:
       case AgendaDomain.worshipDebt:
-        await CompletionGateway.instance.submit(
-          WorshipCompletion(
-            worshipId: item.sourceId,
-            dateStr: item.dateStr,
+        await _showDomainConfirmationSheet(
+          context,
+          item: item,
+          title: item.title,
+          domainLabel: 'عبادت',
+          successMessage: 'عبادت ثبت شد',
+          onConfirm: () => CompletionGateway.instance.submit(
+            WorshipCompletion(
+              worshipId: item.sourceId,
+              dateStr: item.dateStr,
+            ),
           ),
         );
         break;
@@ -80,32 +84,597 @@ class ActionRouter {
           presetDate: DateTime.tryParse(item.dateStr) ?? DateTime.now(),
           presetDurationMinutes: item.durationMinutes,
           onLogged: () {
-            DayAgendaService.instance.invalidateDate(item.dateStr);
+            ActionFeedback.success(
+              context,
+              message: 'فعالیت ورزشی ثبت شد',
+              dateStr: item.dateStr,
+            );
           },
         );
         break;
 
       case AgendaDomain.goalStep:
-        await CompletionGateway.instance.submit(
-          GoalStepCompletion(
-            goalId: item.meta['goalId'] as String? ?? '',
-            stepId: item.sourceId,
-            dateStr: item.dateStr,
+        await _showDomainConfirmationSheet(
+          context,
+          item: item,
+          title: item.title,
+          domainLabel: 'گام هدف',
+          successMessage: 'گام هدف ثبت شد',
+          onConfirm: () => CompletionGateway.instance.submit(
+            GoalStepCompletion(
+              goalId: item.meta['goalId'] as String? ?? '',
+              stepId: item.sourceId,
+              dateStr: item.dateStr,
+            ),
           ),
         );
         break;
 
       case AgendaDomain.medicine:
-        await CompletionGateway.instance.submit(
-          MedicationTake(
-            medicationId: item.sourceId,
-            dateStr: item.dateStr,
+        await _showDomainConfirmationSheet(
+          context,
+          item: item,
+          title: item.title,
+          domainLabel: 'دارو',
+          successMessage: 'مصرف دارو ثبت شد',
+          onConfirm: () => CompletionGateway.instance.submit(
+            MedicationTake(
+              medicationId: item.sourceId,
+              dateStr: item.dateStr,
+            ),
           ),
         );
         break;
 
       case AgendaDomain.cycle:
+        bool canShow = false;
+        try {
+          final db = await DatabaseHelper.instance.database;
+          final rows = await db.query('app_settings', where: 'key = ?', whereArgs: ['user_gender']);
+          if (rows.isNotEmpty) {
+            final val = rows.first['value'] as String?;
+            canShow = CyclePrivacyGuard.isVisible({'user_gender': val ?? ''});
+          }
+        } catch (_) {}
+
+        if (!canShow) {
+          ActionFeedback.failure(
+            context,
+            message: 'برای مشاهده وارد بخش سلامت شوید',
+          );
+        } else {
+          ActionFeedback.success(
+            context,
+            message: 'اطلاعات چرخه سلامت در دسترس است',
+            dateStr: item.dateStr,
+          );
+        }
         break;
     }
+  }
+
+  static Future<void> _handleRoutineAction(BuildContext context, AgendaItem item) async {
+    Routine? routine;
+    final routineMap = item.meta['routine'] as Map<String, dynamic>?;
+
+    if (routineMap != null) {
+      routine = Routine.fromMap(routineMap);
+    } else {
+      // Fallback: Query routine from database by sourceId
+      try {
+        final db = await DatabaseHelper.instance.database;
+        final rows = await db.query('routines', where: 'id = ?', whereArgs: [item.sourceId], limit: 1);
+        if (rows.isNotEmpty) {
+          routine = Routine.fromMap(rows.first);
+        }
+      } catch (e) {
+        debugPrint('[ActionRouter] Failed DB lookup for routine ${item.sourceId}: $e');
+      }
+    }
+
+    if (routine == null) {
+      ActionFeedback.failure(context, message: 'اطلاعات این برنامه در دسترس نیست');
+      debugPrint('[ActionRouter] routine meta and DB fallback missing for item ${item.id}');
+      return;
+    }
+
+    final targetRoutine = routine;
+
+    await RoutineNiyyahSheet.show(
+      context: context,
+      routine: targetRoutine,
+      onStartTimer: (selectedMode) async {
+        final minutes = _minutesForMode(targetRoutine, selectedMode);
+        if (minutes <= 0) {
+          ActionFeedback.failure(context, message: 'مدت زمانی برای این حالت تعریف نشده است');
+          return;
+        }
+
+        await RitmoTimerService.instance.startTimer(
+          id: 'routine_${targetRoutine.id}',
+          domain: 'routine',
+          itemId: targetRoutine.id,
+          mode: selectedMode,
+          durationMinutes: minutes,
+        );
+
+        if (!context.mounted) return;
+
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (ctx) => ActiveTimerOverlay(
+              routine: targetRoutine,
+              completionMode: selectedMode,
+              onFinished: () {
+                Navigator.pop(ctx);
+                ActionFeedback.success(
+                  context,
+                  message: 'تایمر به پایان رسید و روتین ثبت شد',
+                  dateStr: item.dateStr,
+                );
+              },
+            ),
+          ),
+        );
+      },
+      onCompleteInstantly: (modeStr, duration) async {
+        final outcome = await CompletionGateway.instance.submit(
+          RoutineCompletion(
+            routineId: targetRoutine.id,
+            dateStr: item.dateStr,
+            result: CompletionResult.fromDb(modeStr),
+            durationMinutes: DurationBounds.sanitize(duration),
+          ),
+        );
+
+        if (!context.mounted) return;
+
+        if (outcome.didWrite) {
+          ActionFeedback.success(
+            context,
+            message: 'ثبت شد: ${_modeFaLabel(modeStr)}',
+            dateStr: item.dateStr,
+            undoToken: outcome.undoToken,
+          );
+        } else {
+          ActionFeedback.failure(context, message: outcome.errorMessage ?? 'ثبت انجام نشد');
+        }
+      },
+      onSnooze: () async {
+        final currentDeferCount = await _getCurrentDeferCount(targetRoutine.id, item.dateStr);
+        final requestedMinutes = await _snoozeMinutesFromSettings();
+
+        final decision = SnoozePolicy.evaluate(
+          itemId: targetRoutine.id,
+          now: DateTime.now(),
+          requestedMinutes: requestedMinutes,
+          currentDeferCount: currentDeferCount,
+          category: targetRoutine.category.name,
+        );
+
+        if (!context.mounted) return;
+
+        switch (decision.verdict) {
+          case SnoozeVerdict.allowed:
+          case SnoozeVerdict.lastCall:
+            await RoutineActions.snoozeRoutine(
+              context: context,
+              routineId: targetRoutine.id,
+              dateStr: item.dateStr,
+              minutes: requestedMinutes,
+              onDone: () => DayAgendaService.instance.invalidateDate(item.dateStr),
+            );
+            if (decision.verdict == SnoozeVerdict.lastCall && context.mounted) {
+              ActionFeedback.failure(context, message: 'این آخرین تعویق ممکن برای امروز است');
+            }
+            break;
+
+          case SnoozeVerdict.exhausted:
+            await _showExitOptionsSheet(context, routine: targetRoutine, dateStr: item.dateStr);
+            break;
+
+          case SnoozeVerdict.blockedMedical:
+            ActionFeedback.failure(context, message: 'تعویق برای موارد دارویی مجاز نیست');
+            break;
+
+          case SnoozeVerdict.blockedMidnight:
+            ActionFeedback.failure(context, message: 'زمان امروز به پایان رسیده است');
+            break;
+        }
+      },
+      onEdit: () async {
+        UniversalPlannerSheet.show(
+          context,
+          routineToEdit: targetRoutine.toMap(),
+          onSaved: () => DayAgendaService.instance.invalidateDate(item.dateStr),
+        );
+      },
+      onViewDetails: () async {
+        RoutineDetailsSheet.show(
+          context: context,
+          routine: targetRoutine,
+          targetDate: item.dateStr,
+          onReverted: () => DayAgendaService.instance.invalidateDate(item.dateStr),
+        );
+      },
+    );
+  }
+
+  static Future<void> _handleKonkurAction(BuildContext context, AgendaItem item) async {
+    try {
+      final subjects = await KonkurRepository.instance.getSubjects();
+      final allTopics = await KonkurRepository.instance.getTopics();
+      final topics = subjects.isNotEmpty
+          ? allTopics.where((t) => t.subjectId == subjects.first.id).toList()
+          : <KonkurTopic>[];
+
+      if (!context.mounted) return;
+
+      if (subjects.isEmpty) {
+        ActionFeedback.failure(context, message: 'ماژول کنکور غیرفعال است یا سرفصل‌ها بارگذاری نشده‌اند');
+        return;
+      }
+
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => KonkurStudySheet(
+          subjects: subjects,
+          topics: topics,
+          onSaved: () {
+            ActionFeedback.success(
+              context,
+              message: 'جلسه مطالعه کنکور ثبت شد',
+              dateStr: item.dateStr,
+            );
+          },
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ActionFeedback.failure(context, message: 'خطا در بارگذاری دروس کنکور');
+      }
+    }
+  }
+
+  static int _minutesForMode(Routine routine, String mode) {
+    int dur;
+    if (mode == 'FULL') {
+      dur = routine.currentTargetMinutes > 0
+          ? routine.currentTargetMinutes
+          : (routine.targetDurationMinutes ?? 30);
+    } else if (mode == 'LIGHT') {
+      dur = routine.lightDurationMinutes ?? 20;
+    } else if (mode == 'MINIMAL') {
+      dur = routine.minimalDurationMinutes ?? 10;
+    } else {
+      dur = 30;
+    }
+    return DurationBounds.sanitize(dur);
+  }
+
+  static String _modeFaLabel(String mode) {
+    switch (mode) {
+      case 'LIGHT':
+        return 'نسخه سبک';
+      case 'MINIMAL':
+        return 'نسخه حداقلی';
+      case 'FULL':
+      default:
+        return 'نسخه کامل';
+    }
+  }
+
+  static Future<int> _snoozeMinutesFromSettings() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final rows = await db.query(
+        'app_settings',
+        where: 'key = ?',
+        whereArgs: ['snooze_minutes'],
+      );
+      if (rows.isNotEmpty) {
+        final val = int.tryParse(rows.first['value']?.toString() ?? '');
+        if (val != null && val > 0) return val;
+      }
+    } catch (_) {}
+    return 10;
+  }
+
+  static Future<int> _getCurrentDeferCount(String routineId, String dateStr) async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final selectedDateMidnight = DateTime.tryParse(dateStr) ?? DateTime.now();
+      final startOfDay = DateTime(selectedDateMidnight.year, selectedDateMidnight.month, selectedDateMidnight.day).millisecondsSinceEpoch;
+      final endOfDay = DateTime(selectedDateMidnight.year, selectedDateMidnight.month, selectedDateMidnight.day, 23, 59, 59).millisecondsSinceEpoch;
+
+      final reminders = await db.query(
+        'pending_reminders',
+        where: 'routineId = ? AND scheduledTime >= ? AND scheduledTime <= ?',
+        whereArgs: [routineId, startOfDay, endOfDay],
+      );
+      if (reminders.isNotEmpty) {
+        return (reminders.first['deferCount'] as int?) ?? 0;
+      }
+    } catch (_) {}
+    return 0;
+  }
+
+  static Future<void> _showExitOptionsSheet(
+    BuildContext context, {
+    required Routine routine,
+    required String dateStr,
+  }) async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        final colors = sheetCtx.colors;
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Container(
+            margin: const EdgeInsets.all(16),
+            child: RitmoTheme.glassCardLight(
+              blurSigma: 20,
+              color: colors.card.withValues(alpha: 0.95),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        height: 5,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          color: colors.textPrimary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'پایان سقف تعویق',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'سقف تعویق این روتین برای امروز پر شده است. لطفاً وضعیت آن را مشخص کنید:',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontSize: 13,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.success,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.flash_on_rounded, size: 20),
+                      label: const Text(
+                        'همین حالا نسخهٔ حداقلی را انجام بده',
+                        style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(sheetCtx);
+                        final outcome = await CompletionGateway.instance.submit(
+                          RoutineCompletion(
+                            routineId: routine.id,
+                            dateStr: dateStr,
+                            result: CompletionResult.minimal,
+                            durationMinutes: _minutesForMode(routine, 'MINIMAL'),
+                          ),
+                        );
+                        if (!context.mounted) return;
+                        if (outcome.didWrite) {
+                          ActionFeedback.success(
+                            context,
+                            message: 'ثبت شد: نسخه حداقلی',
+                            dateStr: dateStr,
+                            undoToken: outcome.undoToken,
+                          );
+                        } else {
+                          ActionFeedback.failure(context, message: outcome.errorMessage ?? 'ثبت انجام نشد');
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.primary,
+                        side: BorderSide(color: colors.primary),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+                      label: const Text(
+                        'به فردا منتقل کن',
+                        style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(sheetCtx);
+                        final outcome = await CompletionGateway.instance.submit(
+                          RoutineSkip(
+                            routineId: routine.id,
+                            dateStr: dateStr,
+                            reason: 'موکول شد به فردا',
+                          ),
+                        );
+                        if (!context.mounted) return;
+                        if (outcome.didWrite) {
+                          ActionFeedback.success(
+                            context,
+                            message: 'روتین به فردا موکول شد',
+                            dateStr: dateStr,
+                          );
+                        } else {
+                          ActionFeedback.failure(context, message: outcome.errorMessage ?? 'انتقال انجام نشد');
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: colors.textSecondary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      label: const Text(
+                        'امروز نمی‌توانم انجام دهم',
+                        style: TextStyle(fontFamily: 'Vazirmatn'),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(sheetCtx);
+                        final outcome = await CompletionGateway.instance.submit(
+                          RoutineSkip(
+                            routineId: routine.id,
+                            dateStr: dateStr,
+                            reason: 'عدم امکان انجام امروز',
+                          ),
+                        );
+                        if (!context.mounted) return;
+                        if (outcome.didWrite) {
+                          ActionFeedback.success(
+                            context,
+                            message: 'عدم انجام ثبت شد',
+                            dateStr: dateStr,
+                          );
+                        } else {
+                          ActionFeedback.failure(context, message: outcome.errorMessage ?? 'ثبت انجام نشد');
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static Future<void> _showDomainConfirmationSheet(
+    BuildContext context, {
+    required AgendaItem item,
+    required String title,
+    required String domainLabel,
+    required Future<CompletionOutcome> Function() onConfirm,
+    required String successMessage,
+  }) async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        final colors = sheetCtx.colors;
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Container(
+            margin: const EdgeInsets.all(16),
+            child: RitmoTheme.glassCardLight(
+              blurSigma: 20,
+              color: colors.card.withValues(alpha: 0.95),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        height: 5,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          color: colors.textPrimary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'دسته‌بندی: $domainLabel | تاریخ: ${item.dateStr}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.success,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text(
+                        'ثبت انجام',
+                        style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(sheetCtx);
+                        final outcome = await onConfirm();
+                        if (!context.mounted) return;
+                        if (outcome.didWrite) {
+                          ActionFeedback.success(
+                            context,
+                            message: successMessage,
+                            dateStr: item.dateStr,
+                            undoToken: outcome.undoToken,
+                          );
+                        } else {
+                          ActionFeedback.failure(
+                            context,
+                            message: outcome.errorMessage ?? 'ثبت انجام نشد',
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: colors.textSecondary,
+                      ),
+                      child: const Text(
+                        'انصراف',
+                        style: TextStyle(fontFamily: 'Vazirmatn'),
+                      ),
+                      onPressed: () => Navigator.pop(sheetCtx),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

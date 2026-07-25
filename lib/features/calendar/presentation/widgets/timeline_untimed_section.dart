@@ -53,15 +53,14 @@ class TimelineUntimedSection extends StatelessWidget {
               color: isHovered
                   ? colorScheme.primaryContainer.withValues(alpha: 0.25)
                   : (isDark
-                      ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.60)
-                      : theme.cardColor),
-              borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+                      ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.22)
+                      : theme.cardColor.withValues(alpha: 0.85)),
+              borderRadius: BorderRadius.circular(16.0),
               border: Border.all(
                 color: isHovered
                     ? colorScheme.primary
-                    : theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder),
+                    : theme.dividerColor.withValues(alpha: 0.12),
                 width: isHovered ? 1.5 : 1.0,
-                style: BorderStyle.solid,
               ),
             ),
             child: Column(

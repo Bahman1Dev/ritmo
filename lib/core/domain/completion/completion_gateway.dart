@@ -208,7 +208,7 @@ class CompletionGateway {
       'takenAt': nowMs,
     });
 
-    _notifySuccess(domain: 'medication', itemId: req.medicationId, dateStr: req.dateStr, result: 'FULL');
+    _notifySuccess(domain: 'medicine', itemId: req.medicationId, dateStr: req.dateStr, result: 'FULL');
     return CompletionOutcome.success();
   }
 

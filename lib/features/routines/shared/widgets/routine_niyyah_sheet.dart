@@ -25,7 +25,7 @@ class RoutineNiyyahSheet extends StatefulWidget {
   final VoidCallback onEdit;
   final VoidCallback onViewDetails;
 
-  static void show({
+  static Future<void> show({
     required BuildContext context,
     required Routine routine,
     String initialMode = 'FULL',
@@ -35,7 +35,7 @@ class RoutineNiyyahSheet extends StatefulWidget {
     required VoidCallback onEdit,
     required VoidCallback onViewDetails,
   }) {
-    showModalBottomSheet(
+    return showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
