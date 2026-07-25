@@ -9,6 +9,7 @@ import 'package:ritmo/core/domain/completion/completion_request.dart';
 import 'package:ritmo/core/domain/completion/snooze_policy.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/domain/models/completion_result.dart';
+import 'package:ritmo/core/domain/models/duration_bounds.dart';
 import 'package:ritmo/core/services/ritmo_timer_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
@@ -21,13 +22,6 @@ import 'package:ritmo/features/routines/shared/widgets/routine_details_sheet.dar
 import 'package:ritmo/features/routines/shared/widgets/routine_niyyah_sheet.dart';
 import 'package:ritmo/features/supplementary_sports/movement/presentation/movement_log_sheet.dart';
 import 'package:ritmo/features/today/presentation/active_timer_overlay.dart';
-
-class DurationBounds {
-  static int sanitize(int? minutes, {int fallback = 30}) {
-    final val = minutes ?? fallback;
-    return val.clamp(1, 1440);
-  }
-}
 
 /// Central action router for opening the appropriate action sheet for any AgendaItem.
 class ActionRouter {

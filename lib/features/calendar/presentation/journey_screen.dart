@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/domain/agenda/action_feedback.dart';
 import 'package:ritmo/core/domain/agenda/action_router.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
@@ -242,7 +243,12 @@ class _JourneyScreenState extends State<JourneyScreen> {
         final untimedItems = allItems.where((i) => !i.isTimed).toList();
         final timedItems = allItems.where((i) => i.isTimed).toList();
 
-        final pillViewModel = NowPillViewModel.fromSnapshot(snapshot);
+        final pillViewModel = NowPillViewModel.fromSnapshot(
+          snapshot,
+          now: DateTime.now(),
+          isToday: isToday,
+          selectedDate: selectedDate,
+        );
 
         final isScaleChanged = activeScale != _prevScale;
         final isDateBackward = selectedDate.isBefore(_prevDate);
@@ -598,7 +604,17 @@ class _JourneyScreenState extends State<JourneyScreen> {
                           onTapPill: _openSmartPanel,
                           onTapJumpNow: _autoScrollToNow,
                           onTapComplete: pillViewModel.targetItem != null
-                              ? () => _controller.completeItem(pillViewModel.targetItem!)
+                              ? () async {
+                                  final item = pillViewModel.targetItem!;
+                                  await _controller.completeItem(item);
+                                  if (mounted) {
+                                    ActionFeedback.success(
+                                      context,
+                                      message: 'رویداد با موفقیت ثبت شد',
+                                      dateStr: item.dateStr,
+                                    );
+                                  }
+                                }
                               : null,
                         ),
                       ),
