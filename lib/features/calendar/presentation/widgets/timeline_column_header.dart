@@ -63,13 +63,10 @@ class TimelineColumnHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: isActive
             ? CalendarTokens.emerald.withValues(alpha: CalendarTokens.alphaDomainFill)
-            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(CalendarTokens.radiusCard),
-        ),
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
         border: Border(
           bottom: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: CalendarTokens.alphaCardBorder),
+            color: colorScheme.outlineVariant.withValues(alpha: CalendarTokens.alphaCardBorder * 1.5),
           ),
         ),
       ),

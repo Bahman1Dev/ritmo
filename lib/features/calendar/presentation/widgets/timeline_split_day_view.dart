@@ -41,15 +41,13 @@ class TimelineSplitDayView extends StatefulWidget {
 }
 
 class TimelineSplitDayViewState extends State<TimelineSplitDayView> {
-  late final ScrollController _morningController;
-  late final ScrollController _afternoonController;
+  late final ScrollController _sharedScrollController;
   late final ScrollController _singleColumnController;
 
   @override
   void initState() {
     super.initState();
-    _morningController = ScrollController();
-    _afternoonController = ScrollController();
+    _sharedScrollController = ScrollController();
     _singleColumnController = ScrollController();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -59,18 +57,13 @@ class TimelineSplitDayViewState extends State<TimelineSplitDayView> {
 
   @override
   void dispose() {
-    _morningController.dispose();
-    _afternoonController.dispose();
+    _sharedScrollController.dispose();
     _singleColumnController.dispose();
     super.dispose();
   }
 
   void scrollToMinutes(int minutes) {
-    final isMorning = minutes < CalendarTokens.splitBoundaryMinutes;
-    final controller = isMorning ? _morningController : _afternoonController;
-    final rangeStart = isMorning ? 0 : CalendarTokens.splitBoundaryMinutes;
-
-    if (!controller.hasClients) {
+    if (!_sharedScrollController.hasClients) {
       if (_singleColumnController.hasClients) {
         final offset = ((minutes - 60).clamp(0, 1440)) * CalendarTokens.pxPerMinute;
         final maxScroll = _singleColumnController.position.maxScrollExtent;
@@ -83,9 +76,13 @@ class TimelineSplitDayViewState extends State<TimelineSplitDayView> {
       return;
     }
 
-    final offset = ((minutes - rangeStart - 60).clamp(0, 720)) * CalendarTokens.pxPerMinuteSplit;
-    final maxScroll = controller.position.maxScrollExtent;
-    controller.animateTo(
+    final isMorning = minutes < CalendarTokens.splitBoundaryMinutes;
+    final rangeStart = isMorning ? 0 : CalendarTokens.splitBoundaryMinutes;
+    final minuteInRange = minutes - rangeStart;
+
+    final offset = ((minuteInRange - 60).clamp(0, 720)) * CalendarTokens.pxPerMinuteSplit;
+    final maxScroll = _sharedScrollController.position.maxScrollExtent;
+    _sharedScrollController.animateTo(
       offset.clamp(0.0, maxScroll),
       duration: CalendarMotion.d(context, CalendarTokens.durationEmphasis),
       curve: CalendarTokens.curveEmphasis,
@@ -97,13 +94,8 @@ class TimelineSplitDayViewState extends State<TimelineSplitDayView> {
     final nowMinutes = (now.hour * 60) + now.minute;
 
     if (widget.isToday) {
-      if (nowMinutes < CalendarTokens.splitBoundaryMinutes) {
-        _scrollToMinutesInController(_morningController, nowMinutes, 0);
-        _scrollToFirstItemOrDefault(_afternoonController, CalendarTokens.splitBoundaryMinutes, 1440);
-      } else {
-        _scrollToMinutesInController(_afternoonController, nowMinutes, CalendarTokens.splitBoundaryMinutes);
-        _scrollToFirstItemOrDefault(_morningController, 0, CalendarTokens.splitBoundaryMinutes);
-      }
+      final rangeStart = nowMinutes < CalendarTokens.splitBoundaryMinutes ? 0 : CalendarTokens.splitBoundaryMinutes;
+      _scrollToMinutesInController(_sharedScrollController, nowMinutes, rangeStart);
       if (_singleColumnController.hasClients) {
         final offset = ((nowMinutes - 60).clamp(0, 1440)) * CalendarTokens.pxPerMinute;
         final maxScroll = _singleColumnController.position.maxScrollExtent;
@@ -114,8 +106,7 @@ class TimelineSplitDayViewState extends State<TimelineSplitDayView> {
         );
       }
     } else {
-      _scrollToFirstItemOrDefault(_morningController, 0, CalendarTokens.splitBoundaryMinutes);
-      _scrollToFirstItemOrDefault(_afternoonController, CalendarTokens.splitBoundaryMinutes, 1440);
+      _scrollToFirstItemOrDefault(_sharedScrollController, 0, 1440);
       if (_singleColumnController.hasClients) {
         _scrollToFirstItemOrDefault(_singleColumnController, 0, 1440, isSingle: true);
       }
@@ -156,18 +147,13 @@ class TimelineSplitDayViewState extends State<TimelineSplitDayView> {
     );
   }
 
-  Widget _buildColumn({
+  Widget _buildColumnGrid({
     required BuildContext context,
     required SplitDayRange range,
     required HourAxisSide side,
-    required ScrollController controller,
-    required bool isMorning,
   }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final now = DateTime.now();
-    final nowMinutes = (now.hour * 60) + now.minute;
-    final isActive = widget.isToday && (nowMinutes >= range.startMinutes && nowMinutes < range.endMinutes);
 
     final columnItems = widget.items.where((item) {
       if (!item.isTimed) return false;
@@ -177,99 +163,84 @@ class TimelineSplitDayViewState extends State<TimelineSplitDayView> {
       return startM < range.endMinutes && endM > range.startMinutes;
     }).toList();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: CalendarTokens.alphaCardBorder),
-        ),
-      ),
-      child: Column(
-        children: [
-          TimelineColumnHeader(
-            title: range.titleFa,
-            icon: range.icon,
-            rangeLabel: range.rangeLabel,
-            isActive: isActive,
-          ),
-          Expanded(
-            child: DragTarget<AgendaItem>(
-              onWillAcceptWithDetails: (details) => true,
-              onAcceptWithDetails: (details) {
-                final renderBox = context.findRenderObject() as RenderBox?;
-                if (renderBox == null) return;
-                final localOffset = renderBox.globalToLocal(details.offset);
-                final scrollOffset = controller.hasClients ? controller.offset : 0.0;
-                final localY = localOffset.dy + scrollOffset - CalendarTokens.columnHeaderHeight;
+    return DragTarget<AgendaItem>(
+      onWillAcceptWithDetails: (details) => true,
+      onAcceptWithDetails: (details) {
+        final renderBox = context.findRenderObject() as RenderBox?;
+        if (renderBox == null) return;
+        final localOffset = renderBox.globalToLocal(details.offset);
+        final scrollOffset = _sharedScrollController.hasClients ? _sharedScrollController.offset : 0.0;
+        final localY = localOffset.dy + scrollOffset;
 
-                final rawMinutes = ((localY / CalendarTokens.pxPerMinuteSplit) + range.startMinutes).round();
-                final dur = DurationBounds.sanitize(details.data.durationMinutes);
-                final snappedStart = TimelineSnappingHelper.snapStartMinutes(rawMinutes, durationMinutes: dur);
+        final rawMinutes = ((localY / CalendarTokens.pxPerMinuteSplit) + range.startMinutes).round();
+        final dur = DurationBounds.sanitize(details.data.durationMinutes);
+        final snappedStart = TimelineSnappingHelper.snapStartMinutes(rawMinutes, durationMinutes: dur);
 
-                if (details.data.isTimed) {
-                  widget.onItemMove?.call(details.data, snappedStart);
-                } else {
-                  widget.onScheduleUntimed?.call(details.data, snappedStart, dur);
-                }
-              },
-              builder: (context, candidateData, rejectedData) {
-                return Stack(
-                  children: [
-                    SingleChildScrollView(
-                      controller: controller,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: TimelineGrid(
-                        items: widget.items,
-                        isToday: widget.isToday,
-                        rangeStartMinutes: range.startMinutes,
-                        rangeEndMinutes: range.endMinutes,
-                        pxPerMinute: CalendarTokens.pxPerMinuteSplit,
-                        hourAxisWidth: CalendarTokens.hourAxisWidthSplit,
-                        maxLanes: CalendarTokens.maxLanesSplit,
-                        axisSide: side,
-                        scrollController: controller,
-                        sleepStartMinutes: widget.sleepStartMinutes,
-                        sleepEndMinutes: widget.sleepEndMinutes,
-                        highlightedItemId: widget.highlightedItemId,
-                        onItemTap: widget.onItemTap,
-                        onItemMove: widget.onItemMove,
-                        onItemResize: widget.onItemResize,
-                        onSlotTap: widget.onSlotTap,
-                        onScheduleUntimed: widget.onScheduleUntimed,
-                        onOverflowTap: widget.onOverflowTap,
-                      ),
-                    ),
-                    if (columnItems.isEmpty)
-                      Center(
-                        child: IgnorePointer(
-                          child: Padding(
-                            padding: const EdgeInsets.all(CalendarTokens.spacingM),
-                            child: Text(
-                              'برنامه‌ای در این بازه نیست',
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontSize: CalendarTokens.textMeta,
-                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                                fontFamily: 'Vazirmatn',
-                              ),
-                            ),
-                          ),
+        if (details.data.isTimed) {
+          widget.onItemMove?.call(details.data, snappedStart);
+        } else {
+          widget.onScheduleUntimed?.call(details.data, snappedStart, dur);
+        }
+      },
+      builder: (context, candidateData, rejectedData) {
+        return Stack(
+          children: [
+            TimelineGrid(
+              items: widget.items,
+              isToday: widget.isToday,
+              rangeStartMinutes: range.startMinutes,
+              rangeEndMinutes: range.endMinutes,
+              pxPerMinute: CalendarTokens.pxPerMinuteSplit,
+              hourAxisWidth: CalendarTokens.hourAxisWidthSplit,
+              maxLanes: CalendarTokens.maxLanesSplit,
+              axisSide: side,
+              scrollController: _sharedScrollController,
+              sleepStartMinutes: widget.sleepStartMinutes,
+              sleepEndMinutes: widget.sleepEndMinutes,
+              highlightedItemId: widget.highlightedItemId,
+              onItemTap: widget.onItemTap,
+              onItemMove: widget.onItemMove,
+              onItemResize: widget.onItemResize,
+              onSlotTap: widget.onSlotTap,
+              onScheduleUntimed: widget.onScheduleUntimed,
+              onOverflowTap: widget.onOverflowTap,
+            ),
+            if (columnItems.isEmpty)
+              Positioned(
+                top: 40,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(CalendarTokens.spacingM),
+                      child: Text(
+                        'برنامه‌ای در این بازه نیست',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: CalendarTokens.textMeta,
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          fontFamily: 'Vazirmatn',
                         ),
                       ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final paddingBottom = MediaQuery.paddingOf(context).bottom + kBottomNavigationBarHeight + 80.0;
+    final paddingBottom = MediaQuery.paddingOf(context).bottom + kBottomNavigationBarHeight + 20.0;
+    final now = DateTime.now();
+    final nowMinutes = (now.hour * 60) + now.minute;
+
+    final isMorningActive = widget.isToday && nowMinutes < CalendarTokens.splitBoundaryMinutes;
+    final isAfternoonActive = widget.isToday && nowMinutes >= CalendarTokens.splitBoundaryMinutes;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -299,39 +270,74 @@ class TimelineSplitDayViewState extends State<TimelineSplitDayView> {
         }
 
         // Split 2-column layout (Morning on RIGHT in RTL, Afternoon on LEFT)
-        return Padding(
-          padding: EdgeInsets.only(bottom: paddingBottom),
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 🔴 CRITICAL ORDER IN RTL:
-                // First child in Row renders on the RIGHT side of screen.
-                // Morning column MUST be the first child.
-                Expanded(
-                  child: _buildColumn(
-                    context: context,
-                    range: SplitDayRange.morning,
-                    side: HourAxisSide.trailing,
-                    controller: _morningController,
-                    isMorning: true,
-                  ),
+        // Synchronized Scrolling & Borderless Frameless UI
+        return Column(
+          children: [
+            // Sticky Headers Row
+            Directionality(
+              textDirection: TextDirection.rtl,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: CalendarTokens.spacingS),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TimelineColumnHeader(
+                        title: SplitDayRange.morning.titleFa,
+                        icon: SplitDayRange.morning.icon,
+                        rangeLabel: SplitDayRange.morning.rangeLabel,
+                        isActive: isMorningActive,
+                      ),
+                    ),
+                    const SizedBox(width: CalendarTokens.columnGap),
+                    Expanded(
+                      child: TimelineColumnHeader(
+                        title: SplitDayRange.afternoon.titleFa,
+                        icon: SplitDayRange.afternoon.icon,
+                        rangeLabel: SplitDayRange.afternoon.rangeLabel,
+                        isActive: isAfternoonActive,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: CalendarTokens.columnGap),
-                // Afternoon column renders on the LEFT side of screen.
-                Expanded(
-                  child: _buildColumn(
-                    context: context,
-                    range: SplitDayRange.afternoon,
-                    side: HourAxisSide.leading,
-                    controller: _afternoonController,
-                    isMorning: false,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            // Shared Synchronized Scrollable Grids
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _sharedScrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(bottom: paddingBottom),
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: CalendarTokens.spacingS),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Morning Column (Right in RTL, side: HourAxisSide.leading -> Hour Axis on RIGHT)
+                        Expanded(
+                          child: _buildColumnGrid(
+                            context: context,
+                            range: SplitDayRange.morning,
+                            side: HourAxisSide.leading,
+                          ),
+                        ),
+                        const SizedBox(width: CalendarTokens.columnGap),
+                        // Afternoon Column (Left in RTL, side: HourAxisSide.leading -> Hour Axis on RIGHT)
+                        Expanded(
+                          child: _buildColumnGrid(
+                            context: context,
+                            range: SplitDayRange.afternoon,
+                            side: HourAxisSide.leading,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
