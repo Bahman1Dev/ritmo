@@ -124,8 +124,8 @@ class TimelineItemCard extends StatelessWidget {
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.symmetric(
-                          horizontal: 8.0,
-                          vertical: layoutItem.height < 36 ? 2.0 : 5.0,
+                          horizontal: 6.0,
+                          vertical: layoutItem.height < 48 ? 1.0 : 4.0,
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,7 +136,7 @@ class TimelineItemCard extends StatelessWidget {
                               children: [
                                 Icon(
                                   _getDomainIcon(item.domain),
-                                  size: 13,
+                                  size: 12,
                                   color: isDone
                                       ? theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4)
                                       : domainColor,
@@ -147,7 +147,7 @@ class TimelineItemCard extends StatelessWidget {
                                     padding: const EdgeInsets.only(left: CalendarTokens.spacingXs),
                                     child: Icon(
                                       Icons.check_circle_rounded,
-                                      size: 13,
+                                      size: 12,
                                       color: theme.colorScheme.primary.withValues(alpha: 0.8),
                                     ),
                                   ),
@@ -157,7 +157,7 @@ class TimelineItemCard extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: CalendarTokens.textBody,
+                                      fontSize: layoutItem.height < 36 ? 11.0 : CalendarTokens.textBody,
                                       fontWeight: isDone ? FontWeight.w400 : FontWeight.w600,
                                       color: isDone
                                           ? theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.45)
@@ -166,23 +166,25 @@ class TimelineItemCard extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                if (isDraggable)
+                                if (isDraggable && layoutItem.height >= 36)
                                   Padding(
                                     padding: const EdgeInsets.only(right: 2.0),
                                     child: Icon(
                                       Icons.drag_indicator_rounded,
-                                      size: 14,
+                                      size: 13,
                                       color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.35),
                                     ),
                                   ),
                               ],
                             ),
-                            if (layoutItem.height > 36 && effectiveTime != null) ...[
-                              const SizedBox(height: 3),
+                            if (layoutItem.height >= 48 && effectiveTime != null) ...[
+                              const SizedBox(height: 2),
                               Text(
                                 toPersianDigits(
                                   '$effectiveTime${effectiveDuration != null ? ' ($effectiveDuration دقیقه)' : ''}',
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: CalendarTokens.textMeta,
                                   fontWeight: FontWeight.w500,

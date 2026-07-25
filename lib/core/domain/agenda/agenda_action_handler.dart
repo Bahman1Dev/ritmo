@@ -364,10 +364,10 @@ class AgendaActionHandler {
       } else if (item.domain == AgendaDomain.konkur) {
         if (newDurationMinutes != null) {
           await txn.update(
-            'konkur_plan',
+            'konkur_plan_items',
             {
               'plannedMinutes': newDurationMinutes,
-              'updatedAt': nowMs,
+              'isUserEdited': 1,
             },
             where: 'id = ?',
             whereArgs: [item.sourceId],
