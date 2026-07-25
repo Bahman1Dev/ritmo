@@ -1,4 +1,5 @@
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/models/duration_bounds.dart';
 
 /// Centralized eligibility rules for timeline direct manipulation (drag & resize).
 class DirectManipulationEligibility {
@@ -74,8 +75,9 @@ class TimelineSnappingHelper {
   }) {
     final interval = intervalMinutes > 0 ? intervalMinutes : 15;
     final snapped = (rawDurationMinutes / interval).round() * interval;
-    final maxAllowed = 1440 - startMinutes;
-    return snapped.clamp(minDurationMinutes, maxAllowed.clamp(minDurationMinutes, 1440));
+    final untilEndOfDay = 1440 - startMinutes;
+    final maxAllowed = untilEndOfDay.clamp(minDurationMinutes, DurationBounds.maxMinutes);
+    return snapped.clamp(minDurationMinutes, maxAllowed);
   }
 
   /// Converts minute offset of day (0..1439) to 'HH:mm' string format.

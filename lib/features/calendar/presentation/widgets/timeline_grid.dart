@@ -48,9 +48,13 @@ class _TimelineGridState extends State<TimelineGrid> {
 
   String? _activeDragItemId;
   int _dragStartMinutes = 0;
+  int _dragInitialStartMinutes = 0;
+  double? _touchOffsetInCardY;
 
   String? _activeResizeItemId;
   int _resizeDurationMinutes = 30;
+  int _resizeInitialDurationMinutes = 30;
+  double? _resizeInitialTouchLocalY;
 
   @override
   void initState() {
@@ -327,22 +331,30 @@ class _TimelineGridState extends State<TimelineGrid> {
                 setState(() {
                   _activeResizeItemId = item.id;
                   _resizeDurationMinutes = layoutItem.durationMinutes;
+                  _resizeInitialDurationMinutes = layoutItem.durationMinutes;
+                  _resizeInitialTouchLocalY = null;
                 });
               }
             }
           : null,
       onResizeUpdate: isResizable
           ? (details) {
-              final deltaMins = (details.delta.dy / widget.pxPerMinute).round();
-              final rawDuration = _resizeDurationMinutes + deltaMins;
-              final snapped = TimelineSnappingHelper.snapDurationMinutes(
-                rawDuration,
-                startMinutes: layoutItem.startMinutes,
-              );
-              if (snapped != _resizeDurationMinutes && mounted) {
-                setState(() {
-                  _resizeDurationMinutes = snapped;
-                });
+              final renderBox = context.findRenderObject() as RenderBox?;
+              if (renderBox != null) {
+                final localY = renderBox.globalToLocal(details.globalPosition).dy;
+                _resizeInitialTouchLocalY ??= localY;
+                final deltaY = localY - _resizeInitialTouchLocalY!;
+                final deltaMins = (deltaY / widget.pxPerMinute).round();
+                final rawDuration = _resizeInitialDurationMinutes + deltaMins;
+                final snapped = TimelineSnappingHelper.snapDurationMinutes(
+                  rawDuration,
+                  startMinutes: layoutItem.startMinutes,
+                );
+                if (snapped != _resizeDurationMinutes && mounted) {
+                  setState(() {
+                    _resizeDurationMinutes = snapped;
+                  });
+                }
               }
             }
           : null,
@@ -352,6 +364,7 @@ class _TimelineGridState extends State<TimelineGrid> {
               if (mounted) {
                 setState(() {
                   _activeResizeItemId = null;
+                  _resizeInitialTouchLocalY = null;
                 });
               }
             }
@@ -399,20 +412,38 @@ class _TimelineGridState extends State<TimelineGrid> {
             setState(() {
               _activeDragItemId = item.id;
               _dragStartMinutes = layoutItem.startMinutes;
+              _dragInitialStartMinutes = layoutItem.startMinutes;
+              _touchOffsetInCardY = null;
             });
           }
         },
         onDragUpdate: (details) {
           _handleAutoEdgeScroll(details.globalPosition);
-          final deltaMinutes = (details.delta.dy / widget.pxPerMinute).round();
-          final rawStart = _dragStartMinutes + deltaMinutes;
-          final snapped = TimelineSnappingHelper.snapStartMinutes(
-            rawStart,
-            durationMinutes: layoutItem.durationMinutes,
-          );
-          if (snapped != _dragStartMinutes && mounted) {
+          final renderBox = context.findRenderObject() as RenderBox?;
+          if (renderBox != null) {
+            final localOffset = renderBox.globalToLocal(details.globalPosition);
+            if (_touchOffsetInCardY == null) {
+              final initialCardTopY = _dragInitialStartMinutes * widget.pxPerMinute;
+              _touchOffsetInCardY = localOffset.dy - initialCardTopY;
+            }
+            final cardTopY = localOffset.dy - _touchOffsetInCardY!;
+            final rawStart = (cardTopY / widget.pxPerMinute).round();
+            final snapped = TimelineSnappingHelper.snapStartMinutes(
+              rawStart,
+              durationMinutes: layoutItem.durationMinutes,
+            );
+            if (snapped != _dragStartMinutes && mounted) {
+              setState(() {
+                _dragStartMinutes = snapped;
+              });
+            }
+          }
+        },
+        onDraggableCanceled: (_, __) {
+          if (mounted) {
             setState(() {
-              _dragStartMinutes = snapped;
+              _activeDragItemId = null;
+              _touchOffsetInCardY = null;
             });
           }
         },
@@ -422,6 +453,7 @@ class _TimelineGridState extends State<TimelineGrid> {
           if (mounted) {
             setState(() {
               _activeDragItemId = null;
+              _touchOffsetInCardY = null;
             });
           }
         },

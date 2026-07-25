@@ -18,7 +18,6 @@ import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/ss_lottie_player.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/ss_muscle_image_resolver.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/ss_ai_coach_sheet.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // ─── MVI INTENTS ─────────────────────────────────────────────
 sealed class SSWorkoutIntent {
@@ -278,16 +277,8 @@ class _SSWorkoutSessionScreenState extends ConsumerState<SSWorkoutSessionScreen>
 
   Future<void> _fetchUserGender() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final spGender = prefs.getString('ss_onboarding_gender') ?? prefs.getString('user_gender');
-      if (spGender != null && spGender.isNotEmpty) {
-        if (mounted) setState(() => _userGender = spGender);
-      }
-      final db = await DatabaseHelper.instance.database;
-      final ssProfileRows = await db.query('ss_user_profile', limit: 1);
-      if (ssProfileRows.isNotEmpty && ssProfileRows.first['gender'] != null) {
-        if (mounted) setState(() => _userGender = ssProfileRows.first['gender'].toString());
-      }
+      final gender = await DatabaseHelper.instance.getUserGender();
+      if (mounted) setState(() => _userGender = gender);
     } catch (_) {}
   }
 

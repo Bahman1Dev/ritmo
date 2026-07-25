@@ -6,6 +6,7 @@ import 'package:flutter/material.dart' show BuildContext;
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/domain/models/duration_bounds.dart';
 import 'package:ritmo/features/routines/domain/strategies/planner_category_strategy.dart';
 import 'package:ritmo/features/routines/domain/strategies/planner_save_context.dart';
 
@@ -50,7 +51,7 @@ class GenericStrategy implements PlannerCategoryStrategy {
       'isEssentialLocked': 0,
       'energyRule': c.energyRule,
       'priority': c.priority,
-      'targetDurationMinutes': c.targetDuration,
+      'targetDurationMinutes': DurationBounds.sanitize(c.targetDuration),
       'lightDurationMinutes': 0,
       'minimalDurationMinutes': 0,
       'isArchived': 0,

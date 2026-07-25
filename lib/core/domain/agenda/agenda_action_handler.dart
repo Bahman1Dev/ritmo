@@ -3,6 +3,7 @@ import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/domain/models/duration_bounds.dart';
 import 'package:sqflite/sqflite.dart';
 
 class AgendaActionHandler {
@@ -306,6 +307,9 @@ class AgendaActionHandler {
     String? newTimeOfDay,
     int? newDurationMinutes,
   }) async {
+    if (newDurationMinutes != null) {
+      newDurationMinutes = DurationBounds.sanitize(newDurationMinutes);
+    }
     final db = await DatabaseHelper.instance.database;
     final nowMs = DateTime.now().millisecondsSinceEpoch;
 

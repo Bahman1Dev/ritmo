@@ -48,22 +48,9 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
 
       // Auto-fetch gender from main app settings & SQLite tables
       try {
-        final spGender = prefs.getString('ss_onboarding_gender') ?? prefs.getString('user_gender');
-        if (spGender != null && spGender.isNotEmpty) {
-          _selectedGender = spGender;
-        }
-
-        final db = await DatabaseHelper.instance.database;
-        final profileRows = await db.query('profile', limit: 1);
-        if (profileRows.isNotEmpty && profileRows.first['gender'] != null) {
-          final g = profileRows.first['gender'].toString().toUpperCase();
-          _selectedGender = (g == 'FEMALE' || g == 'WOMAN' || g == 'ZAN' || g == 'زن') ? 'FEMALE' : 'MALE';
-        } else {
-          final ssProfileRows = await db.query('ss_user_profile', limit: 1);
-          if (ssProfileRows.isNotEmpty && ssProfileRows.first['gender'] != null) {
-            final g = ssProfileRows.first['gender'].toString().toUpperCase();
-            _selectedGender = (g == 'FEMALE' || g == 'WOMAN' || g == 'ZAN' || g == 'زن') ? 'FEMALE' : 'MALE';
-          }
+        final g = await DatabaseHelper.instance.getUserGender();
+        if (g == 'FEMALE' || g == 'MALE') {
+          _selectedGender = g;
         }
       } catch (_) {}
 
@@ -505,6 +492,60 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
           divisions: 120,
           activeColor: const Color(0xFF2D6A4F),
           onChanged: (val) => setState(() => _weightKg = val),
+        ),
+        const SizedBox(height: 16),
+        const Text('جنسیت:', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _selectedGender = 'FEMALE'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _selectedGender == 'FEMALE' ? const Color(0xFF2D6A4F) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _selectedGender == 'FEMALE' ? const Color(0xFF2D6A4F) : Colors.grey.shade300),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '👩‍🦰 خانم',
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontWeight: FontWeight.bold,
+                        color: _selectedGender == 'FEMALE' ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _selectedGender = 'MALE'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _selectedGender == 'MALE' ? const Color(0xFF2D6A4F) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _selectedGender == 'MALE' ? const Color(0xFF2D6A4F) : Colors.grey.shade300),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '👨 آقا',
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontWeight: FontWeight.bold,
+                        color: _selectedGender == 'MALE' ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

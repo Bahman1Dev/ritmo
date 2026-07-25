@@ -201,6 +201,41 @@ class TimelineItemCard extends StatelessWidget {
             ),
           ),
 
+          // Truncated indicator ("ادامه دارد")
+          if (layoutItem.isTruncated)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 22,
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        surfaceColor.withValues(alpha: 0.0),
+                        surfaceColor.withValues(alpha: 0.95),
+                      ],
+                    ),
+                  ),
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Icon(
+                        Icons.keyboard_double_arrow_down_rounded,
+                        size: 14,
+                        color: domainColor.withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           // Bottom Resize Handle Pill
           if (isResizable)
             Positioned(

@@ -722,23 +722,9 @@ class _SSHomeDashboardTabContentState extends State<SSHomeDashboardTabContent> {
         }
       } catch (_) {}
 
-      // Fetch gender robustly from all storage options (SharedPreferences & SQLite tables)
+      // Fetch gender robustly from all storage options
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final spGender = prefs.getString('ss_onboarding_gender') ?? prefs.getString('user_gender');
-        if (spGender != null && spGender.isNotEmpty) {
-          _userGender = spGender;
-        }
-
-        final ssProfileRows = await db.query('ss_user_profile', limit: 1);
-        if (ssProfileRows.isNotEmpty && ssProfileRows.first['gender'] != null) {
-          _userGender = ssProfileRows.first['gender'].toString();
-        } else if (_userGender == null) {
-          final mainProfileRows = await db.query('profile', limit: 1);
-          if (mainProfileRows.isNotEmpty && mainProfileRows.first['gender'] != null) {
-            _userGender = mainProfileRows.first['gender'].toString();
-          }
-        }
+        _userGender = await DatabaseHelper.instance.getUserGender(executor: db);
       } catch (e) {
         debugPrint('Error fetching gender: $e');
       }

@@ -70,15 +70,7 @@ class _SSPlanOverviewScreenState extends State<SSPlanOverviewScreen> {
 
       // Fetch user gender
       try {
-        final spGender = prefs.getString('ss_onboarding_gender') ?? prefs.getString('user_gender');
-        if (spGender != null && spGender.isNotEmpty) {
-          _userGender = spGender;
-        }
-
-        final ssProfileRows = await db.query('ss_user_profile', limit: 1);
-        if (ssProfileRows.isNotEmpty && ssProfileRows.first['gender'] != null) {
-          _userGender = ssProfileRows.first['gender'].toString();
-        }
+        _userGender = await DatabaseHelper.instance.getUserGender(executor: db);
       } catch (_) {}
       _userGender ??= 'MALE';
 

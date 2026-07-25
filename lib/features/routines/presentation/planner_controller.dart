@@ -10,6 +10,7 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/domain/models/duration_bounds.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/assistant/logic/duration_estimator.dart';
 import 'package:ritmo/features/health/presentation/widgets/medication_form_sheet.dart';
@@ -235,7 +236,7 @@ class PlannerController extends ChangeNotifier {
     description = data['description'] as String? ?? '';
     selectedCategory = Category.values.firstWhere((e) => e.name == data['category'], orElse: () => Category.personal);
     priority = data['priority'] as double? ?? 1.0;
-    targetDuration = data['targetDurationMinutes'] as int? ?? 60;
+    targetDuration = DurationBounds.sanitize(data['targetDurationMinutes'] as int?);
     itemType = data['itemType'] as String? ?? 'ROUTINE';
     dependsOnRoutineId = data['dependsOnRoutineId'] as String?;
     selectedZoneId = data['zoneId'] as String?;
@@ -1121,7 +1122,7 @@ class PlannerController extends ChangeNotifier {
   }
 
   void adjustDuration(int delta) {
-    targetDuration = (targetDuration + delta).clamp(15, 180);
+    targetDuration = DurationBounds.sanitize(targetDuration + delta);
     
     var bedtime = 1410; // 23:30
     var wake = 420; // 07:00

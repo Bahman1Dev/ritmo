@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/engines/routine_occurrence_generator.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/domain/models/duration_bounds.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// Shared source of truth for "which routines are active on a given date".
@@ -282,11 +283,10 @@ class RoutineAgendaSource {
       // Do NOT replace legitimate long routines with a fake shorter average.
       if (dur == null || dur <= 0) {
         final avg = avgDurations[routineId] ?? categoryAvgDurations[catStr] ?? 30.0;
-        dur = avg.round().clamp(5, 120);
+        dur = avg.round().clamp(DurationBounds.minMinutes, 120);
         isEstimated = true;
       } else {
-        // Keep the real duration, just prevent absurd broken values.
-        dur = dur.clamp(5, 12 * 60);
+        dur = DurationBounds.sanitize(dur);
       }
 
       items.add(AgendaItem(

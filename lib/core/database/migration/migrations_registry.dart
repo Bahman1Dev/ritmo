@@ -2592,5 +2592,40 @@ class MigrationV54 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV55 extends Migration {
+  @override
+  int get version => 55;
+
+  @override
+  Future<void> up(Database db) async {
+    try {
+      final corruptOverRows = await db.query(
+        'routines',
+        columns: ['id', 'title', 'targetDurationMinutes'],
+        where: 'targetDurationMinutes > 480',
+      );
+      if (corruptOverRows.isNotEmpty) {
+        debugPrint('[MigrationV55] Found ${corruptOverRows.length} routines with targetDurationMinutes > 480: $corruptOverRows');
+        await db.execute('UPDATE routines SET targetDurationMinutes = 480 WHERE targetDurationMinutes > 480;');
+      }
+
+      final corruptUnderRows = await db.query(
+        'routines',
+        columns: ['id', 'title', 'targetDurationMinutes'],
+        where: 'targetDurationMinutes <= 0',
+      );
+      if (corruptUnderRows.isNotEmpty) {
+        debugPrint('[MigrationV55] Found ${corruptUnderRows.length} routines with targetDurationMinutes <= 0: $corruptUnderRows');
+        await db.execute('UPDATE routines SET targetDurationMinutes = NULL WHERE targetDurationMinutes <= 0;');
+      }
+    } catch (e) {
+      debugPrint('[MigrationV55] Error during corrupt data cleanup: $e');
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
 
 

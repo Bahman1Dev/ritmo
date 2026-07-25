@@ -934,6 +934,7 @@ class DayAgendaService {
           title: p['title'] as String? ?? '',
           dateStr: dateStr,
           timeOfDay: resolvedTime,
+          durationMinutes: 15,
           category: Category.religious,
           completion: completion,
           deepLink: AgendaDeepLink(domain: AgendaDomain.mustahab, targetId: id),
@@ -1004,6 +1005,7 @@ class DayAgendaService {
         title: m['title'] as String? ?? '',
         subtitle: m['goalTitle'] as String?,
         dateStr: dateStr,
+        durationMinutes: 30,
         category: Category.personal,
         completion:
             completed ? AgendaCompletion.done : AgendaCompletion.pending,
@@ -1133,6 +1135,7 @@ class DayAgendaService {
         title: 'یادآور دارو',
         subtitle: log['note'] as String?,
         dateStr: dateStr,
+        durationMinutes: 5,
         category: Category.medical,
         completion: isDone ? AgendaCompletion.done : AgendaCompletion.pending,
         priority: 2.0,

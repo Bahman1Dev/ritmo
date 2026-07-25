@@ -1,7 +1,6 @@
 // lib/features/supplementary_sports/domain/ss_readiness_service.dart
 
 import 'package:ritmo/core/database/database_helper.dart';
-import 'package:sqflite/sqflite.dart';
 
 enum SSReadinessTier { full, light, minimal, rest }
 

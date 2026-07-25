@@ -9,6 +9,7 @@ import 'package:ritmo/core/database/schema/schema_manager.dart';
 import 'package:ritmo/core/database/schema/tables/ai_tables.dart';
 import 'package:ritmo/core/database/schema/tables/day_plan_tables.dart';
 import 'package:ritmo/core/database/seed/seed_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
@@ -17,7 +18,7 @@ class DatabaseHelper {
   DatabaseHelper._init();
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
-  static const int _dbVersion = 54;
+  static const int _dbVersion = 55;
 
   @visibleForTesting
   static set databaseInstance(Database? db) => _database = db;
@@ -147,6 +148,35 @@ class DatabaseHelper {
       'createdAt': nowMs,
       'updatedAt': nowMs,
     });
+  }
+
+  /// Fetches user gender ('FEMALE' or 'MALE') from app_settings, ss_user_profile, or SharedPreferences.
+  Future<String> getUserGender({DatabaseExecutor? executor}) async {
+    final exec = executor ?? await database;
+    try {
+      final genderQuery = await exec.query('app_settings', where: 'key = ?', whereArgs: ['user_gender']);
+      if (genderQuery.isNotEmpty && genderQuery.first['value'] != null) {
+        final val = genderQuery.first['value'].toString().toUpperCase();
+        if (val == 'FEMALE' || val == 'WOMAN' || val == 'ZAN' || val == 'زن') return 'FEMALE';
+        if (val == 'MALE' || val == 'MAN' || val == 'MARD' || val == 'مرد') return 'MALE';
+      }
+
+      final ssProfileRows = await exec.query('ss_user_profile', limit: 1);
+      if (ssProfileRows.isNotEmpty && ssProfileRows.first['gender'] != null) {
+        final val = ssProfileRows.first['gender'].toString().toUpperCase();
+        if (val == 'FEMALE' || val == 'WOMAN' || val == 'ZAN' || val == 'زن') return 'FEMALE';
+        if (val == 'MALE' || val == 'MAN' || val == 'MARD' || val == 'مرد') return 'MALE';
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final spGender = prefs.getString('ss_onboarding_gender') ?? prefs.getString('user_gender');
+      if (spGender != null && spGender.isNotEmpty) {
+        final val = spGender.toUpperCase();
+        if (val == 'FEMALE' || val == 'WOMAN' || val == 'ZAN' || val == 'زن') return 'FEMALE';
+        if (val == 'MALE' || val == 'MAN' || val == 'MARD' || val == 'مرد') return 'MALE';
+      }
+    } catch (_) {}
+    return 'MALE';
   }
 
   Future<bool> isUserMenstruating({DatabaseExecutor? executor}) async {

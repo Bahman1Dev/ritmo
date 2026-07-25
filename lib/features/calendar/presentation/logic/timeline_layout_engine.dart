@@ -1,5 +1,9 @@
+// lib/features/calendar/presentation/logic/timeline_layout_engine.dart
+
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/models/duration_bounds.dart';
 
 class TimelineLayoutItem {
   const TimelineLayoutItem({
@@ -10,6 +14,8 @@ class TimelineLayoutItem {
     required this.totalLanes,
     required this.startMinutes,
     required this.durationMinutes,
+    required this.renderDurationMinutes,
+    required this.isTruncated,
   });
 
   final AgendaItem item;
@@ -19,6 +25,8 @@ class TimelineLayoutItem {
   final int totalLanes;
   final int startMinutes;
   final int durationMinutes;
+  final int renderDurationMinutes;
+  final bool isTruncated;
 
   double get leftFraction => totalLanes > 0 ? laneIndex / totalLanes : 0.0;
   double get widthFraction => totalLanes > 0 ? 1.0 / totalLanes : 1.0;
@@ -44,26 +52,22 @@ class TimelineLayoutEngine {
     final rawEntries = <_RawEntry>[];
     for (final item in timed) {
       final startM = _tryParseStartMinutes(item.timeOfDay);
-      if (startM == null) {
-        // Ignore invalid timed items here; they should fall back to untimed behavior upstream.
-        continue;
-      }
+      if (startM == null) continue;
 
-      var durM = item.durationMinutes ?? defaultDurationMinutes;
+      var durM = DurationBounds.sanitize(item.durationMinutes);
 
-      // Only repair invalid/empty durations — do NOT destroy valid long events.
-      if (durM <= 0) {
-        durM = defaultDurationMinutes;
-      }
-
-      // Respect real duration, but keep it within the same day.
       final maxDurationForDay = (1440 - startM).clamp(1, 1440);
-      durM = durM.clamp(5, maxDurationForDay);
+      durM = durM.clamp(DurationBounds.minMinutes, maxDurationForDay);
+
+      final renderDurM = durM.clamp(DurationBounds.minMinutes, DurationBounds.maxRenderMinutes);
+      final isTruncated = renderDurM < durM;
 
       rawEntries.add(_RawEntry(
         item: item,
         startMinutes: startM,
         durationMinutes: durM,
+        renderDurationMinutes: renderDurM,
+        isTruncated: isTruncated,
         endMinutes: startM + durM,
       ));
     }
@@ -74,7 +78,7 @@ class TimelineLayoutEngine {
       return b.durationMinutes.compareTo(a.durationMinutes);
     });
 
-    // 1. Assign each entry to the first available lane with no time overlap
+    // Assign lanes
     final lanes = <List<_RawEntry>>[];
     for (final entry in rawEntries) {
       var placed = false;
@@ -95,7 +99,7 @@ class TimelineLayoutEngine {
       }
     }
 
-    // 2. Compute local concurrency and layout items
+    // Compute layout items
     final result = <TimelineLayoutItem>[];
     for (final entry in rawEntries) {
       final overlappingEntries = rawEntries.where((other) =>
@@ -108,7 +112,7 @@ class TimelineLayoutEngine {
       final totalLanes = maxLaneInGroup + 1;
 
       final top = entry.startMinutes * pxPerMinute;
-      final rawHeight = entry.durationMinutes * pxPerMinute;
+      final rawHeight = entry.renderDurationMinutes * pxPerMinute;
       final maxHeight = totalTimelineHeight - top;
       final height = max(rawHeight, minItemHeight).clamp(minItemHeight, maxHeight);
 
@@ -120,7 +124,17 @@ class TimelineLayoutEngine {
         totalLanes: totalLanes,
         startMinutes: entry.startMinutes,
         durationMinutes: entry.durationMinutes,
+        renderDurationMinutes: entry.renderDurationMinutes,
+        isTruncated: entry.isTruncated,
       ));
+    }
+
+    // Global guard check
+    for (var i = 0; i < lanes.length; i++) {
+      final laneTotalHeight = lanes[i].fold<double>(0.0, (sum, e) => sum + (e.renderDurationMinutes * pxPerMinute));
+      if (laneTotalHeight > totalTimelineHeight) {
+        debugPrint('[TimelineLayoutEngine] WARNING: Lane $i total height (${laneTotalHeight}px) exceeds timeline height (${totalTimelineHeight}px)!');
+      }
     }
 
     return result;
@@ -147,12 +161,16 @@ class _RawEntry {
     required this.item,
     required this.startMinutes,
     required this.durationMinutes,
+    required this.renderDurationMinutes,
+    required this.isTruncated,
     required this.endMinutes,
   });
 
   final AgendaItem item;
   final int startMinutes;
   final int durationMinutes;
+  final int renderDurationMinutes;
+  final bool isTruncated;
   final int endMinutes;
   int laneIndex = 0;
 }
