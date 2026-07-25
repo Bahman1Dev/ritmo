@@ -387,6 +387,44 @@ class AgendaActionHandler {
     _invalidateAndNotify(item.dateStr, 'RoutineUpdated', payload);
   }
 
+  /// Clears scheduled start time for an agenda item (moving it to untimed/unscheduled).
+  Future<void> clearAgendaItemTime({required AgendaItem item}) async {
+    final db = await DatabaseHelper.instance.database;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    await db.transaction((txn) async {
+      if (item.domain == AgendaDomain.routine) {
+        await txn.update(
+          'routine_schedules',
+          {
+            'timeOfDay': null,
+            'updatedAt': nowMs,
+          },
+          where: 'routineId = ?',
+          whereArgs: [item.sourceId],
+        );
+      } else if (item.domain == AgendaDomain.course) {
+        final courseId = item.deepLink.targetId;
+        await txn.update(
+          'courses',
+          {
+            'preferredTime': null,
+            'updatedAt': nowMs,
+          },
+          where: 'id = ?',
+          whereArgs: [courseId],
+        );
+      }
+    });
+
+    _invalidateAndNotify(item.dateStr, 'RoutineUpdated', {
+      'id': item.id,
+      'domain': item.domain.name,
+      'date': item.dateStr,
+      'timeOfDay': null,
+    });
+  }
+
   void notifyWorshipUpdated(String dateStr) {
     _invalidateAndNotify(dateStr, 'WorshipUpdated', {'date': dateStr});
   }

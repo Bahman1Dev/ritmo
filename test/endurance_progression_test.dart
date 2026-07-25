@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ritmo/features/sports/movement/domain/endurance_progression.dart';
-import 'package:ritmo/features/sports/movement/domain/movement_kind.dart';
+import 'package:ritmo/features/supplementary_sports/movement/domain/endurance_progression.dart';
+import 'package:ritmo/features/supplementary_sports/movement/domain/movement_kind.dart';
 
 void main() {
   group('EnduranceProgressionEngine Unit Tests', () {

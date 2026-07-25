@@ -1,26 +1,29 @@
 import 'dart:async';
 
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/domain/agenda/action_router.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/calendar/presentation/journey_controller.dart';
+import 'package:ritmo/features/calendar/presentation/logic/direct_manipulation_eligibility.dart';
 import 'package:ritmo/features/calendar/presentation/models/now_pill_view_model.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_date_formatter.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_motion.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
-import 'package:ritmo/core/domain/agenda/action_router.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/calendar_search_delegate.dart';
+import 'package:ritmo/features/calendar/presentation/widgets/domain_selection_sheet.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_month_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_scale_switcher.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_smart_panel.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_week_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_year_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/now_pill.dart';
-import 'package:ritmo/features/calendar/presentation/widgets/timeline_grid.dart';
+import 'package:ritmo/features/calendar/presentation/widgets/timeline_split_day_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/timeline_untimed_section.dart';
-import 'package:ritmo/features/courses/logic/course_scheduler.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 class JourneyScreen extends StatefulWidget {
@@ -39,8 +42,11 @@ class JourneyScreen extends StatefulWidget {
 
 class _JourneyScreenState extends State<JourneyScreen> {
   late final JourneyController _controller;
-  final ScrollController _scrollController = ScrollController();
+  final GlobalKey<TimelineSplitDayViewState> _splitDayKey = GlobalKey<TimelineSplitDayViewState>();
   StreamSubscription<RitmoEvent>? _eventSubscription;
+
+  JourneyScale _prevScale = JourneyScale.day;
+  DateTime _prevDate = DateTime.now();
 
   @override
   void initState() {
@@ -48,6 +54,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     _controller = JourneyController();
 
     final startDate = widget.initialDate ?? DateTime.now();
+    _prevDate = startDate;
     _controller.loadDate(startDate).then((_) {
       if (widget.initialItemId != null) {
         _focusItemById(widget.initialItemId);
@@ -99,20 +106,14 @@ class _JourneyScreenState extends State<JourneyScreen> {
     if (!mounted) return;
     final now = DateTime.now();
     final isToday = _isSameDay(_controller.selectedDate, now);
-    if (isToday && _scrollController.hasClients && _controller.activeScale == JourneyScale.day) {
+    if (isToday && _controller.activeScale == JourneyScale.day) {
       final nowMinutes = (now.hour * 60) + now.minute;
       _scrollToMinutesValue(nowMinutes);
     }
   }
 
   void _scrollToMinutesValue(int minutes) {
-    if (!_scrollController.hasClients) return;
-    final targetScroll = ((minutes - 60).clamp(0, 1440)) * CalendarTokens.pxPerMinute;
-    _scrollController.animateTo(
-      targetScroll,
-      duration: CalendarTokens.durationEmphasis,
-      curve: CalendarTokens.curveEmphasis,
-    );
+    _splitDayKey.currentState?.scrollToMinutes(minutes);
   }
 
   int? _tryParseMinutes(String? timeStr) {
@@ -159,67 +160,18 @@ class _JourneyScreenState extends State<JourneyScreen> {
         }
         _scrollToTimeString(gap.startTimeStr);
       },
-      onSelectConflict: (conflict) {
-        if (_controller.activeScale != JourneyScale.day) {
-          _controller.setScale(JourneyScale.day);
-        }
-        _openItemDetails(conflict.itemA);
-      },
     );
+  }
+
+  @override
+  void dispose() {
+    _eventSubscription?.cancel();
+    _controller.dispose();
+    super.dispose();
   }
 
   static bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-
-  void _handleSlotTap(String timeOfDay) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(CalendarTokens.radiusSheet)),
-            ),
-            padding: const EdgeInsets.all(CalendarTokens.spacingXl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.add_task_rounded, color: Colors.blueAccent),
-                    const SizedBox(width: CalendarTokens.spacingS),
-                    Text(
-                      'ثبت برنامه جدید در ساعت ${toPersianDigits(timeOfDay)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: CalendarTokens.spacingM),
-                Text(
-                  'کارت موقت ثبت سریع رویداد در ساعت ${toPersianDigits(timeOfDay)} ایجاد شد.',
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor),
-                ),
-                const SizedBox(height: CalendarTokens.spacingL),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.check),
-                    label: const Text('ثبت رویداد جدید'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   String _getHeroDateTitle(DateTime date) {
@@ -230,207 +182,119 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
-  String _getSubContextTitle(JourneyScale scale, DateTime date) {
-    switch (scale) {
-      case JourneyScale.day:
-        final jalali = Jalali.fromDateTime(date);
-        return 'روز ${jalali.formatter.wN}';
-      case JourneyScale.week:
-        final sat = CourseScheduler.getSaturdayOfWeek(date);
-        final fri = sat.add(const Duration(days: 6));
-        final satJalali = Jalali.fromDateTime(sat);
-        final friJalali = Jalali.fromDateTime(fri);
-        return 'هفته ${toPersianDigits(satJalali.day.toString())} ${satJalali.formatter.mN} – ${toPersianDigits(friJalali.day.toString())} ${friJalali.formatter.mN}';
-      case JourneyScale.month:
-        final jalali = Jalali.fromDateTime(date);
-        return '${jalali.formatter.mN} ${toPersianDigits(jalali.year.toString())}';
-      case JourneyScale.year:
-        final jalali = Jalali.fromDateTime(date);
-        return 'سال ${toPersianDigits(jalali.year.toString())}';
-    }
-  }
-
-  @override
-  void dispose() {
-    _eventSubscription?.cancel();
-    _scrollController.dispose();
-    _controller.dispose();
-    super.dispose();
+  String _getJalaliSubTitle(DateTime date) {
+    final jalali = Jalali.fromDateTime(date);
+    return toPersianDigits(
+      '${jalali.day} ${jalali.formatter.mN} ${jalali.year}',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final colorScheme = theme.colorScheme;
 
     return AnimatedBuilder(
       animation: _controller,
-      builder: (context, child) {
-        final snapshot = _controller.snapshot;
-        final selectedDate = _controller.selectedDate;
+      builder: (context, _) {
         final activeScale = _controller.activeScale;
+        final selectedDate = _controller.selectedDate;
+        final snapshot = _controller.snapshot;
         final isToday = _isSameDay(selectedDate, DateTime.now());
 
-        final untimedItems = snapshot?.items.where((i) => !i.isTimed).toList() ?? [];
-        final timedItems = snapshot?.items.where((i) => i.isTimed).toList() ?? [];
+        final allItems = snapshot?.items ?? const <AgendaItem>[];
+        final untimedItems = allItems.where((i) => !i.isTimed).toList();
+        final timedItems = allItems.where((i) => i.isTimed).toList();
+
         final pillViewModel = NowPillViewModel.fromSnapshot(snapshot);
 
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Column(
+        final isScaleChanged = activeScale != _prevScale;
+        final isDateBackward = selectedDate.isBefore(_prevDate);
+        _prevScale = activeScale;
+        _prevDate = selectedDate;
+
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: Column(
               children: [
-                // Layer 1 Command Deck Header Surface
+                // Header Bar with Navigation Controls & Hero Titles
                 Container(
-                  color: isDark
-                      ? theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.85)
-                      : theme.colorScheme.surface.withValues(alpha: 0.95),
-                  padding: const EdgeInsets.only(
-                    left: CalendarTokens.spacingXl,
-                    right: CalendarTokens.spacingXl,
-                    top: CalendarTokens.spacingM,
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.paddingOf(context).top + CalendarTokens.spacingS,
+                    left: CalendarTokens.spacingL,
+                    right: CalendarTokens.spacingL,
                     bottom: CalendarTokens.spacingM,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // [1] Date Hero Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _getHeroDateTitle(selectedDate),
-                              style: TextStyle(
-                                fontSize: CalendarTokens.textHero,
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onSurface,
-                                fontFamily: 'Vazirmatn',
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (!isToday)
-                            Semantics(
-                              label: 'پرش به امروز',
-                              button: true,
-                              child: GestureDetector(
-                                onTap: () {
-                                  _controller.selectDate(DateTime.now());
-                                  _autoScrollToNow();
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primaryContainer,
-                                    borderRadius: BorderRadius.circular(CalendarTokens.radiusPill),
-                                  ),
-                                  child: Text(
-                                    'امروز',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.onPrimaryContainer,
-                                      fontFamily: 'Vazirmatn',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder),
                       ),
-                      const SizedBox(height: CalendarTokens.spacingS),
-
-                      // [2] Navigation & Context Action Row
+                    ),
+                  ),
+                  child: Column(
+                    children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              SizedBox(
-                                width: 38,
-                                height: 38,
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  icon: const Icon(Icons.chevron_right, size: 22),
-                                  onPressed: () => _controller.navigatePeriod(-1),
-                                  tooltip: 'دوره قبل',
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                                child: Text(
-                                  _getSubContextTitle(activeScale, selectedDate),
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.55),
+                          IconButton(
+                            icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+                            onPressed: () => _controller.navigatePeriod(-1),
+                            tooltip: 'روز قبل',
+                          ),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Text(
+                                  _getHeroDateTitle(selectedDate),
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: CalendarTokens.textHero - 10,
                                     fontFamily: 'Vazirmatn',
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
-                              ),
-                              SizedBox(
-                                width: 38,
-                                height: 38,
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  icon: const Icon(Icons.chevron_left, size: 22),
-                                  onPressed: () => _controller.navigatePeriod(1),
-                                  tooltip: 'دوره بعد',
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              if (snapshot != null)
-                                SizedBox(
-                                  width: 36,
-                                  height: 36,
-                                  child: IconButton(
-                                    padding: EdgeInsets.zero,
-                                    icon: const Icon(Icons.space_dashboard_outlined, size: 20),
-                                    tooltip: 'خلاصه روز',
-                                    onPressed: _openSmartPanel,
+                                Text(
+                                  _getJalaliSubTitle(selectedDate),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontSize: CalendarTokens.textMeta,
+                                    color: colorScheme.onSurfaceVariant,
+                                    fontFamily: 'Vazirmatn',
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
-                              SizedBox(
-                                width: 36,
-                                height: 36,
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  icon: const Icon(Icons.search_rounded, size: 20),
-                                  tooltip: 'جستجوی رویدادها',
-                                  onPressed: () async {
-                                    final selected = await showSearch<AgendaItem?>(
-                                      context: context,
-                                      delegate: CalendarSearchDelegate(items: snapshot?.items ?? []),
-                                    );
-                                    if (selected != null) {
-                                      _openItemDetails(selected);
-                                    }
-                                  },
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back_ios_rounded, size: 18),
+                            onPressed: () => _controller.navigatePeriod(1),
+                            tooltip: 'روز بعد',
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.search_rounded),
+                            onPressed: () {
+                              showSearch(
+                                context: context,
+                                delegate: CalendarSearchDelegate(
+                                  items: allItems,
+                                  onItemSelected: _openItemDetails,
                                 ),
-                              ),
-                              SizedBox(
-                                width: 36,
-                                height: 36,
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  icon: const Icon(Icons.refresh, size: 20),
-                                  tooltip: 'بازخوانی',
-                                  onPressed: _controller.refresh,
-                                ),
-                              ),
-                            ],
+                              );
+                            },
+                            tooltip: 'جستجو',
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.auto_awesome_rounded),
+                            onPressed: _openSmartPanel,
+                            tooltip: 'پنل هوشمند',
                           ),
                         ],
                       ),
                       const SizedBox(height: CalendarTokens.spacingM),
 
-                      // [3] Scale Switcher Segmented Control
+                      // Scale Switcher Segmented Control
                       JourneyScaleSwitcher(
                         activeScale: activeScale,
                         onScaleChanged: _controller.setScale,
@@ -439,12 +303,28 @@ class _JourneyScreenState extends State<JourneyScreen> {
                   ),
                 ),
 
-                // Content View with AnimatedSwitcher Transition
+                // Content View with PageTransitionSwitcher
                 Expanded(
-                  child: AnimatedSwitcher(
-                    duration: CalendarTokens.durationStandard,
-                    switchInCurve: CalendarTokens.curveDefault,
-                    switchOutCurve: CalendarTokens.curveDefault,
+                  child: PageTransitionSwitcher(
+                    duration: CalendarMotion.d(context, CalendarTokens.durationEmphasis),
+                    reverse: isDateBackward,
+                    transitionBuilder: (child, primaryAnimation, secondaryAnimation) {
+                      if (isScaleChanged) {
+                        return SharedAxisTransition(
+                          animation: primaryAnimation,
+                          secondaryAnimation: secondaryAnimation,
+                          transitionType: SharedAxisTransitionType.scaled,
+                          child: child,
+                        );
+                      } else {
+                        return SharedAxisTransition(
+                          animation: primaryAnimation,
+                          secondaryAnimation: secondaryAnimation,
+                          transitionType: SharedAxisTransitionType.horizontal,
+                          child: child,
+                        );
+                      }
+                    },
                     child: _controller.isLoading
                         ? const Center(key: ValueKey('journey_loading'), child: CircularProgressIndicator())
                         : _controller.errorMessage != null
@@ -501,48 +381,67 @@ class _JourneyScreenState extends State<JourneyScreen> {
                 children: [
                   Column(
                     children: [
-                      if (untimedItems.isNotEmpty)
-                        TimelineUntimedSection(
-                          untimedItems: untimedItems,
-                          onItemTap: _openItemDetails,
-                        ),
+                      TimelineUntimedSection(
+                        untimedItems: untimedItems,
+                        onItemTap: _openItemDetails,
+                        onUnscheduleItem: (item) async {
+                          await _controller.unscheduleItem(item);
+                          if (mounted) {
+                            RitmoToast.show(
+                              context,
+                              'رویداد از زمان‌بندی خارج شد',
+                              onUndo: () => _controller.undoLastAction(),
+                            );
+                          }
+                        },
+                      ),
                       Expanded(
-                        child: PrimaryScrollController(
-                          controller: _scrollController,
-                          child: SingleChildScrollView(
-                            controller: _scrollController,
-                            padding: EdgeInsets.only(
-                              bottom: MediaQuery.of(context).padding.bottom + kBottomNavigationBarHeight + 80,
-                            ),
-                            child: TimelineGrid(
-                              items: timedItems,
-                              isToday: isToday,
-                              pxPerMinute: CalendarTokens.pxPerMinute,
-                              highlightedItemId: _controller.highlightedItemId,
-                              onItemTap: _openItemDetails,
-                              onItemMove: (item, newTimeOfDay) async {
-                                await _controller.commitItemDrag(item, newTimeOfDay);
-                                if (mounted) {
-                                  RitmoToast.show(
-                                    context,
-                                    'زمان رویداد به ${toPersianDigits(newTimeOfDay)} تغییر یافت',
-                                    onUndo: () => _controller.undoLastAction(),
-                                  );
-                                }
-                              },
-                              onItemResize: (item, newDurationMinutes) async {
-                                await _controller.commitItemResize(item, newDurationMinutes);
-                                if (mounted) {
-                                  RitmoToast.show(
-                                    context,
-                                    'مدت زمان به ${toPersianDigits(newDurationMinutes.toString())} دقیقه تغییر یافت',
-                                    onUndo: () => _controller.undoLastAction(),
-                                  );
-                                }
-                              },
-                              onSlotTap: _handleSlotTap,
-                            ),
-                          ),
+                        child: TimelineSplitDayView(
+                          key: _splitDayKey,
+                          items: snapshot.items,
+                          isToday: isToday,
+                          sleepStartMinutes: snapshot.sleepWindow?.startMinutes,
+                          sleepEndMinutes: snapshot.sleepWindow?.endMinutes,
+                          highlightedItemId: _controller.highlightedItemId,
+                          onItemTap: _openItemDetails,
+                          onItemMove: (item, newStartMinutes) async {
+                            final dur = item.durationMinutes ?? 30;
+                            await _controller.scheduleItem(item, newStartMinutes, dur);
+                            if (mounted) {
+                              final timeStr = TimelineSnappingHelper.minutesToTimeString(newStartMinutes);
+                              RitmoToast.show(
+                                context,
+                                'زمان رویداد به ${toPersianDigits(timeStr)} تغییر یافت',
+                                onUndo: () => _controller.undoLastAction(),
+                              );
+                            }
+                          },
+                          onItemResize: (item, newDurationMinutes) async {
+                            await _controller.commitItemResize(item, newDurationMinutes);
+                            if (mounted) {
+                              RitmoToast.show(
+                                context,
+                                'مدت زمان به ${toPersianDigits(newDurationMinutes.toString())} دقیقه تغییر یافت',
+                                onUndo: () => _controller.undoLastAction(),
+                              );
+                            }
+                          },
+                          onSlotTap: (slotMinutes) {
+                            final timeStr = TimelineSnappingHelper.minutesToTimeString(slotMinutes);
+                            DomainSelectionSheet.show(context, slotMinutes, timeStr);
+                          },
+                          onScheduleUntimed: (item, startMinutes, durMinutes) async {
+                            await _controller.scheduleItem(item, startMinutes, durMinutes);
+                            if (mounted) {
+                              final timeStr = TimelineSnappingHelper.minutesToTimeString(startMinutes);
+                              RitmoToast.show(
+                                context,
+                                'رویداد در ساعت ${toPersianDigits(timeStr)} زمان‌بندی شد',
+                                onUndo: () => _controller.undoLastAction(),
+                              );
+                            }
+                          },
+                          onOverflowTap: _openItemDetails,
                         ),
                       ),
                     ],
@@ -570,19 +469,25 @@ class _JourneyScreenState extends State<JourneyScreen> {
         return JourneyWeekView(
           selectedDate: selectedDate,
           rangeSnapshots: _controller.rangeSnapshots,
-          onSelectDate: (date) => _controller.selectDate(date, scaleToSet: JourneyScale.day),
+          onSelectDate: (date) {
+            _controller.selectDate(date, scaleToSet: JourneyScale.day);
+          },
         );
       case JourneyScale.month:
         return JourneyMonthView(
           selectedDate: selectedDate,
           rangeSnapshots: _controller.rangeSnapshots,
-          onSelectDate: (date) => _controller.selectDate(date, scaleToSet: JourneyScale.day),
+          onSelectDate: (date) {
+            _controller.selectDate(date, scaleToSet: JourneyScale.day);
+          },
         );
       case JourneyScale.year:
         return JourneyYearView(
           selectedDate: selectedDate,
           rangeSnapshots: _controller.rangeSnapshots,
-          onSelectMonth: (date) => _controller.selectDate(date, scaleToSet: JourneyScale.month),
+          onSelectMonth: (date) {
+            _controller.selectDate(date, scaleToSet: JourneyScale.month);
+          },
         );
     }
   }

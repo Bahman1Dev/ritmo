@@ -733,7 +733,7 @@ void main() {
         }
       ];
 
-      const command = SnoozeReminderCommand(reminderId: reminderId, snoozeMinutes: 15);
+      const command = SnoozeReminderCommand(reminderId: reminderId, dateStr: '2026-07-25', snoozeMinutes: 15);
 
       final firedEvents = <RitmoEvent>[];
       final subscription = RitmoEventBus().onEvents.listen(firedEvents.add);

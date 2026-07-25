@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ritmo/core/analytics/movement_load_calculator.dart';
-import 'package:ritmo/features/sports/movement/domain/movement_kind.dart';
+import 'package:ritmo/features/supplementary_sports/movement/domain/movement_kind.dart';
 
 void main() {
   group('MovementLoadCalculator Unit Tests', () {
@@ -37,7 +37,6 @@ void main() {
 
     test('calories calculates kcal correctly with fallback weight', () {
       final kcal = MovementLoadCalculator.calories(met: 7.0, weightKg: 70.0, durationMinutes: 60);
-      // (7.0 * 3.5 * 70 / 200) * 60 = 8.575 * 60 = 514.5
       expect(kcal, closeTo(514.5, 0.1));
     });
   });

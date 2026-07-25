@@ -7,7 +7,7 @@ import 'package:ritmo/features/calendar/presentation/logic/timeline_layout_engin
 void main() {
   group('TimelineLayoutEngine Max Height & Truncation Tests', () {
     test('Items longer than 240 mins get truncated visual height (maxRenderMinutes)', () {
-      final engine = const TimelineLayoutEngine(pxPerMinute: 1.2);
+      const engine = TimelineLayoutEngine(pxPerMinute: 1.2);
       final item = AgendaItem(
         id: 'routine:long_sleep',
         domain: AgendaDomain.routine,
@@ -17,6 +17,7 @@ void main() {
         timeOfDay: '00:00',
         durationMinutes: 480, // 8 hours real duration
         category: Category.personal,
+        deepLink: const AgendaDeepLink(domain: AgendaDomain.routine, targetId: 'long_sleep'),
       );
 
       final layout = engine.calculateLayout([item]);

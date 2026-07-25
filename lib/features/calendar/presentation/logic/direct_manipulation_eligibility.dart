@@ -44,6 +44,23 @@ class DirectManipulationEligibility {
         return false;
     }
   }
+
+  /// آیا این آیتمِ بدون زمان را می‌توان روی تایم‌لاین نشاند؟
+  static bool isSchedulable(AgendaItem item) {
+    if (item.isTimed) return false;
+    switch (item.domain) {
+      case AgendaDomain.cycle:
+      case AgendaDomain.worshipDebt:
+      case AgendaDomain.prayer:
+        return false; // زمان نماز از پنجرهٔ شرعی می‌آید، دستی تعیین نمی‌شود
+      default:
+        return true;
+    }
+  }
+
+  /// آیا این آیتمِ زمان‌دار را می‌توان از زمان‌بندی خارج کرد؟
+  static bool isUnschedulable(AgendaItem item) =>
+      item.isTimed && isDraggable(item) && !item.isFixed;
 }
 
 /// Helper utilities for snapping minutes and duration calculations.

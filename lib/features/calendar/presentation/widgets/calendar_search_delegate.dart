@@ -4,9 +4,13 @@ import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 
 class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
-  CalendarSearchDelegate({required this.items});
+  CalendarSearchDelegate({
+    required this.items,
+    this.onItemSelected,
+  });
 
   final List<AgendaItem> items;
+  final ValueChanged<AgendaItem>? onItemSelected;
 
   @override
   String get searchFieldLabel => 'جستجوی رویدادها...';
@@ -28,44 +32,41 @@ class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
   Widget? buildLeading(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.arrow_back_rounded),
-      onPressed: () => close(context, null),
+      onPressed: () {
+        close(context, null);
+      },
     );
   }
 
   @override
   Widget buildResults(BuildContext context) {
-    return _buildSearchResults(context);
+    return _buildList(context);
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    return _buildSearchResults(context);
+    return _buildList(context);
   }
 
-  Widget _buildSearchResults(BuildContext context) {
+  Widget _buildList(BuildContext context) {
     final theme = Theme.of(context);
-    final cleanQuery = query.trim().toLowerCase();
-    final results = items.where((item) {
-      final titleMatch = item.title.toLowerCase().contains(cleanQuery);
-      final subtitleMatch = item.subtitle?.toLowerCase().contains(cleanQuery) ?? false;
-      return titleMatch || subtitleMatch;
-    }).toList();
+    final results = query.trim().isEmpty
+        ? items
+        : items.where((i) => i.title.contains(query) || (i.subtitle?.contains(query) ?? false)).toList();
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: results.isEmpty
-          ? Center(
+          ? const Center(
               child: Text(
-                'هیچ رویدادی یافت نشد.',
-                style: TextStyle(
-                  color: theme.hintColor,
-                  fontSize: CalendarTokens.textBody,
-                  fontFamily: 'Vazirmatn',
-                ),
+                'رویدادی یافت نشد',
+                style: TextStyle(fontFamily: 'Vazirmatn'),
               ),
             )
-          : ListView.builder(
+          : ListView.separated(
+              padding: const EdgeInsets.all(CalendarTokens.spacingM),
               itemCount: results.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final item = results[index];
                 final timeStr = item.timeOfDay != null ? toPersianDigits(item.timeOfDay!) : 'تمام‌روز';
@@ -87,7 +88,10 @@ class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
                     '$timeStr ${item.subtitle != null && item.subtitle!.isNotEmpty ? "• ${item.subtitle}" : ""}',
                     style: const TextStyle(fontFamily: 'Vazirmatn'),
                   ),
-                  onTap: () => close(context, item),
+                  onTap: () {
+                    close(context, item);
+                    onItemSelected?.call(item);
+                  },
                 );
               },
             ),

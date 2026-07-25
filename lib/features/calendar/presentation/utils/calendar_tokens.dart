@@ -37,6 +37,24 @@ class CalendarTokens {
   static const double accentBarWidth = 3.0;
   static const double nowLineThickness = 2.0;
 
+  // ─── Split Day Layout ───
+  /// مرز تقسیم روز به دو ستون (بر حسب دقیقه از نیمه‌شب). ۷۲۰ = ساعت ۱۲:۰۰
+  static const int splitBoundaryMinutes = 720;
+  /// ارتفاع هر دقیقه در نمای دو ستونی.
+  static const double pxPerMinuteSplit = 1.0;
+  /// عرض محور ساعت در نمای دو ستونی.
+  static const double hourAxisWidthSplit = 36.0;
+  /// فاصلهٔ بین دو ستون.
+  static const double columnGap = 10.0;
+  /// حداکثر تعداد لِین هم‌پوشان در هر ستون.
+  static const int maxLanesSplit = 2;
+  /// حداقل عرض صفحه برای نمای دو ستونی؛ کمتر از این، تک‌ستونی fallback.
+  static const double splitMinScreenWidth = 340.0;
+  /// ارتفاع هدر هر ستون.
+  static const double columnHeaderHeight = 62.0;
+  static const double textTitleSplit = 13.0;
+  static const double textMetaSplit = 10.0;
+
   // Motion Parameters
   static const Duration durationMicro = Duration(milliseconds: 150);
   static const Duration durationStandard = Duration(milliseconds: 220);

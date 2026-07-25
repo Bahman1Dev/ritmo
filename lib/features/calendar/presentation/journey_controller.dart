@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/domain/agenda/agenda_action_handler.dart';
+import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/ux/ritmo_haptics.dart';
+import 'package:ritmo/features/calendar/presentation/journey_screen.dart';
+import 'package:ritmo/features/calendar/presentation/logic/direct_manipulation_eligibility.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_snapshot_builder.dart';
@@ -380,6 +384,63 @@ class JourneyController extends ChangeNotifier {
     }
   }
 
+  Future<void> scheduleItem(AgendaItem item, int startMinutes, int durationMinutes) async {
+    if (_isDisposed || _isExecutingAction) return;
+    _isExecutingAction = true;
+    notifyListeners();
+
+    final newTimeStr = TimelineSnappingHelper.minutesToTimeString(startMinutes);
+    try {
+      final command = _ScheduleItemCommand(
+        actionHandler: _actionHandler,
+        item: item,
+        newTimeOfDay: newTimeStr,
+        newDurationMinutes: durationMinutes,
+        onRefresh: refresh,
+      );
+      await command.execute();
+      CommandStack.instance.push(command);
+      RitmoHaptics.success();
+    } catch (e, stackTrace) {
+      if (_isDisposed) return;
+      _errorMessage = 'Failed to schedule task: $e';
+      debugPrint('scheduleItem error: $e\n$stackTrace');
+    } finally {
+      if (!_isDisposed) {
+        _isExecutingAction = false;
+        cancelManipulation();
+      }
+    }
+  }
+
+  Future<void> unscheduleItem(AgendaItem item) async {
+    if (_isDisposed || _isExecutingAction) return;
+    _isExecutingAction = true;
+    notifyListeners();
+
+    try {
+      final command = _UnscheduleItemCommand(
+        actionHandler: _actionHandler,
+        item: item,
+        oldTimeOfDay: item.timeOfDay,
+        oldDurationMinutes: item.durationMinutes,
+        onRefresh: refresh,
+      );
+      await command.execute();
+      CommandStack.instance.push(command);
+      RitmoHaptics.success();
+    } catch (e, stackTrace) {
+      if (_isDisposed) return;
+      _errorMessage = 'Failed to unschedule task: $e';
+      debugPrint('unscheduleItem error: $e\n$stackTrace');
+    } finally {
+      if (!_isDisposed) {
+        _isExecutingAction = false;
+        cancelManipulation();
+      }
+    }
+  }
+
   void startItemResize(AgendaItem item) {
     if (_isDisposed) return;
     _manipulatingItemId = item.id;
@@ -472,5 +533,77 @@ class _ResizeItemCommand implements UndoableCommand {
       newDurationMinutes: oldDuration,
     );
     await onRefresh();
+  }
+}
+
+class _ScheduleItemCommand implements UndoableCommand {
+  _ScheduleItemCommand({
+    required this.actionHandler,
+    required this.item,
+    required this.newTimeOfDay,
+    required this.newDurationMinutes,
+    required this.onRefresh,
+  });
+
+  final AgendaActionHandler actionHandler;
+  final AgendaItem item;
+  final String newTimeOfDay;
+  final int newDurationMinutes;
+  final Future<void> Function() onRefresh;
+
+  @override
+  String get description => 'زمان‌بندی رویداد';
+
+  @override
+  Future<void> execute() async {
+    await actionHandler.updateAgendaItemTimeAndDuration(
+      item: item,
+      newTimeOfDay: newTimeOfDay,
+      newDurationMinutes: newDurationMinutes,
+    );
+    await onRefresh();
+  }
+
+  @override
+  Future<void> undo() async {
+    await actionHandler.clearAgendaItemTime(item: item);
+    await onRefresh();
+  }
+}
+
+class _UnscheduleItemCommand implements UndoableCommand {
+  _UnscheduleItemCommand({
+    required this.actionHandler,
+    required this.item,
+    required this.oldTimeOfDay,
+    required this.oldDurationMinutes,
+    required this.onRefresh,
+  });
+
+  final AgendaActionHandler actionHandler;
+  final AgendaItem item;
+  final String? oldTimeOfDay;
+  final int? oldDurationMinutes;
+  final Future<void> Function() onRefresh;
+
+  @override
+  String get description => 'لغو زمان‌بندی رویداد';
+
+  @override
+  Future<void> execute() async {
+    await actionHandler.clearAgendaItemTime(item: item);
+    await onRefresh();
+  }
+
+  @override
+  Future<void> undo() async {
+    if (oldTimeOfDay != null) {
+      await actionHandler.updateAgendaItemTimeAndDuration(
+        item: item,
+        newTimeOfDay: oldTimeOfDay,
+        newDurationMinutes: oldDurationMinutes,
+      );
+      await onRefresh();
+    }
   }
 }

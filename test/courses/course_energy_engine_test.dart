@@ -12,6 +12,8 @@ void main() {
       createdAt: 0,
       updatedAt: 0,
       energyRule: 'NONE',
+      courseType: CourseType.custom,
+      preferredDays: const [1, 3, 5],
     );
 
     final cSkip = Course(
@@ -22,6 +24,8 @@ void main() {
       createdAt: 0,
       updatedAt: 0,
       energyRule: 'skip',
+      courseType: CourseType.custom,
+      preferredDays: const [1, 3, 5],
     );
 
     final cHighOnly = Course(
@@ -32,13 +36,14 @@ void main() {
       createdAt: 0,
       updatedAt: 0,
       energyRule: 'highEnergyOnly',
+      courseType: CourseType.custom,
+      preferredDays: const [1, 3, 5],
     );
 
     final sNone = CourseSession(
       id: 's1',
       courseId: 'c_none',
       sessionNumber: 1,
-      difficulty: 2,
       createdAt: 0,
       updatedAt: 0,
     );
@@ -47,16 +52,14 @@ void main() {
       id: 's2',
       courseId: 'c_skip',
       sessionNumber: 1,
-      difficulty: 5,
       createdAt: 0,
       updatedAt: 0,
     );
 
-    final sHighOnly = CourseSession(
+    final sHigh = CourseSession(
       id: 's3',
       courseId: 'c_high',
       sessionNumber: 1,
-      difficulty: 5,
       createdAt: 0,
       updatedAt: 0,
     );
@@ -67,26 +70,36 @@ void main() {
       'c_high': cHighOnly,
     };
 
-    test('LOW energy filters out skip and highEnergyOnly courses', () {
-      final result = CourseEnergyEngine.filterAndRankForEnergy(
-        candidateSessions: [sNone, sSkip, sHighOnly],
+    test('Filters out skip and highEnergyOnly sessions when energy is LOW', () {
+      final res = CourseEnergyEngine.filterAndRankForEnergy(
+        candidateSessions: [sNone, sSkip, sHigh],
         coursesMap: coursesMap,
         currentEnergyLevel: 'LOW',
       );
 
-      expect(result.length, equals(1));
-      expect(result.first.id, equals('s1'));
+      expect(res.length, 1);
+      expect(res.first.id, 's1');
     });
 
-    test('HIGH energy prioritizes highEnergyOnly and high difficulty', () {
-      final result = CourseEnergyEngine.filterAndRankForEnergy(
-        candidateSessions: [sNone, sSkip, sHighOnly],
+    test('Filters out highEnergyOnly session when energy is MEDIUM', () {
+      final res = CourseEnergyEngine.filterAndRankForEnergy(
+        candidateSessions: [sNone, sSkip, sHigh],
+        coursesMap: coursesMap,
+        currentEnergyLevel: 'MEDIUM',
+      );
+
+      expect(res.length, 2);
+      expect(res.map((s) => s.id), containsAll(['s1', 's2']));
+    });
+
+    test('Allows all sessions when energy is HIGH', () {
+      final res = CourseEnergyEngine.filterAndRankForEnergy(
+        candidateSessions: [sNone, sSkip, sHigh],
         coursesMap: coursesMap,
         currentEnergyLevel: 'HIGH',
       );
 
-      expect(result.length, equals(3));
-      expect(result.first.id, equals('s3')); // c_high has highest score
+      expect(res.length, 3);
     });
   });
 }

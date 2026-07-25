@@ -54,7 +54,7 @@ void main() {
           courseId: 'c1',
           sessionNumber: 1,
           plannedDate: '2026-06-20',
-          completionStatus: 'COMPLETED',
+          completionStatus: SessionStatus.completed,
           createdAt: 0,
           updatedAt: 0,
         ),
