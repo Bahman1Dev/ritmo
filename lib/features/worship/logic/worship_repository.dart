@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/services/prayer_time_provider.dart';
 
 /// Central repository for the Worship domain.
@@ -9,7 +10,13 @@ import 'package:ritmo/core/services/prayer_time_provider.dart';
 /// read from this repository rather than querying `iran_cities` or computing
 /// prayer times independently.
 class WorshipRepository {
-  WorshipRepository._();
+  WorshipRepository._() {
+    RitmoEventBus().onEvents.listen((event) {
+      if (event.type == 'WorshipPracticeChanged' || event.type == 'WorshipUpdated') {
+        invalidateCache();
+      }
+    });
+  }
   static final WorshipRepository instance = WorshipRepository._();
 
   final Map<String, Map<String, String>> _prayerTimesCache = {};
@@ -54,7 +61,7 @@ class WorshipRepository {
     }
   }
 
-  /// Fetch active prayer and mustahab practices.
+  /// Fetch active prayer and mustahab practices based solely on isActive = 1.
   Future<({List<Map<String, dynamic>> prayers, List<Map<String, dynamic>> mustahab})> getActivePractices() async {
     if (_cachedPrayerPractices != null && _cachedMustahabPractices != null) {
       return (prayers: _cachedPrayerPractices!, mustahab: _cachedMustahabPractices!);
@@ -74,9 +81,7 @@ class WorshipRepository {
       if (type == 'PRAYER') {
         prayers.add(Map<String, dynamic>.from(p));
       } else if (type == 'MUSTAHAB' || type == 'QURAN' || type == 'DHIKR') {
-        if (p['reminderEnabled'] == 1) {
-          mustahab.add(Map<String, dynamic>.from(p));
-        }
+        mustahab.add(Map<String, dynamic>.from(p));
       }
     }
 

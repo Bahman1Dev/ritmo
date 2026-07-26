@@ -90,15 +90,46 @@ final class KonkurSessionCompletion extends CompletionRequest {
 }
 
 final class WorshipCompletion extends CompletionRequest {
-  const WorshipCompletion({
-    required this.worshipId,
+  WorshipCompletion({
+    required String practiceId,
     required this.dateStr,
-    this.count = 1,
+    this.practiceType = 'PRAYER',
+    this.countDone = 1,
+    this.countTarget,
+    String? worshipId,
+  }) : practiceId = practiceId.isNotEmpty ? practiceId : (worshipId ?? '');
+
+  final String practiceId;
+  final String dateStr;
+  final String practiceType;
+  final int countDone;
+  final int? countTarget;
+
+  String get worshipId => practiceId;
+}
+
+final class WorshipSkip extends CompletionRequest {
+  const WorshipSkip({
+    required this.practiceId,
+    required this.dateStr,
+    this.practiceType = 'PRAYER',
+    this.reason,
   });
 
-  final String worshipId;
+  final String practiceId;
   final String dateStr;
-  final int count;
+  final String practiceType;
+  final String? reason;
+}
+
+final class WorshipDebtProgress extends CompletionRequest {
+  const WorshipDebtProgress({
+    required this.debtId,
+    this.delta = 1,
+  });
+
+  final String debtId;
+  final int delta;
 }
 
 final class GoalStepCompletion extends CompletionRequest {

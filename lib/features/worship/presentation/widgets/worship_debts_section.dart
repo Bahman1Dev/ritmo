@@ -2,6 +2,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/agenda/action_feedback.dart';
+import 'package:ritmo/core/domain/completion/completion_gateway.dart';
+import 'package:ritmo/core/domain/completion/completion_request.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/cycle_consent_bridge.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
@@ -62,34 +65,40 @@ class _WorshipDebtsSectionState extends State<WorshipDebtsSection> {
       }
 
       // 2. Check if we should show the undone prayer prompt
-      // We only show it if the user is NOT menstruating, has undone prayers today,
-      // and hasn't acted on this prompt today.
       var showPrompt = false;
       final undone = <String>[];
 
-      final isMenstruating = await CycleConsentBridge.isWorshipSuspended();
-      if (!isMenstruating) {
-        // Check if prompt already acted upon today
-        final promptSettings = await db.query(
-          'app_settings',
-          where: "key = 'worship_debt_prompt_date'",
-          limit: 1,
-        );
-        final lastPromptDate = promptSettings.isNotEmpty ? promptSettings.first['value']! as String : '';
+      final promptSettings = await db.query(
+        'app_settings',
+        where: "key = 'worship_debt_prompt_date'",
+        limit: 1,
+      );
+      final lastPromptDate = promptSettings.isNotEmpty ? promptSettings.first['value']! as String : '';
 
-        if (lastPromptDate != todayStr) {
-          // Check for daily prayers or mustahab practices with allowQada = 1 that are active but not completed
-          final dailyPrayers = await db.query(
-            'worship_practices',
-            where: "(practiceType = 'PRAYER' OR (practiceType = 'MUSTAHAB' AND allowQada = 1)) AND isActive = 1 AND dailyDone = 0",
-          );
+      if (lastPromptDate != todayStr) {
+        final isMenstruating = await CycleConsentBridge.isWorshipSuspended();
 
-          if (dailyPrayers.isNotEmpty) {
-            for (final p in dailyPrayers) {
-              undone.add(p['title']! as String);
-            }
-            showPrompt = true;
-          }
+        final uncompleted = await db.rawQuery('''
+          SELECT p.id, p.title, p.practiceType
+          FROM worship_practices p
+          WHERE p.isActive = 1
+          AND (p.practiceType = 'PRAYER' OR (p.practiceType = 'MUSTAHAB' AND p.allowQada = 1) OR p.practiceType = 'FASTING')
+          AND NOT EXISTS (
+            SELECT 1 FROM worship_completions c
+            WHERE c.practiceId = p.id AND c.dateStr = ?
+            AND c.resultType IN ('DONE','PARTIAL','QADA_ADDED')
+          )
+        ''', [todayStr]);
+
+        for (final p in uncompleted) {
+          final pType = p['practiceType'] as String;
+          // Menstrual guard (W9): exempt mandatory prayers during menses, but suggest fasts
+          if (isMenstruating && pType == 'PRAYER') continue;
+          undone.add(p['title']! as String);
+        }
+
+        if (undone.isNotEmpty) {
+          showPrompt = true;
         }
       }
 
@@ -117,46 +126,41 @@ class _WorshipDebtsSectionState extends State<WorshipDebtsSection> {
     if (debt.remainingCount <= 0) return;
 
     try {
-      final db = await DatabaseHelper.instance.database;
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
-      final newRemaining = debt.remainingCount - 1;
-      final isNowArchived = newRemaining == 0;
-
-      await db.update(
-        'worship_debts',
-        {
-          'remainingCount': newRemaining,
-          'isArchived': isNowArchived ? 1 : 0,
-          'updatedAt': nowMs,
-        },
-        where: 'id = ?',
-        whereArgs: [debt.id],
+      final outcome = await CompletionGateway.instance.submit(
+        WorshipDebtProgress(debtId: debt.id, delta: 1),
       );
 
-      // Handle cycle fasting debt synchronization
-      if (debt.id.startsWith('debt_cycle_fast_')) {
-        final cycleDebtId = debt.id.replaceFirst('debt_cycle_fast_', '');
-        await db.update(
-          'fasting_debt',
-          {
-            'isResolved': isNowArchived ? 1 : 0,
-            'updatedAt': nowMs,
-          },
-          where: 'id = ?',
-          whereArgs: [cycleDebtId],
-        );
-      }
+      if (outcome.didWrite) {
+        final db = await DatabaseHelper.instance.database;
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        final isNowArchived = debt.remainingCount <= 1;
 
-      await _loadDebtsAndCheckPrompt();
-      widget.onChanged();
+        if (debt.id.startsWith('debt_cycle_fast_')) {
+          final cycleDebtId = debt.id.replaceFirst('debt_cycle_fast_', '');
+          await db.update(
+            'fasting_debt',
+            {
+              'isResolved': isNowArchived ? 1 : 0,
+              'updatedAt': nowMs,
+            },
+            where: 'id = ?',
+            whereArgs: [cycleDebtId],
+          );
+        }
 
-      if (isNowArchived && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('تبریک! بدهی عبادی "${debt.title}" را با موفقیت تمام کردید. 🎉', style: const TextStyle(fontFamily: 'Vazirmatn')),
-            backgroundColor: const Color(0xffD4A843),
-          ),
-        );
+        await _loadDebtsAndCheckPrompt();
+        widget.onChanged();
+
+        if (mounted) {
+          ActionFeedback.success(
+            context,
+            message: isNowArchived
+                ? 'تبریک! بدهی عبادی "${debt.title}" را کامل کردید 🎉'
+                : 'یک واحد از بدهی "${debt.title}" کسر شد',
+            dateStr: DateTime.now().toIso8601String().split('T').first,
+            undoToken: outcome.undoToken,
+          );
+        }
       }
     } catch (e) {
       debugPrint('Error logging debt completion: $e');

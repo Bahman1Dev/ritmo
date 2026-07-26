@@ -895,6 +895,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
           'worship_debts',
           {
             'id': worshipDebtId,
+            'sourceKind': 'CYCLE_FAST',
             'debtType': 'FAST',
             'title': 'روزه قضا (عذر شرعی)',
             'totalCount': overlapDays,
@@ -955,6 +956,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
           'worship_debts',
           {
             'id': worshipDebtId,
+            'sourceKind': 'CYCLE_FAST',
             'debtType': 'FAST',
             'title': 'روزه قضا (عذر شرعی)',
             'totalCount': daysOwed,

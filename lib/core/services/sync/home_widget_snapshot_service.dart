@@ -12,6 +12,8 @@ import 'package:ritmo/core/services/sync/models/today_snapshot_state.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/utils/snapshot_helper.dart';
 import 'package:ritmo/features/sleep/models/sleep_models.dart';
+import 'package:ritmo/features/worship/logic/prayer_timeline.dart';
+import 'package:ritmo/features/worship/models/worship_models.dart' hide toPersianDigits;
 import 'package:sqflite/sqflite.dart';
 
 const Map<String, String> kWidgetModuleEmoji = {
@@ -221,40 +223,17 @@ class HomeWidgetSnapshotService {
   }
 
   String? _nextPrayerText(Map<String, String> prayerTimes, DateTime now) {
-    int? toMin(String? t) {
-      if (t == null || !t.contains(':')) return null;
-      final p = t.split(':');
-      final h = int.tryParse(p[0]);
-      final m = int.tryParse(p[1]);
-      if (h == null || m == null) return null;
-      return h * 60 + m;
-    }
-
-    final cur = now.hour * 60 + now.minute;
-    final fajr = toMin(prayerTimes['fajr']);
-    final dhuhr = toMin(prayerTimes['dhuhr']);
-    final maghrib = toMin(prayerTimes['maghrib']);
-    final isha = toMin(prayerTimes['isha']);
-
-    String? name;
-    String? time;
-    if (fajr != null && cur < fajr) {
-      name = 'اذان صبح';
-      time = prayerTimes['fajr'];
-    } else if (dhuhr != null && cur < dhuhr) {
-      name = 'اذان ظهر';
-      time = prayerTimes['dhuhr'];
-    } else if (maghrib != null && cur < maghrib) {
-      name = 'اذان مغرب';
-      time = prayerTimes['maghrib'];
-    } else if (isha != null && cur < isha) {
-      name = 'نماز عشا';
-      time = prayerTimes['isha'];
-    } else if (fajr != null) {
-      name = 'اذان صبح فردا';
-      time = prayerTimes['fajr'];
-    }
-    if (name != null && time != null) return '$name: ${toPersianDigits(time)}';
+    try {
+      final pTime = PrayerTime.fromMap(prayerTimes);
+      final slot = PrayerTimeline.next(pTime, now, includeAsrIsha: true);
+      if (slot != null) {
+        final hh = slot.at.hour.toString().padLeft(2, '0');
+        final mm = slot.at.minute.toString().padLeft(2, '0');
+        final isTomorrow = slot.at.day != now.day;
+        final prefix = isTomorrow ? 'فردا ' : '';
+        return '${slot.titleFa}: ${toPersianDigits("$prefix$hh:$mm")}';
+      }
+    } catch (_) {}
     return null;
   }
 }

@@ -10,6 +10,8 @@ import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:ritmo/features/supplementary_sports/movement/data/movement_repository.dart';
 import 'package:ritmo/features/supplementary_sports/movement/domain/movement_event.dart';
 import 'package:ritmo/features/supplementary_sports/movement/domain/movement_kind.dart';
+import 'package:ritmo/features/worship/logic/worship_completion_repository.dart';
+import 'package:ritmo/features/worship/logic/worship_repository.dart';
 
 /// Single gateway entry point for all completion and state-change requests across Ritmo.
 class CompletionGateway {
@@ -27,6 +29,8 @@ class CompletionGateway {
         final CourseSessionCompletion req   => _handleCourseCompletion(req),
         final KonkurSessionCompletion req   => _handleKonkurCompletion(req),
         final WorshipCompletion req         => _handleWorshipCompletion(req),
+        final WorshipSkip req               => _handleWorshipSkip(req),
+        final WorshipDebtProgress req       => _handleWorshipDebtProgress(req),
         final GoalStepCompletion req       => _handleGoalStepCompletion(req),
         final MedicationTake req           => _handleMedicationTake(req),
         final MovementCompletion req       => _handleMovementCompletion(req),
@@ -72,9 +76,9 @@ class CompletionGateway {
 
       await txn.rawUpdate('''
         UPDATE routine_occurrences 
-        SET status = 'done', updatedAt = ?
-        WHERE routineId = ? AND date = ?
-      ''', [nowMs, req.routineId, req.dateStr]);
+        SET status = 'done'
+        WHERE routine_id = ? AND date = ?
+      ''', [req.routineId, req.dateStr]);
 
       await ProgressionEngine().onCompletion(txn, req.routineId, req.result);
     });
@@ -114,9 +118,9 @@ class CompletionGateway {
 
       await txn.rawUpdate('''
         UPDATE routine_occurrences 
-        SET status = 'skipped', updatedAt = ?
-        WHERE routineId = ? AND date = ?
-      ''', [nowMs, req.routineId, req.dateStr]);
+        SET status = 'skipped'
+        WHERE routine_id = ? AND date = ?
+      ''', [req.routineId, req.dateStr]);
     });
 
     _notifySuccess(domain: 'routine', itemId: req.routineId, dateStr: req.dateStr, result: 'SKIPPED');
@@ -131,7 +135,7 @@ class CompletionGateway {
     // Check if target date occurrence already exists
     final existingTomorrow = await db.query(
       'routine_occurrences',
-      where: 'routineId = ? AND date = ?',
+      where: 'routine_id = ? AND date = ?',
       whereArgs: [req.routineId, req.toDateStr],
     );
 
@@ -139,9 +143,9 @@ class CompletionGateway {
       await db.transaction((txn) async {
         await txn.rawUpdate('''
           UPDATE routine_occurrences 
-          SET status = 'rescheduled', updatedAt = ?
-          WHERE routineId = ? AND date = ?
-        ''', [nowMs, req.routineId, req.fromDateStr]);
+          SET status = 'rescheduled'
+          WHERE routine_id = ? AND date = ?
+        ''', [req.routineId, req.fromDateStr]);
 
         await txn.insert('routine_completions', {
           'id': undoId,
@@ -179,7 +183,7 @@ class CompletionGateway {
     String? scheduledTime;
     final todayRows = await db.query(
       'routine_occurrences',
-      where: 'routineId = ? AND date = ?',
+      where: 'routine_id = ? AND date = ?',
       whereArgs: [req.routineId, req.fromDateStr],
     );
     if (todayRows.isNotEmpty) {
@@ -189,19 +193,15 @@ class CompletionGateway {
     await db.transaction((txn) async {
       await txn.rawUpdate('''
         UPDATE routine_occurrences 
-        SET status = 'rescheduled', updatedAt = ?
-        WHERE routineId = ? AND date = ?
-      ''', [nowMs, req.routineId, req.fromDateStr]);
+        SET status = 'rescheduled'
+        WHERE routine_id = ? AND date = ?
+      ''', [req.routineId, req.fromDateStr]);
 
-      final occId = RitmoIdFactory.routine();
       await txn.insert('routine_occurrences', {
-        'id': occId,
-        'routineId': req.routineId,
+        'routine_id': req.routineId,
         'date': req.toDateStr,
         'status': 'pending',
         'scheduled_time': scheduledTime ?? '08:00',
-        'createdAt': nowMs,
-        'updatedAt': nowMs,
       });
 
       try {
@@ -291,20 +291,67 @@ class CompletionGateway {
   }
 
   Future<CompletionOutcome> _handleWorshipCompletion(WorshipCompletion req) async {
+    final recordId = await WorshipCompletionRepository.instance.logDone(
+      practiceId: req.practiceId,
+      dateStr: req.dateStr,
+      practiceType: req.practiceType,
+      countDone: req.countDone,
+      countTarget: req.countTarget,
+    );
+
+    _notifySuccess(domain: 'worship', itemId: req.practiceId, dateStr: req.dateStr, result: 'FULL');
+    return CompletionOutcome.success(undoToken: 'worship:$recordId');
+  }
+
+  Future<CompletionOutcome> _handleWorshipSkip(WorshipSkip req) async {
+    final recordId = await WorshipCompletionRepository.instance.logSkip(
+      practiceId: req.practiceId,
+      dateStr: req.dateStr,
+      practiceType: req.practiceType,
+      reason: req.reason,
+    );
+
+    _notifySuccess(domain: 'worship', itemId: req.practiceId, dateStr: req.dateStr, result: 'SKIPPED');
+    return CompletionOutcome.success(undoToken: 'worship:$recordId');
+  }
+
+  Future<CompletionOutcome> _handleWorshipDebtProgress(WorshipDebtProgress req) async {
     final db = await DatabaseHelper.instance.database;
     final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final logId = RitmoIdFactory.worshipLog();
 
-    await db.insert('worship_logs', {
-      'id': logId,
-      'worshipId': req.worshipId,
-      'date': req.dateStr,
-      'count': req.count,
-      'createdAt': nowMs,
-    });
+    final rows = await db.query(
+      'worship_debts',
+      where: 'id = ? AND isArchived = 0',
+      whereArgs: [req.debtId],
+    );
 
-    _notifySuccess(domain: 'worship', itemId: req.worshipId, dateStr: req.dateStr, result: 'FULL');
-    return CompletionOutcome.success(undoToken: 'worship:$logId');
+    if (rows.isEmpty) {
+      return CompletionOutcome.failure('این بدهی عبادی یافت نشد یا قبلاً بایگانی شده است');
+    }
+
+    final row = rows.first;
+    final currentRemaining = row['remainingCount'] as int? ?? 0;
+    final newRemaining = (currentRemaining - req.delta).clamp(0, 999999);
+    final isArchived = newRemaining <= 0 ? 1 : 0;
+
+    await db.update(
+      'worship_debts',
+      {
+        'remainingCount': newRemaining,
+        'isArchived': isArchived,
+        'updatedAt': nowMs,
+      },
+      where: 'id = ?',
+      whereArgs: [req.debtId],
+    );
+
+    final todayStr = DateTime.now().toIso8601String().split('T').first;
+    DayAgendaService.instance.invalidateDate(todayStr);
+    WorshipRepository.instance.invalidateCache();
+    RitmoEventBus().fire(RitmoEvent(type: 'WorshipUpdated', timestamp: DateTime.now(), payload: {'date': todayStr, 'debtId': req.debtId}));
+
+    _notifySuccess(domain: 'worshipDebt', itemId: req.debtId, dateStr: todayStr, result: 'FULL');
+    return CompletionOutcome.success(undoToken: 'worshipDebt:${req.debtId}|${req.delta}');
   }
 
   Future<CompletionOutcome> _handleGoalStepCompletion(GoalStepCompletion req) async {
@@ -361,9 +408,9 @@ class CompletionGateway {
             await txn.delete('skip_reasons', where: 'itemId = ? AND dateStr = ?', whereArgs: [rId, dateStr]);
             await txn.rawUpdate('''
               UPDATE routine_occurrences 
-              SET status = 'pending', updatedAt = ?
-              WHERE routineId = ? AND date = ?
-            ''', [DateTime.now().millisecondsSinceEpoch, rId, dateStr]);
+              SET status = 'pending'
+              WHERE routine_id = ? AND date = ?
+            ''', [rId, dateStr]);
           });
 
           DayAgendaService.instance.invalidateDate(dateStr);
@@ -388,9 +435,9 @@ class CompletionGateway {
               await txn.delete('skip_reasons', where: 'itemId = ? AND dateStr = ?', whereArgs: [rId, dateStr]);
               await txn.rawUpdate('''
                 UPDATE routine_occurrences 
-                SET status = 'pending', updatedAt = ?
-                WHERE routineId = ? AND date = ?
-              ''', [DateTime.now().millisecondsSinceEpoch, rId, dateStr]);
+                SET status = 'pending'
+                WHERE routine_id = ? AND date = ?
+              ''', [rId, dateStr]);
             });
 
             DayAgendaService.instance.invalidateDate(dateStr);
@@ -421,8 +468,24 @@ class CompletionGateway {
           return CompletionOutcome.success();
 
         case 'worship':
-          await db.delete('worship_logs', where: 'id = ?', whereArgs: [idPayload]);
-          return CompletionOutcome.success();
+          final success = await WorshipCompletionRepository.instance.undo(idPayload);
+          return success ? CompletionOutcome.success() : CompletionOutcome.failure('توکن لغو عبادت یافت نشد');
+
+        case 'worshipDebt':
+          final debtParts = idPayload.split('|');
+          if (debtParts.length == 2) {
+            final debtId = debtParts[0];
+            final delta = int.tryParse(debtParts[1]) ?? 1;
+            await db.rawUpdate(
+              'UPDATE worship_debts SET remainingCount = remainingCount + ?, isArchived = 0, updatedAt = ? WHERE id = ?',
+              [delta, DateTime.now().millisecondsSinceEpoch, debtId],
+            );
+            final todayStr = DateTime.now().toIso8601String().split('T').first;
+            DayAgendaService.instance.invalidateDate(todayStr);
+            WorshipRepository.instance.invalidateCache();
+            return CompletionOutcome.success();
+          }
+          return CompletionOutcome.failure('شناسه توکن بدهی عبادی غیرمجاز است');
 
         case 'medicine':
           await db.delete('medication_logs', where: 'id = ?', whereArgs: [idPayload]);
@@ -453,20 +516,19 @@ class CompletionGateway {
             final routineId = reschParts[0];
             final fromDateStr = reschParts[1];
             final toDateStr = reschParts[2];
-            final nowMs = DateTime.now().millisecondsSinceEpoch;
 
             await db.transaction((txn) async {
               await txn.delete(
                 'routine_occurrences',
-                where: 'routineId = ? AND date = ? AND status = ?',
+                where: 'routine_id = ? AND date = ? AND status = ?',
                 whereArgs: [routineId, toDateStr, 'pending'],
               );
 
               await txn.rawUpdate('''
                 UPDATE routine_occurrences 
-                SET status = 'pending', updatedAt = ?
-                WHERE routineId = ? AND date = ?
-              ''', [nowMs, routineId, fromDateStr]);
+                SET status = 'pending'
+                WHERE routine_id = ? AND date = ?
+              ''', [routineId, fromDateStr]);
 
               await txn.delete(
                 'skip_reasons',

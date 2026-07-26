@@ -66,8 +66,8 @@ class WorshipRegistrySource implements RegistrySource {
         isEssential: type == 'OBLIGATORY',
         caps: caps,
         agendaProxy: AgendaItem(
-          id: 'prayer:$id',
-          domain: AgendaDomain.prayer,
+          id: 'worship_$id',
+          domain: type == 'PRAYER' ? AgendaDomain.prayer : AgendaDomain.mustahab,
           sourceId: id,
           title: title,
           dateStr: todayStr,

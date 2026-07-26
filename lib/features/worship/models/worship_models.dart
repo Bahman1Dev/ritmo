@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:ritmo/features/worship/logic/prayer_timeline.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -514,21 +515,10 @@ class PrayerTime {
   final int ihtiyatMinutes;
 
   MapEntry<String, DateTime> nextPrayer(DateTime now) {
-    final times = {
-      'FAJR': _parseTime(fajr, now),
-      'SUNRISE': _parseTime(sunrise, now),
-      'DHUHR': _parseTime(dhuhr, now),
-      'ASR': _parseTime(asr, now),
-      'MAGHRIB': _parseTime(maghrib, now),
-      'ISHA': _parseTime(isha, now),
-    };
-
-    for (final entry in times.entries) {
-      if (entry.value.isAfter(now)) {
-        return entry;
-      }
+    final slot = PrayerTimeline.next(this, now, includeAsrIsha: true);
+    if (slot != null) {
+      return MapEntry(slot.key, slot.at);
     }
-
     final tomorrow = now.add(const Duration(days: 1));
     return MapEntry('FAJR', _parseTime(fajr, tomorrow));
   }

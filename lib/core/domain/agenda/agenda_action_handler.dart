@@ -1,14 +1,41 @@
+import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
+import 'package:ritmo/core/domain/completion/snooze_policy.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/domain/models/duration_bounds.dart';
+import 'package:ritmo/features/worship/logic/prayer_timeline.dart';
+import 'package:ritmo/features/worship/logic/worship_completion_repository.dart';
+import 'package:ritmo/features/worship/logic/worship_repository.dart';
+import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:sqflite/sqflite.dart';
 
 class AgendaActionHandler {
   AgendaActionHandler._();
   static final AgendaActionHandler instance = AgendaActionHandler._();
+
+  Future<List<String>> _practiceIdsForGroup(DatabaseExecutor db, String group) async {
+    const subTypesByGroup = {
+      'FAJR': ['FAJR'],
+      'DHUHR_ASR': ['DHUHR', 'ASR'],
+      'MAGHRIB_ISHA': ['MAGHRIB', 'ISHA'],
+      'RAMADAN_FAST': ['RAMADAN_FAST'],
+    };
+
+    final subTypes = subTypesByGroup[group] ?? const <String>[];
+    if (subTypes.isEmpty) return const [];
+
+    final rows = await db.query(
+      'worship_practices',
+      columns: ['id'],
+      where: 'subType IN (${List.filled(subTypes.length, '?').join(',')}) AND isActive = 1',
+      whereArgs: subTypes,
+    );
+
+    return rows.map((r) => r['id']! as String).toList();
+  }
 
   /// Centralized logic to toggle a prayer completion state.
   Future<void> togglePrayer({
@@ -17,39 +44,25 @@ class AgendaActionHandler {
     required String dateStr,
   }) async {
     final db = await DatabaseHelper.instance.database;
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final ids = await _practiceIdsForGroup(db, group);
 
-    var ids = <String>[];
-    if (group == 'FAJR') {
-      ids = ['wp_fajr'];
-    } else if (group == 'DHUHR_ASR') {
-      ids = ['wp_dhuhr'];
-    } else if (group == 'MAGHRIB_ISHA') {
-      ids = ['wp_maghrib'];
+    if (ids.isEmpty) {
+      debugPrint('[AgendaActionHandler] Unknown or unconfigured prayer group: $group');
+      return;
     }
 
-    final targetVal = isDone ? 1 : 0;
-
-    await db.transaction((txn) async {
-      for (final id in ids) {
-        await txn.update(
-          'worship_practices',
-          {
-            'dailyDone': targetVal,
-            'dailyDoneDate': dateStr,
-            'updatedAt': nowMs,
-          },
-          where: 'id = ?',
-          whereArgs: [id],
+    for (final id in ids) {
+      if (isDone) {
+        await WorshipCompletionRepository.instance.logDone(
+          practiceId: id,
+          dateStr: dateStr,
+          practiceType: 'PRAYER',
         );
+      } else {
+        final recordId = 'wc_${id}_$dateStr';
+        await WorshipCompletionRepository.instance.undo(recordId);
       }
-    });
-
-    _invalidateAndNotify(dateStr, 'PrayerCompleted', {
-      'group': group,
-      'done': isDone,
-      'date': dateStr,
-    });
+    }
   }
 
   /// Centralized logic to snooze a prayer reminder.
@@ -59,26 +72,57 @@ class AgendaActionHandler {
     required String dateStr,
   }) async {
     final db = await DatabaseHelper.instance.database;
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final snoozeUntilMs = nowMs + (minutes * 60 * 1000);
+    final now = DateTime.now();
+    final nowMs = now.millisecondsSinceEpoch;
+
+    final pTimesMap = await WorshipRepository.instance.getPrayerTimesForDate(now);
+    final pTime = PrayerTime.fromMap(pTimesMap);
 
     await db.transaction((txn) async {
       for (final id in practiceIds) {
-        final List<Map<String, dynamic>> practiceRows = await txn.query(
+        final practiceRows = await txn.query(
           'worship_practices',
           where: 'id = ?',
           whereArgs: [id],
         );
         if (practiceRows.isEmpty) continue;
 
-        final currentDeferCount = practiceRows.first['deferCount'] as int? ?? 0;
-        if (currentDeferCount >= 3) {
-          throw Exception('حداکثر تعداد تعویق (۳ بار) برای این مورد ثبت شده است.');
+        final pMap = practiceRows.first;
+        final currentDeferCount = pMap['deferCount'] as int? ?? 0;
+        final subType = (pMap['subType'] as String? ?? 'FAJR').toUpperCase();
+        final pType = (pMap['practiceType'] as String? ?? 'PRAYER').toUpperCase();
+
+        final decision = SnoozePolicy.evaluate(
+          itemId: id,
+          now: now,
+          requestedMinutes: minutes,
+          currentDeferCount: currentDeferCount,
+          category: 'religious',
+          isEssential: pType == 'PRAYER' ? 1 : 0,
+          configuredMax: 2,
+        );
+
+        if (decision.verdict == SnoozeVerdict.exhausted || decision.verdict == SnoozeVerdict.blockedMidnight) {
+          throw Exception(decision.userMessage ?? 'سقف تعویق این مورد پر شده است.');
         }
 
-        final newDeferCount = currentDeferCount + 1;
+        var allowedMins = decision.allowedMinutes;
+        final deadline = PrayerTimeline.deadlineFor(subType, pTime, now);
 
-        // 1. Update Worship practice
+        if (deadline != null) {
+          final targetTime = now.add(Duration(minutes: allowedMins));
+          if (targetTime.isAfter(deadline)) {
+            final remainingToDeadline = deadline.difference(now).inMinutes;
+            if (remainingToDeadline < 5) {
+              throw Exception('مهلت شرعی این نماز در حال پایان است.');
+            }
+            allowedMins = remainingToDeadline;
+          }
+        }
+
+        final snoozeUntilMs = nowMs + (allowedMins * 60 * 1000);
+        final newDeferCount = decision.deferCount;
+
         await txn.update(
           'worship_practices',
           {
@@ -90,7 +134,6 @@ class AgendaActionHandler {
           whereArgs: [id],
         );
 
-        // 2. Insert/Replace pending reminder
         final reminderId = 'worship_snooze_${id}_$nowMs';
         await txn.insert(
           'pending_reminders',

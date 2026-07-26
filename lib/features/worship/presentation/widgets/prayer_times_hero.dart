@@ -7,6 +7,7 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/services/prayer_time_provider.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
+import 'package:ritmo/features/worship/logic/prayer_timeline.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
@@ -183,30 +184,12 @@ class _PrayerTimesHeroState extends State<PrayerTimesHero>
   }
 
   MapEntry<String, DateTime> _nextTimeSlot(DateTime now, PrayerTime pTime) {
-    final times = <String, DateTime>{
-      'FAJR': _parseTime(pTime.fajr, now),
-      'SUNRISE': _parseTime(pTime.sunrise, now),
-      'DHUHR': _parseTime(pTime.dhuhr, now),
-      'SUNSET': _parseTime(pTime.sunset, now),
-      'MAGHRIB': _parseTime(pTime.maghrib, now),
-      'MIDNIGHT_SHARI': _parseTime(pTime.midnightShari, now),
-    };
-    if (_showAsrIsha) {
-      times['ASR'] = _parseTime(pTime.asr, now);
-      times['ISHA'] = _parseTime(pTime.isha, now);
+    final slot = PrayerTimeline.next(pTime, now, includeAsrIsha: _showAsrIsha);
+    if (slot != null) {
+      return MapEntry(slot.key, slot.at);
     }
-
-    final adjustedTimes = <MapEntry<String, DateTime>>[];
-    for (final entry in times.entries) {
-      var dt = entry.value;
-      if (dt.isBefore(now)) {
-        dt = dt.add(const Duration(days: 1));
-      }
-      adjustedTimes.add(MapEntry(entry.key, dt));
-    }
-
-    adjustedTimes.sort((a, b) => a.value.compareTo(b.value));
-    return adjustedTimes.first;
+    final tomorrow = now.add(const Duration(days: 1));
+    return MapEntry('FAJR', _parseTime(pTime.fajr, tomorrow));
   }
 
   String _getEventTargetName(String key) {

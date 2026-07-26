@@ -2655,5 +2655,125 @@ class MigrationV56 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV57 extends Migration {
+  @override
+  int get version => 57;
+
+  @override
+  Future<void> up(Database db) async {
+    int backfilledCompletions = 0;
+    int matchedDebts = 0;
+    int unmatchedDebts = 0;
+
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS worship_completions (
+          id TEXT PRIMARY KEY,
+          practiceId TEXT NOT NULL,
+          dateStr TEXT NOT NULL,
+          practiceType TEXT NOT NULL,
+          resultType TEXT NOT NULL,
+          countDone INTEGER NOT NULL DEFAULT 1,
+          countTarget INTEGER,
+          reason TEXT,
+          loggedAt INTEGER NOT NULL,
+          createdAt INTEGER NOT NULL,
+          UNIQUE(practiceId, dateStr)
+        );
+      ''');
+
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_worship_completions_date ON worship_completions(dateStr);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_worship_completions_practice ON worship_completions(practiceId, dateStr);');
+
+      // Add columns to worship_debts if not existing
+      final debtColumns = await db.rawQuery("PRAGMA table_info(worship_debts)");
+      final colNames = debtColumns.map((c) => c['name'] as String).toSet();
+
+      if (!colNames.contains('practiceId')) {
+        await db.execute('ALTER TABLE worship_debts ADD COLUMN practiceId TEXT;');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_worship_debts_practiceId ON worship_debts(practiceId);');
+      }
+
+      if (!colNames.contains('sourceKind')) {
+        await db.execute("ALTER TABLE worship_debts ADD COLUMN sourceKind TEXT DEFAULT 'MANUAL';");
+      }
+
+      // Backfill worship_completions from worship_practices
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      final practicesToBackfill = await db.query(
+        'worship_practices',
+        where: 'dailyDoneDate IS NOT NULL AND dailyDoneDate != "" AND dailyDone != 0',
+      );
+
+      for (final p in practicesToBackfill) {
+        final practiceId = p['id'] as String;
+        final dateStr = p['dailyDoneDate'] as String;
+        final practiceType = p['practiceType'] as String? ?? 'PRAYER';
+        final dailyDone = p['dailyDone'] as int? ?? 0;
+        final resultType = dailyDone == -1 ? 'SKIPPED' : 'DONE';
+        final countDone = dailyDone > 0 ? dailyDone : 1;
+        final countTarget = p['dailyTarget'] as int?;
+        final id = 'wc_backfill_${practiceId}_$dateStr';
+
+        try {
+          await db.insert(
+            'worship_completions',
+            {
+              'id': id,
+              'practiceId': practiceId,
+              'dateStr': dateStr,
+              'practiceType': practiceType,
+              'resultType': resultType,
+              'countDone': countDone,
+              'countTarget': countTarget,
+              'loggedAt': nowMs,
+              'createdAt': nowMs,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+          backfilledCompletions++;
+        } catch (_) {}
+      }
+
+      // Backfill practiceId on worship_debts
+      final debtsToMatch = await db.query(
+        'worship_debts',
+        where: 'autoCreated = 1 AND (practiceId IS NULL OR practiceId = "")',
+      );
+
+      for (final debt in debtsToMatch) {
+        final debtId = debt['id'] as String;
+        final title = debt['title'] as String;
+
+        final matches = await db.query(
+          'worship_practices',
+          where: 'title = ?',
+          whereArgs: [title],
+        );
+
+        if (matches.length == 1) {
+          final practiceId = matches.first['id'] as String;
+          await db.update(
+            'worship_debts',
+            {'practiceId': practiceId},
+            where: 'id = ?',
+            whereArgs: [debtId],
+          );
+          matchedDebts++;
+        } else {
+          unmatchedDebts++;
+        }
+      }
+
+      debugPrint('[MigrationV57] Completed. Backfilled completions count: $backfilledCompletions, matched debts: $matchedDebts, unmatched debts: $unmatchedDebts');
+    } catch (e) {
+      debugPrint('[MigrationV57] Error during migration V57: $e');
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
 
 

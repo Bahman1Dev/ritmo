@@ -209,10 +209,11 @@ class _PrayerCityPickerState extends State<PrayerCityPicker> {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      // 3. Re-cache prayer times for current city
-      await PrayerTimeProvider.instance.cachePrayerTimes(
+      // 3. Re-cache prayer times for current city for 40 days
+      await PrayerTimeProvider.instance.cacheRange(
         cityId: _currentCityId,
-        date: DateTime.now(),
+        from: DateTime.now(),
+        days: 40,
       );
 
       widget.onChanged();

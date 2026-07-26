@@ -165,27 +165,7 @@ class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
 
       final list = results.map(WorshipPractice.fromMap).toList();
 
-      // 3. Handle daily reset if needed
-      var didReset = false;
-      for (var i = 0; i < list.length; i++) {
-        final p = list[i];
-        if (p.needsReset(_todayStr) || p.dailyDoneDate == null) {
-          final updated = p.copyWith(
-            dailyDone: 0,
-            deferCount: 0,
-            dailyDoneDate: _todayStr,
-            updatedAt: nowMs,
-          );
-          await db.update(
-            'worship_practices',
-            updated.toMap(),
-            where: 'id = ?',
-            whereArgs: [p.id],
-          );
-          list[i] = updated;
-          didReset = true;
-        }
-      }
+      // Daily reset is handled central in EndOfDaySweep
 
       if (mounted) {
         setState(() {
@@ -193,9 +173,6 @@ class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
           _practices = list;
           _isLoading = false;
         });
-        if (didReset) {
-          widget.onChanged();
-        }
       }
     } catch (e) {
       debugPrint('Error loading obligatory prayers: $e');

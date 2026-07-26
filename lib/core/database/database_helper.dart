@@ -9,6 +9,7 @@ import 'package:ritmo/core/database/schema/schema_manager.dart';
 import 'package:ritmo/core/database/schema/tables/ai_tables.dart';
 import 'package:ritmo/core/database/schema/tables/day_plan_tables.dart';
 import 'package:ritmo/core/database/seed/seed_service.dart';
+import 'package:ritmo/core/services/end_of_day_sweep.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
@@ -18,7 +19,7 @@ class DatabaseHelper {
   DatabaseHelper._init();
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
-  static const int _dbVersion = 56;
+  static const int _dbVersion = 57;
 
   @visibleForTesting
   static set databaseInstance(Database? db) => _database = db;
@@ -29,7 +30,18 @@ class DatabaseHelper {
     await SeedService.seedSupplementarySports(_database!);
     await AiTables.ensureSchema(_database!);
     await DayPlanTables.ensureSchema(_database!);
+    _checkDailySweep(_database!);
     return _database!;
+  }
+
+  static void _checkDailySweep(Database db) {
+    final todayStr = DateTime.now().toIso8601String().split('T').first;
+    db.query('app_settings', where: "key = 'last_worship_sweep_date'").then((rows) {
+      final lastDate = rows.isNotEmpty ? rows.first['value'] as String? : null;
+      if (lastDate != todayStr) {
+        EndOfDaySweep.runSweep(db);
+      }
+    }).catchError((_) {});
   }
 
   Future<Database> _initDB(String filePath) async {

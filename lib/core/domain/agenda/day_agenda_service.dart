@@ -13,6 +13,7 @@ import 'package:ritmo/features/courses/logic/courses_repository.dart';
 import 'package:ritmo/features/courses/models/course_models.dart';
 import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
+import 'package:ritmo/features/worship/logic/worship_completion_repository.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 import 'package:sqflite/sqflite.dart';
@@ -452,11 +453,12 @@ class DayAgendaService {
     }
 
     if (ctx.religionEnabled) {
+      final worshipStatuses = await WorshipCompletionRepository.instance.statusForDate(dateStr);
       if (opts.wants(AgendaDomain.prayer)) {
-        items.addAll(_collectPrayers(ctx, dateStr, isToday, prayerTimes));
+        items.addAll(_collectPrayers(ctx, dateStr, isToday, prayerTimes, worshipStatuses));
       }
       if (opts.wants(AgendaDomain.mustahab)) {
-        items.addAll(await _collectMustahab(ctx, dateStr, isToday, prayerTimes, hijriDate));
+        items.addAll(await _collectMustahab(ctx, dateStr, isToday, prayerTimes, hijriDate, worshipStatuses));
       }
       if (opts.wants(AgendaDomain.worshipDebt)) {
         items.addAll(_collectWorshipDebts(ctx, dateStr));
@@ -545,6 +547,7 @@ class DayAgendaService {
     String dateStr,
     bool isToday,
     Map<String, String> prayerTimes,
+    Map<String, WorshipDayStatus> statuses,
   ) {
     final items = <AgendaItem>[];
     
@@ -561,18 +564,16 @@ class DayAgendaService {
       }
     }
 
+    final showSeparate = ctx.settingsMap['show_asr_isha_prayers'] == 'true';
+
     // 1. Fajr
     final fajr = bySubType['FAJR'];
     if (fajr != null) {
       final id = fajr['id'] as String;
       final timeOfDay = prayerTimes['fajr'];
-      var completion = AgendaCompletion.none;
-      if (isToday) {
-        final doneDate = fajr['dailyDoneDate'] as String?;
-        final done = (fajr['dailyDone'] as int? ?? 0) == 1 &&
-            (doneDate == null || doneDate == dateStr);
-        completion = done ? AgendaCompletion.done : AgendaCompletion.pending;
-      }
+      final status = statuses[id];
+      final completion = status?.isDone == true ? AgendaCompletion.done : AgendaCompletion.pending;
+
       final start = _parseDateTime(dateStr, prayerTimes['fajr']);
       final end = _parseDateTime(dateStr, prayerTimes['sunrise']);
       items.add(AgendaItem(
@@ -594,108 +595,178 @@ class DayAgendaService {
       ));
     }
 
-    // 2. Dhuhr & Asr combined
+    // 2. Dhuhr & Asr
     final dhuhr = bySubType['DHUHR'];
     final asr = bySubType['ASR'];
-    if (dhuhr != null || asr != null) {
-      final representative = dhuhr ?? asr!;
-      final id = representative['id'] as String;
-      final timeOfDay = prayerTimes['dhuhr'] ?? prayerTimes['asr'];
-      
-      var completion = AgendaCompletion.none;
-      if (isToday) {
-        var dhuhrDone = false;
-        if (dhuhr != null) {
-          final doneDate = dhuhr['dailyDoneDate'] as String?;
-          dhuhrDone = (dhuhr['dailyDone'] as int? ?? 0) == 1 &&
-              (doneDate == null || doneDate == dateStr);
-        } else {
-          dhuhrDone = true;
-        }
-        
-        var asrDone = false;
-        if (asr != null) {
-          final doneDate = asr['dailyDoneDate'] as String?;
-          asrDone = (asr['dailyDone'] as int? ?? 0) == 1 &&
-              (doneDate == null || doneDate == dateStr);
-        } else {
-          asrDone = true;
-        }
-        
-        completion = (dhuhrDone && asrDone) ? AgendaCompletion.done : AgendaCompletion.pending;
+
+    if (showSeparate) {
+      if (dhuhr != null) {
+        final id = dhuhr['id'] as String;
+        final timeOfDay = prayerTimes['dhuhr'];
+        final status = statuses[id];
+        final completion = status?.isDone == true ? AgendaCompletion.done : AgendaCompletion.pending;
+        final start = _parseDateTime(dateStr, prayerTimes['dhuhr']);
+        final end = _parseDateTime(dateStr, prayerTimes['asr']);
+        items.add(AgendaItem(
+          id: 'prayer:$id:dhuhr',
+          domain: AgendaDomain.prayer,
+          sourceId: id,
+          title: dhuhr['title'] as String? ?? 'نماز ظهر',
+          dateStr: dateStr,
+          timeOfDay: timeOfDay,
+          durationMinutes: 15,
+          category: Category.religious,
+          completion: completion,
+          priority: 3,
+          isEssential: true,
+          deepLink: AgendaDeepLink(domain: AgendaDomain.prayer, targetId: id),
+          windowStart: start,
+          windowEnd: end,
+          meta: {'practice': dhuhr},
+        ));
       }
-      
-      final start = _parseDateTime(dateStr, prayerTimes['dhuhr']);
-      final end = _parseDateTime(dateStr, prayerTimes['maghrib']);
-      items.add(AgendaItem(
-        id: 'prayer:${id}:dhuhr_asr',
-        domain: AgendaDomain.prayer,
-        sourceId: id,
-        title: 'نماز ظهر و عصر',
-        dateStr: dateStr,
-        timeOfDay: timeOfDay,
-        durationMinutes: 20,
-        category: Category.religious,
-        completion: completion,
-        priority: 3,
-        isEssential: true,
-        deepLink: AgendaDeepLink(domain: AgendaDomain.prayer, targetId: id),
-        windowStart: start,
-        windowEnd: end,
-        meta: {'practice': representative},
-      ));
+      if (asr != null) {
+        final id = asr['id'] as String;
+        final timeOfDay = prayerTimes['asr'];
+        final status = statuses[id];
+        final completion = status?.isDone == true ? AgendaCompletion.done : AgendaCompletion.pending;
+        final start = _parseDateTime(dateStr, prayerTimes['asr']);
+        final end = _parseDateTime(dateStr, prayerTimes['maghrib']);
+        items.add(AgendaItem(
+          id: 'prayer:$id:asr',
+          domain: AgendaDomain.prayer,
+          sourceId: id,
+          title: asr['title'] as String? ?? 'نماز عصر',
+          dateStr: dateStr,
+          timeOfDay: timeOfDay,
+          durationMinutes: 15,
+          category: Category.religious,
+          completion: completion,
+          priority: 3,
+          isEssential: true,
+          deepLink: AgendaDeepLink(domain: AgendaDomain.prayer, targetId: id),
+          windowStart: start,
+          windowEnd: end,
+          meta: {'practice': asr},
+        ));
+      }
+    } else {
+      if (dhuhr != null || asr != null) {
+        final representative = dhuhr ?? asr!;
+        final id = representative['id'] as String;
+        final timeOfDay = prayerTimes['dhuhr'] ?? prayerTimes['asr'];
+        
+        final dhuhrDone = dhuhr == null || statuses[dhuhr['id'] as String]?.isDone == true;
+        final asrDone = asr == null || statuses[asr['id'] as String]?.isDone == true;
+        final completion = (dhuhrDone && asrDone) ? AgendaCompletion.done : AgendaCompletion.pending;
+        
+        final start = _parseDateTime(dateStr, prayerTimes['dhuhr']);
+        final end = _parseDateTime(dateStr, prayerTimes['maghrib']);
+        items.add(AgendaItem(
+          id: 'prayer:${id}:dhuhr_asr',
+          domain: AgendaDomain.prayer,
+          sourceId: id,
+          title: 'نماز ظهر و عصر',
+          dateStr: dateStr,
+          timeOfDay: timeOfDay,
+          durationMinutes: 20,
+          category: Category.religious,
+          completion: completion,
+          priority: 3,
+          isEssential: true,
+          deepLink: AgendaDeepLink(domain: AgendaDomain.prayer, targetId: id),
+          windowStart: start,
+          windowEnd: end,
+          meta: {'practice': representative},
+        ));
+      }
     }
 
-    // 3. Maghrib & Isha combined
+    // 3. Maghrib & Isha
     final maghrib = bySubType['MAGHRIB'];
     final isha = bySubType['ISHA'];
-    if (maghrib != null || isha != null) {
-      final representative = maghrib ?? isha!;
-      final id = representative['id'] as String;
-      final timeOfDay = prayerTimes['maghrib'] ?? prayerTimes['isha'];
-      
-      var completion = AgendaCompletion.none;
-      if (isToday) {
-        var maghribDone = false;
-        if (maghrib != null) {
-          final doneDate = maghrib['dailyDoneDate'] as String?;
-          maghribDone = (maghrib['dailyDone'] as int? ?? 0) == 1 &&
-              (doneDate == null || doneDate == dateStr);
-        } else {
-          maghribDone = true;
-        }
-        
-        var ishaDone = false;
-        if (isha != null) {
-          final doneDate = isha['dailyDoneDate'] as String?;
-          ishaDone = (isha['dailyDone'] as int? ?? 0) == 1 &&
-              (doneDate == null || doneDate == dateStr);
-        } else {
-          ishaDone = true;
-        }
-        
-        completion = (maghribDone && ishaDone) ? AgendaCompletion.done : AgendaCompletion.pending;
+
+    if (showSeparate) {
+      if (maghrib != null) {
+        final id = maghrib['id'] as String;
+        final timeOfDay = prayerTimes['maghrib'];
+        final status = statuses[id];
+        final completion = status?.isDone == true ? AgendaCompletion.done : AgendaCompletion.pending;
+        final start = _parseDateTime(dateStr, prayerTimes['maghrib']);
+        final end = _parseDateTime(dateStr, prayerTimes['isha']);
+        items.add(AgendaItem(
+          id: 'prayer:$id:maghrib',
+          domain: AgendaDomain.prayer,
+          sourceId: id,
+          title: maghrib['title'] as String? ?? 'نماز مغرب',
+          dateStr: dateStr,
+          timeOfDay: timeOfDay,
+          durationMinutes: 15,
+          category: Category.religious,
+          completion: completion,
+          priority: 3,
+          isEssential: true,
+          deepLink: AgendaDeepLink(domain: AgendaDomain.prayer, targetId: id),
+          windowStart: start,
+          windowEnd: end,
+          meta: {'practice': maghrib},
+        ));
       }
-      
-      final start = _parseDateTime(dateStr, prayerTimes['maghrib']);
-      final end = _parseDateTime(dateStr, prayerTimes['midnightShari'], nextDayIfBefore: true, referenceTime: start);
-      items.add(AgendaItem(
-        id: 'prayer:${id}:maghrib_isha',
-        domain: AgendaDomain.prayer,
-        sourceId: id,
-        title: 'نماز مغرب و عشا',
-        dateStr: dateStr,
-        timeOfDay: timeOfDay,
-        durationMinutes: 20,
-        category: Category.religious,
-        completion: completion,
-        priority: 3,
-        isEssential: true,
-        deepLink: AgendaDeepLink(domain: AgendaDomain.prayer, targetId: id),
-        windowStart: start,
-        windowEnd: end,
-        meta: {'practice': representative},
-      ));
+      if (isha != null) {
+        final id = isha['id'] as String;
+        final timeOfDay = prayerTimes['isha'];
+        final status = statuses[id];
+        final completion = status?.isDone == true ? AgendaCompletion.done : AgendaCompletion.pending;
+        final start = _parseDateTime(dateStr, prayerTimes['isha']);
+        final end = _parseDateTime(dateStr, prayerTimes['midnightShari'], nextDayIfBefore: true, referenceTime: start);
+        items.add(AgendaItem(
+          id: 'prayer:$id:isha',
+          domain: AgendaDomain.prayer,
+          sourceId: id,
+          title: isha['title'] as String? ?? 'نماز عشا',
+          dateStr: dateStr,
+          timeOfDay: timeOfDay,
+          durationMinutes: 15,
+          category: Category.religious,
+          completion: completion,
+          priority: 3,
+          isEssential: true,
+          deepLink: AgendaDeepLink(domain: AgendaDomain.prayer, targetId: id),
+          windowStart: start,
+          windowEnd: end,
+          meta: {'practice': isha},
+        ));
+      }
+    } else {
+      if (maghrib != null || isha != null) {
+        final representative = maghrib ?? isha!;
+        final id = representative['id'] as String;
+        final timeOfDay = prayerTimes['maghrib'] ?? prayerTimes['isha'];
+        
+        final maghribDone = maghrib == null || statuses[maghrib['id'] as String]?.isDone == true;
+        final ishaDone = isha == null || statuses[isha['id'] as String]?.isDone == true;
+        final completion = (maghribDone && ishaDone) ? AgendaCompletion.done : AgendaCompletion.pending;
+        
+        final start = _parseDateTime(dateStr, prayerTimes['maghrib']);
+        final end = _parseDateTime(dateStr, prayerTimes['midnightShari'], nextDayIfBefore: true, referenceTime: start);
+        items.add(AgendaItem(
+          id: 'prayer:${id}:maghrib_isha',
+          domain: AgendaDomain.prayer,
+          sourceId: id,
+          title: 'نماز مغرب و عشا',
+          dateStr: dateStr,
+          timeOfDay: timeOfDay,
+          durationMinutes: 20,
+          category: Category.religious,
+          completion: completion,
+          priority: 3,
+          isEssential: true,
+          deepLink: AgendaDeepLink(domain: AgendaDomain.prayer, targetId: id),
+          windowStart: start,
+          windowEnd: end,
+          meta: {'practice': representative},
+        ));
+      }
     }
 
     // 4. Others
@@ -705,13 +776,8 @@ class DayAgendaService {
       final timeKey = _prayerSubTypeToKey[subType];
       final timeOfDay = timeKey != null ? prayerTimes[timeKey] : null;
 
-      var completion = AgendaCompletion.none;
-      if (isToday) {
-        final doneDate = p['dailyDoneDate'] as String?;
-        final done = (p['dailyDone'] as int? ?? 0) == 1 &&
-            (doneDate == null || doneDate == dateStr);
-        completion = done ? AgendaCompletion.done : AgendaCompletion.pending;
-      }
+      final status = statuses[id];
+      final completion = status?.isDone == true ? AgendaCompletion.done : AgendaCompletion.pending;
 
       items.add(AgendaItem(
         id: 'prayer:$id',
@@ -810,6 +876,7 @@ class DayAgendaService {
     bool isToday,
     Map<String, String> prayerTimes,
     HijriDate? hijriDate,
+    Map<String, WorshipDayStatus> statuses,
   ) async {
     final items = <AgendaItem>[];
     for (final p in ctx.mustahabPractices) {
@@ -885,13 +952,8 @@ class DayAgendaService {
         }
       }
 
-      var completion = AgendaCompletion.none;
-      if (isToday) {
-        final doneDate = p['dailyDoneDate'] as String?;
-        final done = (p['dailyDone'] as int? ?? 0) == 1 &&
-            (doneDate == null || doneDate == dateStr);
-        completion = done ? AgendaCompletion.done : AgendaCompletion.pending;
-      }
+      final status = statuses[id];
+      final completion = status?.isDone == true ? AgendaCompletion.done : AgendaCompletion.pending;
 
       final anchor = p['reminderAnchor'] as String? ?? 'NONE';
       final offsetMinutes = p['reminderOffsetMinutes'] as int? ?? 0;

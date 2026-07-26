@@ -6,6 +6,8 @@ class WorshipTables {
     await db.execute('''
       CREATE TABLE worship_debts (
           id TEXT PRIMARY KEY,
+          practiceId TEXT,
+          sourceKind TEXT DEFAULT 'MANUAL',
           debtType TEXT NOT NULL,
           title TEXT NOT NULL,
           totalCount INTEGER NOT NULL,
@@ -18,6 +20,7 @@ class WorshipTables {
       );
     ''');
     await db.execute('CREATE INDEX index_worship_debts_debtType ON worship_debts(debtType);');
+    await db.execute('CREATE INDEX idx_worship_debts_practiceId ON worship_debts(practiceId);');
 
     // 20. worship_seasons
     await db.execute('''
@@ -84,5 +87,24 @@ class WorshipTables {
         updatedAt INTEGER
       );
     ''');
+
+    // 23. worship_completions (V57 table)
+    await db.execute('''
+      CREATE TABLE worship_completions (
+          id TEXT PRIMARY KEY,
+          practiceId TEXT NOT NULL,
+          dateStr TEXT NOT NULL,
+          practiceType TEXT NOT NULL,
+          resultType TEXT NOT NULL,
+          countDone INTEGER NOT NULL DEFAULT 1,
+          countTarget INTEGER,
+          reason TEXT,
+          loggedAt INTEGER NOT NULL,
+          createdAt INTEGER NOT NULL,
+          UNIQUE(practiceId, dateStr)
+      );
+    ''');
+    await db.execute('CREATE INDEX idx_worship_completions_date ON worship_completions(dateStr);');
+    await db.execute('CREATE INDEX idx_worship_completions_practice ON worship_completions(practiceId, dateStr);');
   }
 }

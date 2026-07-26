@@ -56,7 +56,6 @@ class ActionRouter {
 
       case AgendaDomain.prayer:
       case AgendaDomain.mustahab:
-      case AgendaDomain.worshipDebt:
         await _showDomainConfirmationSheet(
           context,
           item: item,
@@ -65,8 +64,25 @@ class ActionRouter {
           successMessage: 'عبادت ثبت شد',
           onConfirm: () => CompletionGateway.instance.submit(
             WorshipCompletion(
-              worshipId: item.sourceId,
+              practiceId: item.sourceId,
               dateStr: item.dateStr,
+              practiceType: item.domain == AgendaDomain.prayer ? 'PRAYER' : 'MUSTAHAB',
+            ),
+          ),
+        );
+        break;
+
+      case AgendaDomain.worshipDebt:
+        await _showDomainConfirmationSheet(
+          context,
+          item: item,
+          title: item.title,
+          domainLabel: 'بدهی عبادی',
+          successMessage: 'یک واحد از بدهی کسر شد',
+          onConfirm: () => CompletionGateway.instance.submit(
+            WorshipDebtProgress(
+              debtId: item.sourceId,
+              delta: 1,
             ),
           ),
         );

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/models/inbox_item.dart';
 import 'package:ritmo/core/services/central_inbox_service.dart';
+import 'package:ritmo/features/worship/logic/worship_repository.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// EndOfDaySweep sweeps stale pending/snoozed occurrences past midnight and converts them to 'missed'.
@@ -10,6 +12,8 @@ class EndOfDaySweep {
   static Future<int> runSweep(Database db, {DateTime? now}) async {
     final today = now ?? DateTime.now();
     final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final yesterday = today.subtract(const Duration(days: 1));
+    final yesterdayStr = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
 
     var sweptCount = 0;
 
@@ -20,8 +24,6 @@ class EndOfDaySweep {
         LEFT JOIN routines r ON o.routineId = r.id
         WHERE o.status IN ('pending', 'snoozed') AND o.date < ?
       ''', [todayStr]);
-
-      if (staleRows.isEmpty) return 0;
 
       await db.transaction((txn) async {
         for (final row in staleRows) {
@@ -60,11 +62,74 @@ class EndOfDaySweep {
             );
           }
         }
+
+        // Worship Sweep
+        await _sweepWorship(txn, yesterdayStr, todayStr);
       });
+
+      WorshipRepository.instance.invalidateCache();
+      DayAgendaService.instance.invalidateDate(yesterdayStr);
+      DayAgendaService.instance.invalidateDate(todayStr);
+
+      await db.execute(
+        "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('last_worship_sweep_date', ?)",
+        [todayStr],
+      );
     } catch (e) {
       debugPrint('EndOfDaySweep error: $e');
     }
 
     return sweptCount;
+  }
+
+  static Future<void> _sweepWorship(DatabaseExecutor txn, String yesterdayStr, String todayStr) async {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    final uncompletedRows = await txn.rawQuery('''
+      SELECT p.id, p.practiceType, p.dailyTarget
+      FROM worship_practices p
+      WHERE p.isActive = 1
+      AND p.practiceType IN ('PRAYER', 'MUSTAHAB', 'FASTING')
+      AND NOT EXISTS (
+        SELECT 1 FROM worship_completions c
+        WHERE c.practiceId = p.id AND c.dateStr = ?
+      )
+    ''', [yesterdayStr]);
+
+    for (final row in uncompletedRows) {
+      final pid = row['id']! as String;
+      final pType = row['practiceType']! as String;
+      final target = row['dailyTarget'] as int?;
+      final recordId = 'wc_missed_${pid}_$yesterdayStr';
+
+      try {
+        await txn.insert(
+          'worship_completions',
+          {
+            'id': recordId,
+            'practiceId': pid,
+            'dateStr': yesterdayStr,
+            'practiceType': pType,
+            'resultType': 'MISSED',
+            'countDone': 0,
+            'countTarget': target,
+            'loggedAt': nowMs,
+            'createdAt': nowMs,
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      } catch (_) {}
+    }
+
+    // Reset dailyDone for active practices
+    await txn.update(
+      'worship_practices',
+      {
+        'dailyDone': 0,
+        'dailyDoneDate': todayStr,
+        'updatedAt': nowMs,
+      },
+      where: 'isActive = 1',
+    );
   }
 }

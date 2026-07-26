@@ -144,6 +144,34 @@ class PrayerTimeProvider {
     );
   }
 
+  /// Cache prayer times for a range of [days] starting from [from].
+  /// Also purges cache entries older than 90 days.
+  Future<int> cacheRange({
+    required String cityId,
+    required DateTime from,
+    required int days,
+  }) async {
+    final db = await DatabaseHelper.instance.database;
+    int cachedCount = 0;
+
+    for (int i = 0; i < days; i++) {
+      final date = from.add(Duration(days: i));
+      await cachePrayerTimes(cityId: cityId, date: date);
+      cachedCount++;
+    }
+
+    final thresholdDate = from.subtract(const Duration(days: 90)).toIso8601String().substring(0, 10);
+    try {
+      await db.delete(
+        'prayer_times_cache',
+        where: 'date < ?',
+        whereArgs: [thresholdDate],
+      );
+    } catch (_) {}
+
+    return cachedCount;
+  }
+
   String _formatTime(DateTime time) {
     final local = time.toLocal();
     return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';

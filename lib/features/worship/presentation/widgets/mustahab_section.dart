@@ -52,36 +52,13 @@ class _MustahabSectionState extends State<MustahabSection> {
 
       final list = results.map(WorshipPractice.fromMap).toList();
 
-      // Check daily reset
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
-      var didReset = false;
-      for (var i = 0; i < list.length; i++) {
-        final p = list[i];
-        if (p.needsReset(_todayStr)) {
-          final updated = p.copyWith(
-            dailyDone: 0,
-            dailyDoneDate: _todayStr,
-            updatedAt: nowMs,
-          );
-          await db.update(
-            'worship_practices',
-            updated.toMap(),
-            where: 'id = ?',
-            whereArgs: [p.id],
-          );
-          list[i] = updated;
-          didReset = true;
-        }
-      }
+      // Daily reset is handled centrally in EndOfDaySweep
 
       if (mounted) {
         setState(() {
           _activeMustahabs = list;
           _isLoading = false;
         });
-        if (didReset) {
-          widget.onChanged();
-        }
       }
     } catch (e) {
       debugPrint('Error loading mustahab practices: $e');

@@ -136,26 +136,7 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
 
       final list = allWorship.map(WorshipPractice.fromMap).toList();
 
-      // Handle daily reset
-      var didReset = false;
-      for (var i = 0; i < list.length; i++) {
-        final p = list[i];
-        if (p.needsReset(_todayStr)) {
-          final updated = p.copyWith(
-            dailyDone: 0,
-            dailyDoneDate: _todayStr,
-            updatedAt: nowMs,
-          );
-          await db.update(
-            'worship_practices',
-            updated.toMap(),
-            where: 'id = ?',
-            whereArgs: [p.id],
-          );
-          list[i] = updated;
-          didReset = true;
-        }
-      }
+      // Daily reset is handled centrally in EndOfDaySweep
 
       // Extract Quran and Dhikrs list
       WorshipPractice? quranP;
@@ -182,9 +163,6 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
           }
           _isLoading = false;
         });
-        if (didReset) {
-          widget.onChanged();
-        }
       }
     } catch (e) {
       debugPrint('Error loading Quran/Dhikr data: $e');
