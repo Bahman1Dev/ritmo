@@ -8,6 +8,7 @@ import 'package:ritmo/core/database/migration/migration_runner.dart';
 import 'package:ritmo/core/database/schema/schema_manager.dart';
 import 'package:ritmo/core/database/schema/tables/ai_tables.dart';
 import 'package:ritmo/core/database/schema/tables/day_plan_tables.dart';
+import 'package:ritmo/core/database/schema/tables/supplementary_sports_tables.dart';
 import 'package:ritmo/core/database/seed/seed_service.dart';
 import 'package:ritmo/core/services/end_of_day_sweep.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,7 +20,7 @@ class DatabaseHelper {
   DatabaseHelper._init();
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
-  static const int _dbVersion = 57;
+  static const int _dbVersion = 58;
 
   @visibleForTesting
   static set databaseInstance(Database? db) => _database = db;
@@ -27,6 +28,7 @@ class DatabaseHelper {
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('ritmo_secure.db');
+    await SupplementarySportsTables.create(_database!);
     await SeedService.seedSupplementarySports(_database!);
     await AiTables.ensureSchema(_database!);
     await DayPlanTables.ensureSchema(_database!);

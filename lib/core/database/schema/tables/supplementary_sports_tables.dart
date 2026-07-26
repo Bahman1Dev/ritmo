@@ -1,7 +1,10 @@
+import 'package:ritmo/features/supplementary_sports/movement/data/seed/movement_kinds_seed.dart';
 import 'package:sqflite/sqflite.dart';
 
 class SupplementarySportsTables {
   static Future<void> create(Database db) async {
+    await MovementKindsSeed.ensureSchema(db);
+
     // 1. ss_exercise
     await db.execute('''
       CREATE TABLE IF NOT EXISTS ss_exercise (

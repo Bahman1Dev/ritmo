@@ -2,7 +2,39 @@ import 'package:sqflite/sqflite.dart';
 
 /// Seed data for the Movement Layer taxonomy (kinds).
 class MovementKindsSeed {
+  static Future<void> ensureSchema(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS movement_kinds (
+          code TEXT PRIMARY KEY,
+          titleFa TEXT NOT NULL,
+          emoji TEXT NOT NULL,
+          family TEXT NOT NULL,
+          baseMet REAL NOT NULL,
+          metLow REAL NOT NULL,
+          metHigh REAL NOT NULL,
+          primaryMetric TEXT,
+          secondaryMetric TEXT,
+          isOutdoor INTEGER NOT NULL DEFAULT 0,
+          isSocial INTEGER NOT NULL DEFAULT 0,
+          needsVenue INTEGER NOT NULL DEFAULT 0,
+          seasonMask TEXT,
+          jointImpact INTEGER NOT NULL DEFAULT 1,
+          aliasesFa TEXT,
+          isCustom INTEGER NOT NULL DEFAULT 0,
+          isEnabled INTEGER NOT NULL DEFAULT 1,
+          usageCount INTEGER NOT NULL DEFAULT 0,
+          lastUsedAt INTEGER,
+          sortOrder INTEGER NOT NULL DEFAULT 0,
+          createdAt INTEGER NOT NULL,
+          updatedAt INTEGER NOT NULL
+      );
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_movement_kinds_family ON movement_kinds(family);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_movement_kinds_usage ON movement_kinds(usageCount DESC);');
+  }
+
   static Future<void> seed(Database db) async {
+    await ensureSchema(db);
     final now = DateTime.now().millisecondsSinceEpoch;
 
     // Delete existing built-in kinds (keep user custom kinds with isCustom = 1)

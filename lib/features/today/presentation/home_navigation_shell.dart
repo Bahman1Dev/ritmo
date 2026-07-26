@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/localization/locale_repository.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
@@ -57,6 +58,17 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
 
   Future<void> _requestNotificationPermissionIfNeeded() async {
     try {
+      final db = await DatabaseHelper.instance.database;
+      final rows = await db.query(
+        'app_settings',
+        where: "key = 'notif_permission_asked'",
+        limit: 1,
+      );
+
+      if (rows.isNotEmpty && rows.first['value'] == 'true') {
+        return;
+      }
+
       final plugin = FlutterLocalNotificationsPlugin();
       final androidImplementation = plugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();

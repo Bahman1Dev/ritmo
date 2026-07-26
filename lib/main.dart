@@ -18,6 +18,7 @@ import 'package:ritmo/core/theme/theme_repository.dart';
 import 'package:ritmo/core/localization/locale_repository.dart';
 import 'package:ritmo/core/services/premium_service.dart';
 import 'package:ritmo/l10n/app_localizations.dart';
+import 'package:ritmo/features/onboarding/logic/onboarding_gate.dart';
 import 'package:ritmo/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:ritmo/features/onboarding/presentation/splash_screen.dart';
 import 'package:ritmo/features/today/presentation/home_navigation_shell.dart';
@@ -172,17 +173,8 @@ class _RitmoAppState extends State<RitmoApp> {
     // 2. Reconcile external background updates and sync occurrences
     await RitmoExecutionKernel.instance.reconcileExternalState();
 
-    // 3. Check if onboarding is completed by reading the home_city_id flag
-    final settings = await db.query(
-      'app_settings',
-      where: 'key = ?',
-      whereArgs: ['home_city_id'],
-    );
-
-    if (settings.isNotEmpty) {
-      final routines = await db.query('routines');
-      _onboardingCompleted = routines.isNotEmpty;
-    }
+    // 3. Check if onboarding is completed via OnboardingGate
+    _onboardingCompleted = await OnboardingGate.isCompleted(db);
   }
 
   @override
@@ -247,6 +239,7 @@ class _RitmoAppState extends State<RitmoApp> {
                               await db.delete('routines');
                               await db.delete('routine_schedules');
                               await db.delete('routine_completions');
+                              await db.delete('app_settings', where: "key = 'onboarding_completed'");
                               setState(() {
                                 _onboardingCompleted = false;
                                 _showSplash = true;

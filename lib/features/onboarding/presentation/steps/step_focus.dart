@@ -1,32 +1,36 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ritmo/core/services/premium_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/features/onboarding/models/focus_area.dart';
+import 'package:ritmo/features/premium/presentation/premium_upgrade_sheet.dart';
+import 'package:ritmo/features/worship/presentation/widgets/prayer_city_picker.dart';
 
 class StepFocus extends StatelessWidget {
-
   const StepFocus({
     super.key,
-    required this.focusAreas,
-    required this.onFocusAreaToggled,
-    required this.enabledModules,
-    required this.onModuleToggled,
+    required this.chosenAreas,
+    required this.onAreaToggled,
     required this.energyProfile,
-    required this.onEnergyProfileChanged,
+    required this.onEnergyChanged,
+    required this.isFemale,
+    required this.enableCycle,
+    required this.onCycleToggled,
   });
-  final Map<String, bool> focusAreas;
-  final ValueChanged<String> onFocusAreaToggled;
-  final Map<String, bool> enabledModules;
-  final ValueChanged<String> onModuleToggled;
+
+  final Set<FocusArea> chosenAreas;
+  final ValueChanged<FocusArea> onAreaToggled;
   final String energyProfile;
-  final ValueChanged<String> onEnergyProfileChanged;
+  final ValueChanged<String> onEnergyChanged;
+  final bool isFemale;
+  final bool enableCycle;
+  final ValueChanged<bool> onCycleToggled;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final selectedFocusCount = focusAreas.values.where((v) => v).length;
-
-    // List of focus areas in Persian
-    final focusList = focusAreas.keys.toList();
+    final canCourses = PremiumService.instance.can(PremiumFeature.coursesModule);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -44,7 +48,7 @@ class StepFocus extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'حداکثر ۳ حوزه از دغدغه‌های فعلی خود را انتخاب کنید ($selectedFocusCount/۳)',
+          'حداکثر ۳ حوزه از دغدغه‌های فعلی خود را انتخاب کنید (${chosenAreas.length}/۳)',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 11,
@@ -53,23 +57,30 @@ class StepFocus extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        // Grid of Focus chips
         Wrap(
           spacing: 8,
           runSpacing: 8,
           alignment: WrapAlignment.center,
-          children: focusList.map((area) {
-            final isSelected = focusAreas[area] ?? false;
+          children: FocusArea.values.map((area) {
+            final isSelected = chosenAreas.contains(area);
+            final isStudyOrSkill = area == FocusArea.study || area == FocusArea.skill;
+            final isLocked = isStudyOrSkill && !canCourses;
+
             return ChoiceChip(
-              label: Text(area),
+              avatar: isLocked ? const Icon(CupertinoIcons.lock_fill, size: 14, color: Colors.amber) : null,
+              label: Text(area.faLabel),
               selected: isSelected,
               onSelected: (selected) {
-                if (selected && selectedFocusCount >= 3) {
-                  HapticFeedback.vibrate(); // Warning vibration
+                if (isLocked) {
+                  PremiumUpgradeSheet.show(context);
+                  return;
+                }
+                if (selected && chosenAreas.length >= 3) {
+                  HapticFeedback.vibrate();
                   return;
                 }
                 HapticFeedback.selectionClick();
-                onFocusAreaToggled(area);
+                onAreaToggled(area);
               },
               labelStyle: TextStyle(
                 fontFamily: 'Vazirmatn',
@@ -88,48 +99,61 @@ class StepFocus extends StatelessWidget {
             );
           }).toList(),
         ),
+
+        if (chosenAreas.contains(FocusArea.worship)) ...[
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => PrayerCityPicker(onChanged: () {}),
+              );
+            },
+            icon: const Icon(CupertinoIcons.location_solid, size: 16),
+            label: const Text(
+              'انتخاب شهر برای اوقات شرعی',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12),
+            ),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
+
+        if (isFemale) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: colors.textPrimary.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border.withValues(alpha: 0.15)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Text(
+                    'ردیابی چرخه سلامتی بانوان (کاملاً محرمانه و آفلاین)',
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12),
+                  ),
+                ),
+                Switch(
+                  value: enableCycle,
+                  onChanged: onCycleToggled,
+                  activeColor: const Color(0xff9B89FF),
+                ),
+              ],
+            ),
+          ),
+        ],
+
         const SizedBox(height: 24),
-        // Active Systems Dynamic Panel
         Text(
-          'سیستم‌های فعال شما',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: colors.textSecondary,
-            fontFamily: 'Vazirmatn',
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: colors.textPrimary.withValues(alpha: 0.02),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.border.withValues(alpha: 0.1)),
-          ),
-          child: Column(
-            children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                alignment: WrapAlignment.center,
-                children: [
-                  _buildSystemToggleChip(context, 'module_medicine_enabled', '💊 دارو و سلامت', enabledModules['module_medicine_enabled'] ?? false),
-                  _buildSystemToggleChip(context, 'module_courses_enabled', '📚 دوره‌های آموزشی', enabledModules['module_courses_enabled'] ?? false),
-                  _buildSystemToggleChip(context, 'module_konkur_enabled', '🎓 کنکور', enabledModules['module_konkur_enabled'] ?? false),
-                  _buildSystemToggleChip(context, 'module_goals_enabled', '🎯 اهداف و برنامه‌ها', enabledModules['module_goals_enabled'] ?? false),
-                  _buildSystemToggleChip(context, 'module_sports_enabled', '🏃 ورزش', enabledModules['module_sports_enabled'] ?? false),
-                  _buildSystemToggleChip(context, 'module_religion_enabled', '🕌 عبادت', enabledModules['module_religion_enabled'] ?? false),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        // Energy Profile Selection
-        Text(
-          'سطح انرژی عمومی شما در طول روز چطور است؟',
+          'سطح انرژی عمومی اولیه',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
@@ -138,73 +162,83 @@ class StepFocus extends StatelessWidget {
             fontFamily: 'Vazirmatn',
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildEnergyChip(context, 'LOW', 'کم 💤'),
+            Expanded(
+              child: _EnergyChoiceChip(
+                label: 'کم (استراحت)',
+                profile: 'LOW',
+                isSelected: energyProfile == 'LOW',
+                onSelect: () => onEnergyChanged('LOW'),
+              ),
+            ),
             const SizedBox(width: 8),
-            _buildEnergyChip(context, 'MEDIUM', 'متوسط ⚡'),
+            Expanded(
+              child: _EnergyChoiceChip(
+                label: 'متوسط (معمولی)',
+                profile: 'MEDIUM',
+                isSelected: energyProfile == 'MEDIUM',
+                onSelect: () => onEnergyChanged('MEDIUM'),
+              ),
+            ),
             const SizedBox(width: 8),
-            _buildEnergyChip(context, 'HIGH', 'زیاد 🔥'),
+            Expanded(
+              child: _EnergyChoiceChip(
+                label: 'بالا (پرانرژی)',
+                profile: 'HIGH',
+                isSelected: energyProfile == 'HIGH',
+                onSelect: () => onEnergyChanged('HIGH'),
+              ),
+            ),
           ],
         ),
       ],
     );
   }
+}
 
-  Widget _buildSystemToggleChip(BuildContext context, String key, String label, bool isSelected) {
+class _EnergyChoiceChip extends StatelessWidget {
+  const _EnergyChoiceChip({
+    required this.label,
+    required this.profile,
+    required this.isSelected,
+    required this.onSelect,
+  });
+
+  final String label;
+  final String profile;
+  final bool isSelected;
+  final VoidCallback onSelect;
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.colors;
-    return FilterChip(
-      label: Text(isSelected ? '$label ✓' : label),
-      selected: isSelected,
-      onSelected: (_) {
+    return GestureDetector(
+      onTap: () {
         HapticFeedback.selectionClick();
-        onModuleToggled(key);
+        onSelect();
       },
-      labelStyle: TextStyle(
-        fontFamily: 'Vazirmatn',
-        color: isSelected ? Colors.white : colors.textSecondary,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        fontSize: 12,
-      ),
-      selectedColor: const Color(0xff34C759).withValues(alpha: 0.25),
-      backgroundColor: colors.textPrimary.withValues(alpha: 0.02),
-      checkmarkColor: Colors.transparent,
-      showCheckmark: false,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? const Color(0xff34C759) : colors.border.withValues(alpha: 0.1),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xff9B89FF).withValues(alpha: 0.25)
+              : colors.textPrimary.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? const Color(0xff9B89FF) : colors.border.withValues(alpha: 0.15),
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildEnergyChip(BuildContext context, String value, String label) {
-    final colors = context.colors;
-    final isSelected = energyProfile == value;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        if (selected) {
-          HapticFeedback.selectionClick();
-          onEnergyProfileChanged(value);
-        }
-      },
-      labelStyle: TextStyle(
-        fontFamily: 'Vazirmatn',
-        color: isSelected ? Colors.white : colors.textSecondary,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        fontSize: 13,
-      ),
-      selectedColor: const Color(0xff9B89FF).withValues(alpha: 0.4),
-      backgroundColor: colors.textPrimary.withValues(alpha: 0.03),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? const Color(0xff9B89FF) : colors.border.withValues(alpha: 0.15),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? colors.textPrimary : colors.textSecondary,
+            fontFamily: 'Vazirmatn',
+          ),
         ),
       ),
     );

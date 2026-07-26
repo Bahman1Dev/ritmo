@@ -5,25 +5,28 @@ import 'package:flutter/services.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 
 class StepDayArc extends StatefulWidget {
-
   const StepDayArc({
     super.key,
     required this.wakeTime,
     required this.onWakeTimeChanged,
     required this.sleepTime,
     required this.onSleepTimeChanged,
+    this.isInferred = false,
+    this.reasonFa = '',
   });
+
   final String wakeTime;
   final ValueChanged<String> onWakeTimeChanged;
   final String sleepTime;
   final ValueChanged<String> onSleepTimeChanged;
+  final bool isInferred;
+  final String reasonFa;
 
   @override
   State<StepDayArc> createState() => _StepDayArcState();
 }
 
 class _StepDayArcState extends State<StepDayArc> {
-  // Parsing helpers
   double _parseTimeToDouble(String timeStr) {
     try {
       final parts = timeStr.split(':');
@@ -51,12 +54,9 @@ class _StepDayArcState extends State<StepDayArc> {
     return result;
   }
 
-  // Active dragging handle: 'NONE', 'WAKE', 'SLEEP'
   String _activeHandle = 'NONE';
 
-  // Clock calculations (Clockwise rotation, 00:00 starts at the TOP)
   Offset _getHandleOffset(double hour, double radius, Offset center) {
-    // 00:00 is at the top (angle = -pi/2), clockwise rotation
     final angle = (hour / 24.0) * 2.0 * pi - pi / 2.0;
     return Offset(
       center.dx + radius * cos(angle),
@@ -68,43 +68,42 @@ class _StepDayArcState extends State<StepDayArc> {
     final dx = localPos.dx - center.dx;
     final dy = localPos.dy - center.dy;
     final angle = atan2(dy, dx);
-    // Adjust angle to start from top (-pi/2) and increase clockwise
     var adjustedAngle = angle + pi / 2.0;
     if (adjustedAngle < 0) {
       adjustedAngle += 2.0 * pi;
     }
     final timeFraction = adjustedAngle / (2.0 * pi);
     var hours = timeFraction * 24.0;
-    // Snap to 30 mins (0.5 hours)
     hours = (hours * 2.0).round() / 2.0;
     if (hours >= 24.0) {
-      hours -= 24.0;
+      hours = 0.0;
     }
     return hours;
-  }
-
-  double _getWakefulnessDuration() {
-    final w = _parseTimeToDouble(widget.wakeTime);
-    var s = _parseTimeToDouble(widget.sleepTime);
-    if (s < w) {
-      s += 24.0;
-    }
-    return s - w;
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final wakeHour = _parseTimeToDouble(widget.wakeTime);
-    final sleepHour = _parseTimeToDouble(widget.sleepTime);
-    final wakeDuration = _getWakefulnessDuration();
+
+    final wakeVal = _parseTimeToDouble(widget.wakeTime);
+    final sleepVal = _parseTimeToDouble(widget.sleepTime);
+
+    double activeHours;
+    if (sleepVal >= wakeVal) {
+      activeHours = sleepVal - wakeVal;
+    } else {
+      activeHours = (24.0 - wakeVal) + sleepVal;
+    }
+
+    final activeHoursInt = activeHours.toInt();
+    final activeMinutesInt = ((activeHours - activeHoursInt) * 60).round();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'ریتم بیداری و خواب شما',
+          'قوس روز شما',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 18,
@@ -113,284 +112,253 @@ class _StepDayArcState extends State<StepDayArc> {
             fontFamily: 'Vazirmatn',
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
-          'با جابجا کردن خورشید ☀️ و ماه 🌙 ساعت بیداری و خواب را تنظیم کنید.',
+          'ساعات بیداری و خواب خود را تنظیم کنید تا ریتم برنامه‌های شما به‌درستی شکل گیرد.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             color: colors.textSecondary,
             fontFamily: 'Vazirmatn',
           ),
         ),
-        const SizedBox(height: 24),
-        Center(
-          child: SizedBox(
-            width: 250,
-            height: 250,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final center = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
-                const radius = 100.0;
+        const SizedBox(height: 12),
 
-                final wakeOffset = _getHandleOffset(wakeHour, radius, center);
-                final sleepOffset = _getHandleOffset(sleepHour, radius, center);
-
-                return GestureDetector(
-                  onPanStart: (details) {
-                    final pos = details.localPosition;
-                    final distToWake = (pos - wakeOffset).distance;
-                    final distToSleep = (pos - sleepOffset).distance;
-
-                    if (distToWake < distToSleep && distToWake < 35) {
-                      _activeHandle = 'WAKE';
-                      HapticFeedback.selectionClick();
-                    } else if (distToSleep < distToWake && distToSleep < 35) {
-                      _activeHandle = 'SLEEP';
-                      HapticFeedback.selectionClick();
-                    } else {
-                      _activeHandle = 'NONE';
-                    }
-                  },
-                  onPanUpdate: (details) {
-                    if (_activeHandle == 'NONE') return;
-
-                    final hours = _getHourFromOffset(details.localPosition, center);
-                    final timeStr = _formatDoubleToTime(hours);
-
-                    if (_activeHandle == 'WAKE') {
-                      if (timeStr != widget.wakeTime) {
-                        widget.onWakeTimeChanged(timeStr);
-                        HapticFeedback.lightImpact();
-                      }
-                    } else if (_activeHandle == 'SLEEP') {
-                      if (timeStr != widget.sleepTime) {
-                        widget.onSleepTimeChanged(timeStr);
-                        HapticFeedback.lightImpact();
-                      }
-                    }
-                  },
-                  onPanEnd: (_) {
-                    _activeHandle = 'NONE';
-                  },
-                  child: Stack(
-                    children: [
-                      // Arc Ring custom paint
-                      Positioned.fill(
-                        child: CustomPaint(
-                          painter: DayArcPainter(
-                            wakeHour: wakeHour,
-                            sleepHour: sleepHour,
-                            radius: radius,
-                            colors: colors,
-                          ),
-                        ),
-                      ),
-                      // Center Live Text
-                      Positioned.fill(
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                _toPersianDigits('${(24.0 - wakeDuration).toStringAsFixed((24.0 - wakeDuration) % 1 == 0 ? 0 : 1)} ساعت خواب'),
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xff9B89FF),
-                                  fontFamily: 'Vazirmatn',
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _toPersianDigits('${wakeDuration.toStringAsFixed(wakeDuration % 1 == 0 ? 0 : 1)} ساعت بیداری'),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.orange,
-                                  fontFamily: 'Vazirmatn',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Wake Handle (Sun)
-                      Positioned(
-                        left: wakeOffset.dx - 18,
-                        top: wakeOffset.dy - 18,
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.orange,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.orange.withValues(alpha: 0.5),
-                                blurRadius: 10,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Text('☀️', style: TextStyle(fontSize: 16)),
-                          ),
-                        ),
-                      ),
-                      // Sleep Handle (Moon)
-                      Positioned(
-                        left: sleepOffset.dx - 18,
-                        top: sleepOffset.dy - 18,
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xff5C6BC0),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xff5C6BC0).withValues(alpha: 0.5),
-                                blurRadius: 10,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Text('🌙', style: TextStyle(fontSize: 16)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+        if (widget.reasonFa.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: widget.isInferred
+                  ? const Color(0xff9B89FF).withValues(alpha: 0.12)
+                  : colors.textPrimary.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: widget.isInferred
+                    ? const Color(0xff9B89FF).withValues(alpha: 0.3)
+                    : colors.border.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Text(
+              widget.reasonFa,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: colors.textSecondary,
+                fontFamily: 'Vazirmatn',
+              ),
             ),
           ),
+          const SizedBox(height: 12),
+        ],
+
+        // 24-Hour Circular Drag Dial
+        SizedBox(
+          height: 200,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final size = min(constraints.maxWidth, constraints.maxHeight);
+              final center = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
+              final radius = size / 2 - 24;
+
+              final wakeOffset = _getHandleOffset(wakeVal, radius, center);
+              final sleepOffset = _getHandleOffset(sleepVal, radius, center);
+
+              return GestureDetector(
+                onPanStart: (details) {
+                  final pos = details.localPosition;
+                  final dWake = (pos - wakeOffset).distance;
+                  final dSleep = (pos - sleepOffset).distance;
+
+                  if (dWake < 30) {
+                    _activeHandle = 'WAKE';
+                  } else if (dSleep < 30) {
+                    _activeHandle = 'SLEEP';
+                  } else {
+                    _activeHandle = 'NONE';
+                  }
+                },
+                onPanUpdate: (details) {
+                  if (_activeHandle == 'NONE') return;
+
+                  final pos = details.localPosition;
+                  final newHour = _getHourFromOffset(pos, center);
+                  final timeStr = _formatDoubleToTime(newHour);
+
+                  HapticFeedback.selectionClick();
+
+                  if (_activeHandle == 'WAKE') {
+                    widget.onWakeTimeChanged(timeStr);
+                  } else if (_activeHandle == 'SLEEP') {
+                    widget.onSleepTimeChanged(timeStr);
+                  }
+                },
+                onPanEnd: (_) {
+                  _activeHandle = 'NONE';
+                },
+                child: CustomPaint(
+                  size: Size(constraints.maxWidth, constraints.maxHeight),
+                  painter: _DayArcClockPainter(
+                    wakeVal: wakeVal,
+                    sleepVal: sleepVal,
+                    colors: colors,
+                    radius: radius,
+                    center: center,
+                  ),
+                ),
+              );
+            },
+          ),
         ),
-        const SizedBox(height: 16),
+
+        const SizedBox(height: 12),
+
+        // Readout Stats
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildTimeInfoCard(context, 'ساعت بیداری', _toPersianDigits(widget.wakeTime), Colors.orange),
-            _buildTimeInfoCard(context, 'ساعت خواب', _toPersianDigits(widget.sleepTime), const Color(0xff9B89FF)),
+            _StatTile(
+              title: 'ساعت بیداری',
+              value: _toPersianDigits(widget.wakeTime),
+              icon: Icons.wb_sunny_rounded,
+              color: const Color(0xffF59E0B),
+            ),
+            _StatTile(
+              title: 'مدت بیداری',
+              value: _toPersianDigits('$activeHoursInt س $activeMinutesInt د'),
+              icon: Icons.timelapse_rounded,
+              color: const Color(0xff9B89FF),
+            ),
+            _StatTile(
+              title: 'ساعت خواب',
+              value: _toPersianDigits(widget.sleepTime),
+              icon: Icons.nightlight_round,
+              color: const Color(0xff3B82F6),
+            ),
           ],
         ),
       ],
     );
   }
+}
 
-  Widget _buildTimeInfoCard(BuildContext context, String label, String value, Color color) {
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: colors.textPrimary.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.border.withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 11, color: colors.textSecondary, fontFamily: 'Vazirmatn'),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-              fontFamily: 'Vazirmatn',
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 10,
+                color: colors.textSecondary,
+                fontFamily: 'Vazirmatn',
+              ),
             ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: colors.textPrimary,
+            fontFamily: 'Vazirmatn',
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class DayArcPainter extends CustomPainter {
-
-  DayArcPainter({
-    required this.wakeHour,
-    required this.sleepHour,
-    required this.radius,
+class _DayArcClockPainter extends CustomPainter {
+  _DayArcClockPainter({
+    required this.wakeVal,
+    required this.sleepVal,
     required this.colors,
+    required this.radius,
+    required this.center,
   });
-  final double wakeHour;
-  final double sleepHour;
-  final double radius;
+
+  final double wakeVal;
+  final double sleepVal;
   final RitmoColors colors;
+  final double radius;
+  final Offset center;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-
-    // Night arc paint (from sleep to wake) - styled in deep purple/indigo
-    final nightPaint = Paint()
+    final bgArcPaint = Paint()
+      ..color = colors.textPrimary.withValues(alpha: 0.06)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xff5C6BC0).withValues(alpha: 0.35);
+      ..strokeWidth = 14
+      ..strokeCap = StrokeCap.round;
 
-    // Thin guide ring for background
-    final guidePaint = Paint()
+    canvas.drawCircle(center, radius, bgArcPaint);
+
+    final activeArcPaint = Paint()
+      ..color = const Color(0xff9B89FF).withValues(alpha: 0.6)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..color = colors.textPrimary.withValues(alpha: 0.08);
-    canvas.drawCircle(center, radius, guidePaint);
+      ..strokeWidth = 14
+      ..strokeCap = StrokeCap.round;
 
-    // Angles: 00:00 starts at top (-pi/2)
-    final startAngle = (wakeHour / 24.0) * 2.0 * pi - pi / 2.0;
-    final endAngle = (sleepHour / 24.0) * 2.0 * pi - pi / 2.0;
-
-    // Draw Sleep arc (night, from sleep to wake)
-    var sleepSweepAngle = startAngle - endAngle;
-    if (sleepSweepAngle < 0) {
-      sleepSweepAngle += 2.0 * pi;
+    final startAngle = (wakeVal / 24.0) * 2.0 * pi - pi / 2.0;
+    double sweepAngle;
+    if (sleepVal >= wakeVal) {
+      sweepAngle = ((sleepVal - wakeVal) / 24.0) * 2.0 * pi;
+    } else {
+      sweepAngle = (((24.0 - wakeVal) + sleepVal) / 24.0) * 2.0 * pi;
     }
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      endAngle,
-      sleepSweepAngle,
-      false,
-      nightPaint,
-    );
-
-    // Draw Day arc (wakefulness, from wake to sleep) - styled in orange/yellow daylight
-    var daySweepAngle = endAngle - startAngle;
-    if (daySweepAngle < 0) {
-      daySweepAngle += 2.0 * pi;
-    }
-
-    final dayPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
-      ..strokeCap = StrokeCap.round
-      ..shader = const SweepGradient(
-        colors: [
-          Colors.orange,
-          Color(0xffF57C00),
-          Colors.orange,
-        ],
-        stops: [0.0, 0.5, 1.0],
-      ).createShader(Rect.fromCircle(center: center, radius: radius));
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       startAngle,
-      daySweepAngle,
+      sweepAngle,
       false,
-      dayPaint,
+      activeArcPaint,
     );
+
+    final wakeAngle = (wakeVal / 24.0) * 2.0 * pi - pi / 2.0;
+    final wakePos = Offset(
+      center.dx + radius * cos(wakeAngle),
+      center.dy + radius * sin(wakeAngle),
+    );
+
+    final sleepAngle = (sleepVal / 24.0) * 2.0 * pi - pi / 2.0;
+    final sleepPos = Offset(
+      center.dx + radius * cos(sleepAngle),
+      center.dy + radius * sin(sleepAngle),
+    );
+
+    final handleBg = Paint()..color = Colors.white;
+    final wakeBorder = Paint()..color = const Color(0xffF59E0B);
+    final sleepBorder = Paint()..color = const Color(0xff3B82F6);
+
+    canvas.drawCircle(wakePos, 14, wakeBorder);
+    canvas.drawCircle(wakePos, 10, handleBg);
+
+    canvas.drawCircle(sleepPos, 14, sleepBorder);
+    canvas.drawCircle(sleepPos, 10, handleBg);
   }
 
   @override
-  bool shouldRepaint(covariant DayArcPainter oldDelegate) {
-    return oldDelegate.wakeHour != wakeHour ||
-        oldDelegate.sleepHour != sleepHour ||
-        oldDelegate.radius != radius;
-  }
+  bool shouldRepaint(covariant _DayArcClockPainter oldDelegate) => true;
 }

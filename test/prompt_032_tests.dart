@@ -97,5 +97,13 @@ void main() {
       expect(goalStepToken.startsWith('goalStep:'), isTrue);
       expect(rescheduleToken.startsWith('reschedule:'), isTrue);
     });
+
+    test('movement_kinds_schema_guarantee_test: movement_kinds table is created automatically', () {
+      final seedFile = File('lib/features/supplementary_sports/movement/data/seed/movement_kinds_seed.dart');
+      expect(seedFile.existsSync(), isTrue);
+      final content = seedFile.readAsStringSync();
+      expect(content.contains('ensureSchema'), isTrue);
+      expect(content.contains('CREATE TABLE IF NOT EXISTS movement_kinds'), isTrue);
+    });
   });
 }

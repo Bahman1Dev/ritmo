@@ -2775,5 +2775,96 @@ class MigrationV57 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV58 extends Migration {
+  @override
+  int get version => 58;
+
+  @override
+  Future<void> up(Database db) async {
+    try {
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+      final onboardingRows = await db.query(
+        'app_settings',
+        where: "key = 'onboarding_completed'",
+        limit: 1,
+      );
+
+      final isCompleted = onboardingRows.isNotEmpty && onboardingRows.first['value'] == 'true';
+
+      if (!isCompleted) {
+        final homeCityRows = await db.query(
+          'app_settings',
+          where: "key = 'home_city_id'",
+          limit: 1,
+        );
+        final userNameRows = await db.query(
+          'app_settings',
+          where: "key = 'user_name'",
+          limit: 1,
+        );
+        final routineCount = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM routines'),
+        ) ?? 0;
+
+        if (homeCityRows.isNotEmpty || userNameRows.isNotEmpty || routineCount > 0) {
+          await db.insert(
+            'app_settings',
+            {
+              'key': 'onboarding_completed',
+              'value': 'true',
+              'updatedAt': nowMs,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+          await db.insert(
+            'app_settings',
+            {
+              'key': 'onboarding_version',
+              'value': '1',
+              'updatedAt': nowMs,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+          debugPrint('[MigrationV58] Rescued user from onboarding loop.');
+        }
+      }
+
+      final onboardingRoutines = await db.query(
+        'routines',
+        where: "description = 'اولین روتین ثبت‌شده در آنبوردینگ'",
+      );
+
+      if (onboardingRoutines.length > 1) {
+        final grouped = <String, List<Map<String, dynamic>>>{};
+        for (final r in onboardingRoutines) {
+          final title = r['title']! as String;
+          grouped.putIfAbsent(title, () => []).add(r);
+        }
+
+        int purgedCount = 0;
+        for (final entries in grouped.values) {
+          if (entries.length > 1) {
+            entries.sort((a, b) => (a['createdAt'] as int? ?? 0).compareTo(b['createdAt'] as int? ?? 0));
+            for (int i = 1; i < entries.length; i++) {
+              final dupId = entries[i]['id']! as String;
+              await db.delete('routines', where: 'id = ?', whereArgs: [dupId]);
+              await db.delete('routine_schedules', where: 'routineId = ?', whereArgs: [dupId]);
+              await db.delete('routine_occurrences', where: 'routineId = ?', whereArgs: [dupId]);
+              purgedCount++;
+            }
+          }
+        }
+        debugPrint('[MigrationV58] Purged $purgedCount duplicate onboarding routines.');
+      }
+    } catch (e) {
+      debugPrint('[MigrationV58] Error during migration V58: $e');
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
 
 
