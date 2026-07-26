@@ -2,6 +2,8 @@ import 'package:ritmo/core/database/migration/migration_interface.dart';
 import 'package:ritmo/core/database/migration/migrations_registry.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'package:ritmo/core/logging/ritmo_logger.dart';
+
 class MigrationRunner {
   static final List<Migration> _migrations = [
     MigrationV2(),
@@ -64,9 +66,16 @@ class MigrationRunner {
   ];
 
   static Future<void> run(Database db, int oldVersion, int newVersion) async {
+    RitmoLog.info('MigrationRunner', 'Running migrations from v$oldVersion to v$newVersion');
     for (final migration in _migrations) {
       if (migration.version > oldVersion && migration.version <= newVersion) {
-        await migration.up(db);
+        try {
+          await migration.up(db);
+          RitmoLog.info('MigrationRunner', 'Successfully applied migration v${migration.version}');
+        } catch (e, st) {
+          RitmoLog.error('MigrationRunner', 'Failed to apply migration v${migration.version}', e, st);
+          rethrow;
+        }
       }
     }
   }

@@ -62,6 +62,10 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 
+    private fun generateRequestCode(id: String, salt: String = ""): Int {
+        return (id + salt).hashCode() and 0x7FFFFFFF
+    }
+
     private fun restoreAlarmsFromSnapshot(context: Context) {
         try {
             val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
@@ -92,7 +96,7 @@ class BootReceiver : BroadcastReceiver() {
                         putExtra("isEssential", isEssential)
                     }
 
-                    val requestCode = id.hashCode()
+                    val requestCode = generateRequestCode(id, "_ALARM")
                     val pendingIntent = PendingIntent.getBroadcast(
                         context,
                         requestCode,
@@ -135,7 +139,7 @@ class BootReceiver : BroadcastReceiver() {
         val channelId = if (isEssential) "RitmoEssentialChannel" else "RitmoNormalChannel"
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = if (isEssential) "یادآوری‌های حیاتی (دارو/نماز)" else "یادآوری‌های معمولی"
+            val name = if (isEssential) context.getString(R.string.notif_essential_channel_name) else context.getString(R.string.notif_normal_channel_name)
             val importance = if (isEssential) NotificationManager.IMPORTANCE_HIGH else NotificationManager.IMPORTANCE_DEFAULT
             val channel = NotificationChannel(channelId, name, importance).apply {
                 if (isEssential) {
@@ -147,10 +151,11 @@ class BootReceiver : BroadcastReceiver() {
         }
 
         // Open app when notification clicked
+        val notifNumericId = generateRequestCode(id, "_NOTIF")
         val launchIntent = Intent(context, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             context,
-            id.hashCode(),
+            notifNumericId,
             launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -162,7 +167,7 @@ class BootReceiver : BroadcastReceiver() {
         }
         val startTimerPendingIntent = PendingIntent.getActivity(
             context,
-            (id + "START_TIMER").hashCode(),
+            generateRequestCode(id, "_START_TIMER"),
             startTimerIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -172,11 +177,11 @@ class BootReceiver : BroadcastReceiver() {
                 action = "com.ritmo.app.NOTIF_ACTION"
                 putExtra("actionType", "DONE")
                 putExtra("reminderId", id)
-                putExtra("notifId", id.hashCode())
+                putExtra("notifId", notifNumericId)
             }
             val donePendingIntent = PendingIntent.getBroadcast(
                 context,
-                (id + "DONE").hashCode(),
+                generateRequestCode(id, "_DONE"),
                 doneIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -185,11 +190,11 @@ class BootReceiver : BroadcastReceiver() {
                 action = "com.ritmo.app.NOTIF_ACTION"
                 putExtra("actionType", "SNOOZE")
                 putExtra("reminderId", id)
-                putExtra("notifId", id.hashCode())
+                putExtra("notifId", notifNumericId)
             }
             val snoozePendingIntent = PendingIntent.getBroadcast(
                 context,
-                (id + "SNOOZE").hashCode(),
+                generateRequestCode(id, "_SNOOZE"),
                 snoozeIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -198,28 +203,29 @@ class BootReceiver : BroadcastReceiver() {
                 action = "com.ritmo.app.NOTIF_ACTION"
                 putExtra("actionType", "DISMISS")
                 putExtra("reminderId", id)
-                putExtra("notifId", id.hashCode())
+                putExtra("notifId", notifNumericId)
             }
             val dismissPendingIntent = PendingIntent.getBroadcast(
                 context,
-                (id + "DISMISS").hashCode(),
+                generateRequestCode(id, "_DISMISS"),
                 dismissIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
+            val appIconRes = context.applicationInfo.icon
             val builder = NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-                .setContentTitle("⏰ روتین حیاتی")
+                .setSmallIcon(if (appIconRes != 0) appIconRes else android.R.drawable.ic_lock_idle_alarm)
+                .setContentTitle(context.getString(R.string.notif_vital_routine_title))
                 .setContentText(title)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
-                .addAction(0, "انجام شد ✅", donePendingIntent)
-                .addAction(0, "تعویق ⏰", snoozePendingIntent)
-                .addAction(0, "رد کردن", dismissPendingIntent)
-                .addAction(0, "الان انجام می‌دهم ⏱️", startTimerPendingIntent)
+                .addAction(0, context.getString(R.string.notif_action_done), donePendingIntent)
+                .addAction(0, context.getString(R.string.notif_action_snooze), snoozePendingIntent)
+                .addAction(0, context.getString(R.string.notif_action_dismiss), dismissPendingIntent)
+                .addAction(0, context.getString(R.string.notif_action_start_timer), startTimerPendingIntent)
 
-            notificationManager.notify(id.hashCode(), builder.build())
+            notificationManager.notify(notifNumericId, builder.build())
         } else {
             val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             val digestMode = prefs.getString("flutter.notif_digest_mode", "false") == "true"

@@ -4,8 +4,10 @@ import 'package:ritmo/core/domain/execution/command_context.dart';
 import 'package:ritmo/core/domain/execution/command_handler.dart';
 import 'package:ritmo/core/domain/execution/events/kernel_event_factory.dart';
 import 'package:ritmo/core/domain/execution/kernel_mutation_result.dart';
+import 'package:ritmo/core/domain/models/reminder_state.dart';
 import 'package:ritmo/core/platform/alarm_platform.dart';
 import 'package:ritmo/core/services/snapshot_sync_service.dart';
+import 'package:ritmo/core/utils/ritmo_date.dart';
 
 class DeleteRoutineHandler
     implements KernelCommandHandler<DeleteRoutineCommand> {
@@ -44,14 +46,14 @@ class DeleteRoutineHandler
     await context.txn.update(
       'pending_reminders',
       {
-        'state': 'CANCELLED',
+        'state': ReminderState.cancelled.dbValue,
         'updatedAt': context.now.millisecondsSinceEpoch,
       },
       where: "routineId = ? AND (state = 'unknown' OR state = 'delayed')",
       whereArgs: [id],
     );
 
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final todayStr = RitmoDate.now().value;
     await context.txn.delete(
       'routine_occurrences',
       where: 'routine_id = ? AND date >= ?',

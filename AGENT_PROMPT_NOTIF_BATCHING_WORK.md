@@ -15,8 +15,8 @@
 - جدولِ `notification_history(id, routineId, notificationType, sentAt, actionTaken)` و `DatabaseHelper.instance.logNotificationEvent(...)` موجودند.
 - اعلانِ آلارم در `BootReceiver.kt` → `showAlarmNotification(context, id, title, isEssential)` به‌صورت **تک‌تک** نمایش داده می‌شود (کانال‌های `RitmoEssentialChannel` / `RitmoNormalChannel`). آلارم‌ها مستقل زنگ می‌زنند.
 - snapshot به SharedPreferences در `lib/core/utils/snapshot_helper.dart` نوشته می‌شود (`active_reminders_snapshot`, `widget_snapshot`)؛ این تابع از `SnapshotSyncService.syncAll()` صدا زده می‌شود. Kotlin این مقادیر را با پیشوندِ `flutter.` می‌خواند.
-- `scheduleNextAlarms()` فقط از UI صدا زده می‌شود (calendar/onboarding/profile) — **هیچ زمان‌بندِ دوره‌ای ندارد**.
-- `workmanager` در `pubspec.yaml` **نیست**.
+- `scheduleNextAlarms()` is triggered via `SnapshotSyncService.syncAll()` and background tasks.
+- `workmanager` is included in `pubspec.yaml` and initialized safely in `main.dart`.
 
 ---
 

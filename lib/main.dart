@@ -10,6 +10,7 @@ import 'package:ritmo/core/services/background_worker.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/database/seed/mock_data_seeder.dart';
+import 'package:ritmo/core/services/account_reset_service.dart';
 import 'package:ritmo/core/services/device_service.dart';
 import 'package:ritmo/core/security/app_lock_gate.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
@@ -30,61 +31,124 @@ import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/agenda/agenda_renderer_registry.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 
+import 'package:ritmo/core/logging/ritmo_logger.dart';
+import 'package:ritmo/core/time/ritmo_clock.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterError.onError = (details) {
+    RitmoLog.error('FlutterError', details.exceptionAsString(), details.exception, details.stack);
+    if (kDebugMode) {
+      FlutterError.presentError(details);
+    }
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    RitmoLog.error('PlatformError', error.toString(), error, stack);
+    return true;
+  };
 
   if (!kIsWeb) {
     Future.microtask(() async {
       try {
+        final prefs = await SharedPreferences.getInstance();
         final handle = PluginUtilities.getCallbackHandle(notificationActionDispatcher)?.toRawHandle();
         if (handle != null) {
-          final prefs = await SharedPreferences.getInstance();
           await prefs.setInt('notification_action_callback_handle', handle);
-          await prefs.setInt('digest_notif_count', 0);
         }
 
-        Workmanager().initialize(ritmoCallbackDispatcher);
-        Workmanager().registerPeriodicTask(
-          'ritmo_periodic_reschedule',
-          'ritmoRescheduleTask',
-          frequency: const Duration(hours: 6),
-          existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-          constraints: Constraints(networkType: NetworkType.notRequired),
-          backoffPolicy: BackoffPolicy.linear,
-        );
-      } catch (e) {
-        debugPrint('[BackgroundInit] Note: $e');
+        final todayStr = DayKey.from(DateTime.now()).value;
+        final lastResetDate = prefs.getString('digest_notif_reset_date');
+        if (lastResetDate != todayStr) {
+          await prefs.setInt('digest_notif_count', 0);
+          await prefs.setString('digest_notif_reset_date', todayStr);
+        }
+
+        final wmRegistered = prefs.getBool('wm_registered_v2') ?? false;
+        if (!wmRegistered) {
+          Workmanager().initialize(ritmoCallbackDispatcher);
+          await Workmanager().registerPeriodicTask(
+            'ritmo_periodic_reschedule',
+            'ritmoRescheduleTask',
+            frequency: const Duration(hours: 6),
+            existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+            constraints: Constraints(networkType: NetworkType.notRequired),
+            backoffPolicy: BackoffPolicy.linear,
+          );
+          await prefs.setBool('wm_registered_v2', true);
+        }
+      } catch (e, st) {
+        RitmoLog.error('BackgroundInit', 'Workmanager init error', e, st);
       }
     });
   }
 
   ErrorWidget.builder = (details) {
+    if (kDebugMode) {
+      return Material(
+        color: const Color(0xff121212),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Error details:',
+                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                const SizedBox(height: 8),
+                SelectableText(
+                  details.exception.toString(),
+                  style: const TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Stack Trace:',
+                  style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                SelectableText(
+                  details.stack.toString(),
+                  style: const TextStyle(color: Colors.grey, fontFamily: 'monospace', fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Material(
-      color: const Color(0xff121212),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+      color: const Color(0xff12111E),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Error details:',
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              const SizedBox(height: 8),
-              SelectableText(
-                details.exception.toString(),
-                style: const TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 14),
-              ),
+              const Icon(Icons.warning_amber_rounded, color: Color(0xffF43F5E), size: 48),
               const SizedBox(height: 16),
               const Text(
-                'Stack Trace:',
-                style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 16),
+                'مشکلی در پردازش این بخش پیش آمد',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Vazirmatn',
+                ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              SelectableText(
-                details.stack.toString(),
-                style: const TextStyle(color: Colors.grey, fontFamily: 'monospace', fontSize: 11),
+              const Text(
+                'اطلاعات شما کاملاً محفوظ است. لطفاً برنامه را مجدداً بارگذاری کنید.',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontFamily: 'Vazirmatn',
+                ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -135,6 +199,7 @@ class RitmoApp extends StatefulWidget {
 class _RitmoAppState extends State<RitmoApp> {
   bool _showSplash = true;
   bool _onboardingCompleted = false;
+  Object? _initError;
   late Future<void> _initializationFuture;
 
   @override
@@ -144,37 +209,39 @@ class _RitmoAppState extends State<RitmoApp> {
   }
 
   Future<void> _initialize() async {
-    // 1. Trigger database open and seed check
-    final db = await DatabaseHelper.instance.database;
+    try {
+      _initError = null;
+      // 1. Trigger database open
+      final db = await DatabaseHelper.instance.database;
 
-    // Purge legacy mock/test data once to ensure a clean user environment
-    final mockCleared = await db.query('app_settings', where: "key = 'mock_data_purged_v1'");
-    if (mockCleared.isEmpty) {
+      // 2. Initialize Premium/Entitlement service
       try {
-        debugPrint('[MockSeeder] 🧹 Purging all legacy mock data...');
-        await MockDataSeeder.clearMockData(db);
-        await db.insert('app_settings', {
-          'key': 'mock_data_purged_v1',
-          'value': 'true',
-          'updatedAt': DateTime.now().millisecondsSinceEpoch,
-        });
-        debugPrint('[MockSeeder] ✨ Legacy test data purged successfully.');
+        await PremiumService.instance.init();
       } catch (e, st) {
-        debugPrint('[MockSeeder] ❌ Error purging mock data: $e\n$st');
+        RitmoLog.error('Init', 'PremiumService init failed', e, st);
       }
+
+      // 3. Register current device
+      try {
+        await DeviceService.instance.registerCurrentDevice();
+      } catch (e, st) {
+        RitmoLog.error('Init', 'Device registration failed', e, st);
+      }
+
+      // 4. Reconcile external background updates and sync occurrences
+      try {
+        await RitmoExecutionKernel.instance.reconcileExternalState();
+      } catch (e, st) {
+        RitmoLog.error('Init', 'Reconcile external state failed', e, st);
+      }
+
+      // 5. Check if onboarding is completed via OnboardingGate
+      _onboardingCompleted = await OnboardingGate.isCompleted(db);
+    } catch (e, st) {
+      RitmoLog.error('Init', 'Critical startup error in _initialize', e, st);
+      _initError = e;
+      rethrow;
     }
-
-    // Initialize Premium/Entitlement service
-    await PremiumService.instance.init();
-
-    // Register current device
-    await DeviceService.instance.registerCurrentDevice();
-
-    // 2. Reconcile external background updates and sync occurrences
-    await RitmoExecutionKernel.instance.reconcileExternalState();
-
-    // 3. Check if onboarding is completed via OnboardingGate
-    _onboardingCompleted = await OnboardingGate.isCompleted(db);
   }
 
   @override
@@ -234,16 +301,10 @@ class _RitmoAppState extends State<RitmoApp> {
                             themeRepository: widget.themeRepository,
                             localeRepository: widget.localeRepository,
                             onLogout: () async {
-                              // For test/dev purposes, allow resetting the database
-                              final db = await DatabaseHelper.instance.database;
-                              await db.delete('routines');
-                              await db.delete('routine_schedules');
-                              await db.delete('routine_completions');
-                              await db.delete('app_settings', where: "key = 'onboarding_completed'");
+                              await AccountResetService.wipeUserData();
                               setState(() {
                                 _onboardingCompleted = false;
                                 _showSplash = true;
-                                // Re-initialize after database reset
                                 _initializationFuture = _initialize();
                               });
                             },

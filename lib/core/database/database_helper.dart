@@ -4,12 +4,16 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:ritmo/core/database/legacy_database_recovery.dart';
 import 'package:ritmo/core/database/migration/migration_runner.dart';
 import 'package:ritmo/core/database/schema/schema_manager.dart';
 import 'package:ritmo/core/database/schema/tables/ai_tables.dart';
 import 'package:ritmo/core/database/schema/tables/day_plan_tables.dart';
 import 'package:ritmo/core/database/schema/tables/supplementary_sports_tables.dart';
 import 'package:ritmo/core/database/seed/seed_service.dart';
+import 'package:ritmo/core/logging/ritmo_logger.dart';
+import 'package:ritmo/core/time/ritmo_clock.dart';
 import 'package:ritmo/core/services/end_of_day_sweep.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
@@ -25,15 +29,33 @@ class DatabaseHelper {
   @visibleForTesting
   static set databaseInstance(Database? db) => _database = db;
 
+  static Completer<Database>? _dbInitCompleter;
+
   Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDB('ritmo_secure.db');
-    await SupplementarySportsTables.create(_database!);
-    await SeedService.seedSupplementarySports(_database!);
-    await AiTables.ensureSchema(_database!);
-    await DayPlanTables.ensureSchema(_database!);
-    _checkDailySweep(_database!);
-    return _database!;
+    if (_database != null && _database!.isOpen) return _database!;
+    if (_dbInitCompleter != null) return _dbInitCompleter!.future;
+
+    _dbInitCompleter = Completer<Database>();
+    try {
+      final db = await _initDB('ritmo.db');
+      _database = db;
+      _dbInitCompleter!.complete(db);
+      return db;
+    } catch (e, st) {
+      _dbInitCompleter!.completeError(e, st);
+      _dbInitCompleter = null;
+      rethrow;
+    }
+  }
+
+  /// Explicitly warms up background database tasks and seed verification.
+  static Future<void> warmUp(Database db) async {
+    try {
+      await SeedService.seedSupplementarySports(db);
+      _checkDailySweep(db);
+    } catch (e, st) {
+      RitmoLog.error('DatabaseHelper', 'Warmup error', e, st);
+    }
   }
 
   static void _checkDailySweep(Database db) {
@@ -43,7 +65,9 @@ class DatabaseHelper {
       if (lastDate != todayStr) {
         EndOfDaySweep.runSweep(db);
       }
-    }).catchError((_) {});
+    }).catchError((e, st) {
+      RitmoLog.error('DatabaseHelper', 'Daily sweep error', e, st);
+    });
   }
 
   Future<Database> _initDB(String filePath) async {
@@ -57,31 +81,39 @@ class DatabaseHelper {
         ),
       );
     } else {
-      final dbPath = await getDatabasesPath();
-      final path = join(dbPath, filePath);
+      final path = await LegacyDatabaseRecovery.getSafeDatabasePath();
 
-      const storage = FlutterSecureStorage();
-      final oldKeyExists = await storage.containsKey(key: 'db_encryption_key');
-      if (oldKeyExists) {
-        try {
-          await storage.delete(key: 'db_encryption_key');
-          final file = File(path);
-          if (await file.exists()) {
-            await file.delete();
-            debugPrint('[DATABASE] Deleted legacy encrypted database at: $path');
+      try {
+        return await openDatabase(
+          path,
+          version: _dbVersion,
+          onCreate: _createDB,
+          onConfigure: _onConfigure,
+          onUpgrade: onUpgrade,
+        );
+      } catch (e, st) {
+        RitmoLog.error('DatabaseHelper', 'Database open failed ($e). Quarantining file and creating fresh database', e, st);
+        final dbFile = File(path);
+        if (await dbFile.exists()) {
+          try {
+            final docsDir = await getApplicationDocumentsDirectory();
+            final timestamp = DateTime.now().millisecondsSinceEpoch;
+            final corruptPath = join(docsDir.path, 'ritmo_corrupt_open_$timestamp.db');
+            await dbFile.rename(corruptPath);
+          } catch (_) {
+            if (await dbFile.length() == 0) {
+              await dbFile.delete();
+            }
           }
-        } catch (e) {
-          debugPrint('[DATABASE] Error deleting legacy encrypted database: $e');
         }
+        return await openDatabase(
+          path,
+          version: _dbVersion,
+          onCreate: _createDB,
+          onConfigure: _onConfigure,
+          onUpgrade: onUpgrade,
+        );
       }
-
-      return openDatabase(
-        path,
-        version: _dbVersion,
-        onCreate: _createDB,
-        onConfigure: _onConfigure,
-        onUpgrade: onUpgrade,
-      );
     }
   }
 
@@ -126,15 +158,6 @@ class DatabaseHelper {
       return;
     }
 
-    final existingDebt = await db.query(
-      'fasting_debt',
-      where: 'dateIso = ?',
-      whereArgs: [dateStr],
-    );
-    if (existingDebt.isNotEmpty) {
-      return;
-    }
-
     final activePeriods = await db.query(
       'cycle_periods',
       where: 'startDate <= ? AND (endDate IS NULL OR endDate >= ?)',
@@ -145,16 +168,27 @@ class DatabaseHelper {
     }
 
     final activePeriod = activePeriods.first;
+    final periodId = activePeriod['id']?.toString() ?? 'period';
     final startDateStr = activePeriod['startDate']! as String;
     final endDateStr = (activePeriod['endDate'] as String?) ?? dateStr;
 
-    final start = DateTime.parse(startDateStr);
-    final end = DateTime.parse(endDateStr);
-    final daysOwed = end.difference(start).inDays + 1;
+    final debtId = 'fast_debt_$periodId';
+    final existingDebt = await db.query(
+      'fasting_debt',
+      where: 'id = ? OR dateIso = ?',
+      whereArgs: [debtId, dateStr],
+    );
+    if (existingDebt.isNotEmpty) {
+      return;
+    }
+
+    final startKey = DayKey.parse(startDateStr);
+    final endKey = DayKey.parse(endDateStr);
+    final daysOwed = endKey.differenceInDays(startKey) + 1;
 
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     await db.insert('fasting_debt', {
-      'id': 'fast_debt_${startDateStr}_$endDateStr',
+      'id': debtId,
       'dateIso': dateStr,
       'daysOwed': daysOwed,
       'isResolved': 0,
@@ -189,7 +223,9 @@ class DatabaseHelper {
         if (val == 'FEMALE' || val == 'WOMAN' || val == 'ZAN' || val == 'زن') return 'FEMALE';
         if (val == 'MALE' || val == 'MAN' || val == 'MARD' || val == 'مرد') return 'MALE';
       }
-    } catch (_) {}
+    } catch (e, st) {
+      RitmoLog.error('DatabaseHelper', 'Error getting user gender', e, st);
+    }
     return 'MALE';
   }
 

@@ -27,6 +27,7 @@ class SnapshotHelper {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final data = {
+      'schemaVersion': 1,
       'nextActionTitle': nextActionTitle,
       'rhythmScore': rhythmScore,
       'currentEnergyLevel': currentEnergyLevel,
@@ -52,6 +53,7 @@ class SnapshotHelper {
     if (kIsWeb) return;
     final prefs = await SharedPreferences.getInstance();
     final data = {
+      'schemaVersion': 1,
       'rhythmScore': rhythmScore,
       'nextActionTitle': nextActionTitle,
       'energyLabel': energyLabel,

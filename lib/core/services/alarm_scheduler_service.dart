@@ -80,7 +80,12 @@ class AlarmSchedulerService {
     for (final occ in occurrences) {
       final rId = occ['routine_id']! as String;
       final dateStr = occ['date']! as String;
-      final timeStr = occ['scheduled_time'] as String? ?? '08:00';
+      final rawTime = occ['scheduled_time'] as String?;
+      if (rawTime == null || rawTime.trim().isEmpty) {
+        // Skip scheduling arbitrary alarm for routines without a scheduled time
+        continue;
+      }
+      final timeStr = rawTime.trim();
       final status = occ['status']! as String;
 
       final rMap = routinesMap[rId];
@@ -95,8 +100,10 @@ class AlarmSchedulerService {
 
       // Parse schedule/reminder time
       final timeParts = timeStr.split(':');
-      final hour = int.tryParse(timeParts[0]) ?? 8;
-      final minute = int.tryParse(timeParts[1]) ?? 0;
+      final hour = int.tryParse(timeParts[0]);
+      final minute = int.tryParse(timeParts[1]);
+      if (hour == null || minute == null) continue;
+
       final dateParts = dateStr.split('-');
       final year = int.tryParse(dateParts[0]) ?? now.year;
       final month = int.tryParse(dateParts[1]) ?? now.month;

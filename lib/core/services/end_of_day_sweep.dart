@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/models/inbox_item.dart';
+import 'package:ritmo/core/domain/models/reminder_state.dart';
 import 'package:ritmo/core/services/central_inbox_service.dart';
+import 'package:ritmo/core/utils/ritmo_date.dart';
 import 'package:ritmo/features/worship/logic/worship_repository.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -11,9 +13,8 @@ class EndOfDaySweep {
 
   static Future<int> runSweep(Database db, {DateTime? now}) async {
     final today = now ?? DateTime.now();
-    final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-    final yesterday = today.subtract(const Duration(days: 1));
-    final yesterdayStr = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+    final todayStr = RitmoDate(today).value;
+    final yesterdayStr = RitmoDate(today.subtract(const Duration(days: 1))).value;
 
     var sweptCount = 0;
 
@@ -56,9 +57,16 @@ class EndOfDaySweep {
           if (routineId != null) {
             await txn.update(
               'pending_reminders',
-              {'state': 'expired'},
-              where: 'routineId = ? AND state IN (\'active\', \'delayed\', \'unknown\')',
-              whereArgs: [routineId],
+              {'state': ReminderState.expired.dbValue},
+              where:
+                  'routineId = ? AND state IN (?, ?, ?, ?)',
+              whereArgs: [
+                routineId,
+                ReminderState.active.dbValue,
+                ReminderState.delayed.dbValue,
+                ReminderState.unknown.dbValue,
+                ReminderState.cancelled.dbValue,
+              ],
             );
           }
         }

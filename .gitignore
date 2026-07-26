@@ -50,6 +50,13 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Keys and Android Secrets
+key.properties
+*.jks
+*.keystore
+google-services.json
+analysis_output.txt
+
 # Windows special device file
 nul
 

@@ -6,7 +6,9 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -29,7 +31,7 @@ class MainActivity : FlutterFragmentActivity() {
 
         // 1. Keystore MethodChannel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, KEYSTORE_CHANNEL).setMethodCallHandler { call, result ->
-            if (call.method == "getOrCreateKey") {
+            if (call.method == "getDeviceMasterKey") {
                 try {
                     val key = getOrCreateMasterKey()
                     result.success(key)
@@ -41,10 +43,10 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
 
-        // 2. AlarmManager MethodChannel
+        // 2. Alarm MethodChannel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ALARM_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
-                "scheduleExactAlarm" -> {
+                "scheduleAlarm" -> {
                     val id = call.argument<String>("id")
                     val time = call.argument<Long>("time")
                     val title = call.argument<String>("title")
@@ -64,6 +66,29 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(true)
                     } else {
                         result.error("INVALID_ARGUMENTS", "Missing id", null)
+                    }
+                }
+                "checkExactAlarmPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                        result.success(alarmManager.canScheduleExactAlarms())
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "requestExactAlarmPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        try {
+                            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                data = Uri.parse("package:$packageName")
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("PERMISSION_ERROR", e.message, null)
+                        }
+                    } else {
+                        result.success(true)
                     }
                 }
                 else -> result.notImplemented()
@@ -318,6 +343,10 @@ class MainActivity : FlutterFragmentActivity() {
         return Base64.encodeToString(secretKey.encoded ?: alias.toByteArray(), Base64.NO_WRAP)
     }
 
+    private fun generateRequestCode(id: String, salt: String = ""): Int {
+        return (id + salt).hashCode() and 0x7FFFFFFF
+    }
+
     // AlarmManager Scheduling
     private fun scheduleAlarm(id: String, timeMs: Long, title: String, isEssential: Boolean) {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -328,7 +357,7 @@ class MainActivity : FlutterFragmentActivity() {
             putExtra("isEssential", isEssential)
         }
 
-        val requestCode = id.hashCode()
+        val requestCode = generateRequestCode(id, "_ALARM")
         val pendingIntent = PendingIntent.getBroadcast(
             this,
             requestCode,
@@ -366,7 +395,7 @@ class MainActivity : FlutterFragmentActivity() {
             action = "com.ritmo.app.ACTION_TRIGGER_ALARM"
         }
 
-        val requestCode = id.hashCode()
+        val requestCode = generateRequestCode(id, "_ALARM")
         val pendingIntent = PendingIntent.getBroadcast(
             this,
             requestCode,

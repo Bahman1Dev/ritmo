@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ریتمو</string>
+    <string name="notif_vital_routine_title">⏰ روتین حیاتی</string>
+    <string name="notif_essential_channel_name">یادآوری‌های حیاتی (دارو/نماز)</string>
+    <string name="notif_normal_channel_name">یادآوری‌های معمولی</string>
+    <string name="notif_action_done">انجام شد ✅</string>
+    <string name="notif_action_snooze">تعویق ⏰</string>
+    <string name="notif_action_dismiss">رد کردن</string>
+    <string name="notif_action_start_timer">الان انجام می‌دهم ⏱️</string>
+</resources>

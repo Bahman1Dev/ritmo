@@ -108,9 +108,18 @@ class PulseCard extends StatelessWidget {
     final isHigh = rhythmScore >= 80;
     final scoreColor = isHigh ? colors.success : colors.primary;
 
-    final isPositive = rhythmScore >= 75;
-    final trendText = isPositive ? '+۱۲٪ ↑' : '-۵٪ ↓';
-    final trendColor = isPositive ? colors.success : colors.warning;
+    final String trendText;
+    final Color trendColor;
+    if (rhythmScore >= 80) {
+      trendText = 'عالی ↑';
+      trendColor = colors.success;
+    } else if (rhythmScore >= 60) {
+      trendText = 'پایدار ~';
+      trendColor = colors.primary;
+    } else {
+      trendText = 'نیازمند استراحت ↓';
+      trendColor = colors.warning;
+    }
 
     return Directionality(
       textDirection: TextDirection.rtl,

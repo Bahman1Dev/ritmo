@@ -27,8 +27,8 @@ android {
     }
 
     lint {
-        abortOnError = false
-        checkReleaseBuilds = false
+        abortOnError = true
+        checkReleaseBuilds = true
     }
 
     defaultConfig {
@@ -50,11 +50,7 @@ android {
                 storeFile = file(keystoreProperties["storeFile"] as String)
                 storePassword = keystoreProperties["storePassword"] as String
             } else {
-                val debugConfig = getByName("debug")
-                keyAlias = debugConfig.keyAlias
-                keyPassword = debugConfig.keyPassword
-                storeFile = debugConfig.storeFile
-                storePassword = debugConfig.storePassword
+                throw GradleException("key.properties یافت نشد — بیلد ریلیز متوقف شد.")
             }
         }
     }

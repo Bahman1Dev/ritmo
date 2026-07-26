@@ -10,6 +10,7 @@ import 'package:ritmo/core/ai/ai_rate_limiter.dart';
 import 'package:ritmo/core/ai/ai_response_processor.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/services/premium_service.dart';
+import 'package:ritmo/core/services/secure_key_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -102,7 +103,7 @@ class AIGateway {
       final modelKey = isFeaturesConfig ? 'ai_features_model' : 'ai_model';
 
       var baseUrl = settingsMap[baseUrlKey];
-      var apiKey = settingsMap[apiKeyKey];
+      var apiKey = await SecureKeyStore.getKey(apiKeyKey) ?? settingsMap[apiKeyKey];
       var model = settingsMap[modelKey];
 
       if (isFeaturesConfig) {
@@ -111,7 +112,7 @@ class AIGateway {
         model ??= defaultFeaturesModel;
       } else {
         baseUrl ??= settingsMap['ai_base_url'] ?? defaultBaseUrl;
-        apiKey ??= settingsMap['ai_api_key'] ?? defaultApiKey;
+        apiKey ??= await SecureKeyStore.getKey('ai_api_key') ?? settingsMap['ai_api_key'] ?? defaultApiKey;
         model ??= settingsMap['ai_model'] ?? defaultModel;
       }
 

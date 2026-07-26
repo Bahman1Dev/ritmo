@@ -9,11 +9,13 @@ class RitmoPressable extends StatefulWidget {
     this.onTap,
     this.scaleDown = 0.96,
     this.haptic = true,
+    this.semanticLabel,
   });
   final Widget child;
   final VoidCallback? onTap;
   final double scaleDown;
   final bool haptic;
+  final String? semanticLabel;
 
   @override
   State<RitmoPressable> createState() => _RitmoPressableState();
@@ -43,7 +45,9 @@ class _RitmoPressableState extends State<RitmoPressable> with SingleTickerProvid
 
   void _handleTapDown(TapDownDetails details) {
     if (widget.onTap != null) {
-      _controller.forward();
+      if (!MediaQuery.of(context).disableAnimations) {
+        _controller.forward();
+      }
       if (widget.haptic) {
         RitmoHaptics.tap();
       }
@@ -64,15 +68,24 @@ class _RitmoPressableState extends State<RitmoPressable> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
-      onTapCancel: _handleTapCancel,
-      onTap: widget.onTap,
-      behavior: HitTestBehavior.opaque,
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: widget.child,
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+
+    return Semantics(
+      button: true,
+      enabled: widget.onTap != null,
+      label: widget.semanticLabel,
+      child: GestureDetector(
+        onTapDown: _handleTapDown,
+        onTapUp: _handleTapUp,
+        onTapCancel: _handleTapCancel,
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: reduceMotion
+            ? widget.child
+            : ScaleTransition(
+                scale: _scaleAnimation,
+                child: widget.child,
+              ),
       ),
     );
   }

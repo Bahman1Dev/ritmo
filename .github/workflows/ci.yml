@@ -1,38 +1,46 @@
-﻿name: Ritmo CI Pipeline
+name: Ritmo CI Pipeline
 
 on:
   push:
-    branches: [ main, master, dev ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main, master, dev ]
+    branches: [ main, develop ]
 
 jobs:
-  build-and-test:
+  analyze_and_test:
+    name: Analyze & Test
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Java (Android SDK dependency)
+      - name: Set up Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2'
           channel: 'stable'
           cache: true
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Run Linter (Report Only)
-        run: flutter analyze
-        continue-on-error: true
+      - name: Check Code Format
+        run: dart format --output=none --set-exit-if-changed .
 
-      - name: Run Tests
-        run: flutter test
+      - name: Analyze Code
+        run: flutter analyze lib/
+
+      - name: Run Unit & Widget Tests
+        run: flutter test --coverage
+
+      - name: Verify Key Properties Fallback Protection
+        run: |
+          if [ -f "android/key.properties" ]; then
+            echo "key.properties exists in repo - error!" && exit 1
+          fi
+

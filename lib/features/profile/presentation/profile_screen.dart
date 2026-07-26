@@ -19,6 +19,7 @@ import 'package:ritmo/core/services/device_service.dart';
 import 'package:ritmo/core/services/module_management_service.dart';
 import 'package:ritmo/core/services/foreground_notification_updater.dart';
 import 'package:ritmo/core/services/premium_service.dart';
+import 'package:ritmo/core/services/secure_key_store.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/theme/theme_repository.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
@@ -2076,9 +2077,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             }
 
                             if (key.isEmpty) {
-                              await db.delete('app_settings', where: 'key = ?', whereArgs: ['ai_api_key']);
+                              await SecureKeyStore.deleteKey('ai_api_key');
                             } else {
-                              await db.insert('app_settings', {'key': 'ai_api_key', 'value': key, 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
+                              await SecureKeyStore.setKey('ai_api_key', key);
                             }
 
                             if (modelVal.isEmpty) {

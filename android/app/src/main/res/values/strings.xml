@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ritmo</string>
+    <string name="notif_vital_routine_title">⏰ Vital Routine</string>
+    <string name="notif_essential_channel_name">Vital Reminders (Medication/Prayer)</string>
+    <string name="notif_normal_channel_name">Normal Reminders</string>
+    <string name="notif_action_done">Done ✅</string>
+    <string name="notif_action_snooze">Snooze ⏰</string>
+    <string name="notif_action_dismiss">Dismiss</string>
+    <string name="notif_action_start_timer">Do Now ⏱️</string>
+</resources>
