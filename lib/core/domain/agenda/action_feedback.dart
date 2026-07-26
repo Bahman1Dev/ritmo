@@ -57,4 +57,15 @@ class ActionFeedback {
       iconColor: const Color(0xffEF4444),
     );
   }
+
+  static void info(BuildContext context, {required String message}) {
+    if (!context.mounted) return;
+
+    RitmoToast.show(
+      context,
+      message,
+      icon: Icons.info_outline_rounded,
+      iconColor: const Color(0xffF59E0B),
+    );
+  }
 }

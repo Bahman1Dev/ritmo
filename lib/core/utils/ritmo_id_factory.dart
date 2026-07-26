@@ -13,6 +13,12 @@ class RitmoIdFactory {
   static String workoutLog() => 'wl_${_stamp()}';
   static String reflection(String dateIso) => 'reflection_$dateIso';
 
+  // Completion & Log IDs
+  static String konkurLog() => 'konkur_${_stamp()}';
+  static String worshipLog() => 'worship_${_stamp()}';
+  static String medicationLog() => 'med_${_stamp()}';
+  static String completion() => 'comp_${_stamp()}';
+
   // Supplementary Sports IDs
   static String ssPlan() => 'ssplan_${_stamp()}';
   static String ssCrossRef() => 'ssxref_${_stamp()}';

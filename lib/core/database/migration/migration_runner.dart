@@ -58,6 +58,7 @@ class MigrationRunner {
     MigrationV53(),
     MigrationV54(),
     MigrationV55(),
+    MigrationV56(),
   ];
 
   static Future<void> run(Database db, int oldVersion, int newVersion) async {

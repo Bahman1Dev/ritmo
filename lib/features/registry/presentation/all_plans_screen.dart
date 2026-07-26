@@ -13,8 +13,6 @@ import 'package:ritmo/features/registry/domain/registry_query.dart';
 import 'package:ritmo/features/registry/logic/registry_health_audit.dart';
 import 'package:ritmo/features/registry/logic/registry_index.dart';
 import 'package:ritmo/features/registry/logic/registry_service.dart';
-import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
-import 'package:ritmo/features/registry/presentation/widgets/delete_impact_dialog.dart';
 import 'package:ritmo/features/registry/presentation/widgets/registry_bulk_bar.dart';
 import 'package:ritmo/features/registry/presentation/widgets/registry_health_card.dart';
 import 'package:ritmo/features/registry/presentation/widgets/registry_row.dart';
@@ -140,33 +138,6 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
         },
       );
     }
-  }
-
-  Future<void> _deleteEntryPermanent(RegistryEntry entry) async {
-    final report = await _service.impactOf(entry);
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => DeleteImpactDialog(
-        entry: entry,
-        report: report,
-        onArchive: () => _archiveEntry(entry),
-        onDeletePermanent: () async {
-          final db = await DatabaseHelper.instance.database;
-          await db.delete('routines', where: 'id = ?', whereArgs: [entry.sourceId]);
-          await db.delete('routine_schedules', where: 'routineId = ?', whereArgs: [entry.sourceId]);
-          await db.delete('pending_reminders', where: 'routineId = ?', whereArgs: [entry.sourceId]);
-
-          RegistryIndex.instance.invalidate();
-          await _refreshData();
-
-          if (mounted) {
-            RitmoToast.show(context, '«${entry.title}» به طور کامل حذف شد.');
-          }
-        },
-      ),
-    );
   }
 
   @override

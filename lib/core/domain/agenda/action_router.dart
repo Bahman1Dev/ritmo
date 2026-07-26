@@ -238,6 +238,8 @@ class ActionRouter {
       onSnooze: () async {
         final currentDeferCount = await _getCurrentDeferCount(targetRoutine.id, item.dateStr);
         final requestedMinutes = await _snoozeMinutesFromSettings();
+        final configuredMax = await _configuredMaxDefer();
+        final recurrenceRuleType = await _getRecurrenceRuleType(targetRoutine.id);
 
         final decision = SnoozePolicy.evaluate(
           itemId: targetRoutine.id,
@@ -245,6 +247,9 @@ class ActionRouter {
           requestedMinutes: requestedMinutes,
           currentDeferCount: currentDeferCount,
           category: targetRoutine.category.name,
+          isEssential: targetRoutine.isEssential ? 1 : 0,
+          configuredMax: configuredMax,
+          recurrenceRuleType: recurrenceRuleType,
         );
 
         if (!context.mounted) return;
@@ -260,16 +265,12 @@ class ActionRouter {
               onDone: () => DayAgendaService.instance.invalidateDate(item.dateStr),
             );
             if (decision.verdict == SnoozeVerdict.lastCall && context.mounted) {
-              ActionFeedback.failure(context, message: 'این آخرین تعویق ممکن برای امروز است');
+              ActionFeedback.info(context, message: 'این آخرین تعویق ممکن برای امروز است');
             }
             break;
 
           case SnoozeVerdict.exhausted:
             await _showExitOptionsSheet(context, routine: targetRoutine, dateStr: item.dateStr);
-            break;
-
-          case SnoozeVerdict.blockedMedical:
-            ActionFeedback.failure(context, message: 'تعویق برای موارد دارویی مجاز نیست');
             break;
 
           case SnoozeVerdict.blockedMidnight:
@@ -670,5 +671,41 @@ class ActionRouter {
         );
       },
     );
+  }
+
+  static Future<int> _configuredMaxDefer() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final rows = await db.query(
+        'app_settings',
+        where: 'key = ?',
+        whereArgs: ['snooze_max_defer_count'],
+        limit: 1,
+      );
+      if (rows.isNotEmpty && rows.first['value'] != null) {
+        final parsed = int.tryParse(rows.first['value'].toString());
+        if (parsed != null && parsed > 0) return parsed;
+      }
+    } catch (_) {}
+    return 3;
+  }
+
+  static Future<String?> _getRecurrenceRuleType(String routineId) async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final rows = await db.query(
+        'routine_schedules',
+        columns: ['recurrenceRule', 'scheduleType'],
+        where: 'routineId = ?',
+        whereArgs: [routineId],
+        limit: 1,
+      );
+      if (rows.isNotEmpty) {
+        final rule = rows.first['recurrenceRule']?.toString();
+        if (rule != null && rule.isNotEmpty) return rule;
+        return rows.first['scheduleType']?.toString();
+      }
+    } catch (_) {}
+    return null;
   }
 }

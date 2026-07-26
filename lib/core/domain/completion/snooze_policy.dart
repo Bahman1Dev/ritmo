@@ -1,4 +1,4 @@
-enum SnoozeVerdict { allowed, lastCall, exhausted, blockedMedical, blockedMidnight }
+enum SnoozeVerdict { allowed, lastCall, exhausted, blockedMidnight }
 enum ExitOption { doMinimalNow, lastWindowTonight, moveToTomorrow, skipWithReason }
 
 class SnoozeDecision {

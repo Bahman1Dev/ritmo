@@ -2627,5 +2627,33 @@ class MigrationV55 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV56 extends Migration {
+  @override
+  int get version => 56;
+
+  @override
+  Future<void> up(Database db) async {
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS skip_reasons (
+          id TEXT PRIMARY KEY,
+          itemId TEXT NOT NULL,
+          domain TEXT NOT NULL,
+          dateStr TEXT NOT NULL,
+          reason TEXT NOT NULL,
+          note TEXT,
+          createdAt INTEGER NOT NULL
+        );
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_skip_reasons_item ON skip_reasons(itemId, dateStr);');
+    } catch (e) {
+      debugPrint('[MigrationV56] Error creating skip_reasons table: $e');
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
 
 

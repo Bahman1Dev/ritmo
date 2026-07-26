@@ -5,7 +5,7 @@ sealed class CompletionRequest {
   const CompletionRequest();
 }
 
-class RoutineCompletion extends CompletionRequest {
+final class RoutineCompletion extends CompletionRequest {
   const RoutineCompletion({
     required this.routineId,
     required this.dateStr,
@@ -21,7 +21,7 @@ class RoutineCompletion extends CompletionRequest {
   final double? partialRatio;
 }
 
-class RoutineSkip extends CompletionRequest {
+final class RoutineSkip extends CompletionRequest {
   const RoutineSkip({
     required this.routineId,
     required this.dateStr,
@@ -33,7 +33,21 @@ class RoutineSkip extends CompletionRequest {
   final String? reason;
 }
 
-class RoutineSnooze extends CompletionRequest {
+final class RoutineReschedule extends CompletionRequest {
+  const RoutineReschedule({
+    required this.routineId,
+    required this.fromDateStr,
+    required this.toDateStr,
+    this.reason,
+  });
+
+  final String routineId;
+  final String fromDateStr;
+  final String toDateStr;
+  final String? reason;
+}
+
+final class RoutineSnooze extends CompletionRequest {
   const RoutineSnooze({
     required this.reminderId,
     required this.dateStr,
@@ -45,7 +59,7 @@ class RoutineSnooze extends CompletionRequest {
   final int snoozeMinutes;
 }
 
-class CourseSessionCompletion extends CompletionRequest {
+final class CourseSessionCompletion extends CompletionRequest {
   const CourseSessionCompletion({
     required this.sessionId,
     required this.courseId,
@@ -59,7 +73,7 @@ class CourseSessionCompletion extends CompletionRequest {
   final int durationMinutes;
 }
 
-class KonkurSessionCompletion extends CompletionRequest {
+final class KonkurSessionCompletion extends CompletionRequest {
   const KonkurSessionCompletion({
     required this.topicId,
     required this.subjectId,
@@ -75,7 +89,7 @@ class KonkurSessionCompletion extends CompletionRequest {
   final int questionsCount;
 }
 
-class WorshipCompletion extends CompletionRequest {
+final class WorshipCompletion extends CompletionRequest {
   const WorshipCompletion({
     required this.worshipId,
     required this.dateStr,
@@ -87,7 +101,7 @@ class WorshipCompletion extends CompletionRequest {
   final int count;
 }
 
-class GoalStepCompletion extends CompletionRequest {
+final class GoalStepCompletion extends CompletionRequest {
   const GoalStepCompletion({
     required this.goalId,
     required this.stepId,
@@ -101,7 +115,7 @@ class GoalStepCompletion extends CompletionRequest {
   final bool isCompleted;
 }
 
-class MedicationTake extends CompletionRequest {
+final class MedicationTake extends CompletionRequest {
   const MedicationTake({
     required this.medicationId,
     required this.dateStr,
@@ -113,7 +127,7 @@ class MedicationTake extends CompletionRequest {
   final String? doseTime;
 }
 
-class MovementCompletion extends CompletionRequest {
+final class MovementCompletion extends CompletionRequest {
   const MovementCompletion({
     required this.kindCode,
     required this.durationMinutes,

@@ -6,6 +6,7 @@ class CompletionOutcome {
     this.sideEffects = const [],
     this.undoToken,
     this.errorMessage,
+    this.userMessage,
   });
 
   final bool didWrite;
@@ -14,6 +15,7 @@ class CompletionOutcome {
   final List<String> sideEffects;
   final String? undoToken;
   final String? errorMessage;
+  final String? userMessage;
 
   factory CompletionOutcome.failure(String message) =>
       CompletionOutcome(didWrite: false, errorMessage: message);
@@ -23,6 +25,7 @@ class CompletionOutcome {
     List<String> unlockedAchievements = const [],
     List<String> sideEffects = const [],
     String? undoToken,
+    String? userMessage,
   }) =>
       CompletionOutcome(
         didWrite: true,
@@ -30,5 +33,6 @@ class CompletionOutcome {
         unlockedAchievements: unlockedAchievements,
         sideEffects: sideEffects,
         undoToken: undoToken,
+        userMessage: userMessage,
       );
 }

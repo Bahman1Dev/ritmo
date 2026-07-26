@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
-import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 
 enum RegistryDomain {
   routine,
