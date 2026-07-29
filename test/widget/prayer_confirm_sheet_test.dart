@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ritmo/core/domain/agenda/action_router.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/models.dart';
 
 void main() {
   testWidgets('ActionRouter opens confirmation sheet for Prayer domain', (WidgetTester tester) async {
@@ -11,6 +12,8 @@ void main() {
       domain: AgendaDomain.prayer,
       title: 'نماز ظهر',
       dateStr: '2026-07-26',
+      category: Category.religious,
+      deepLink: const AgendaDeepLink(domain: AgendaDomain.prayer, targetId: 'p_1'),
     );
 
     await tester.pumpWidget(

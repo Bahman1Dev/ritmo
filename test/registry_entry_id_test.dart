@@ -12,13 +12,16 @@ void main() {
         sourceId: 'rt_123',
         title: 'مطالعه شبانه',
         scheduleSummary: 'هر روز',
+        deepLink: const AgendaDeepLink(domain: AgendaDomain.routine, targetId: 'rt_123'),
+        category: Category.learning,
         agendaProxy: AgendaItem(
           id: 'routine:rt_123',
           domain: AgendaDomain.routine,
           sourceId: 'rt_123',
           title: 'مطالعه شبانه',
           dateStr: '2026-07-25',
-          category: Category.personal,
+          category: Category.learning,
+          deepLink: const AgendaDeepLink(domain: AgendaDomain.routine, targetId: 'rt_123'),
         ),
       );
 

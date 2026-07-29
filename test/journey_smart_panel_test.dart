@@ -47,7 +47,7 @@ void main() {
         suggestions: const [],
       );
 
-      final vm = NowPillViewModel.fromSnapshot(snapshot);
+      final vm = NowPillViewModel.fromSnapshot(snapshot, now: DateTime(2026, 7, 24, 10, 0), isToday: true);
       expect(vm.isVisible, isTrue);
       expect(vm.isCurrent, isTrue);
       expect(vm.statusLabel, equals('NOW'));
@@ -67,7 +67,7 @@ void main() {
         suggestions: const [],
       );
 
-      final vm = NowPillViewModel.fromSnapshot(snapshot);
+      final vm = NowPillViewModel.fromSnapshot(snapshot, now: DateTime(2026, 7, 24, 10, 0), isToday: true);
       expect(vm.isVisible, isTrue);
       expect(vm.isCurrent, isFalse);
       expect(vm.statusLabel, equals('NEXT'));
@@ -87,7 +87,7 @@ void main() {
         suggestions: const [],
       );
 
-      final vm = NowPillViewModel.fromSnapshot(snapshot);
+      final vm = NowPillViewModel.fromSnapshot(snapshot, now: DateTime(2026, 7, 24, 10, 0), isToday: true);
       expect(vm.isVisible, isFalse);
     });
 

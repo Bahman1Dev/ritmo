@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/features/calendar/presentation/models/now_pill_view_model.dart';
 
 void main() {
@@ -15,6 +16,8 @@ void main() {
       title: 'برنامه آینده',
       dateStr: '2026-08-05',
       timeOfDay: '06:30',
+      category: Category.work,
+      deepLink: const AgendaDeepLink(domain: AgendaDomain.routine, targetId: 'r_fut'),
     );
 
     final snapshot = DayAgendaSnapshot(

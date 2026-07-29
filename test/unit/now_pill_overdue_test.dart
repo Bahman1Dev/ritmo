@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/features/calendar/presentation/models/now_pill_view_model.dart';
 
 void main() {
@@ -14,7 +15,9 @@ void main() {
       title: 'تمرین عقب‌افتاده',
       dateStr: '2026-07-26',
       timeOfDay: '12:00',
-      isCompleted: false,
+      category: Category.fitness,
+      deepLink: const AgendaDeepLink(domain: AgendaDomain.routine, targetId: 'r_overdue'),
+      completion: AgendaCompletion.none,
     );
 
     final snapshot = DayAgendaSnapshot(
