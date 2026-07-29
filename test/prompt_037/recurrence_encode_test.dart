@@ -20,7 +20,7 @@ void main() {
 
     test('WeekdaysRecurrence encodes sorted weekdays', () {
       final jsonStr = encodeRecurrenceRule(
-        recurrence: const WeekdaysRecurrence(weekdays: {5, 1, 3}),
+        recurrence: WeekdaysRecurrence(weekdays: const {5, 1, 3}),
         startDate: now,
         reminderTimes: ['21:00'],
       );
@@ -51,7 +51,7 @@ void main() {
       );
 
       expect(
-        deriveScheduleParams(const WeekdaysRecurrence(weekdays: {1, 3, 5})),
+        deriveScheduleParams(WeekdaysRecurrence(weekdays: const {1, 3, 5})),
         equals(('SPECIFIC_DAYS', '1,3,5')),
       );
 

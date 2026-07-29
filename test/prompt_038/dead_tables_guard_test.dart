@@ -3,7 +3,7 @@ import 'package:ritmo/core/database/schema/schema_manager.dart';
 
 void main() {
   test('all database schema tables have registered schemas and defined contracts', () {
-    final tables = SchemaManager.getTables();
+    final tables = SchemaManager.tables;
     expect(tables, isNotEmpty);
 
     for (final table in tables) {

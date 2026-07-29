@@ -94,7 +94,7 @@ void main() {
       await controller.save(onFinished: () {});
       await controller.save(onFinished: () {});
 
-      final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM routines')) ?? 0;
+      final count = firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM routines')) ?? 0;
       expect(count, equals(controller.selectedStarterRoutines.length));
     });
   });

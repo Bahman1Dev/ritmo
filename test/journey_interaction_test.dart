@@ -4,8 +4,11 @@ import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/analysis/agenda_conflict_detector.dart';
 import 'package:ritmo/core/domain/agenda/analysis/agenda_gap_calculator.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/domain/completion/completion_outcome.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/widgets/action/action_sheet_registry.dart';
 import 'package:ritmo/core/widgets/action/ritmo_action_sheet.dart';
+import 'package:ritmo/core/widgets/action/sheet_actions.dart';
 import 'package:ritmo/features/calendar/presentation/journey_controller.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_smart_panel.dart';
 
@@ -57,16 +60,15 @@ void main() {
     });
 
     testWidgets('2. RitmoActionSheet renders item details correctly', (tester) async {
-      final spec = ActionSheetSpec(
-        header: Text(sampleItem.title),
-        body: const SizedBox(),
-        actions: const [],
-      );
-
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: RitmoActionSheet(
-            spec: spec,
+            item: sampleItem,
+            body: ActionBody(builder: (context) => Text(sampleItem.title)),
+            primarySubmitAction: SubmitAction(
+              label: 'تایید',
+              onPressed: (context) async => const CompletedOutcome(),
+            ),
           ),
         ),
       ));

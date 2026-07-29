@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/completion/completion_outcome.dart';
 import 'package:ritmo/core/widgets/action/action_capabilities.dart';
 import 'package:ritmo/core/widgets/action/action_sheet_registry.dart';
 import 'package:ritmo/core/widgets/action/action_sheet_result.dart';

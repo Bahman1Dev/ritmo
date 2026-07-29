@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('no magic channel string literals matching com.ritmo.app/ outside contract files', () {
-    final pattern = RegExp(r"['" '"]com\.ritmo\.app\/[a-zA-Z0-9_]+['"' "]');
+    final pattern = RegExp(r'''['"]com\.ritmo\.app\/[a-zA-Z0-9_]+['"]''');
 
     final dartFiles = Directory('lib')
         .listSync(recursive: true)
