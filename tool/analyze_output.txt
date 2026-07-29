@@ -45,9 +45,6 @@ Try `flutter pub outdated` for more information.
 Analyzing lib...                                                
 
 warning - Unused import: 'package:flutter_secure_storage/flutter_secure_storage.dart'. Try removing the import directive - lib\core\database\database_helper.dart:5:8 - unused_import
-warning - Unused import: 'package:ritmo/core/database/schema/tables/ai_tables.dart'. Try removing the import directive - lib\core\database\database_helper.dart:11:8 - unused_import
-warning - Unused import: 'package:ritmo/core/database/schema/tables/day_plan_tables.dart'. Try removing the import directive - lib\core\database\database_helper.dart:12:8 - unused_import
-warning - Unused import: 'package:ritmo/core/database/schema/tables/supplementary_sports_tables.dart'. Try removing the import directive - lib\core\database\database_helper.dart:13:8 - unused_import
 warning - Unused import: 'package:flutter/foundation.dart'. Try removing the import directive - lib\core\database\legacy_database_recovery.dart:2:8 - unused_import
    info - Unnecessary escape in string literal. Remove the '\' escape - lib\core\database\legacy_database_recovery.dart:22:43 - unnecessary_string_escapes
 warning - Unused import: 'package:ritmo/core/domain/models/duration_bounds.dart'. Try removing the import directive - lib\core\database\migration\migrations_registry.dart:8:8 - unused_import
@@ -55,29 +52,16 @@ warning - Unused import: 'package:ritmo/core/domain/engines/ritmo_execution_kern
 warning - Duplicate import. Try removing all but one import of the library - lib\core\di\service_locator.dart:28:8 - duplicate_import
 warning - Duplicate import. Try removing all but one import of the library - lib\core\di\service_locator.dart:29:8 - duplicate_import
   error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\core\domain\agenda\action_router.dart:179:23 - unawaited_futures
-  error - Don't use 'BuildContext's across async gaps. Try rewriting the code to not use the 'BuildContext', or guard the use with a 'mounted' check - lib\core\domain\agenda\action_router.dart:206:30 - use_build_context_synchronously
-  error - Don't use 'BuildContext's across async gaps. Try rewriting the code to not use the 'BuildContext', or guard the use with a 'mounted' check - lib\core\domain\agenda\action_router.dart:214:7 - use_build_context_synchronously
   error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\core\domain\agenda\agenda_renderer_registry.dart:324:27 - unawaited_futures
    info - Unnecessary braces in a string interpolation. Try removing the braces - lib\core\domain\agenda\day_agenda_service.dart:666:23 - unnecessary_brace_in_string_interps
    info - Unnecessary braces in a string interpolation. Try removing the braces - lib\core\domain\agenda\day_agenda_service.dart:753:23 - unnecessary_brace_in_string_interps
-warning - This case is covered by the previous cases. Try removing the case clause, or restructuring the preceding patterns - lib\core\domain\completion\completion_gateway.dart:38:44 - unreachable_switch_case
 warning - Unused import: 'package:ritmo/core/domain/models/reminder_state.dart'. Try removing the import directive - lib\core\domain\execution\handlers\delete_routine_handler.dart:7:8 - unused_import
   error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\core\security\app_lock_gate.dart:97:9 - unawaited_futures
   error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\core\security\app_lock_gate.dart:156:24 - unawaited_futures
   error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\core\security\app_lock_gate.dart:165:24 - unawaited_futures
-  error - Undefined name 'Uint8List'. Try correcting the name to one that is defined, or defining the name - lib\core\services\local_backup_service.dart:45:25 - undefined_identifier
-   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\core\services\local_backup_service.dart:60:13 - prefer_const_constructors
-  error - Undefined name 'Uint8List'. Try correcting the name to one that is defined, or defining the name - lib\core\services\local_backup_service.dart:63:21 - undefined_identifier
-  error - Undefined name 'Uint8List'. Try correcting the name to one that is defined, or defining the name - lib\core\services\local_backup_service.dart:64:26 - undefined_identifier
-  error - Undefined name 'Uint8List'. Try correcting the name to one that is defined, or defining the name - lib\core\services\local_backup_service.dart:67:25 - undefined_identifier
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\core\services\local_backup_service.dart:61:13 - prefer_const_constructors
    info - Unnecessary use of a null check ('!'). Try removing the null check - lib\core\services\sync\agenda_widget_snapshot_service.dart:72:74 - unnecessary_null_checks
-  error - The method 'sheetOpen' isn't defined for the type 'RitmoHaptics'. Try correcting the name to the name of an existing method, or defining a method named 'sheetOpen' - lib\core\ux\ritmo_sheet_scaffold.dart:28:18 - undefined_method
-  error - The method 'sheetClose' isn't defined for the type 'RitmoHaptics'. Try correcting the name to the name of an existing method, or defining a method named 'sheetClose' - lib\core\ux\ritmo_sheet_scaffold.dart:45:20 - undefined_method
-  error - The method 'error' isn't defined for the type 'RitmoHaptics'. Try correcting the name to the name of an existing method, or defining a method named 'error' - lib\core\widgets\action\ritmo_action_sheet.dart:115:22 - undefined_method
-  error - The method 'error' isn't defined for the type 'RitmoHaptics'. Try correcting the name to the name of an existing method, or defining a method named 'error' - lib\core\widgets\action\ritmo_action_sheet.dart:125:22 - undefined_method
-  error - There's no constant named 'worship' in 'AgendaDomain'. Try correcting the name to the name of an existing constant, or defining a constant named 'worship' - lib\core\widgets\action\ritmo_action_sheet.dart:359:20 - undefined_enum_constant
-  error - There's no constant named 'worship' in 'AgendaDomain'. Try correcting the name to the name of an existing constant, or defining a constant named 'worship' - lib\core\widgets\action\ritmo_action_sheet.dart:373:20 - undefined_enum_constant
-  error - The named parameter 'padding' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'padding' - lib\core\widgets\sheet\ritmo_form_sheet.dart:157:19 - undefined_named_parameter
+  error - The type 'AgendaDomain' isn't exhaustively matched by the switch cases since it doesn't match the pattern 'AgendaDomain.course'. Try adding a wildcard pattern or cases that match 'AgendaDomain.course' - lib\core\widgets\action\ritmo_action_sheet.dart:371:12 - non_exhaustive_switch_expression
    info - Unnecessary use of multiple underscores. Try using '_' - lib\core\widgets\sheet\ritmo_picker_sheet.dart:138:35 - unnecessary_underscores
   error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\assistant\logic\assistant_action_registry.dart:129:21 - unawaited_futures
   error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\assistant\logic\assistant_action_registry.dart:162:11 - unawaited_futures
@@ -327,17 +311,17 @@ warning - Unused import: 'package:ritmo/core/widgets/action/action_sheet_result.
   error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\worship\presentation\widgets\ai_worship_assistant_sheet.dart:732:43 - unawaited_futures
   error - Expected to find ')' - lib\features\worship\presentation\widgets\mustahab_section.dart:907:6 - expected_token
    info - 'activeColor' is deprecated and shouldn't be used. Use activeTrackColor instead. This feature was deprecated after v3.24.0-0.2.pre. Try replacing the use of the deprecated member with the replacement - lib\features\worship\presentation\widgets\prayer_action_body.dart:179:21 - deprecated_member_use
-   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:129:12 - prefer_const_constructors
-   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:131:14 - prefer_const_constructors
-   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:132:16 - prefer_const_constructors
-   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:134:18 - prefer_const_constructors
-   info - Use 'const' literals as arguments to constructors of '@immutable' classes. Try adding 'const' before the literal - lib\main.dart:136:23 - prefer_const_literals_to_create_immutables
-warning - The value of the field '_initError' isn't used. Try removing the field, or using it - lib\main.dart:208:11 - unused_field
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:127:12 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:129:14 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:130:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:132:18 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes. Try adding 'const' before the literal - lib\main.dart:134:23 - prefer_const_literals_to_create_immutables
+warning - The value of the field '_initError' isn't used. Try removing the field, or using it - lib\main.dart:206:11 - unused_field
 
-flutter : 289 issues found. (ran in 19.1s)
+flutter : 273 issues found. (ran in 9.2s)
 At line:1 char:1
 + flutter analyze lib/ 2>&1 > tool/analyze_output.txt
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (289 issues found. (ran in 19.1s):String) [], RemoteException
+    + CategoryInfo          : NotSpecified: (273 issues found. (ran in 9.2s):String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
  
