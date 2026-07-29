@@ -8,7 +8,7 @@ void main() {
     final routine = Routine(
       id: 'test_r5',
       title: 'نوشیدن آب',
-      category: Category.health,
+      category: Category.medical,
       routineType: RoutineType.timeBased,
       notificationLevel: NotificationLevel.normal,
       isEssential: true,

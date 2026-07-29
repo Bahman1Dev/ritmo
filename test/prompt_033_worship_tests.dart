@@ -171,7 +171,11 @@ void main() {
       final repo = WorshipRepository.instance;
       repo.invalidateCache();
 
-      RitmoEventBus().fire(RitmoEvent(type: 'WorshipUpdated', payload: {'date': '2026-07-26'}));
+      RitmoEventBus().fire(RitmoEvent(
+        type: 'WorshipUpdated',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+        payload: {'date': '2026-07-26'},
+      ));
 
       // Verify no exception thrown and event listener works
       expect(true, isTrue);

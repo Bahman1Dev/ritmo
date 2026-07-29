@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite/utils/utils.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/features/onboarding/logic/onboarding_controller.dart';

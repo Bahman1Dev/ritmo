@@ -6,6 +6,7 @@ import 'package:ritmo/core/domain/agenda/analysis/agenda_gap_calculator.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
 import 'package:ritmo/core/domain/completion/completion_outcome.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/widgets/action/action_capabilities.dart';
 import 'package:ritmo/core/widgets/action/action_sheet_registry.dart';
 import 'package:ritmo/core/widgets/action/ritmo_action_sheet.dart';
 import 'package:ritmo/core/widgets/action/sheet_actions.dart';
@@ -64,10 +65,11 @@ void main() {
         home: Scaffold(
           body: RitmoActionSheet(
             item: sampleItem,
-            body: ActionBody(builder: (context) => Text(sampleItem.title)),
+            body: const _TestBody(),
             primarySubmitAction: SubmitAction(
+              id: 'sub_1',
               label: 'تایید',
-              onPressed: (context) async => const CompletedOutcome(),
+              onSubmit: () async => const WorshipCompletedOutcome(recordId: 'rec_1'),
             ),
           ),
         ),
@@ -119,4 +121,20 @@ void main() {
       expect(selectedActivity?.id, equals('test:item1'));
     });
   });
+}
+
+class _TestBody extends ActionBody {
+  const _TestBody();
+
+  @override
+  ActionCapabilities get capabilities => ActionCapabilities.empty;
+
+  @override
+  List<HandoffAction> getHandoffActions(BuildContext context) => const [];
+
+  @override
+  List<SubmitAction> getSubmitActions(BuildContext context) => const [];
+
+  @override
+  Widget build(BuildContext context) => const Text('Deep Focus Work');
 }
