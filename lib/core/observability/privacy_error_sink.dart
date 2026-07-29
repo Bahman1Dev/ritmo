@@ -11,6 +11,10 @@ class PrivacyErrorSink implements LogSink {
   PrivacyErrorSink._init();
   static final PrivacyErrorSink instance = PrivacyErrorSink._init();
 
+  Future<void> init() async {
+    // Initialization hook for crash directory preparation
+  }
+
   static const int maxCrashReportFiles = 20;
 
   static final RegExp _persianTextRegex = RegExp(r'[\u0600-\u06FF]+');

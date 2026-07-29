@@ -42,7 +42,7 @@ Downloading packages...
 Got dependencies!
 37 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
-Analyzing lib...                                                
+Analyzing ritmo...                                              
 
 warning - Unused import: 'package:flutter_secure_storage/flutter_secure_storage.dart'. Try removing the import directive - lib\core\database\database_helper.dart:5:8 - unused_import
 warning - Unused import: 'package:flutter/foundation.dart'. Try removing the import directive - lib\core\database\legacy_database_recovery.dart:2:8 - unused_import
@@ -309,7 +309,6 @@ warning - Unused import: 'package:ritmo/core/widgets/action/action_sheet_result.
    info - Angle brackets will be interpreted as HTML. Try using backticks around the content with angle brackets, or try replacing `<` with `&lt;` and `>` with `&gt;` - lib\features\worship\logic\worship_completion_repository.dart:66:18 - unintended_html_in_doc_comment
   error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\worship\presentation\widgets\ai_worship_assistant_sheet.dart:730:43 - unawaited_futures
   error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\worship\presentation\widgets\ai_worship_assistant_sheet.dart:732:43 - unawaited_futures
-  error - Expected to find ')' - lib\features\worship\presentation\widgets\mustahab_section.dart:907:6 - expected_token
    info - 'activeColor' is deprecated and shouldn't be used. Use activeTrackColor instead. This feature was deprecated after v3.24.0-0.2.pre. Try replacing the use of the deprecated member with the replacement - lib\features\worship\presentation\widgets\prayer_action_body.dart:179:21 - deprecated_member_use
    info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:127:12 - prefer_const_constructors
    info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:129:14 - prefer_const_constructors
@@ -317,11 +316,181 @@ warning - Unused import: 'package:ritmo/core/widgets/action/action_sheet_result.
    info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:132:18 - prefer_const_constructors
    info - Use 'const' literals as arguments to constructors of '@immutable' classes. Try adding 'const' before the literal - lib\main.dart:134:23 - prefer_const_literals_to_create_immutables
 warning - The value of the field '_initError' isn't used. Try removing the field, or using it - lib\main.dart:206:11 - unused_field
+  error - The function 'ActionSheetSpec' isn't defined. Try importing the library that defines 'ActionSheetSpec', correcting the name to the name of an existing function, or defining a function named 'ActionSheetSpec' - test\journey_interaction_test.dart:60:20 - undefined_function
+  error - The named parameter 'body' is required, but there's no corresponding argument. Try adding the required argument - test\journey_interaction_test.dart:68:17 - missing_required_argument
+  error - The named parameter 'item' is required, but there's no corresponding argument. Try adding the required argument - test\journey_interaction_test.dart:68:17 - missing_required_argument
+  error - The named parameter 'primarySubmitAction' is required, but there's no corresponding argument. Try adding the required argument - test\journey_interaction_test.dart:68:17 - missing_required_argument
+  error - The named parameter 'spec' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'spec' - test\journey_interaction_test.dart:69:13 - undefined_named_parameter
+  error - The named parameter 'isToday' is required, but there's no corresponding argument. Try adding the required argument - test\journey_smart_panel_test.dart:50:18 - missing_required_argument
+  error - The named parameter 'now' is required, but there's no corresponding argument. Try adding the required argument - test\journey_smart_panel_test.dart:50:18 - missing_required_argument
+  error - The named parameter 'isToday' is required, but there's no corresponding argument. Try adding the required argument - test\journey_smart_panel_test.dart:70:18 - missing_required_argument
+  error - The named parameter 'now' is required, but there's no corresponding argument. Try adding the required argument - test\journey_smart_panel_test.dart:70:18 - missing_required_argument
+  error - The named parameter 'isToday' is required, but there's no corresponding argument. Try adding the required argument - test\journey_smart_panel_test.dart:90:18 - missing_required_argument
+  error - The named parameter 'now' is required, but there's no corresponding argument. Try adding the required argument - test\journey_smart_panel_test.dart:90:18 - missing_required_argument
+   info - The imported package 'path_provider_platform_interface' isn't a dependency of the importing package. Try adding a dependency for 'path_provider_platform_interface' in the 'pubspec.yaml' file - test\logger_redaction_test.dart:4:8 - depend_on_referenced_packages
+   info - The imported package 'plugin_platform_interface' isn't a dependency of the importing package. Try adding a dependency for 'plugin_platform_interface' in the 'pubspec.yaml' file - test\logger_redaction_test.dart:5:8 - depend_on_referenced_packages
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\logger_redaction_test.dart:76:64 - prefer_const_constructors
+  error - Undefined name 'Sqflite'. Try correcting the name to one that is defined, or defining the name - test\onboarding\onboarding_save_resilience_test.dart:97:21 - undefined_identifier
+   info - Invalid regular expression syntax. Try correcting the regular expression - test\platform\no_magic_channel_string_test.dart:6:28 - valid_regexps
+   info - Unnecessary escape in string literal. Remove the '\' escape - test\platform\no_magic_channel_string_test.dart:6:40 - unnecessary_string_escapes
+   info - Unnecessary escape in string literal. Remove the '\' escape - test\platform\no_magic_channel_string_test.dart:6:47 - unnecessary_string_escapes
+   info - Unnecessary escape in string literal. Remove the '\' escape - test\platform\no_magic_channel_string_test.dart:6:52 - unnecessary_string_escapes
+  error - Expected to find ';' - test\platform\no_magic_channel_string_test.dart:6:69 - expected_token
+  error - Expected an identifier - test\platform\no_magic_channel_string_test.dart:6:73 - missing_identifier
+  error - Expected to find ')' - test\platform\no_magic_channel_string_test.dart:6:73 - expected_token
+  error - Unexpected text ';'. Try removing the text - test\platform\no_magic_channel_string_test.dart:6:73 - unexpected_token
+  error - Expected to find ';' - test\platform\no_magic_channel_string_test.dart:6:74 - expected_token
+  error - Unterminated string literal - test\platform\no_magic_channel_string_test.dart:6:76 - unterminated_string_literal
+warning - Unused import: 'package:ritmo/core/domain/agenda/action_router.dart'. Try removing the import directive - test\prompt_033_worship_tests.dart:2:8 - unused_import
+warning - Unused import: 'package:ritmo/core/domain/completion/completion_gateway.dart'. Try removing the import directive - test\prompt_033_worship_tests.dart:3:8 - unused_import
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_033_worship_tests.dart:15:21 - prefer_const_constructors
+  error - The named parameter 'cityId' is required, but there's no corresponding argument. Try adding the required argument - test\prompt_033_worship_tests.dart:15:21 - missing_required_argument
+  error - The named parameter 'id' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'id' - test\prompt_033_worship_tests.dart:16:9 - undefined_named_parameter
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_033_worship_tests.dart:44:21 - prefer_const_constructors
+  error - The named parameter 'cityId' is required, but there's no corresponding argument. Try adding the required argument - test\prompt_033_worship_tests.dart:44:21 - missing_required_argument
+  error - The named parameter 'id' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'id' - test\prompt_033_worship_tests.dart:45:9 - undefined_named_parameter
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_033_worship_tests.dart:67:21 - prefer_const_constructors
+  error - The named parameter 'cityId' is required, but there's no corresponding argument. Try adding the required argument - test\prompt_033_worship_tests.dart:67:21 - missing_required_argument
+  error - The named parameter 'id' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'id' - test\prompt_033_worship_tests.dart:68:9 - undefined_named_parameter
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_033_worship_tests.dart:91:21 - prefer_const_constructors
+  error - The named parameter 'cityId' is required, but there's no corresponding argument. Try adding the required argument - test\prompt_033_worship_tests.dart:91:21 - missing_required_argument
+  error - The named parameter 'id' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'id' - test\prompt_033_worship_tests.dart:92:9 - undefined_named_parameter
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_033_worship_tests.dart:165:26 - prefer_const_constructors
+  error - The named parameter 'countDone' is required, but there's no corresponding argument. Try adding the required argument - test\prompt_033_worship_tests.dart:165:26 - missing_required_argument
+  error - The named parameter 'recordId' is required, but there's no corresponding argument. Try adding the required argument - test\prompt_033_worship_tests.dart:165:26 - missing_required_argument
+  error - The named parameter 'resultType' is required, but there's no corresponding argument. Try adding the required argument - test\prompt_033_worship_tests.dart:165:26 - missing_required_argument
+  error - The named parameter 'practiceId' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'practiceId' - test\prompt_033_worship_tests.dart:165:43 - undefined_named_parameter
+  error - The named parameter 'dateStr' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'dateStr' - test\prompt_033_worship_tests.dart:165:61 - undefined_named_parameter
+  error - The named parameter 'isDone' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'isDone' - test\prompt_033_worship_tests.dart:165:84 - undefined_named_parameter
+  error - The named parameter 'isSkipped' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'isSkipped' - test\prompt_033_worship_tests.dart:165:98 - undefined_named_parameter
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_033_worship_tests.dart:168:26 - prefer_const_constructors
+  error - The named parameter 'countDone' is required, but there's no corresponding argument. Try adding the required argument - test\prompt_033_worship_tests.dart:168:26 - missing_required_argument
+  error - The named parameter 'recordId' is required, but there's no corresponding argument. Try adding the required argument - test\prompt_033_worship_tests.dart:168:26 - missing_required_argument
+  error - The named parameter 'resultType' is required, but there's no corresponding argument. Try adding the required argument - test\prompt_033_worship_tests.dart:168:26 - missing_required_argument
+  error - The named parameter 'practiceId' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'practiceId' - test\prompt_033_worship_tests.dart:168:43 - undefined_named_parameter
+  error - The named parameter 'dateStr' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'dateStr' - test\prompt_033_worship_tests.dart:168:61 - undefined_named_parameter
+  error - The named parameter 'isDone' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'isDone' - test\prompt_033_worship_tests.dart:168:84 - undefined_named_parameter
+  error - The named parameter 'isSkipped' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'isSkipped' - test\prompt_033_worship_tests.dart:168:99 - undefined_named_parameter
+  error - The named parameter 'timestamp' is required, but there's no corresponding argument. Try adding the required argument - test\prompt_033_worship_tests.dart:176:28 - missing_required_argument
+  error - The name 'CompletedOutcome' isn't a class. Try correcting the name to match an existing class - test\prompt_036_contracts_test.dart:11:65 - creation_with_non_type
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_036_contracts_test.dart:12:38 - prefer_const_constructors
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_037\edit_preserves_past_occurrences_test.dart:74:7 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_037\edit_preserves_past_occurrences_test.dart:75:7 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_037\edit_preserves_past_occurrences_test.dart:76:7 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_037\edit_preserves_past_occurrences_test.dart:116:7 - prefer_const_declarations
+  error - The property 'length' can't be accessed on the type 'Set<int>' in a constant expression - test\prompt_037\recurrence_encode_test.dart:23:21 - const_eval_property_access
+  error - The property 'length' can't be accessed on the type 'Set<int>' in a constant expression - test\prompt_037\recurrence_encode_test.dart:54:30 - const_eval_property_access
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_038\backup_restore_test.dart:9:7 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_038\backup_restore_test.dart:20:7 - prefer_const_declarations
+  error - The method 'getTables' isn't defined for the type 'SchemaManager'. Try correcting the name to the name of an existing method, or defining a method named 'getTables' - test\prompt_038\dead_tables_guard_test.dart:6:34 - undefined_method
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_038\error_redaction_test.dart:7:7 - prefer_const_declarations
+  error - The named parameter 'deepLink' is required, but there's no corresponding argument. Try adding the required argument - test\registry_entry_id_test.dart:15:22 - missing_required_argument
+  error - Undefined name 'DurationBounds'. Try correcting the name to one that is defined, or defining the name - test\unit\minutes_for_mode_test.dart:8:14 - undefined_identifier
+  error - Undefined name 'DurationBounds'. Try correcting the name to one that is defined, or defining the name - test\unit\minutes_for_mode_test.dart:9:14 - undefined_identifier
+  error - Undefined name 'DurationBounds'. Try correcting the name to one that is defined, or defining the name - test\unit\minutes_for_mode_test.dart:10:14 - undefined_identifier
+  error - Undefined name 'DurationBounds'. Try correcting the name to one that is defined, or defining the name - test\unit\minutes_for_mode_test.dart:11:14 - undefined_identifier
+  error - The named parameter 'category' is required, but there's no corresponding argument. Try adding the required argument - test\unit\minutes_for_mode_test.dart:15:23 - missing_required_argument
+  error - The named parameter 'energyRule' is required, but there's no corresponding argument. Try adding the required argument - test\unit\minutes_for_mode_test.dart:15:23 - missing_required_argument
+  error - The named parameter 'isEssential' is required, but there's no corresponding argument. Try adding the required argument - test\unit\minutes_for_mode_test.dart:15:23 - missing_required_argument
+  error - The named parameter 'notificationLevel' is required, but there's no corresponding argument. Try adding the required argument - test\unit\minutes_for_mode_test.dart:15:23 - missing_required_argument
+  error - The named parameter 'routineType' is required, but there's no corresponding argument. Try adding the required argument - test\unit\minutes_for_mode_test.dart:15:23 - missing_required_argument
+  error - The named parameter 'frequencyType' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'frequencyType' - test\unit\minutes_for_mode_test.dart:21:9 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'createdAt' - test\unit\minutes_for_mode_test.dart:22:9 - undefined_named_parameter
+  error - The named parameter 'updatedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'updatedAt' - test\unit\minutes_for_mode_test.dart:23:9 - undefined_named_parameter
+  error - The named parameter 'category' is required, but there's no corresponding argument. Try adding the required argument - test\unit\now_pill_midnight_test.dart:9:26 - missing_required_argument
+  error - The named parameter 'deepLink' is required, but there's no corresponding argument. Try adding the required argument - test\unit\now_pill_midnight_test.dart:9:26 - missing_required_argument
+  error - The named parameter 'category' is required, but there's no corresponding argument. Try adding the required argument - test\unit\now_pill_not_today_test.dart:11:24 - missing_required_argument
+  error - The named parameter 'deepLink' is required, but there's no corresponding argument. Try adding the required argument - test\unit\now_pill_not_today_test.dart:11:24 - missing_required_argument
+  error - The named parameter 'category' is required, but there's no corresponding argument. Try adding the required argument - test\unit\now_pill_overdue_test.dart:10:25 - missing_required_argument
+  error - The named parameter 'deepLink' is required, but there's no corresponding argument. Try adding the required argument - test\unit\now_pill_overdue_test.dart:10:25 - missing_required_argument
+  error - The named parameter 'isCompleted' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'isCompleted' - test\unit\now_pill_overdue_test.dart:17:7 - undefined_named_parameter
+  error - The named parameter 'category' is required, but there's no corresponding argument. Try adding the required argument - test\unit\now_pill_past_day_test.dart:11:22 - missing_required_argument
+  error - The named parameter 'deepLink' is required, but there's no corresponding argument. Try adding the required argument - test\unit\now_pill_past_day_test.dart:11:22 - missing_required_argument
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\niyyah_details_test.dart:7:70 - avoid_types_on_closure_parameters
+  error - The named parameter 'category' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_details_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'energyRule' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_details_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'isEssential' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_details_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'notificationLevel' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_details_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'routineType' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_details_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'frequencyType' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'frequencyType' - test\widget\niyyah_details_test.dart:11:7 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'createdAt' - test\widget\niyyah_details_test.dart:12:7 - undefined_named_parameter
+  error - The named parameter 'updatedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'updatedAt' - test\widget\niyyah_details_test.dart:13:7 - undefined_named_parameter
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_details_test.dart:23:31 - body_might_complete_normally
+   info - Unnecessary use of multiple underscores. Try using '_' - test\widget\niyyah_details_test.dart:24:38 - unnecessary_underscores
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_details_test.dart:24:42 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_details_test.dart:25:26 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_details_test.dart:26:24 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_details_test.dart:27:31 - body_might_complete_normally
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\niyyah_edit_opens_planner_test.dart:7:63 - avoid_types_on_closure_parameters
+  error - The named parameter 'category' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_edit_opens_planner_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'energyRule' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_edit_opens_planner_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'isEssential' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_edit_opens_planner_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'notificationLevel' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_edit_opens_planner_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'routineType' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_edit_opens_planner_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'frequencyType' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'frequencyType' - test\widget\niyyah_edit_opens_planner_test.dart:11:7 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'createdAt' - test\widget\niyyah_edit_opens_planner_test.dart:12:7 - undefined_named_parameter
+  error - The named parameter 'updatedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'updatedAt' - test\widget\niyyah_edit_opens_planner_test.dart:13:7 - undefined_named_parameter
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_edit_opens_planner_test.dart:23:31 - body_might_complete_normally
+   info - Unnecessary use of multiple underscores. Try using '_' - test\widget\niyyah_edit_opens_planner_test.dart:24:38 - unnecessary_underscores
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_edit_opens_planner_test.dart:24:42 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_edit_opens_planner_test.dart:25:26 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_edit_opens_planner_test.dart:26:24 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_edit_opens_planner_test.dart:29:31 - body_might_complete_normally
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\niyyah_instant_log_test.dart:7:86 - avoid_types_on_closure_parameters
+  error - The named parameter 'category' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_instant_log_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'energyRule' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_instant_log_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'isEssential' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_instant_log_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'notificationLevel' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_instant_log_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'routineType' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_instant_log_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'frequencyType' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'frequencyType' - test\widget\niyyah_instant_log_test.dart:12:7 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'createdAt' - test\widget\niyyah_instant_log_test.dart:13:7 - undefined_named_parameter
+  error - The named parameter 'updatedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'updatedAt' - test\widget\niyyah_instant_log_test.dart:14:7 - undefined_named_parameter
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_instant_log_test.dart:25:31 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_instant_log_test.dart:26:51 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_instant_log_test.dart:30:26 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_instant_log_test.dart:31:24 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_instant_log_test.dart:32:31 - body_might_complete_normally
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\niyyah_snooze_test.dart:7:65 - avoid_types_on_closure_parameters
+  error - The named parameter 'category' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_snooze_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'energyRule' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_snooze_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'isEssential' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_snooze_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'notificationLevel' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_snooze_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'routineType' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_snooze_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'frequencyType' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'frequencyType' - test\widget\niyyah_snooze_test.dart:11:7 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'createdAt' - test\widget\niyyah_snooze_test.dart:12:7 - undefined_named_parameter
+  error - The named parameter 'updatedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'updatedAt' - test\widget\niyyah_snooze_test.dart:13:7 - undefined_named_parameter
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_snooze_test.dart:23:31 - body_might_complete_normally
+   info - Unnecessary use of multiple underscores. Try using '_' - test\widget\niyyah_snooze_test.dart:24:38 - unnecessary_underscores
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_snooze_test.dart:24:42 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_snooze_test.dart:25:26 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_snooze_test.dart:28:24 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_snooze_test.dart:29:31 - body_might_complete_normally
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\niyyah_start_timer_test.dart:7:85 - avoid_types_on_closure_parameters
+  error - The named parameter 'category' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_start_timer_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'energyRule' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_start_timer_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'isEssential' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_start_timer_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'notificationLevel' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_start_timer_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'routineType' is required, but there's no corresponding argument. Try adding the required argument - test\widget\niyyah_start_timer_test.dart:8:21 - missing_required_argument
+  error - The named parameter 'frequencyType' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'frequencyType' - test\widget\niyyah_start_timer_test.dart:14:7 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'createdAt' - test\widget\niyyah_start_timer_test.dart:15:7 - undefined_named_parameter
+  error - The named parameter 'updatedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'updatedAt' - test\widget\niyyah_start_timer_test.dart:16:7 - undefined_named_parameter
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_start_timer_test.dart:26:34 - body_might_complete_normally
+   info - Unnecessary use of multiple underscores. Try using '_' - test\widget\niyyah_start_timer_test.dart:29:38 - unnecessary_underscores
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_start_timer_test.dart:29:42 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_start_timer_test.dart:30:26 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_start_timer_test.dart:31:24 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'Future<void>', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - test\widget\niyyah_start_timer_test.dart:32:31 - body_might_complete_normally
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\prayer_confirm_sheet_test.dart:7:75 - avoid_types_on_closure_parameters
+  error - The named parameter 'category' is required, but there's no corresponding argument. Try adding the required argument - test\widget\prayer_confirm_sheet_test.dart:8:18 - missing_required_argument
+  error - The named parameter 'deepLink' is required, but there's no corresponding argument. Try adding the required argument - test\widget\prayer_confirm_sheet_test.dart:8:18 - missing_required_argument
+warning - Unused import: 'package:flutter/material.dart'. Try removing the import directive - test\widget\router_gateway_failure_test.dart:1:8 - unused_import
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\router_gateway_failure_test.dart:6:67 - avoid_types_on_closure_parameters
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\router_missing_meta_test.dart:8:72 - avoid_types_on_closure_parameters
 
-flutter : 273 issues found. (ran in 9.2s)
+flutter : 442 issues found. (ran in 13.5s)
 At line:1 char:1
-+ flutter analyze lib/ 2>&1 > tool/analyze_output.txt
-+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (273 issues found. (ran in 9.2s):String) [], RemoteException
++ flutter analyze --fatal-warnings . 2>&1 > tool/analyze_output.txt
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (442 issues found. (ran in 13.5s):String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
  

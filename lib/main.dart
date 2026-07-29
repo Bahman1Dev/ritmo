@@ -34,10 +34,11 @@ import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/time/ritmo_clock.dart';
 
-import 'package:ritmo/core/diagnostics/privacy_error_sink.dart';
+import 'package:ritmo/core/observability/privacy_error_sink.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  RitmoLog.addSink(PrivacyErrorSink.instance);
   await PrivacyErrorSink.instance.init();
 
   FlutterError.onError = (details) {
@@ -82,7 +83,6 @@ void main() async {
           await prefs.setBool('wm_registered_v2', true);
         }
       } catch (e, st) {
-        unawaited(PrivacyErrorSink.instance.logError('BackgroundInit', 'Workmanager init error', e, st));
         RitmoLog.error('BackgroundInit', 'Workmanager init error', e, st);
       }
     }));

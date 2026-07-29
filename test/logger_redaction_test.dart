@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' hide equals;
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/observability/privacy_error_sink.dart';
 
 class MockPathProviderPlatform extends Fake
@@ -63,22 +64,41 @@ void main() {
       final crashDir = Directory(join(tempDir.path, 'crash_reports'));
       await crashDir.create(recursive: true);
 
-      // Create 22 dummy log files
       for (var i = 0; i < 22; i++) {
         final f = File(join(crashDir.path, 'crash_100$i.log'));
         await f.writeAsString('Log entry $i');
-        // sleep slightly to ensure timestamp sequence
         await Future.delayed(const Duration(milliseconds: 10));
       }
 
       final initialFiles = await PrivacyErrorSink.getCrashReports();
       expect(initialFiles.length, equals(22));
 
-      // Trigger one more crash log which should enforce max 20 rotation
       await PrivacyErrorSink.instance.logError('Scope', 'Msg', FormatException('Err'));
 
       final rotatedFiles = await PrivacyErrorSink.getCrashReports();
       expect(rotatedFiles.length, lessThanOrEqualTo(20));
+    });
+
+    test('verifies RitmoLog.error pipeline correctly forwards to PrivacyErrorSink and creates log file', () async {
+      RitmoLog.addSink(PrivacyErrorSink.instance);
+
+      RitmoLog.error(
+        'PipelineScope',
+        'پیام ثبت ریتمو لاگ',
+        StateError('حالت نامعتبر'),
+        StackTrace.current,
+      );
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      final reports = await PrivacyErrorSink.getCrashReports();
+      expect(reports.isNotEmpty, isTrue);
+
+      final content = await reports.first.readAsString();
+      expect(content.contains('PipelineScope'), isTrue);
+      expect(content.contains('StateError'), isTrue);
+      expect(content.contains('پیام ثبت ریتمو لاگ'), isFalse);
+      expect(content.contains('[REDACTED_TEXT]'), isTrue);
     });
   });
 }
