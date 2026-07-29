@@ -162,7 +162,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
     // Quick Add notification action tapped
     if (launchInfo != null && launchInfo['action'] == 'OPEN_QUICK_ADD') {
       if (mounted) {
-        Navigator.push(
+        unawaited(Navigator.push(
           context,
           PageRouteBuilder(
             opaque: false,
@@ -171,7 +171,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
               onSaved: _loadDashboardData,
             ),
           ),
-        );
+        ));
       }
       return;
     }
@@ -454,29 +454,28 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
   Future<void> _openSupplementarySports() async {
     try {
       final db = await DatabaseHelper.instance.database;
-      final profileResult = await db.query('ss_user_profile', where: 'id = ?', whereArgs: ['default']);
-      final hasCompletedOnboarding = profileResult.isNotEmpty && 
-          (profileResult.first['onboardingCompleted'] as int? ?? 0) == 1;
+      final settings = await db.query('app_settings', where: "key = 'ss_onboarding_completed'", limit: 1);
+      final hasCompletedOnboarding = settings.isNotEmpty && settings.first['value'] == 'true';
 
       if (mounted) {
-        Navigator.push(
+        unawaited(Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => hasCompletedOnboarding 
                 ? const SSHomeDashboardScreen() 
                 : const SSIntroScreen(),
           ),
-        ).then((_) => _loadDashboardData());
+        ).then((_) => _loadDashboardData()));
       }
     } catch (e) {
       debugPrint('Error opening supplementary sports: $e');
       if (mounted) {
-        Navigator.push(
+        unawaited(Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => const SSIntroScreen(),
           ),
-        ).then((_) => _loadDashboardData());
+        ).then((_) => _loadDashboardData()));
       }
     }
   }
@@ -650,7 +649,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
       );
     }
 
-    _loadDashboardData();
+    unawaited(_loadDashboardData());
   }
 
   /// ورود پلکانی سکشن‌ها — با احترام به Reduced Motion
@@ -998,7 +997,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
         await _completeTask(routine, selectedMode, duration);
       },
       onSnooze: () async {
-        _snoozeTask(routine);
+        await _snoozeTask(routine);
       },
       onEdit: () async {
         final rMap = {
@@ -1489,7 +1488,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
                                   [selectedLevel, now],
                                 );
 
-                                _loadDashboardData();
+                                await _loadDashboardData();
                                 _showToast('سطح انرژی با موفقیت به روز شد.');
                               },
                               child: const Text(
@@ -1946,14 +1945,14 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
                         },
                         conflictAlgorithm: ConflictAlgorithm.replace,
                       );
-                      HapticFeedback.lightImpact();
+                      await HapticFeedback.lightImpact();
                       final now = DateTime.now();
                       final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
                       await CentralInboxService.markActionedForEntity('system', 'reflection_$dateStr');
                       setState(() {
                         _reflectionDismissed = true;
                       });
-                      _loadDashboardData();
+                      await _loadDashboardData();
                     },
                     style: TextButton.styleFrom(
                       foregroundColor: colors.textSecondary,
