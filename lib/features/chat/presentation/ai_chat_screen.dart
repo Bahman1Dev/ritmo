@@ -116,7 +116,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       setState(() {
         _isListening = true;
       });
-      HapticFeedback.mediumImpact();
+      unawaited(HapticFeedback.mediumImpact());
       try {
         await _speech.listen(
           onResult: (result) {
@@ -133,7 +133,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       }
     } else {
       if (mounted) {
-        showDialog(
+        unawaited(showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('دسترسی میکروفون', textAlign: TextAlign.right),
@@ -148,7 +148,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
               ),
             ],
           ),
-        );
+        ));
       }
     }
   }
@@ -159,7 +159,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       setState(() {
         _isListening = false;
       });
-      HapticFeedback.lightImpact();
+      unawaited(HapticFeedback.lightImpact());
       
       final text = _textController.text.trim();
       if (text.isNotEmpty) {
@@ -764,8 +764,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       context.colors.primary,
                       onUndo: () async {
                         await AssistantActionRegistry.undoLastDayPlanCommit(context);
-                        _loadBriefingData();
-                        _checkLastCommit();
+                        unawaited(_loadBriefingData());
+                        unawaited(_checkLastCommit());
                       }
                     );
                   },
@@ -817,8 +817,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     context.colors.primary,
                     onUndo: () async {
                       await AssistantActionRegistry.undoLastDayPlanCommit(context);
-                      _loadBriefingData();
-                      _checkLastCommit();
+                      unawaited(_loadBriefingData());
+                      unawaited(_checkLastCommit());
                     }
                   );
                 },
@@ -889,8 +889,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       context.colors.primary,
                       onUndo: () async {
                         await AssistantActionRegistry.undoLastDayPlanCommit(context);
-                        _loadBriefingData();
-                        _checkLastCommit();
+                        unawaited(_loadBriefingData());
+                        unawaited(_checkLastCommit());
                       }
                     );
                   },
@@ -1008,7 +1008,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   Future<void> _cancelStream() async {
     if (_sub == null) return;
-    _sub!.cancel();
+    await _sub!.cancel();
     
     final idx = _messages.indexWhere((m) => m.id == _streamingId);
     if (idx != -1) {
@@ -1223,8 +1223,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       TextButton(
                         onPressed: () async {
                           await AssistantActionRegistry.undoLastDayPlanCommit(context);
-                          _loadBriefingData();
-                          _checkLastCommit();
+                          unawaited(_loadBriefingData());
+                          unawaited(_checkLastCommit());
                         },
                         child: Text(
                           'بازگردانی (Undo)',
