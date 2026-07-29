@@ -126,7 +126,7 @@ class AssistantActionRegistry {
         };
 
         if (context.mounted) {
-          Navigator.push(
+          unawaited(Navigator.push(
             context,
             PageRouteBuilder(
               opaque: false,
@@ -138,7 +138,7 @@ class AssistantActionRegistry {
                 },
               ),
             ),
-          );
+          ));
         }
 
       case AssistantActionType.createGoal:
@@ -159,7 +159,7 @@ class AssistantActionRegistry {
         );
 
         if (context.mounted) {
-          showModalBottomSheet(
+          unawaited(showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
@@ -172,7 +172,7 @@ class AssistantActionRegistry {
                 onComplete();
               },
             ),
-          );
+          ));
         }
 
       case AssistantActionType.logSleep:
@@ -185,7 +185,7 @@ class AssistantActionRegistry {
         );
 
         if (context.mounted) {
-          showModalBottomSheet(
+          unawaited(showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
@@ -196,12 +196,12 @@ class AssistantActionRegistry {
                 onComplete();
               },
             ),
-          );
+          ));
         }
 
       case AssistantActionType.logEnergyMood:
         if (context.mounted) {
-          showModalBottomSheet(
+          unawaited(showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
@@ -211,7 +211,7 @@ class AssistantActionRegistry {
                 onComplete();
               },
             ),
-          );
+          ));
         }
 
       case AssistantActionType.addKonkurItem:
@@ -222,7 +222,7 @@ class AssistantActionRegistry {
         final topics = topicsMap.map(KonkurTopic.fromMap).toList();
 
         if (context.mounted) {
-          showModalBottomSheet(
+          unawaited(showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
@@ -234,12 +234,12 @@ class AssistantActionRegistry {
                 onComplete();
               },
             ),
-          );
+          ));
         }
 
       case AssistantActionType.createCourse:
         if (context.mounted) {
-          showModalBottomSheet(
+          unawaited(showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
@@ -294,10 +294,10 @@ class AssistantActionRegistry {
           onComplete();
           return;
         } else if (targetScreen != null) {
-          Navigator.push(
+          unawaited(Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => targetScreen!),
-          ).then((_) => onComplete());
+          ).then((_) => onComplete()));
         } else {
           Navigator.of(context).popUntil((route) => route.isFirst);
           onComplete();
@@ -310,7 +310,7 @@ class AssistantActionRegistry {
 
         if (!isSettingChangeAllowed(key)) {
           if (context.mounted) {
-            showDialog(
+            unawaited(showDialog(
               context: context,
               builder: (context) => AlertDialog(
                 title: const Text('محدودیت دسترسی', textAlign: TextAlign.right),
@@ -323,7 +323,7 @@ class AssistantActionRegistry {
                   TextButton(onPressed: () => Navigator.pop(context), child: const Text('تایید')),
                 ],
               ),
-            );
+            ));
           }
           return;
         }
@@ -331,7 +331,7 @@ class AssistantActionRegistry {
         final normalized = validateAndNormalize(key, value);
         if (normalized == null) {
           if (context.mounted) {
-            showDialog(
+            unawaited(showDialog(
               context: context,
               builder: (context) => AlertDialog(
                 title: const Text('مقدار نامعتبر', textAlign: TextAlign.right),
@@ -344,7 +344,7 @@ class AssistantActionRegistry {
                   TextButton(onPressed: () => Navigator.pop(context), child: const Text('تایید')),
                 ],
               ),
-            );
+            ));
           }
           return;
         }
@@ -353,7 +353,7 @@ class AssistantActionRegistry {
         final oldValue = existing.isNotEmpty ? existing.first['value']! as String : 'ثبت نشده';
 
         if (context.mounted) {
-          showDialog(
+          unawaited(showDialog(
             context: context,
             builder: (context) => Directionality(
               textDirection: TextDirection.rtl,
@@ -381,7 +381,7 @@ class AssistantActionRegistry {
                 ],
               ),
             ),
-          );
+          ));
         }
 
       case AssistantActionType.completeRoutine:
@@ -394,7 +394,7 @@ class AssistantActionRegistry {
         final title = routinesList.first['title']?.toString() ?? '';
 
         if (context.mounted) {
-          showDialog(
+          unawaited(showDialog(
             context: context,
             builder: (context) => Directionality(
               textDirection: TextDirection.rtl,
@@ -474,7 +474,7 @@ class AssistantActionRegistry {
         final title = routinesList.first['title']?.toString() ?? '';
 
         if (context.mounted) {
-          showDialog(
+          unawaited(showDialog(
             context: context,
             builder: (context) => Directionality(
               textDirection: TextDirection.rtl,
@@ -541,7 +541,7 @@ class AssistantActionRegistry {
                 ],
               ),
             ),
-          );
+          ));
         }
 
       case AssistantActionType.editRoutine:
@@ -566,7 +566,7 @@ class AssistantActionRegistry {
         }
 
         if (context.mounted) {
-          Navigator.push(
+          unawaited(Navigator.push(
             context,
             PageRouteBuilder(
               opaque: false,
@@ -588,7 +588,7 @@ class AssistantActionRegistry {
                 },
               ),
             ),
-          );
+          ));
         }
 
       case AssistantActionType.deleteRoutine:
@@ -601,7 +601,7 @@ class AssistantActionRegistry {
         final title = routinesList.first['title']?.toString() ?? '';
 
         if (context.mounted) {
-          showDialog(
+          unawaited(showDialog(
             context: context,
             builder: (context) => Directionality(
               textDirection: TextDirection.rtl,
@@ -681,7 +681,7 @@ class AssistantActionRegistry {
         final routinesListForGoals = await db.query('routines', where: 'isArchived = 0');
 
         if (context.mounted) {
-          showModalBottomSheet(
+          unawaited(showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
@@ -702,7 +702,7 @@ class AssistantActionRegistry {
                 onComplete();
               },
             ),
-          );
+          ));
         }
 
       case AssistantActionType.completeGoalStep:
@@ -715,7 +715,7 @@ class AssistantActionRegistry {
         final title = stepList.first['title']?.toString() ?? '';
 
         if (context.mounted) {
-          showDialog(
+          unawaited(showDialog(
             context: context,
             builder: (context) => Directionality(
               textDirection: TextDirection.rtl,
@@ -757,7 +757,7 @@ class AssistantActionRegistry {
                 ],
               ),
             ),
-          );
+          ));
         }
 
       case AssistantActionType.createWorshipItem:
@@ -884,7 +884,7 @@ class AssistantActionRegistry {
 
       case AssistantActionType.logReflection:
         if (context.mounted) {
-          showModalBottomSheet(
+          unawaited(showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
@@ -893,7 +893,7 @@ class AssistantActionRegistry {
                 onComplete();
               },
             ),
-          );
+          ));
         }
 
       case AssistantActionType.rescheduleReminder:
