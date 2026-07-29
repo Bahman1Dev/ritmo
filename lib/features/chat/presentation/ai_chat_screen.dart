@@ -909,6 +909,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
         _dayPlanningStepMessage = null;
       });
 
+      if (!mounted) return;
+
       _showTopToast(
         'برای چیدمان برنامه روز، لطفاً کارهای امروزتان را بنویسید (مثلاً: ۹ تا ۱۷ سرکارم)',
         CupertinoIcons.info,
