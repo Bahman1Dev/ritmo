@@ -585,9 +585,8 @@ class _AddMockExamSheetState extends State<_AddMockExamSheet> {
       }
 
       widget.onSaved();
-      if (mounted) {
-        final parentCtx = context;
-        Navigator.pop(parentCtx);
+      if (!mounted) return;
+      Navigator.of(context).pop();
 
         final mockResults = await repo.getMockResults();
         final mockExams = await repo.getMockExams();
@@ -605,10 +604,9 @@ class _AddMockExamSheetState extends State<_AddMockExamSheet> {
           perSubjectTrend: perSubjectTrend,
         );
 
-        if (actions.isNotEmpty && parentCtx.mounted) {
-          _showActionPackSheet(parentCtx, actions);
+        if (actions.isNotEmpty && mounted) {
+          _showActionPackSheet(context, actions);
         }
-      }
     } catch (_) {}
   }
 
