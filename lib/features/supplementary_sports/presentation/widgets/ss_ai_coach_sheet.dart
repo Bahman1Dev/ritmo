@@ -352,8 +352,7 @@ class _SSAiCoachSheetState extends State<SSAiCoachSheet> {
       ),
     );
 
-    if (confirmed != true) return;
-    if (!mounted) return;
+    if (!mounted || confirmed != true) return;
 
     await AssistantActionRegistry.executeAction(
       context,
