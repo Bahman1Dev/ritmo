@@ -378,6 +378,7 @@ class _RitmoActionSheetState extends State<RitmoActionSheet> {
       AgendaDomain.medicine => 'دارو',
       AgendaDomain.konkur => 'کنکور',
       AgendaDomain.cycle => 'چرخه',
+      AgendaDomain.course => 'دوره',
     };
   }
 }
