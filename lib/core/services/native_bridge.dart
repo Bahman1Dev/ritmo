@@ -1,22 +1,40 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:ritmo/core/logging/ritmo_logger.dart';
+import 'package:ritmo/core/platform/native_channel_contract.dart';
 
 class NativeBridge {
-  static const _alarmChannel = MethodChannel('com.ritmo.app/alarms');
-  static const _serviceChannel = MethodChannel('com.ritmo.app/foreground_service');
-  static const _keystoreChannel = MethodChannel('com.ritmo.app/keystore');
+  static const _alarmChannel = MethodChannel(NativeChannels.alarms);
+  static const _serviceChannel = MethodChannel(NativeChannels.foregroundService);
+  static const _keystoreChannel = MethodChannel(NativeChannels.keystore);
+  static const _widgetChannel = MethodChannel(NativeChannels.widget);
+  static const _launchIntentChannel = MethodChannel(NativeChannels.launchIntent);
 
   /// Requests the master encryption key from the secure Android Keystore.
   static Future<String> getOrCreateMasterKey() async {
     if (kIsWeb) {
-      // Return a fixed 32-byte hex key for encryption/decryption in the web demo
       return '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff';
     }
     try {
-      final String key = await _keystoreChannel.invokeMethod('getOrCreateKey');
+      final String? key = await _keystoreChannel.invokeMethod<String>(KeystoreMethods.getOrCreateKey);
+      if (key == null || key.isEmpty) {
+        throw Exception('Keystore returned empty master key.');
+      }
       return key;
-    } on PlatformException catch (e) {
+    } on MissingPluginException catch (e, st) {
+      RitmoLog.error(
+        'NativeBridge',
+        'Channel contract mismatch or unhandled method ${KeystoreMethods.getOrCreateKey} on channel ${NativeChannels.keystore}',
+        e,
+        st,
+      );
+      throw Exception('Keystore channel method unhandled: ${e.message}');
+    } on PlatformException catch (e, st) {
+      RitmoLog.error('NativeBridge', 'PlatformException in getOrCreateMasterKey', e, st);
       throw Exception('Failed to get Master Key from Keystore: ${e.message}');
+    } catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Unexpected error in getOrCreateMasterKey', e, st);
+      rethrow;
     }
   }
 
@@ -32,15 +50,26 @@ class NativeBridge {
       return true;
     }
     try {
-      final bool success = await _alarmChannel.invokeMethod('scheduleExactAlarm', {
+      final bool? success = await _alarmChannel.invokeMethod<bool>(AlarmMethods.scheduleExactAlarm, {
         'id': id,
         'time': timeMsUTC,
         'title': title,
         'isEssential': isEssential,
       });
-      return success;
-    } on PlatformException catch (e) {
-      debugPrint('Error scheduling exact alarm: ${e.message}');
+      return success ?? false;
+    } on MissingPluginException catch (e, st) {
+      RitmoLog.error(
+        'NativeBridge',
+        'Channel contract mismatch or unhandled method ${AlarmMethods.scheduleExactAlarm} on channel ${NativeChannels.alarms}',
+        e,
+        st,
+      );
+      return false;
+    } on PlatformException catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Platform error scheduling exact alarm: ${e.message}', e, st);
+      return false;
+    } catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Unexpected error scheduling exact alarm', e, st);
       return false;
     }
   }
@@ -52,12 +81,23 @@ class NativeBridge {
       return true;
     }
     try {
-      final bool success = await _alarmChannel.invokeMethod('cancelAlarm', {
+      final bool? success = await _alarmChannel.invokeMethod<bool>(AlarmMethods.cancelAlarm, {
         'id': id,
       });
-      return success;
-    } on PlatformException catch (e) {
-      debugPrint('Error cancelling alarm: ${e.message}');
+      return success ?? false;
+    } on MissingPluginException catch (e, st) {
+      RitmoLog.error(
+        'NativeBridge',
+        'Channel contract mismatch or unhandled method ${AlarmMethods.cancelAlarm} on channel ${NativeChannels.alarms}',
+        e,
+        st,
+      );
+      return false;
+    } on PlatformException catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Platform error cancelling alarm: ${e.message}', e, st);
+      return false;
+    } catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Unexpected error cancelling alarm', e, st);
       return false;
     }
   }
@@ -76,11 +116,11 @@ class NativeBridge {
     List<String>? zoneIds,
   }) async {
     if (kIsWeb) {
-      debugPrint('Web: Mock startStatusMode (zone: $zone, energy: $energy, task: $proposedTask, id: $proposedTaskId, completedRoutines: $completedRoutines, totalRoutines: $totalRoutines, completedPrayers: $completedPrayers, totalPrayers: $totalPrayers)');
+      debugPrint('Web: Mock startStatusMode');
       return true;
     }
     try {
-      final bool success = await _serviceChannel.invokeMethod('startStatusMode', {
+      final bool? success = await _serviceChannel.invokeMethod<bool>(ForegroundServiceMethods.startStatusMode, {
         'zone': zone,
         'energy': energy,
         'proposedTask': proposedTask,
@@ -92,9 +132,20 @@ class NativeBridge {
         'zoneNames': zoneNames,
         'zoneIds': zoneIds,
       });
-      return success;
-    } on PlatformException catch (e) {
-      debugPrint('Error starting status service: ${e.message}');
+      return success ?? false;
+    } on MissingPluginException catch (e, st) {
+      RitmoLog.error(
+        'NativeBridge',
+        'Channel contract mismatch or unhandled method ${ForegroundServiceMethods.startStatusMode} on channel ${NativeChannels.foregroundService}',
+        e,
+        st,
+      );
+      return false;
+    } on PlatformException catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Platform error starting status service: ${e.message}', e, st);
+      return false;
+    } catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Unexpected error starting status service', e, st);
       return false;
     }
   }
@@ -106,18 +157,29 @@ class NativeBridge {
     required int elapsedSeconds,
   }) async {
     if (kIsWeb) {
-      debugPrint('Web: Mock startTimerMode ($title, duration: $durationSeconds, elapsed: $elapsedSeconds)');
+      debugPrint('Web: Mock startTimerMode');
       return true;
     }
     try {
-      final bool success = await _serviceChannel.invokeMethod('startTimerMode', {
+      final bool? success = await _serviceChannel.invokeMethod<bool>(ForegroundServiceMethods.startTimerMode, {
         'title': title,
         'durationSeconds': durationSeconds,
         'elapsedSeconds': elapsedSeconds,
       });
-      return success;
-    } on PlatformException catch (e) {
-      debugPrint('Error starting timer service: ${e.message}');
+      return success ?? false;
+    } on MissingPluginException catch (e, st) {
+      RitmoLog.error(
+        'NativeBridge',
+        'Channel contract mismatch or unhandled method ${ForegroundServiceMethods.startTimerMode} on channel ${NativeChannels.foregroundService}',
+        e,
+        st,
+      );
+      return false;
+    } on PlatformException catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Platform error starting timer service: ${e.message}', e, st);
+      return false;
+    } catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Unexpected error starting timer service', e, st);
       return false;
     }
   }
@@ -129,43 +191,65 @@ class NativeBridge {
       return true;
     }
     try {
-      final bool success = await _serviceChannel.invokeMethod('stopService');
-      return success;
-    } on PlatformException catch (e) {
-      debugPrint('Error stopping service: ${e.message}');
+      final bool? success = await _serviceChannel.invokeMethod<bool>(ForegroundServiceMethods.stopService);
+      return success ?? false;
+    } on MissingPluginException catch (e, st) {
+      RitmoLog.error(
+        'NativeBridge',
+        'Channel contract mismatch or unhandled method ${ForegroundServiceMethods.stopService} on channel ${NativeChannels.foregroundService}',
+        e,
+        st,
+      );
+      return false;
+    } on PlatformException catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Platform error stopping service: ${e.message}', e, st);
+      return false;
+    } catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Unexpected error stopping service', e, st);
       return false;
     }
   }
 
-  static const _widgetChannel = MethodChannel('com.ritmo.app/widget');
-
   /// Asks the OS to repaint the home-screen widgets after the snapshot changed.
-  /// Best-effort: only works when an activity engine is attached (foreground);
-  /// silently no-ops on web or in headless background isolates.
   static Future<void> refreshWidgets() async {
     if (kIsWeb) return;
     try {
-      await _widgetChannel.invokeMethod('refreshWidgets');
-    } on PlatformException catch (e) {
-      debugPrint('Error refreshing widgets: ${e.message}');
+      await _widgetChannel.invokeMethod(WidgetMethods.refreshWidgets);
+    } on MissingPluginException catch (e, st) {
+      RitmoLog.error(
+        'NativeBridge',
+        'Channel contract mismatch or unhandled method ${WidgetMethods.refreshWidgets} on channel ${NativeChannels.widget}',
+        e,
+        st,
+      );
+    } on PlatformException catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Platform error refreshing widgets: ${e.message}', e, st);
     } catch (e) {
       // No attached engine (background isolate) — ignore.
     }
   }
 
-  static const _launchIntentChannel = MethodChannel('com.ritmo.app/launch_intent');
-
-  /// Fetches any start timer parameters if the app was launched by clicking the "الان انجام می‌دهم" button
+  /// Fetches any start timer parameters if the app was launched by clicking notification action
   static Future<Map<String, dynamic>?> getLaunchIntent() async {
     if (kIsWeb) return null;
     try {
-      final res = await _launchIntentChannel.invokeMethod('getLaunchIntent');
+      final res = await _launchIntentChannel.invokeMethod(LaunchIntentMethods.getLaunchIntent);
       if (res != null) {
         return Map<String, dynamic>.from(res);
       }
-    } on PlatformException catch (e) {
-      debugPrint('Error getting launch intent: ${e.message}');
+    } on MissingPluginException catch (e, st) {
+      RitmoLog.error(
+        'NativeBridge',
+        'Channel contract mismatch or unhandled method ${LaunchIntentMethods.getLaunchIntent} on channel ${NativeChannels.launchIntent}',
+        e,
+        st,
+      );
+    } on PlatformException catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Platform error getting launch intent: ${e.message}', e, st);
+    } catch (e, st) {
+      RitmoLog.error('NativeBridge', 'Unexpected error getting launch intent', e, st);
     }
     return null;
   }
 }
+

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -123,7 +124,7 @@ class _PrayerCityPickerState extends State<PrayerCityPicker> {
   }
 
   Future<void> _selectCity(String cityId) async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -160,7 +161,7 @@ class _PrayerCityPickerState extends State<PrayerCityPicker> {
   }
 
   Future<void> _saveSettings() async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       final nowMs = DateTime.now().millisecondsSinceEpoch;

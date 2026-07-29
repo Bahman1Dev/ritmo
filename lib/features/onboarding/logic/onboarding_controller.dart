@@ -198,103 +198,127 @@ class OnboardingController extends ChangeNotifier {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
 
     try {
-      // 1. Create starter routines using CreateRoutineCommand via Kernel
-      for (final t in selectedStarterRoutines) {
-        final rId = RitmoIdFactory.routine();
-        final duration = DurationBounds.sanitize(t.durationMinutes);
-
-        final routineData = {
-          'id': rId,
-          'title': t.titleFa,
-          'category': t.category.name,
-          'routineType': 'timeBased',
-          'notificationLevel': 'normal',
-          'isEssential': 0,
-          'energyRule': 'none',
-          'priority': 1.0,
-          'targetDurationMinutes': duration,
-          'displayOrder': 1,
-          'description': 'اولین روتین ثبت‌شده در آنبوردینگ',
-          'createdAt': nowMs,
-          'updatedAt': nowMs,
-        };
-
-        final scheduleData = {
-          'id': RitmoIdFactory.schedule(rId),
-          'routineId': rId,
-          'scheduleType': 'DAILY',
-          'timeOfDay': t.defaultTime,
-          'daysOfWeek': '1,2,3,4,5,6,7',
-          'createdAt': nowMs,
-          'updatedAt': nowMs,
-        };
-
-        final command = CreateRoutineCommand(
-          routineData: routineData,
-          scheduleData: scheduleData,
-        );
-
-        await RitmoExecutionKernel.instance.execute(command);
-      }
-
-      // 2. Perform main onboarding completion transaction
       final db = await DatabaseHelper.instance.database;
 
-      await db.transaction((txn) async {
-        final canCourses = PremiumService.instance.can(PremiumFeature.coursesModule);
-        final canKonkur = PremiumService.instance.can(PremiumFeature.konkurModule);
+      // Check if onboarding is already completed (Idempotency guard)
+      final alreadyCompleted = await OnboardingGate.isCompleted(db);
 
-        final moduleStates = OnboardingModuleMap.resolveModuleStates(
-          chosenAreas: focusAreas,
-          isFemale: gender == 'FEMALE',
-          enableCycle: enableCycle,
-          canUseCourses: canCourses,
-          canUseKonkur: canKonkur,
-        );
+      if (!alreadyCompleted) {
+        // 1. Create starter routines with deterministic IDs to ensure idempotency
+        for (final t in selectedStarterRoutines) {
+          final rId = 'onboarding_routine_${t.id}';
+          final duration = DurationBounds.sanitize(t.durationMinutes);
 
-        for (final entry in moduleStates.entries) {
-          await txn.insert(
-            'app_settings',
-            {
-              'key': entry.key,
-              'value': entry.value,
-              'updatedAt': nowMs,
-            },
-            conflictAlgorithm: ConflictAlgorithm.replace,
+          final routineData = {
+            'id': rId,
+            'title': t.titleFa,
+            'category': t.category.name,
+            'routineType': 'timeBased',
+            'notificationLevel': 'normal',
+            'isEssential': 0,
+            'energyRule': 'none',
+            'priority': 1.0,
+            'targetDurationMinutes': duration,
+            'displayOrder': 1,
+            'description': 'اولین روتین ثبت‌شده در آنبوردینگ',
+            'createdAt': nowMs,
+            'updatedAt': nowMs,
+          };
+
+          final scheduleData = {
+            'id': 'sched_$rId',
+            'routineId': rId,
+            'scheduleType': 'DAILY',
+            'timeOfDay': t.defaultTime,
+            'daysOfWeek': '1,2,3,4,5,6,7',
+            'createdAt': nowMs,
+            'updatedAt': nowMs,
+          };
+
+          final command = CreateRoutineCommand(
+            routineData: routineData,
+            scheduleData: scheduleData,
           );
+
+          await RitmoExecutionKernel.instance.execute(command);
         }
 
-        final focusCodes = focusAreas.map((a) => a.code).toList();
-        final settingsToSave = {
-          if (userName.isNotEmpty) 'user_name': userName,
-          'user_gender': gender,
-          'user_age': age.toString(),
-          'wake_time': wakeTime,
-          'sleep_time': sleepTime,
-          'primary_focus_areas': jsonEncode(focusCodes),
-          'energy_profile': energyProfile,
-          'default_energy_level': energyProfile,
-          'notif_permission_asked': 'true',
-          'notif_permission_granted': notifGranted ? 'true' : 'false',
-          'onboarding_skipped_steps': jsonEncode(skippedStepCodes.toList()),
-        };
+        // 2. Perform main onboarding completion transaction
+        await db.transaction((txn) async {
+          final canCourses = PremiumService.instance.can(PremiumFeature.coursesModule);
+          final canKonkur = PremiumService.instance.can(PremiumFeature.konkurModule);
 
-        for (final entry in settingsToSave.entries) {
-          await txn.insert(
-            'app_settings',
-            {
-              'key': entry.key,
-              'value': entry.value,
-              'updatedAt': nowMs,
-            },
-            conflictAlgorithm: ConflictAlgorithm.replace,
+          final moduleStates = OnboardingModuleMap.resolveModuleStates(
+            chosenAreas: focusAreas,
+            isFemale: gender == 'FEMALE',
+            enableCycle: enableCycle,
+            canUseCourses: canCourses,
+            canUseKonkur: canKonkur,
           );
-        }
 
-        await OnboardingGate.markCompleted(txn, version: OnboardingGate.currentVersion);
-      });
+          for (final entry in moduleStates.entries) {
+            await txn.insert(
+              'app_settings',
+              {
+                'key': entry.key,
+                'value': entry.value,
+                'updatedAt': nowMs,
+              },
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+          }
 
-      // Post transaction actions
+          final focusCodes = focusAreas.map((a) => a.code).toList();
+          final settingsToSave = {
+            if (userName.isNotEmpty) 'user_name': userName,
+            'user_gender': gender,
+            'user_age': age.toString(),
+            'wake_time': wakeTime,
+            'sleep_time': sleepTime,
+            'primary_focus_areas': jsonEncode(focusCodes),
+            'energy_profile': energyProfile,
+            'default_energy_level': energyProfile,
+            'notif_permission_asked': 'true',
+            'notif_permission_granted': notifGranted ? 'true' : 'false',
+            'onboarding_skipped_steps': jsonEncode(skippedStepCodes.toList()),
+          };
+
+          for (final entry in settingsToSave.entries) {
+            await txn.insert(
+              'app_settings',
+              {
+                'key': entry.key,
+                'value': entry.value,
+                'updatedAt': nowMs,
+              },
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+          }
+
+          await OnboardingGate.markCompleted(txn, version: OnboardingGate.currentVersion);
+        });
+      }
+
+      // Clear draft store immediately after successful transaction
+      await OnboardingDraftStore.clear();
+
+      // ── CRITICAL STEP COMPLETED: Release user navigation immediately ──
+      isSaving = false;
+      notifyListeners();
+      onFinished();
+
+      // ── BEST-EFFORT SIDE EFFECTS: Must not block user navigation ──
+      unawaited(_postSaveBestEffort());
+    } catch (e, st) {
+      RitmoLog.error('OnboardingController', 'Failed to save onboarding data', e, st);
+      isSaving = false;
+      errorMessage = 'ذخیرهٔ اطلاعات ناموفق بود. لطفاً دوباره تلاش کنید.';
+      notifyListeners();
+    }
+  }
+
+  Future<void> _postSaveBestEffort() async {
+    try {
       final firstRoutineTitle = selectedStarterRoutines.isNotEmpty
           ? selectedStarterRoutines.first.titleFa
           : 'ریتمو';
@@ -304,6 +328,7 @@ class OnboardingController extends ChangeNotifier {
         rhythmScore: 100,
         currentEnergyLevel: energyProfile,
       );
+
       await AlarmSchedulerService.scheduleNextAlarms();
 
       RitmoEventBus().fire(RitmoEvent(
@@ -311,17 +336,8 @@ class OnboardingController extends ChangeNotifier {
         timestamp: DateTime.now(),
         payload: {},
       ));
-
-      await OnboardingDraftStore.clear();
-
-      isSaving = false;
-      notifyListeners();
-      onFinished();
     } catch (e, st) {
-      debugPrint('[OnboardingController] Error during save: $e\n$st');
-      isSaving = false;
-      errorMessage = 'ذخیرهٔ اطلاعات ناموفق بود. لطفاً دوباره تلاش کنید.';
-      notifyListeners();
+      RitmoLog.error('OnboardingController', 'Best-effort post-save side effects error', e, st);
     }
   }
 }

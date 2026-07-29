@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -109,7 +110,7 @@ class _MustahabSectionState extends State<MustahabSection> {
 
   Future<void> _skipPracticeAndPromptQada(WorshipPractice practice) async {
     final colors = context.colors;
-    HapticFeedback.vibrate();
+    unawaited(HapticFeedback.vibrate());
     
     // Show confirmation dialog to add to Qada debts
     final addToQada = await showDialog<bool>(
@@ -491,7 +492,7 @@ class _ManageMustahabSheetState extends State<_ManageMustahabSheet> {
   }
 
   Future<void> _toggleCustomActive(WorshipPractice practice, bool enable) async {
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       await db.update(
@@ -511,7 +512,7 @@ class _ManageMustahabSheetState extends State<_ManageMustahabSheet> {
   }
 
   Future<void> _deleteCustom(WorshipPractice practice) async {
-    HapticFeedback.vibrate();
+    unawaited(HapticFeedback.vibrate());
 
     // 1. Temporarily remove from local list and update UI
     setState(() {
@@ -801,7 +802,7 @@ class _ManageMustahabSheetState extends State<_ManageMustahabSheet> {
     String? customFreq,
     String? customDay,
   }) async {
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -1169,7 +1170,7 @@ class _AddCustomMustahabSheetState extends State<AddCustomMustahabSheet> {
   }
 
   Future<void> _saveCustom() async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       RitmoSnackbar.warning(context, 'لطفاً عنوان مستحب را وارد کنید');
@@ -1371,7 +1372,7 @@ class _AddCustomMustahabSheetState extends State<AddCustomMustahabSheet> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                             onPressed: () async {
-                              HapticFeedback.vibrate();
+                              unawaited(HapticFeedback.vibrate());
                               setState(() {
                                 if (_tempPractice != null) {
                                   _tempPractice = _tempPractice!.copyWith(reminderEnabled: false);

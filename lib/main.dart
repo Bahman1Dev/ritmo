@@ -84,7 +84,7 @@ void main() async {
           await prefs.setBool('wm_registered_v2', true);
         }
       } catch (e, st) {
-        PrivacyErrorSink.instance.logError('BackgroundInit', 'Workmanager init error', e, st);
+        unawaited(PrivacyErrorSink.instance.logError('BackgroundInit', 'Workmanager init error', e, st));
         RitmoLog.error('BackgroundInit', 'Workmanager init error', e, st);
       }
     }));

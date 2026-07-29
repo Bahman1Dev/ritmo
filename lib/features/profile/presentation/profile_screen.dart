@@ -29,6 +29,7 @@ import 'package:ritmo/features/cycle/presentation/cycle_screen.dart';
 import 'package:ritmo/features/premium/presentation/premium_upgrade_sheet.dart';
 import 'package:ritmo/features/profile/presentation/ai_memory_management_screen.dart';
 import 'package:ritmo/features/profile/presentation/backup_screen.dart';
+import 'package:ritmo/features/profile/presentation/crash_reports_screen.dart';
 import 'package:ritmo/features/profile/presentation/widgets/worship_seasons_sheet.dart';
 import 'package:ritmo/features/today/presentation/widgets/realm_management_sheet.dart';
 import 'package:shamsi_date/shamsi_date.dart';
@@ -3648,12 +3649,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: Column(
                   children: [
-                    _buildAboutInfoRow('موتور ذخیره‌سازی', 'SQLCipher (محلی و امن)', textCol),
+                    _buildAboutInfoRow('موتور ذخیره‌سازی', 'ذخیره‌سازی ۱۰۰٪ محلی', textCol),
                     const Divider(color: Colors.white10, height: 16),
                     _buildAboutInfoRow('سیستم‌عامل طراحی', 'iOS 26 Minimalist', textCol),
                     const Divider(color: Colors.white10, height: 16),
                     _buildAboutInfoRow('طراح و توسعه‌دهنده', 'تیم ریتمو', textCol),
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CrashReportsScreen()),
+                  );
+                },
+                icon: const Icon(CupertinoIcons.doc_text_search, size: 18),
+                label: const Text('مشاهده گزارش‌های فنی خطا', style: TextStyle(fontFamily: 'Vazirmatn')),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.primary,
+                  side: BorderSide(color: colors.primary.withValues(alpha: 0.5)),
+                  minimumSize: const Size(double.infinity, 44),
                 ),
               ),
               const SizedBox(height: 16),

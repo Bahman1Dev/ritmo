@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/completion/completion_gateway.dart';
-import 'package:ritmo/core/domain/completion/completion_outcome.dart';
 import 'package:ritmo/core/domain/completion/completion_request.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/widgets/action/action_capabilities.dart';

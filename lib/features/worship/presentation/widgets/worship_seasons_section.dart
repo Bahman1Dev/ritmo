@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -214,7 +215,7 @@ class _WorshipSeasonsSectionState extends State<WorshipSeasonsSection> {
   }
 
   Future<void> _toggleSeasonActive(WorshipSeason season, bool active) async {
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       await db.update(

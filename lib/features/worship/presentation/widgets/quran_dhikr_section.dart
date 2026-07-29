@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
@@ -177,7 +178,7 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
   // --- QURAN ACTIONS ---
   Future<void> _updateQuranPages(int delta) async {
     if (_quranPractice == null) return;
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
 
     final currentDone = _quranPractice!.dailyDone;
     final newDone = (currentDone + delta).clamp(0, 999);
@@ -209,7 +210,7 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
 
   Future<void> _toggleQuranActive(bool isActive) async {
     if (_quranPractice == null) return;
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -255,14 +256,14 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
 
   // --- HAZRAT ZAHRA TASBIH ACTIONS ---
   Future<void> _tapZahraCounter() async {
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
     setState(() {
       _zahraCount++;
     });
 
     final target = _zahraTargets[_zahraStep];
     if (_zahraCount >= target) {
-      HapticFeedback.mediumImpact();
+      unawaited(HapticFeedback.mediumImpact());
       if (_zahraStep < 2) {
         // Next Phrase
         setState(() {
@@ -305,7 +306,7 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
   }
 
   void _resetZahraCounter() {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     setState(() {
       _zahraStep = 0;
       _zahraCount = 0;
@@ -314,7 +315,7 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
 
   // --- OTHER DHIKRS ACTIONS ---
   Future<void> _incrementDhikr(WorshipPractice practice, int amount) async {
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
     final newDone = (practice.dailyDone + amount).clamp(0, 99999);
 
     try {
@@ -341,7 +342,7 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
   }
 
   Future<void> _resetDhikr(WorshipPractice practice) async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -366,7 +367,7 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
   }
 
   Future<void> _deleteCustomDhikr(WorshipPractice practice) async {
-    HapticFeedback.vibrate();
+    unawaited(HapticFeedback.vibrate());
     try {
       final db = await DatabaseHelper.instance.database;
       await db.delete(
@@ -448,7 +449,7 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
 
     if (result ?? false) {
       final value = int.tryParse(controller.text) ?? 0;
-      HapticFeedback.mediumImpact();
+      unawaited(HapticFeedback.mediumImpact());
       try {
         final db = await DatabaseHelper.instance.database;
         final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -995,7 +996,7 @@ class _QuranSettingsSheetState extends State<_QuranSettingsSheet> {
   }
 
   Future<void> _save() async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -1136,7 +1137,7 @@ class _AddDhikrSheetState extends State<_AddDhikrSheet> {
     final target = int.tryParse(_targetController.text) ?? 100;
     if (title.isEmpty) return;
 
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       final nowMs = DateTime.now().millisecondsSinceEpoch;

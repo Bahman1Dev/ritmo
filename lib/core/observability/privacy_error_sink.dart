@@ -4,45 +4,51 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ritmo/core/logging/ritmo_logger.dart';
 
-/// Privacy-focused error logging sink that redacts sensitive health, cycle, worship,
-/// and personal user data before writing crash reports to offline storage.
+/// Allowlist-based privacy error sink that records technical crash metadata
+/// while completely eliminating raw user message strings or freeform Persian health/reflection data.
 class PrivacyErrorSink implements LogSink {
   PrivacyErrorSink._init();
   static final PrivacyErrorSink instance = PrivacyErrorSink._init();
 
-  static final RegExp _persianTextRegex = RegExp(r'[\u0600-\u06FF]+');
-  static final RegExp _healthDataRegex = RegExp(
-    r'(sys|dia|systolic|diastolic|pulse|blood_sugar|glucose|weight|height|cycle_start|pregnancy|menstruation|medication)\s*:\s*[^\s,]+',
-    caseSensitive: false,
-  );
+  static const int maxCrashReportFiles = 20;
 
-  /// Redacts sensitive personal or health information from a log message string.
+  static final RegExp _persianTextRegex = RegExp(r'[\u0600-\u06FF]+');
+
+  /// Allowlist sanitizer: Scrubs any freeform text or Persian content from error strings and stacktraces,
+  /// preserving only technical exception type names, line numbers, and stack traces.
   static String sanitize(String input) {
     if (input.isEmpty) return input;
-    var result = input.replaceAll(_healthDataRegex, r'$1: [REDACTED_HEALTH_DATA]');
-    // Mask raw long Persian user inputs or titles inside logs
-    if (result.length > 50 && _persianTextRegex.hasMatch(result)) {
-      result = result.replaceAll(_persianTextRegex, '[REDACTED_TEXT]');
-    }
-    return result;
+    // Replace all Persian characters with [REDACTED_TEXT]
+    final noPersian = input.replaceAll(_persianTextRegex, '[REDACTED_TEXT]');
+    return noPersian;
   }
 
   @override
   void log(String level, String scope, String message, [Object? error, StackTrace? st]) {
-    final cleanMessage = sanitize(message);
-    final cleanError = error != null ? sanitize(error.toString()) : null;
-    
-    // Log to RitmoLog RingBuffer
     if (level == 'ERROR') {
-      _writeCrashReport(scope, cleanMessage, cleanError, st);
+      logError(scope, message, error, st);
     }
   }
 
   Future<void> logError(String scope, String message, [Object? error, StackTrace? st]) async {
-    log('ERROR', scope, message, error, st);
+    final exceptionType = error != null ? error.runtimeType.toString() : 'UnknownException';
+    final cleanError = error != null ? sanitize(error.toString()) : null;
+    final cleanStack = st != null ? sanitize(st.toString()) : null;
+
+    await _writeCrashReport(
+      scope: scope,
+      exceptionType: exceptionType,
+      errorStr: cleanError,
+      stStr: cleanStack,
+    );
   }
 
-  static Future<void> _writeCrashReport(String scope, String message, String? errorStr, StackTrace? st) async {
+  static Future<void> _writeCrashReport({
+    required String scope,
+    required String exceptionType,
+    String? errorStr,
+    String? stStr,
+  }) async {
     if (kIsWeb) return;
     try {
       final docsDir = await getApplicationDocumentsDirectory();
@@ -50,19 +56,76 @@ class PrivacyErrorSink implements LogSink {
       if (!await crashDir.exists()) {
         await crashDir.create(recursive: true);
       }
+
+      // Enforce rotation: Max 20 files limit
+      final files = await crashDir
+          .list()
+          .where((entity) => entity is File && entity.path.endsWith('.log'))
+          .cast<File>()
+          .toList();
+
+      if (files.length >= maxCrashReportFiles) {
+        files.sort((a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()));
+        final toDeleteCount = files.length - maxCrashReportFiles + 1;
+        for (var i = 0; i < toDeleteCount; i++) {
+          try {
+            await files[i].delete();
+          } catch (e, st) {
+            RitmoLog.error('PrivacyErrorSink', 'Failed to prune old crash report file', e, st);
+          }
+        }
+      }
+
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final file = File(join(crashDir.path, 'crash_$timestamp.log'));
       final content = StringBuffer()
         ..writeln('Timestamp: ${DateTime.now().toIso8601String()}')
         ..writeln('Scope: $scope')
-        ..writeln('Message: $message');
-      if (errorStr != null) {
+        ..writeln('ExceptionType: $exceptionType');
+
+      if (errorStr != null && errorStr.isNotEmpty) {
         content.writeln('Error: $errorStr');
       }
-      if (st != null) {
-        content.writeln('StackTrace:\n$st');
+      if (stStr != null && stStr.isNotEmpty) {
+        content.writeln('StackTrace:\n$stStr');
       }
+
       await file.writeAsString(content.toString());
-    } catch (_) {}
+    } catch (e, st) {
+      RitmoLog.error('PrivacyErrorSink', 'Failed to write crash report to disk', e, st);
+    }
+  }
+
+  /// Lists all local crash reports for user inspection in Settings UI.
+  static Future<List<File>> getCrashReports() async {
+    if (kIsWeb) return [];
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final crashDir = Directory(join(docsDir.path, 'crash_reports'));
+      if (!await crashDir.exists()) return [];
+      final files = await crashDir
+          .list()
+          .where((e) => e is File && e.path.endsWith('.log'))
+          .cast<File>()
+          .toList();
+      files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+      return files;
+    } catch (e, st) {
+      RitmoLog.error('PrivacyErrorSink', 'Failed to list crash reports', e, st);
+      return [];
+    }
+  }
+
+  /// Clears all local crash report files.
+  static Future<void> clearAllReports() async {
+    if (kIsWeb) return;
+    try {
+      final reports = await getCrashReports();
+      for (final f in reports) {
+        await f.delete();
+      }
+    } catch (e, st) {
+      RitmoLog.error('PrivacyErrorSink', 'Failed to clear crash reports', e, st);
+    }
   }
 }

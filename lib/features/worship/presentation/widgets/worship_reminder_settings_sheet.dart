@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
@@ -662,7 +663,7 @@ class _WorshipReminderSettingsSheetState
           const SizedBox(height: 14),
           GestureDetector(
             onTap: () async {
-              HapticFeedback.selectionClick();
+              unawaited(HapticFeedback.selectionClick());
               DateTime initial;
               try {
                 initial = DateTime.parse(_onceDateStr);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -122,7 +123,7 @@ class _WorshipDebtsSectionState extends State<WorshipDebtsSection> {
   }
 
   Future<void> _logCompletion(WorshipDebt debt) async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     if (debt.remainingCount <= 0) return;
 
     try {
@@ -168,7 +169,7 @@ class _WorshipDebtsSectionState extends State<WorshipDebtsSection> {
   }
 
   Future<void> _changeDailyTarget(WorshipDebt debt, int delta) async {
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     final newTarget = (debt.dailyTarget + delta).clamp(1, 100);
 
     try {
@@ -192,7 +193,7 @@ class _WorshipDebtsSectionState extends State<WorshipDebtsSection> {
   }
 
   Future<void> _dismissPrompt(bool accept) async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       final todayStr = DateTime.now().toIso8601String().substring(0, 10);
@@ -649,7 +650,7 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
 
     if (title.isEmpty || count <= 0) return;
 
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       final nowMs = DateTime.now().millisecondsSinceEpoch;

@@ -22,33 +22,35 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 
 class MainActivity : FlutterFragmentActivity() {
-    private val ALARM_CHANNEL = "com.ritmo.app/alarms"
-    private val SERVICE_CHANNEL = "com.ritmo.app/foreground_service"
-    private val KEYSTORE_CHANNEL = "com.ritmo.app/keystore"
+    private val TAG = "MainActivity"
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
         // 1. Keystore MethodChannel
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, KEYSTORE_CHANNEL).setMethodCallHandler { call, result ->
-            if (call.method == "getDeviceMasterKey") {
-                try {
-                    val key = getOrCreateMasterKey()
-                    result.success(key)
-                } catch (e: Exception) {
-                    result.error("KEYSTORE_ERROR", e.message, null)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NativeChannels.KEYSTORE).setMethodCallHandler { call, result ->
+            when (call.method) {
+                KeystoreMethods.GET_OR_CREATE_KEY -> {
+                    try {
+                        val key = getOrCreateMasterKey()
+                        result.success(key)
+                    } catch (e: Exception) {
+                        result.error("KEYSTORE_ERROR", e.message, null)
+                    }
                 }
-            } else {
-                result.notImplemented()
+                else -> {
+                    android.util.Log.w(TAG, "Unhandled method '${call.method}' on channel ${NativeChannels.KEYSTORE} — قرارداد ناهمخوان است")
+                    result.notImplemented()
+                }
             }
         }
 
         // 2. Alarm MethodChannel
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ALARM_CHANNEL).setMethodCallHandler { call, result ->
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NativeChannels.ALARMS).setMethodCallHandler { call, result ->
             when (call.method) {
-                "scheduleAlarm" -> {
+                AlarmMethods.SCHEDULE_EXACT_ALARM -> {
                     val id = call.argument<String>("id")
-                    val time = call.argument<Long>("time")
+                    val time = (call.argument<Number>("time"))?.toLong()
                     val title = call.argument<String>("title")
                     val isEssential = call.argument<Boolean>("isEssential") ?: false
 
@@ -59,7 +61,7 @@ class MainActivity : FlutterFragmentActivity() {
                         result.error("INVALID_ARGUMENTS", "Missing id, time, or title", null)
                     }
                 }
-                "cancelAlarm" -> {
+                AlarmMethods.CANCEL_ALARM -> {
                     val id = call.argument<String>("id")
                     if (id != null) {
                         cancelAlarm(id)
@@ -68,7 +70,7 @@ class MainActivity : FlutterFragmentActivity() {
                         result.error("INVALID_ARGUMENTS", "Missing id", null)
                     }
                 }
-                "checkExactAlarmPermission" -> {
+                AlarmMethods.CHECK_EXACT_ALARM_PERMISSION -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
                         result.success(alarmManager.canScheduleExactAlarms())
@@ -76,7 +78,7 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(true)
                     }
                 }
-                "requestExactAlarmPermission" -> {
+                AlarmMethods.REQUEST_EXACT_ALARM_PERMISSION -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         try {
                             val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
@@ -91,22 +93,25 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(true)
                     }
                 }
-                else -> result.notImplemented()
+                else -> {
+                    android.util.Log.w(TAG, "Unhandled method '${call.method}' on channel ${NativeChannels.ALARMS} — قرارداد ناهمخوان است")
+                    result.notImplemented()
+                }
             }
         }
 
         // 3. Foreground Service MethodChannel
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SERVICE_CHANNEL).setMethodCallHandler { call, result ->
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NativeChannels.FOREGROUND_SERVICE).setMethodCallHandler { call, result ->
             when (call.method) {
-                "startStatusMode" -> {
+                ForegroundServiceMethods.START_STATUS_MODE -> {
                     val zone = call.argument<String>("zone") ?: "آزاد"
                     val energy = call.argument<String>("energy") ?: "متوسط"
                     val proposedTask = call.argument<String>("proposedTask") ?: "استراحت 🌿"
                     val proposedTaskId = call.argument<String>("proposedTaskId")
-                    val completedRoutines = call.argument<Int>("completedRoutines") ?: 0
-                    val totalRoutines = call.argument<Int>("totalRoutines") ?: 0
-                    val completedPrayers = call.argument<Int>("completedPrayers") ?: 0
-                    val totalPrayers = call.argument<Int>("totalPrayers") ?: 0
+                    val completedRoutines = (call.argument<Number>("completedRoutines"))?.toInt() ?: 0
+                    val totalRoutines = (call.argument<Number>("totalRoutines"))?.toInt() ?: 0
+                    val completedPrayers = (call.argument<Number>("completedPrayers"))?.toInt() ?: 0
+                    val totalPrayers = (call.argument<Number>("totalPrayers"))?.toInt() ?: 0
                     val zoneNames = call.argument<List<String>>("zoneNames")
                     val zoneIds = call.argument<List<String>>("zoneIds")
 
@@ -126,10 +131,10 @@ class MainActivity : FlutterFragmentActivity() {
                     startForegroundServiceCompat(intent)
                     result.success(true)
                 }
-                "startTimerMode" -> {
+                ForegroundServiceMethods.START_TIMER_MODE -> {
                     val title = call.argument<String>("title") ?: "روتین"
-                    val durationSeconds = call.argument<Int>("durationSeconds") ?: 0
-                    val elapsedSeconds = call.argument<Int>("elapsedSeconds") ?: 0
+                    val durationSeconds = (call.argument<Number>("durationSeconds"))?.toInt() ?: 0
+                    val elapsedSeconds = (call.argument<Number>("elapsedSeconds"))?.toInt() ?: 0
 
                     val intent = Intent(this, RitmoForegroundService::class.java).apply {
                         action = RitmoForegroundService.ACTION_START_TIMER
@@ -140,85 +145,95 @@ class MainActivity : FlutterFragmentActivity() {
                     startForegroundServiceCompat(intent)
                     result.success(true)
                 }
-                "stopService" -> {
+                ForegroundServiceMethods.STOP_SERVICE -> {
                     val intent = Intent(this, RitmoForegroundService::class.java)
                     stopService(intent)
                     result.success(true)
                 }
-                else -> result.notImplemented()
+                else -> {
+                    android.util.Log.w(TAG, "Unhandled method '${call.method}' on channel ${NativeChannels.FOREGROUND_SERVICE} — قرارداد ناهمخوان است")
+                    result.notImplemented()
+                }
             }
         }
 
         // 4. Launch Intent MethodChannel
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.ritmo.app/launch_intent").setMethodCallHandler { call, result ->
-            if (call.method == "getLaunchIntent") {
-                val rId = startTimerReminderId
-                val mId = openModuleId
-                val qAdd = openQuickAdd
-                startTimerReminderId = null
-                openModuleId = null
-                openQuickAdd = false
-                if (rId != null) {
-                    result.success(mapOf("action" to "START_TIMER", "reminderId" to rId))
-                } else if (mId != null) {
-                    result.success(mapOf("action" to "OPEN_MODULE", "moduleId" to mId))
-                } else if (qAdd) {
-                    result.success(mapOf("action" to "OPEN_QUICK_ADD"))
-                } else {
-                    // Check initial intent (cold start)
-                    val launchIntent = intent
-                    when (launchIntent?.action) {
-                        "com.ritmo.app.START_TIMER" -> {
-                            val coldId = launchIntent.getStringExtra("reminderId")
-                            launchIntent.action = null // consume
-                            if (coldId != null) {
-                                result.success(mapOf("action" to "START_TIMER", "reminderId" to coldId))
-                            } else {
-                                result.success(null)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NativeChannels.LAUNCH_INTENT).setMethodCallHandler { call, result ->
+            when (call.method) {
+                LaunchIntentMethods.GET_LAUNCH_INTENT -> {
+                    val rId = startTimerReminderId
+                    val mId = openModuleId
+                    val qAdd = openQuickAdd
+                    startTimerReminderId = null
+                    openModuleId = null
+                    openQuickAdd = false
+                    if (rId != null) {
+                        result.success(mapOf("action" to "START_TIMER", "reminderId" to rId))
+                    } else if (mId != null) {
+                        result.success(mapOf("action" to "OPEN_MODULE", "moduleId" to mId))
+                    } else if (qAdd) {
+                        result.success(mapOf("action" to "OPEN_QUICK_ADD"))
+                    } else {
+                        val launchIntent = intent
+                        when (launchIntent?.action) {
+                            "com.ritmo.app.START_TIMER" -> {
+                                val coldId = launchIntent.getStringExtra("reminderId")
+                                launchIntent.action = null // consume
+                                if (coldId != null) {
+                                    result.success(mapOf("action" to "START_TIMER", "reminderId" to coldId))
+                                } else {
+                                    result.success(null)
+                                }
                             }
-                        }
-                        "com.ritmo.app.OPEN_MODULE" -> {
-                            val coldM = launchIntent.getStringExtra("moduleId")
-                            launchIntent.action = null // consume
-                            if (coldM != null) {
-                                result.success(mapOf("action" to "OPEN_MODULE", "moduleId" to coldM))
-                            } else {
-                                result.success(null)
+                            "com.ritmo.app.OPEN_MODULE" -> {
+                                val coldM = launchIntent.getStringExtra("moduleId")
+                                launchIntent.action = null // consume
+                                if (coldM != null) {
+                                    result.success(mapOf("action" to "OPEN_MODULE", "moduleId" to coldM))
+                                } else {
+                                    result.success(null)
+                                }
                             }
+                            "com.ritmo.app.OPEN_QUICK_ADD" -> {
+                                launchIntent.action = null // consume
+                                result.success(mapOf("action" to "OPEN_QUICK_ADD"))
+                            }
+                            else -> result.success(null)
                         }
-                        "com.ritmo.app.OPEN_QUICK_ADD" -> {
-                            launchIntent.action = null // consume
-                            result.success(mapOf("action" to "OPEN_QUICK_ADD"))
-                        }
-                        else -> result.success(null)
                     }
                 }
-            } else {
-                result.notImplemented()
+                else -> {
+                    android.util.Log.w(TAG, "Unhandled method '${call.method}' on channel ${NativeChannels.LAUNCH_INTENT} — قرارداد ناهمخوان است")
+                    result.notImplemented()
+                }
             }
         }
 
-        // 5. Home-screen Widget MethodChannel — Flutter asks the OS to repaint widgets
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.ritmo.app/widget").setMethodCallHandler { call, result ->
-            if (call.method == "refreshWidgets") {
-                try {
-                    refreshWidgets()
-                    result.success(true)
-                } catch (e: Exception) {
-                    result.error("WIDGET_REFRESH_ERROR", e.message, null)
+        // 5. Home-screen Widget MethodChannel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NativeChannels.WIDGET).setMethodCallHandler { call, result ->
+            when (call.method) {
+                WidgetMethods.REFRESH_WIDGETS -> {
+                    try {
+                        refreshWidgets()
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("WIDGET_REFRESH_ERROR", e.message, null)
+                    }
                 }
-            } else {
-                result.notImplemented()
+                else -> {
+                    android.util.Log.w(TAG, "Unhandled method '${call.method}' on channel ${NativeChannels.WIDGET} — قرارداد ناهمخوان است")
+                    result.notImplemented()
+                }
             }
         }
 
         // 6. Myket Billing MethodChannel
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.ritmo.app/myket_billing").setMethodCallHandler { call, result ->
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NativeChannels.MYKET_BILLING).setMethodCallHandler { call, result ->
             when (call.method) {
-                "init" -> {
+                MyketBillingMethods.INIT -> {
                     result.success(true)
                 }
-                "getProductDetails" -> {
+                MyketBillingMethods.GET_PRODUCT_DETAILS -> {
                     val skus = call.argument<List<String>>("skus")
                     val details = mapOf(
                         "premium_3month" to "۵۹,۰۰۰ تومان",
@@ -227,7 +242,7 @@ class MainActivity : FlutterFragmentActivity() {
                     )
                     result.success(details)
                 }
-                "purchase" -> {
+                MyketBillingMethods.PURCHASE -> {
                     val sku = call.argument<String>("sku")
                     if (sku != null) {
                         val token = "myket_mock_token_${System.currentTimeMillis()}"
@@ -242,7 +257,7 @@ class MainActivity : FlutterFragmentActivity() {
                         ))
                     }
                 }
-                "restorePurchases" -> {
+                MyketBillingMethods.RESTORE_PURCHASES -> {
                     val list = listOf(
                         mapOf(
                             "sku" to "premium_lifetime",
@@ -252,10 +267,13 @@ class MainActivity : FlutterFragmentActivity() {
                     )
                     result.success(list)
                 }
-                "dispose" -> {
+                MyketBillingMethods.DISPOSE -> {
                     result.success(true)
                 }
-                else -> result.notImplemented()
+                else -> {
+                    android.util.Log.w(TAG, "Unhandled method '${call.method}' on channel ${NativeChannels.MYKET_BILLING} — قرارداد ناهمخوان است")
+                    result.notImplemented()
+                }
             }
         }
     }

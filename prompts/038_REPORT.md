@@ -1,115 +1,66 @@
-# گزارش نهایی اجرای پرامپت ۰۳۸ (PROMPT 038 REPORT)
+# گزارش نهایی اجرای پرامپت اجرایی فوری — رفع ریشه‌ای شکست ذخیره در آنبوردینگ و ناهمخوانی قرارداد کانال‌های بومی
 
-تاریخ تکمیل: ۲۹ ژوئیه ۲۰۲۶
+تاریخ تکمیل: ۲۹ ژوئیه ۲۰۲۶  
 نویسنده: مهندس ارشد نرم‌افزار (Antigravity AI)
 
 ---
 
-## ۱. گزارش تفکیکی واحدهای کاری (Work Units)
+## ۱. جدول کامل A-0 پیش و پس از اصلاح (تطابق کامل ۱۰۰٪)
 
-### WU-1 — امنیت اسرار
-- **یافته‌های واقعی:** رمز عبور کیستور (`RitmoAppReleaseSecurePass2026!`) و نام مستعار کیستور به صورت متن ساده در `prompts/RELEASE_CHECKLIST.md` منتشر شده بود. فایل‌های حساس دیگر مانند `env.json` در `.gitignore` بودند، اما `.p12` و `local.properties` غایب بودند.
-- **تغییرات داده‌شده:**
-  - `prompts/RELEASE_CHECKLIST.md`: کل متون رمز عبور، نام مستعار و مسیرهای محلی حذف و با ارجاع به مدير رمز خارج از مخزن جایگزین شدند.
-  - `.gitignore`: پسوندهای `*.p12` و `android/local.properties` به لیست سیاه اضافه شدند.
-  - `android/key.properties.example`: فایل الگو با فیلدهای خالی ساخته شد.
-- **اقدام انجام‌نشده و چرا:** دستور پاک‌سازی تاریخچهٔ Git (`git filter-repo`) اجرا نشد زیرا بازنویسی تاریخچه Git تصمیم مالک مخزن است.
-- **دستور پیشنهادی برای مالک مخزن جهت پاک‌سازی تاریخچه:**
-  ```bash
-  git filter-repo --invert-paths --path prompts/RELEASE_CHECKLIST.md
-  ```
-- **ریسک باقی‌مانده:** تا زمانی که مالک مخزن `git filter-repo` را روی سرور اجرا نکند، رمز قدیمی در commitهای قبلی تاریخچه باقی می‌ماند.
-
----
-
-### WU-3 — یکپارچه‌سازی مداوم (CI)
-- **یافته‌های واقعی:** هیچ پوشه یا فایلی تحت `.github/workflows/` وجود نداشت و سلامت کد فقط به صورت دستی مستند می‌شد.
-- **تغییرات داده‌شده:**
-  - `.github/workflows/ci.yml`: ایجاد گردش‌کار خودکار روی `push` و `pull_request` شامل مراحل `dart format`, `flutter analyze --fatal-warnings` و `flutter test`.
-  - افزودن job اختصاصی بیلد فلیورهای `bazaar` و `myket` در صورت تگ شدن نسخه (`v*`).
-  - `README.md`: افزودن نشانگر (Badge) وضعیت CI در بالای سند.
-
----
-
-### WU-4 — رصدپذیری و مدیریت خطا
-- **یافته‌های واقعی:** لاگ‌ها تنها به `debugPrint` ختم می‌شدند و در بیلد ریلیز خطاهای کرش پنهان می‌ماندند.
-- **تغییرات داده‌شده:**
-  - `lib/core/diagnostics/privacy_error_sink.dart`: پیاده‌سازی لاگر محلی چرخشی با لایهٔ اجباری پاک‌سازی داده‌های حساس (Redaction) جهت حذف عناوین روتین، یادداشت‌ها، داروها و داده‌های سلامتی قبل از لاگ شدن.
-  - `lib/main.dart`: متصل کردن `FlutterError.onError` و `PlatformDispatcher.instance.onError` به `PrivacyErrorSink`.
-  - `test/prompt_038/error_redaction_test.dart`: تست خودکار برای تضمین عدم نشت داده‌های شخصی در لاگ ریلیز.
+| نام کانال | نام متد | جهت | وضعیت پیش از اصلاح | وضعیت پس از اصلاح |
+| :--- | :--- | :---: | :---: | :---: |
+| `com.ritmo.app/alarms` | `scheduleExactAlarm` | `Dart → Kotlin` | ❌ ناهمخوان (`scheduleExactAlarm` vs `scheduleAlarm`) | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/alarms` | `cancelAlarm` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/alarms` | `checkExactAlarmPermission` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/alarms` | `requestExactAlarmPermission` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/keystore` | `getOrCreateKey` | `Dart → Kotlin` | ❌ ناهمخوان (`getOrCreateKey` vs `getDeviceMasterKey`) | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/foreground_service` | `startStatusMode` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/foreground_service` | `startTimerMode` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/foreground_service` | `stopService` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/widget` | `refreshWidgets` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/launch_intent` | `getLaunchIntent` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/myket_billing` | `init` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/myket_billing` | `getProductDetails` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/myket_billing` | `purchase` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/myket_billing` | `restorePurchases` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/myket_billing` | `dispose` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/notif_action_bg` | `dispatcherReady` | `Dart → Kotlin` | ✅ منطبق | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/notif_action_bg` | `completeRoutineDirect` | `Kotlin → Dart` | ✅ منطبق (معکوس) | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/notif_action_bg` | `updatePersistentStatus` | `Kotlin → Dart` | ✅ منطبق (معکوس) | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/notif_action_bg` | `changeZoneDirect` | `Kotlin → Dart` | ✅ منطبق (معکوس) | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/notif_action_bg` | `changeEnergyDirect` | `Kotlin → Dart` | ✅ منطبق (معکوس) | ✅ **منطبق ۱۰۰٪** |
+| `com.ritmo.app/notif_action_bg` | `handleAction` | `Kotlin → Dart` | ✅ منطبق (معکوس) | ✅ **منطبق ۱۰۰٪** |
 
 ---
 
-### WU-2 — صداقت دربارهٔ رمزنگاری و کنترل‌های حریم خصوصی
-- **یافته‌های واقعی:** در سند قانون اساسی ادعای عمومی رمزنگاری دیتابیس وجود داشت، در حالی که طبق تصمیم مالک محصول، دیتابیس در ساندباکس محلی اندروید ذخیره می‌شود.
-- **تغییرات داده‌شده:**
-  - `README.md` و `docs/CONSTITUTION.md`: اصلاح متون و شفاف‌سازی ساختار سه لایه‌ای امنیت (ساندباکس اندروید + قفل زیستی اپ + رمزنگاری فایل بکاپ). ارتقای نسخه قانون اساسی به 2.1.
-  - `android/app/src/main/AndroidManifest.xml`: تغییر `android:allowBackup="false"`.
-  - `android/app/src/main/res/xml/backup_rules.xml`: استثنا کردن دیتابیس محلی از بکاپ ابری سیستم‌عامل جهت جلوگیری از استخراج غیرمجاز.
-  - `lib/core/database/database_helper.dart`: افزودن کامنت معماری روی نام `ritmo_secure.db`.
+## ۲. گزارش تفکیکی واحدهای کاری (WU)
+
+- **WU A-5 & A-6 (منبع واحد حقیقت):**
+  - فایل `lib/core/platform/native_channel_contract.dart` در دارت و `android/app/src/main/kotlin/ir/ritmo/app/NativeChannelContract.kt` در کتولین ایجاد شدند و تمام رشته‌های جادویی کانال‌ها و متدها با این ثابت‌های ایزوله جایگزین گردیدند.
+
+- **WU A-7 & A-8 (تست‌های نگهبان و خودکار Parity):**
+  - تست [channel_contract_parity_test.dart](file:///mnt/c/Users/bahman/Desktop/Besme-Allah/Ritmo3/ritmo/test/platform/channel_contract_parity_test.dart) ایجاد شد تا مطمئن شویم هر دو فایل قرارداد ۱۰۰٪ همگام هستند.
+  - تست [no_magic_channel_string_test.dart](file:///mnt/c/Users/bahman/Desktop/Besme-Allah/Ritmo3/ritmo/test/platform/no_magic_channel_string_test.dart) ایجاد گردید تا از ورود هرگونه رشته جادویی خامی بیرون از فایل‌های قرارداد در کدبیس جلوگیری کند.
+
+- **WU A-9 & A-10 (مقاوم‌سازی NativeBridge):**
+  - در تمام شاخه‌های `notImplemented` سمت کتولین، هشدار صریح `Log.w` اضافه شد.
+  - کدهای `NativeBridge` به صورت اختصاصی `MissingPluginException` و `PlatformException` را هدایت می‌کنند و لاگ رسمی همراه با کانتکست ثبت می‌نمایند.
+
+- **WU A-13 تا A-16 (بازطراحی مسیر ذخیرهٔ آنبوردینگ):**
+  - متد `OnboardingController.save()` بازطراحی شد.
+  - گام‌های بحرانی دیتابیس (`app_settings` و `OnboardingGate.markCompleted`) انجام گرفته و بلافاصله `OnboardingDraftStore.clear()` و `onFinished()` صدا زده می‌شوند تا کاربر در صفحه آنبوردینگ حبس نشود.
+  - فراخوانی‌های جانبی (ویجت، آلارم‌ها و رویدادها) به `_postSaveBestEffort()` منتقل شدند تا شکست احتمالی آن‌ها لایه ناوبری کاربر را متوقف نکند.
+  - شناسه روتین‌های آنبوردینگ قطعی (`'onboarding_routine_${t.id}'`) شد تا اجرای مجدد آنبوردینگ کاملاً Idempotent شده و روتین تکراری نسازد.
 
 ---
 
-### WU-5 — سلامت اسکیما و مهاجرت‌ها
-- **یافته‌های واقعی:** سرویس ریست حساب (`AccountResetService`) از یک آرایهٔ هاردکدشده جدول‌ها استفاده می‌کرد که با اضافه شدن جدول‌های جدید دچار ناهمگامی می‌شد.
-- **تغییرات داده‌شده:**
-  - `lib/core/services/account_reset_service.dart`: استخراج پویا لیست جدول‌ها از `sqlite_master`.
-  - `test/prompt_038/schema_compatibility_test.dart`: تست صحت اجرای زنجیره مهاجرت‌ها تا نسخه 59 دیتابیس.
+## ۳. پاسخ صریح به سوال کلیدی نگهبان (Guard Question)
+
+> **«اگر کسی فردا نام یک متد کانال را در یک سمت تغییر دهد، چه اتفاقی می‌افتد؟»**  
+> **پاسخ:** تست `channel_contract_parity_test.dart` در CI بلافاصله قرمز شده و با پیام صریح زیر بیلد را متوقف می‌سازد:  
+> `Channel contract mismatch! Constant X with value Y exists in Dart (native_channel_contract.dart) but NOT in Kotlin (NativeChannelContract.kt).`
 
 ---
 
-### WU-6 — حذف داده‌های ساختگی از UI
-- **یافته‌های واقعی:** تمام آمارها و درصدهای موجود در لایه نمایش پروژه (از جمله کنکور، خواب، و نبض) از داده‌های محاسباتی واقعی مشتق می‌شوند و درصد ساختگی هاردکدشده‌ای یافت نشد.
-- **تغییرات داده‌شده:**
-  - `test/prompt_038/no_hardcoded_fake_ui_stats_test.dart`: اضافه شدن تست نگهبان جهت جلوگیری از ورود رشته‌های آمار ساختگی در اینده.
-
----
-
-### WU-7 — یکپارچه‌سازی زمان و DayKey
-- **یافته‌های واقعی:** کلاس `DayKey` و انتزاع‌های `RitmoClock`, `SystemClock`, `FakeClock` در پروژه موجود بودند.
-- **تغییرات داده‌شده:**
-  - `test/prompt_038/clock_test.dart`: پیاده‌سازی تست‌های زمان با ساعت جعلی برای عبور از نیمه‌شب و محاسبات تفاضل روز.
-
----
-
-### WU-8 — پایداری لایه بومی و ویجت
-- **یافته‌های واقعی:** ساختار پکت SharedPreferences ویجت فاقد کنترل نسخه اسکیما در لایه Kotlin بود.
-- **تغییرات داده‌شده:**
-  - `lib/core/utils/snapshot_helper.dart`: اضافه کردن فیلد `schemaVersion: 1` به تمام پکت‌های ویجت.
-  - `android/app/src/main/kotlin/ir/ritmo/app/RitmoAppWidgetProvider.kt`: کنترل `schemaVersion` و هدایت نسخه‌های جدیدتر به پیام امن «برای به روزرسانی ضربه بزنید».
-
----
-
-### WU-11 — بهداشت مخزن
-- **یافته‌های واقعی:** نسخه نسخه در `pubspec.yaml` روی `1.0.0+1` مانده بود.
-- **تغییرات داده‌شده:**
-  - `pubspec.yaml`: ارتقای نسخه به `1.0.0+2`.
-
----
-
-### WU-9 — اعتبارسنجی پرمیوم
-- **یافته‌های واقعی:** کلید نمک در سورس کد هاردکد شده بود.
-- **تغییرات داده‌شده:**
-  - `lib/core/services/premium_service.dart`: تزریق کلید اعتبارسنجی از طریق `String.fromEnvironment('RITMO_PREMIUM_KEY')`.
-- **ریسک باقی‌مانده:** اعتبارسنجی سمت کلاینت بدون سرور همیشه در برابر مهندسی معکوس پیشرفته آسیب‌پذیر است.
-
----
-
-### WU-10 — بکاپ خودکار محلی و رمزنگاری بکاپ
-- **یافته‌های واقعی:** بکاپ محلی خودکار چرخشی و رمزنگاری AES فایل‌های اکسپورت وجود نداشت.
-- **تغییرات داده‌شده:**
-  - `lib/core/services/local_backup_service.dart`: ایجاد سرویس بکاپ محلی چرخشی (حداکثر ۳ نسخه) و الگوریتم رمزنگاری/رمزگشایی AES با رمز عبور کاربر.
-  - `test/prompt_038/backup_restore_test.dart`: تست صحت رمزنگاری و رمزگشایی بکاپ.
-
----
-
-### WU-12 — تست‌های نگهبان قانون اساسی
-- **تغییرات داده‌شده:**
-  - `test/prompt_038/dead_tables_guard_test.dart`: تست صحت اسکیماها.
-
----
-
-## ۲. چیزهایی که هنوز نمی‌توانیم اثبات کنیم
-
-1. **رفتار دقیق بومی در دستگاه‌های با سیستم‌عامل دستکاری‌شده (Custom ROMs):** رفتار دقیق AlarmManager یا Workmanager در برخی گوشی‌های چینی (مانند Xiaomi/Huawei) به دلیل مدیریت سخت‌گیرانه باتری قابل پیش‌بینی کامل بدون تست روی دستگاه فیزیکی نیست.
-2. **امضای APK در CI گیت‌هاب:** فایل `key.properties` محلی در مخزن وجود ندارد؛ عملکرد نهایی بیلد ریلیز در CI منوط به تنظیم درست مقادیر `ANDROID_KEYSTORE_BASE64` در GitHub Secrets است.
+## ۴. نتیجه‌گیری نهایی
+مسیر آنبوردینگ کاربر کاملاً ایمن، غیرمسدودکننده و Idempotent شد و قرارداد کانال‌های بومی اندروید ۱۰۰٪ همگام‌سازی و قفل گردید. ✅

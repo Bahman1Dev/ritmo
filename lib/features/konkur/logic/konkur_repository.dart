@@ -1,4 +1,5 @@
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/features/konkur/data/konkur_curriculum.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
 import 'package:sqflite/sqflite.dart';
@@ -214,6 +215,11 @@ class KonkurRepository {
   Future<void> insertMockExam(KonkurMockExam exam) async {
     final db = await _database;
     await db.insert('konkur_mock_exams', exam.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    RitmoEventBus().fire(RitmoEvent(
+      type: RitmoEventType.completionRecorded.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_mock_exam', 'examId': exam.id, 'dateStr': exam.examDate},
+    ));
   }
 
   Future<void> deleteMockExam(String examId) async {
@@ -222,16 +228,31 @@ class KonkurRepository {
       await txn.delete('konkur_mock_exams', where: 'id = ?', whereArgs: [examId]);
       await txn.delete('konkur_mock_exam_results', where: 'mockExamId = ?', whereArgs: [examId]);
     });
+    RitmoEventBus().fire(RitmoEvent(
+      type: RitmoEventType.completionRecorded.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_mock_exam_deleted', 'examId': examId},
+    ));
   }
 
   Future<void> insertMockResult(KonkurMockResult result) async {
     final db = await _database;
     await db.insert('konkur_mock_exam_results', result.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    RitmoEventBus().fire(RitmoEvent(
+      type: RitmoEventType.completionRecorded.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_mock_result', 'resultId': result.id, 'mockExamId': result.mockExamId},
+    ));
   }
 
   Future<void> deleteMockResult(String resultId) async {
     final db = await _database;
     await db.delete('konkur_mock_exam_results', where: 'id = ?', whereArgs: [resultId]);
+    RitmoEventBus().fire(RitmoEvent(
+      type: RitmoEventType.completionRecorded.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_mock_result_deleted', 'resultId': resultId},
+    ));
   }
 
   Future<void> insertPlanItem(KonkurPlanItem item) async {

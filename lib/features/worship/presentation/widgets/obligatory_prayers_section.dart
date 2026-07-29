@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
@@ -304,7 +305,7 @@ class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
   }
 
   Future<void> _toggleGroupDone(String group, bool isDone) async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     
     final practiceIds = <String>[];
     if (group == 'FAJR') {
@@ -341,7 +342,7 @@ class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
 
   Future<void> _skipGroupWithQadaDirect(
       String groupTitle, List<WorshipPractice> groupPractices, bool addToQada) async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     final todayStr = DateTime.now().toIso8601String().substring(0, 10);
     final practicesList = groupPractices.map((p) => {
       'id': p.id,
