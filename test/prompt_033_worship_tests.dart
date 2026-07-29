@@ -1,6 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ritmo/core/domain/agenda/action_router.dart';
-import 'package:ritmo/core/domain/completion/completion_gateway.dart';
 import 'package:ritmo/core/domain/completion/completion_request.dart';
 import 'package:ritmo/core/domain/completion/snooze_policy.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
@@ -13,8 +11,8 @@ void main() {
   group('Prompt 033 Worship Unification Tests', () {
     test('1. PrayerTimeline.slotsFor returns slots sorted chronologically', () {
       final pTime = PrayerTime(
-        id: '1',
         date: '2026-07-26',
+        cityId: 'tehran',
         fajr: '04:30',
         sunrise: '06:00',
         dhuhr: '13:00',
@@ -42,8 +40,8 @@ void main() {
 
     test('2. PrayerTimeline.next returns next upcoming slot today', () {
       final pTime = PrayerTime(
-        id: '1',
         date: '2026-07-26',
+        cityId: 'tehran',
         fajr: '04:30',
         sunrise: '06:00',
         dhuhr: '13:00',
@@ -65,8 +63,8 @@ void main() {
 
     test('3. PrayerTimeline.next rolls over to tomorrow Fajr after midnight', () {
       final pTime = PrayerTime(
-        id: '1',
         date: '2026-07-26',
+        cityId: 'tehran',
         fajr: '04:30',
         sunrise: '06:00',
         dhuhr: '13:00',
@@ -89,8 +87,8 @@ void main() {
 
     test('4. PrayerTimeline.deadlineFor provides accurate legal cutoff', () {
       final pTime = PrayerTime(
-        id: '1',
         date: '2026-07-26',
+        cityId: 'tehran',
         fajr: '04:30',
         sunrise: '06:00',
         dhuhr: '13:00',
@@ -162,10 +160,10 @@ void main() {
     });
 
     test('9. WorshipDayStatus enum properties', () {
-      final doneStatus = WorshipDayStatus(practiceId: 'p1', dateStr: '2026-07-26', isDone: true, isSkipped: false);
+      const doneStatus = WorshipDayStatus(recordId: 'rec_1', resultType: 'DONE', countDone: 1);
       expect(doneStatus.isDone, isTrue);
 
-      final skipStatus = WorshipDayStatus(practiceId: 'p1', dateStr: '2026-07-26', isDone: false, isSkipped: true);
+      const skipStatus = WorshipDayStatus(recordId: 'rec_2', resultType: 'SKIPPED', countDone: 0);
       expect(skipStatus.isSkipped, isTrue);
     });
 
@@ -180,3 +178,4 @@ void main() {
     });
   });
 }
+
