@@ -204,7 +204,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
         MaterialPageRoute(builder: (context) => const SSHomeDashboardScreen()),
       ).then((_) {
         widget.onSaved();
-        if (mounted) {
+        if (context.mounted) {
           Navigator.of(context).pop();
         }
       });
