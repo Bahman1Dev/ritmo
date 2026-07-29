@@ -232,6 +232,7 @@ class _SSExerciseLibraryScreenState extends State<SSExerciseLibraryScreen> {
         'targetWeight': null,
       });
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -244,6 +245,7 @@ class _SSExerciseLibraryScreenState extends State<SSExerciseLibraryScreen> {
       );
     } catch (e) {
       debugPrint('Error adding exercise to plan: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
