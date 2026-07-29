@@ -251,7 +251,7 @@ class _SSAiCoachSheetState extends State<SSAiCoachSheet> {
       detailText = action.label;
     }
 
-    if (!context.mounted) return;
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => Directionality(
@@ -353,7 +353,7 @@ class _SSAiCoachSheetState extends State<SSAiCoachSheet> {
       ),
     );
 
-    if (!context.mounted || confirmed != true) return;
+    if (!mounted || confirmed != true) return;
 
     await AssistantActionRegistry.executeAction(
       context,
