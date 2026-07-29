@@ -205,7 +205,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
       ).then((_) {
         widget.onSaved();
         if (mounted) {
-          Navigator.pop(context);
+          Navigator.of(context).pop();
         }
       });
     });
