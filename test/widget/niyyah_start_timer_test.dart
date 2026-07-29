@@ -25,13 +25,13 @@ void main() {
         home: Scaffold(
           body: RoutineNiyyahSheet(
             routine: routine,
-            onStartTimer: (mode) {
+            onStartTimer: (mode) async {
               startedMode = mode;
             },
-            onCompleteInstantly: (_, __) {},
-            onSnooze: () {},
-            onEdit: () {},
-            onViewDetails: () {},
+            onCompleteInstantly: (_, __) async {},
+            onSnooze: () async {},
+            onEdit: () async {},
+            onViewDetails: () async {},
           ),
         ),
       ),

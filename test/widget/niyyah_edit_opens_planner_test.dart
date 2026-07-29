@@ -8,7 +8,7 @@ void main() {
     final routine = Routine(
       id: 'test_r4',
       title: 'مدیتیشن',
-      category: Category.mindfulness,
+      category: Category.personal,
       routineType: RoutineType.timeBased,
       notificationLevel: NotificationLevel.normal,
       isEssential: true,
@@ -22,13 +22,13 @@ void main() {
         home: Scaffold(
           body: RoutineNiyyahSheet(
             routine: routine,
-            onStartTimer: (_) {},
-            onCompleteInstantly: (_, __) {},
-            onSnooze: () {},
-            onEdit: () {
+            onStartTimer: (_) async {},
+            onCompleteInstantly: (_, __) async {},
+            onSnooze: () async {},
+            onEdit: () async {
               editCalled = true;
             },
-            onViewDetails: () {},
+            onViewDetails: () async {},
           ),
         ),
       ),

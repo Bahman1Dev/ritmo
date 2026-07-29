@@ -22,11 +22,11 @@ void main() {
         home: Scaffold(
           body: RoutineNiyyahSheet(
             routine: routine,
-            onStartTimer: (_) {},
-            onCompleteInstantly: (_, __) {},
-            onSnooze: () {},
-            onEdit: () {},
-            onViewDetails: () {
+            onStartTimer: (_) async {},
+            onCompleteInstantly: (_, __) async {},
+            onSnooze: () async {},
+            onEdit: () async {},
+            onViewDetails: () async {
               detailsCalled = true;
             },
           ),

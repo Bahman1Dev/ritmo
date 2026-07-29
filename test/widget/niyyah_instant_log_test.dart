@@ -24,14 +24,14 @@ void main() {
         home: Scaffold(
           body: RoutineNiyyahSheet(
             routine: routine,
-            onStartTimer: (_) {},
-            onCompleteInstantly: (mode, duration) {
+            onStartTimer: (_) async {},
+            onCompleteInstantly: (mode, duration) async {
               completedMode = mode;
               completedDuration = duration;
             },
-            onSnooze: () {},
-            onEdit: () {},
-            onViewDetails: () {},
+            onSnooze: () async {},
+            onEdit: () async {},
+            onViewDetails: () async {},
           ),
         ),
       ),

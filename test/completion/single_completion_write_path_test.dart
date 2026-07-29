@@ -29,7 +29,7 @@ void main() {
       'daily_digest_builder.dart',
     };
 
-    final writePattern = RegExp(r"(insert|update|delete|rawInsert|rawUpdate|rawDelete)\s*\(\s*['" '"](routine_completions|routine_occurrences)['"' "]");
+    final writePattern = RegExp(r'''(insert|update|delete|rawInsert|rawUpdate|rawDelete)\s*\(\s*['"](routine_completions|routine_occurrences)['"]''');
 
     test('no UI layer file performs direct SQL writes on completion tables', () {
       final uiFiles = Directory('lib/features')
