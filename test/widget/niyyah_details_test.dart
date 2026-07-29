@@ -8,9 +8,11 @@ void main() {
     final routine = Routine(
       id: 'test_r5',
       title: 'نوشیدن آب',
-      frequencyType: 'DAILY',
-      createdAt: 0,
-      updatedAt: 0,
+      category: Category.health,
+      routineType: RoutineType.timeBased,
+      notificationLevel: NotificationLevel.normal,
+      isEssential: true,
+      energyRule: EnergyRule.none,
     );
 
     bool detailsCalled = false;

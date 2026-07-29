@@ -18,9 +18,11 @@ void main() {
         targetDurationMinutes: 45,
         lightDurationMinutes: 20,
         minimalDurationMinutes: 10,
-        frequencyType: 'DAILY',
-        createdAt: 0,
-        updatedAt: 0,
+        category: Category.fitness,
+        routineType: RoutineType.timeBased,
+        notificationLevel: NotificationLevel.normal,
+        isEssential: true,
+        energyRule: EnergyRule.none,
       );
 
       expect(routine.targetDurationMinutes, equals(45));

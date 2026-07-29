@@ -11,9 +11,11 @@ void main() {
       targetDurationMinutes: 30,
       lightDurationMinutes: 15,
       minimalDurationMinutes: 5,
-      frequencyType: 'DAILY',
-      createdAt: 0,
-      updatedAt: 0,
+      category: Category.fitness,
+      routineType: RoutineType.timeBased,
+      notificationLevel: NotificationLevel.normal,
+      isEssential: true,
+      energyRule: EnergyRule.none,
     );
 
     String? startedMode;

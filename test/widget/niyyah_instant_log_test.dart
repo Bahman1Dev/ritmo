@@ -9,9 +9,11 @@ void main() {
       id: 'test_r2',
       title: 'مطالعه کتاب',
       targetDurationMinutes: 30,
-      frequencyType: 'DAILY',
-      createdAt: 0,
-      updatedAt: 0,
+      category: Category.learning,
+      routineType: RoutineType.timeBased,
+      notificationLevel: NotificationLevel.normal,
+      isEssential: true,
+      energyRule: EnergyRule.none,
     );
 
     String? completedMode;
