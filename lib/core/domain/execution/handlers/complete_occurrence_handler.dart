@@ -1,4 +1,5 @@
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:ritmo/core/di/service_locator.dart';
 import 'package:ritmo/core/domain/engines/progression_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
@@ -27,11 +28,13 @@ class CompleteOccurrenceHandler
       'completionDate': command.dateStr,
       'completionTime': nowMs,
       'resultType': command.resultType,
-      'resultSource': 'USER',
+      'resultSource': command.resultSource,
+      'partialRatio': command.partialRatio,
       'durationMinutes': command.durationMinutes,
       'actual_duration_minutes': command.durationMinutes,
       'note': command.note,
       'createdAt': nowMs,
+      'updatedAt': nowMs,
     });
 
     final routineRows = await context.txn.query(
@@ -57,12 +60,18 @@ class CompleteOccurrenceHandler
 
     await ProgressionEngine().onCompletion(context.txn, command.routineId);
 
-    await context.txn.update(
-      'routine_occurrences',
-      {'status': 'done'},
-      where: 'routine_id = ? AND date = ?',
-      whereArgs: [command.routineId, command.dateStr],
+    final affected = await context.txn.rawUpdate(
+      'UPDATE routine_occurrences SET status = ? WHERE routine_id = ? AND date = ?',
+      ['done', command.routineId, command.dateStr],
     );
+
+    if (affected == 0) {
+      await context.txn.insert('routine_occurrences', {
+        'routine_id': command.routineId,
+        'date': command.dateStr,
+        'status': 'done',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
 
     final dateDateTime = DateTime.parse(command.dateStr);
     final startOfDay = DateTime(

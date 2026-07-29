@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/completion/completion_outcome.dart';
 import 'package:ritmo/core/domain/completion/completion_request.dart';
@@ -56,185 +57,62 @@ class CompletionGateway {
   }
 
   Future<CompletionOutcome> _handleRoutineCompletion(RoutineCompletion req) async {
-    final db = await DatabaseHelper.instance.database;
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final undoId = RitmoIdFactory.completion();
-
-    await db.transaction((txn) async {
-      await txn.insert('routine_completions', {
-        'id': undoId,
-        'routineId': req.routineId,
-        'completionDate': req.dateStr,
-        'completionTime': nowMs,
-        'resultType': req.result.dbValue,
-        'partialRatio': req.partialRatio,
-        'durationMinutes': req.durationMinutes,
-        'actual_duration_minutes': req.durationMinutes,
-        'createdAt': nowMs,
-        'updatedAt': nowMs,
-      });
-
-      await txn.rawUpdate('''
-        UPDATE routine_occurrences 
-        SET status = 'done'
-        WHERE routine_id = ? AND date = ?
-      ''', [req.routineId, req.dateStr]);
-
-      await ProgressionEngine().onCompletion(txn, req.routineId, req.result);
-    });
-
-    _notifySuccess(domain: 'routine', itemId: req.routineId, dateStr: req.dateStr, result: req.result.dbValue);
-    return CompletionOutcome.success(undoToken: 'routine:$undoId');
+    try {
+      await RitmoExecutionKernel.instance.execute(
+        CompleteOccurrenceCommand(
+          routineId: req.routineId,
+          dateStr: req.dateStr,
+          resultType: req.result.dbValue,
+          durationMinutes: req.durationMinutes,
+          partialRatio: req.partialRatio,
+          resultSource: 'USER',
+        ),
+      );
+      _notifySuccess(domain: 'routine', itemId: req.routineId, dateStr: req.dateStr, result: req.result.dbValue);
+      return CompletionOutcome.success(undoToken: 'routine:${req.routineId}|${req.dateStr}');
+    } catch (e, st) {
+      RitmoLog.error('CompletionGateway', 'Routine completion failed', e, st);
+      return CompletionOutcome.failure('ثبت انجام روتین انجام نشد. دوباره تلاش کنید.');
+    }
   }
 
   Future<CompletionOutcome> _handleRoutineSkip(RoutineSkip req) async {
-    final db = await DatabaseHelper.instance.database;
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final undoId = RitmoIdFactory.completion();
-
-    await db.transaction((txn) async {
-      await txn.insert('routine_completions', {
-        'id': undoId,
-        'routineId': req.routineId,
-        'completionDate': req.dateStr,
-        'completionTime': nowMs,
-        'resultType': 'SKIPPED',
-        'reason': req.reason,
-        'createdAt': nowMs,
-        'updatedAt': nowMs,
-      });
-
-      try {
-        await txn.insert('skip_reasons', {
-          'id': RitmoIdFactory.completion(),
-          'itemId': req.routineId,
-          'domain': 'routine',
-          'dateStr': req.dateStr,
-          'reason': req.reason ?? 'SKIPPED',
-          'note': null,
-          'createdAt': nowMs,
-        });
-      } catch (_) {}
-
-      await txn.rawUpdate('''
-        UPDATE routine_occurrences 
-        SET status = 'skipped'
-        WHERE routine_id = ? AND date = ?
-      ''', [req.routineId, req.dateStr]);
-    });
-
-    _notifySuccess(domain: 'routine', itemId: req.routineId, dateStr: req.dateStr, result: 'SKIPPED');
-    return CompletionOutcome.success(undoToken: 'routine:$undoId');
+    try {
+      await RitmoExecutionKernel.instance.execute(
+        SkipOccurrenceCommand(
+          routineId: req.routineId,
+          dateStr: req.dateStr,
+          reason: req.reason,
+        ),
+      );
+      _notifySuccess(domain: 'routine', itemId: req.routineId, dateStr: req.dateStr, result: 'SKIPPED');
+      return CompletionOutcome.success(undoToken: 'routine:${req.routineId}|${req.dateStr}');
+    } catch (e, st) {
+      RitmoLog.error('CompletionGateway', 'Routine skip failed', e, st);
+      return CompletionOutcome.failure('ثبت رد روتین انجام نشد. دوباره تلاش کنید.');
+    }
   }
 
   Future<CompletionOutcome> _handleRoutineReschedule(RoutineReschedule req) async {
-    final db = await DatabaseHelper.instance.database;
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final undoId = RitmoIdFactory.completion();
-
-    // Check if target date occurrence already exists
-    final existingTomorrow = await db.query(
-      'routine_occurrences',
-      where: 'routine_id = ? AND date = ?',
-      whereArgs: [req.routineId, req.toDateStr],
-    );
-
-    if (existingTomorrow.isNotEmpty) {
-      await db.transaction((txn) async {
-        await txn.rawUpdate('''
-          UPDATE routine_occurrences 
-          SET status = 'rescheduled'
-          WHERE routine_id = ? AND date = ?
-        ''', [req.routineId, req.fromDateStr]);
-
-        await txn.insert('routine_completions', {
-          'id': undoId,
-          'routineId': req.routineId,
-          'completionDate': req.fromDateStr,
-          'completionTime': nowMs,
-          'resultType': 'RESCHEDULED',
-          'reason': req.reason,
-          'createdAt': nowMs,
-          'updatedAt': nowMs,
-        });
-
-        try {
-          await txn.insert('skip_reasons', {
-            'id': RitmoIdFactory.completion(),
-            'itemId': req.routineId,
-            'domain': 'routine',
-            'dateStr': req.fromDateStr,
-            'reason': req.reason ?? 'موکول شد به فردا',
-            'note': null,
-            'createdAt': nowMs,
-          });
-        } catch (_) {}
-      });
-
+    try {
+      await RitmoExecutionKernel.instance.execute(
+        RescheduleOccurrenceCommand(
+          routineId: req.routineId,
+          fromDateStr: req.fromDateStr,
+          toDateStr: req.toDateStr,
+          reason: req.reason,
+        ),
+      );
       _notifySuccess(domain: 'routine', itemId: req.routineId, dateStr: req.fromDateStr, result: 'RESCHEDULED');
       _notifySuccess(domain: 'routine', itemId: req.routineId, dateStr: req.toDateStr, result: 'RESCHEDULED');
-
       return CompletionOutcome.success(
         undoToken: 'reschedule:${req.routineId}|${req.fromDateStr}|${req.toDateStr}',
-        userMessage: 'از قبل برای فردا برنامه‌ریزی شده بود',
+        userMessage: 'به فردای همین ساعت منتقل شد',
       );
+    } catch (e, st) {
+      RitmoLog.error('CompletionGateway', 'Routine reschedule failed', e, st);
+      return CompletionOutcome.failure('انتقال زمان روتین انجام نشد. دوباره تلاش کنید.');
     }
-
-    String? scheduledTime;
-    final todayRows = await db.query(
-      'routine_occurrences',
-      where: 'routine_id = ? AND date = ?',
-      whereArgs: [req.routineId, req.fromDateStr],
-    );
-    if (todayRows.isNotEmpty) {
-      scheduledTime = todayRows.first['scheduled_time']?.toString();
-    }
-
-    await db.transaction((txn) async {
-      await txn.rawUpdate('''
-        UPDATE routine_occurrences 
-        SET status = 'rescheduled'
-        WHERE routine_id = ? AND date = ?
-      ''', [req.routineId, req.fromDateStr]);
-
-      await txn.insert('routine_occurrences', {
-        'routine_id': req.routineId,
-        'date': req.toDateStr,
-        'status': 'pending',
-        'scheduled_time': scheduledTime ?? '08:00',
-      });
-
-      try {
-        await txn.insert('skip_reasons', {
-          'id': RitmoIdFactory.completion(),
-          'itemId': req.routineId,
-          'domain': 'routine',
-          'dateStr': req.fromDateStr,
-          'reason': req.reason ?? 'موکول شد به فردا',
-          'note': null,
-          'createdAt': nowMs,
-        });
-      } catch (_) {}
-
-      await txn.insert('routine_completions', {
-        'id': undoId,
-        'routineId': req.routineId,
-        'completionDate': req.fromDateStr,
-        'completionTime': nowMs,
-        'resultType': 'RESCHEDULED',
-        'reason': req.reason,
-        'createdAt': nowMs,
-        'updatedAt': nowMs,
-      });
-    });
-
-    _notifySuccess(domain: 'routine', itemId: req.routineId, dateStr: req.fromDateStr, result: 'RESCHEDULED');
-    _notifySuccess(domain: 'routine', itemId: req.routineId, dateStr: req.toDateStr, result: 'RESCHEDULED');
-
-    return CompletionOutcome.success(
-      undoToken: 'reschedule:${req.routineId}|${req.fromDateStr}|${req.toDateStr}',
-      userMessage: 'به فردای همین ساعت منتقل شد',
-    );
   }
 
   Future<CompletionOutcome> _handleRoutineSnooze(RoutineSnooze req) async {

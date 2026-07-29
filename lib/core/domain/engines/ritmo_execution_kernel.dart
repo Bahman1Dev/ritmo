@@ -1,4 +1,5 @@
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:ritmo/core/domain/engines/reshuffle_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/execution/command_context.dart';
@@ -63,12 +64,16 @@ class CompleteOccurrenceCommand extends KernelCommand {
     required this.resultType,
     required this.durationMinutes,
     this.note,
+    this.partialRatio,
+    this.resultSource = 'USER',
   });
   final String routineId;
   final String dateStr;
   final String resultType;
   final int durationMinutes;
   final String? note;
+  final double? partialRatio;
+  final String resultSource;
 }
 
 class SkipOccurrenceCommand extends KernelCommand {
@@ -91,6 +96,24 @@ class SnoozeReminderCommand extends KernelCommand {
   final String reminderId;
   final int snoozeMinutes;
   final String dateStr;
+}
+
+class RescheduleOccurrenceCommand extends KernelCommand {
+  const RescheduleOccurrenceCommand({
+    required this.routineId,
+    required this.fromDateStr,
+    required this.toDateStr,
+    this.reason,
+  });
+  final String routineId;
+  final String fromDateStr;
+  final String toDateStr;
+  final String? reason;
+}
+
+class UndoCompletionCommand extends KernelCommand {
+  const UndoCompletionCommand({required this.undoToken});
+  final String undoToken;
 }
 
 class ConfirmReshuffleCommand extends KernelCommand {
@@ -117,25 +140,35 @@ class RitmoExecutionKernel {
   final RitmoEventBus _eventBus = RitmoEventBus();
   final KernelCommandHandlerRegistry _handlers;
 
-  Future<void> execute(KernelCommand command) async {
-    final db = await DatabaseHelper.instance.database;
+  Future<KernelMutationResult> execute(KernelCommand command, {Transaction? txn}) async {
     late KernelMutationResult result;
 
-    await db.transaction((txn) async {
+    if (txn != null) {
       final context = CommandContext(
         txn: txn,
         now: DateTime.now(),
       );
-
       final handler = _handlers.resolve(command);
       result = await handler.handle(context, command);
-    });
+    } else {
+      final db = await DatabaseHelper.instance.database;
+      await db.transaction((txnContext) async {
+        final context = CommandContext(
+          txn: txnContext,
+          now: DateTime.now(),
+        );
+        final handler = _handlers.resolve(command);
+        result = await handler.handle(context, command);
+      });
+    }
 
     await PostCommitPipeline.run(result.postCommitTasks);
 
     for (final event in result.domainEvents) {
       _eventBus.fire(event);
     }
+
+    return result;
   }
 
   Future<void> reconcileExternalState() async {

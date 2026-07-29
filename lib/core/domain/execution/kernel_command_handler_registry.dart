@@ -1,4 +1,6 @@
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
+import 'package:ritmo/core/domain/execution/handlers/reschedule_occurrence_handler.dart';
+import 'package:ritmo/core/domain/execution/handlers/undo_completion_handler.dart';
 import 'command_handler.dart';
 
 class KernelCommandHandlerRegistry {
@@ -12,6 +14,8 @@ class KernelCommandHandlerRegistry {
     required this.skipOccurrenceHandler,
     required this.snoozeReminderHandler,
     required this.confirmReshuffleHandler,
+    this.rescheduleOccurrenceHandler = const RescheduleOccurrenceHandler(),
+    this.undoCompletionHandler = const UndoCompletionHandler(),
   });
 
   final KernelCommandHandler<CreateRoutineCommand> createRoutineHandler;
@@ -23,6 +27,8 @@ class KernelCommandHandlerRegistry {
   final KernelCommandHandler<SkipOccurrenceCommand> skipOccurrenceHandler;
   final KernelCommandHandler<SnoozeReminderCommand> snoozeReminderHandler;
   final KernelCommandHandler<ConfirmReshuffleCommand> confirmReshuffleHandler;
+  final KernelCommandHandler<RescheduleOccurrenceCommand> rescheduleOccurrenceHandler;
+  final KernelCommandHandler<UndoCompletionCommand> undoCompletionHandler;
 
   KernelCommandHandler resolve(KernelCommand command) {
     if (command is CreateRoutineCommand) return createRoutineHandler;
@@ -34,6 +40,8 @@ class KernelCommandHandlerRegistry {
     if (command is SkipOccurrenceCommand) return skipOccurrenceHandler;
     if (command is SnoozeReminderCommand) return snoozeReminderHandler;
     if (command is ConfirmReshuffleCommand) return confirmReshuffleHandler;
+    if (command is RescheduleOccurrenceCommand) return rescheduleOccurrenceHandler;
+    if (command is UndoCompletionCommand) return undoCompletionHandler;
     throw UnsupportedError('No handler registered for ${command.runtimeType}');
   }
 }
