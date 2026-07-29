@@ -344,16 +344,18 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
           children: [
             GestureDetector(
               onTap: () {
-                showModalBottomSheet(
-                  context: context,
-                  backgroundColor: Colors.transparent,
-                  isScrollControlled: true,
-                  builder: (context) => ProfileScreen(
-                    onLogout: widget.onLogout,
-                    themeRepository: widget.themeRepository,
-                    localeRepository: widget.localeRepository,
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfileScreen(
+                      onLogout: widget.onLogout,
+                      themeRepository: widget.themeRepository,
+                      localeRepository: widget.localeRepository,
+                    ),
                   ),
-                ).then((_) => _loadAllData());
+                ).then((_) {
+                  if (mounted) _loadAllData();
+                });
               },
               child: Container(
                 width: 44,

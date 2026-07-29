@@ -6,6 +6,8 @@ class KernelCommandHandlerRegistry {
     required this.createRoutineHandler,
     required this.editRoutineHandler,
     required this.deleteRoutineHandler,
+    required this.archiveRoutineHandler,
+    required this.unarchiveRoutineHandler,
     required this.completeOccurrenceHandler,
     required this.skipOccurrenceHandler,
     required this.snoozeReminderHandler,
@@ -15,6 +17,8 @@ class KernelCommandHandlerRegistry {
   final KernelCommandHandler<CreateRoutineCommand> createRoutineHandler;
   final KernelCommandHandler<EditRoutineCommand> editRoutineHandler;
   final KernelCommandHandler<DeleteRoutineCommand> deleteRoutineHandler;
+  final KernelCommandHandler<ArchiveRoutineCommand> archiveRoutineHandler;
+  final KernelCommandHandler<UnarchiveRoutineCommand> unarchiveRoutineHandler;
   final KernelCommandHandler<CompleteOccurrenceCommand> completeOccurrenceHandler;
   final KernelCommandHandler<SkipOccurrenceCommand> skipOccurrenceHandler;
   final KernelCommandHandler<SnoozeReminderCommand> snoozeReminderHandler;
@@ -24,6 +28,8 @@ class KernelCommandHandlerRegistry {
     if (command is CreateRoutineCommand) return createRoutineHandler;
     if (command is EditRoutineCommand) return editRoutineHandler;
     if (command is DeleteRoutineCommand) return deleteRoutineHandler;
+    if (command is ArchiveRoutineCommand) return archiveRoutineHandler;
+    if (command is UnarchiveRoutineCommand) return unarchiveRoutineHandler;
     if (command is CompleteOccurrenceCommand) return completeOccurrenceHandler;
     if (command is SkipOccurrenceCommand) return skipOccurrenceHandler;
     if (command is SnoozeReminderCommand) return snoozeReminderHandler;

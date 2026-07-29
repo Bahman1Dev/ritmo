@@ -313,17 +313,20 @@ class _SSSettingsScreenState extends State<SSSettingsScreen> {
     try {
       final db = await DatabaseHelper.instance.database;
 
-      await db.execute('PRAGMA foreign_keys = OFF;');
-      await db.delete('ss_user_profile');
-      await db.delete('ss_workout_plan');
-      await db.delete('ss_workout_exercise_crossref');
-      await db.delete('ss_exercise_feeling_log');
-      await db.delete('ss_workout_session_log');
-      await db.delete('ss_plan_version_history');
-      await db.delete('ss_decision_log');
-      await db.delete('ss_weight_log');
-      await db.delete('routine_schedules', where: 'routineId = ?', whereArgs: ['routine_supplementary_sports']);
-      await db.execute('PRAGMA foreign_keys = ON;');
+      try {
+        await db.execute('PRAGMA foreign_keys = OFF;');
+        await db.delete('ss_user_profile');
+        await db.delete('ss_workout_plan');
+        await db.delete('ss_workout_exercise_crossref');
+        await db.delete('ss_exercise_feeling_log');
+        await db.delete('ss_workout_session_log');
+        await db.delete('ss_plan_version_history');
+        await db.delete('ss_decision_log');
+        await db.delete('ss_weight_log');
+        await db.delete('routine_schedules', where: 'routineId = ?', whereArgs: ['routine_supplementary_sports']);
+      } finally {
+        await db.execute('PRAGMA foreign_keys = ON;');
+      }
 
       await db.insert('app_settings', {
         'key': 'module_supplementary_sports_enabled',

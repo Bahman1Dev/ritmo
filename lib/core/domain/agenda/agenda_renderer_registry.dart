@@ -353,7 +353,7 @@ class RoutineAgendaRenderer extends AgendaTileRenderer {
                 onDone: onChanged,
               );
             },
-            onSnooze: () {
+            onSnooze: () async {
               RoutineSnoozeBottomSheet.show(
                 context: context,
                 routine: routine,
@@ -368,7 +368,7 @@ class RoutineAgendaRenderer extends AgendaTileRenderer {
                 },
               );
             },
-            onEdit: () {
+            onEdit: () async {
               final rMap = {
                 'id': routine.id,
                 'title': routine.title,
@@ -384,7 +384,7 @@ class RoutineAgendaRenderer extends AgendaTileRenderer {
                 'minimalDurationMinutes': routine.minimalDurationMinutes,
               };
 
-              Navigator.push(
+              await Navigator.push(
                 context,
                 PageRouteBuilder(
                   opaque: false,
@@ -398,7 +398,7 @@ class RoutineAgendaRenderer extends AgendaTileRenderer {
                 ),
               );
             },
-            onViewDetails: () {
+            onViewDetails: () async {
               RoutineDetailsSheet.show(
                 context: context,
                 routine: routine,

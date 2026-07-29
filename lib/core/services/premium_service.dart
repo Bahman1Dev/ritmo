@@ -21,7 +21,10 @@ class PremiumService {
   PremiumService._internal();
   static final PremiumService instance = PremiumService._internal();
 
-  static const String _secretKey = 'ritmo_premium_salt_key_2026';
+  static const String _secretKey = String.fromEnvironment(
+    'RITMO_PREMIUM_KEY',
+    defaultValue: 'ritmo_premium_salt_key_2026',
+  );
   
   bool _isPremium = false;
   String _purchaseType = 'free'; // '3month', 'yearly', 'lifetime', 'free'

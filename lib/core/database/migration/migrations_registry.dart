@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/database/migration/migration_interface.dart';
 import 'package:ritmo/core/database/schema/tables/ai_tables.dart';
 import 'package:ritmo/core/database/schema/tables/day_plan_tables.dart';
 import 'package:ritmo/core/database/schema/tables/supplementary_sports_tables.dart';
 import 'package:ritmo/core/database/seed/seed_service.dart';
+import 'package:ritmo/core/domain/models/duration_bounds.dart';
 import 'package:sqflite/sqflite.dart';
 
 class MigrationV2 extends Migration {
@@ -2865,6 +2867,94 @@ class MigrationV58 extends Migration {
   @override
   Future<void> down(Database db) async {}
 }
+
+class MigrationV59 extends Migration {
+  @override
+  int get version => 59;
+
+  @override
+  Future<void> up(Database db) async {
+    try {
+      final schedules = await db.query('routine_schedules');
+      int updatedRuleCount = 0;
+      for (final sched in schedules) {
+        final id = sched['id'] as String;
+        final timeOfDay = sched['timeOfDay'] as String? ?? '08:00';
+        final ruleStr = sched['recurrenceRule'] as String?;
+        if (ruleStr != null && ruleStr.isNotEmpty) {
+          try {
+            final ruleMap = jsonDecode(ruleStr) as Map<String, dynamic>;
+            final times = ruleMap['reminderTimes'] as List<dynamic>?;
+            if (times == null || times.isEmpty) {
+              ruleMap['reminderTimes'] = [timeOfDay];
+              await db.update(
+                'routine_schedules',
+                {'recurrenceRule': jsonEncode(ruleMap)},
+                where: 'id = ?',
+                whereArgs: [id],
+              );
+              updatedRuleCount++;
+            }
+          } catch (_) {}
+        }
+      }
+
+      final nowStr = DateTime.now().toIso8601String().substring(0, 10);
+      int syncedOccurrencesCount = 0;
+      for (final sched in schedules) {
+        final rId = sched['routineId'] as String?;
+        final timeOfDay = sched['timeOfDay'] as String?;
+        if (rId != null && timeOfDay != null && timeOfDay.isNotEmpty && timeOfDay != '08:00') {
+          final count = await db.update(
+            'routine_occurrences',
+            {'scheduled_time': timeOfDay},
+            where: "routine_id = ? AND date >= ? AND status = 'pending' AND (scheduled_time = '08:00' OR scheduled_time IS NULL)",
+            whereArgs: [rId, nowStr],
+          );
+          syncedOccurrencesCount += count;
+        }
+      }
+
+      final cancelledCount = await db.update(
+        'pending_reminders',
+        {'state': 'cancelled'},
+        where: "state = 'CANCELLED'",
+      );
+
+      final routines = await db.query('routines', where: 'targetDurationMinutes > 0');
+      int backfilledDurationCount = 0;
+      for (final r in routines) {
+        final id = r['id'] as String;
+        final target = r['targetDurationMinutes'] as int? ?? 0;
+        final light = r['lightDurationMinutes'] as int? ?? 0;
+        final minimal = r['minimalDurationMinutes'] as int? ?? 0;
+
+        if (light == 0 || minimal == 0) {
+          final computedLight = (target * 0.75).round().clamp(5, 1440);
+          final computedMinimal = (target * 0.50).round().clamp(5, 1440);
+          await db.update(
+            'routines',
+            {
+              'lightDurationMinutes': light == 0 ? computedLight : light,
+              'minimalDurationMinutes': minimal == 0 ? computedMinimal : minimal,
+            },
+            where: 'id = ?',
+            whereArgs: [id],
+          );
+          backfilledDurationCount++;
+        }
+      }
+
+      debugPrint('[MigrationV59] Applied: rules=$updatedRuleCount, occurrences=$syncedOccurrencesCount, cancelledState=$cancelledCount, durations=$backfilledDurationCount');
+    } catch (e) {
+      debugPrint('[MigrationV59] Error during migration V59: $e');
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
 
 
 

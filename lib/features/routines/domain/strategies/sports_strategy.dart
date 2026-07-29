@@ -6,6 +6,7 @@ import 'package:flutter/material.dart' show BuildContext;
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/utils/ritmo_id_factory.dart';
+import 'package:ritmo/features/routines/domain/routine_recurrence.dart';
 import 'package:ritmo/features/routines/domain/strategies/planner_category_strategy.dart';
 import 'package:ritmo/features/routines/domain/strategies/planner_save_context.dart';
 import 'package:ritmo/features/supplementary_sports/movement/presentation/movement_log_sheet.dart';
@@ -63,20 +64,22 @@ class SportsStrategy implements PlannerCategoryStrategy {
       'dependsOnRoutineId': null,
       'itemType': 'ROUTINE',
       'reminderOffsetMinutes': 15,
-      'movementKind': c.sportsType.isNotEmpty ? c.sportsType : 'WALKING',
-      'movementVenue': c.sportsLocation.isNotEmpty ? c.sportsLocation : null,
     };
+
+    final (schedType, daysOfWeek) = deriveScheduleParams(const DailyRecurrence());
+    final recurrenceJson = encodeRecurrenceRule(
+      recurrence: const DailyRecurrence(),
+      startDate: c.selectedDate,
+      reminderTimes: [timeStr],
+    );
 
     final scheduleData = {
       'id': RitmoIdFactory.schedule(routineId),
       'routineId': routineId,
-      'scheduleType': 'RECURRENCE',
+      'scheduleType': schedType,
       'timeOfDay': timeStr,
-      'daysOfWeek': '6,7,1,2,3,4,5',
-      'recurrenceRule': jsonEncode({
-        'weekdays': [1, 2, 3, 4, 5, 6, 7],
-        'startDate': c.formatDate(c.selectedDate),
-      }),
+      'daysOfWeek': daysOfWeek,
+      'recurrenceRule': recurrenceJson,
       'createdAt': c.isEditing ? c.routineToEdit!['createdAt'] ?? now : now,
       'updatedAt': now,
     };

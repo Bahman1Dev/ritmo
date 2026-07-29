@@ -25,6 +25,8 @@ import 'package:ritmo/core/localization/locale_repository.dart';
 // Platform Interfaces
 import 'package:ritmo/core/platform/alarm_platform.dart';
 import 'package:ritmo/core/platform/backup_platform.dart';
+import 'package:ritmo/core/platform/alarm_platform.dart';
+import 'package:ritmo/core/platform/backup_platform.dart';
 import 'package:ritmo/core/platform/notification_platform.dart';
 import 'package:ritmo/core/services/device_service.dart';
 import 'package:ritmo/core/services/google_drive_backup_service.dart';
@@ -33,6 +35,7 @@ import 'package:ritmo/core/theme/theme_repository.dart';
 // Feature Repositories
 import 'package:ritmo/features/courses/logic/courses_repository.dart';
 import 'package:ritmo/features/goals/logic/goals_repository.dart';
+import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
 import 'package:ritmo/features/supplementary_sports/data/repositories/ss_session_repository.dart';
 import 'package:ritmo/features/supplementary_sports/data/repositories/ss_session_repository_impl.dart';
 
@@ -84,11 +87,10 @@ class AppBootstrapper {
     sl.registerSingleton<DatabaseHelper>(DatabaseHelper.instance);
     sl.registerSingleton<PremiumService>(PremiumService.instance);
     sl.registerSingleton<DeviceService>(DeviceService.instance);
-    sl.registerSingleton<RitmoExecutionKernel>(RitmoExecutionKernel.instance);
-
     // 4. Register Feature Repositories
     sl.registerSingleton<CoursesRepository>(CoursesRepository.instance);
     sl.registerSingleton<GoalsRepository>(GoalsRepository.instance);
+    sl.registerSingleton<KonkurRepository>(KonkurRepository.instance);
     sl.registerSingleton<SSSessionRepository>(SSSessionRepositoryImpl());
 
     // 5. Register Repositories requiring async initialization

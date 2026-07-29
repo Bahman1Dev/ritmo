@@ -6,7 +6,6 @@ import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 
 class RoutineNiyyahSheet extends StatefulWidget {
-
   const RoutineNiyyahSheet({
     super.key,
     required this.routine,
@@ -19,21 +18,21 @@ class RoutineNiyyahSheet extends StatefulWidget {
   });
   final Routine routine;
   final String initialMode;
-  final Function(String selectedMode) onStartTimer;
-  final Function(String selectedMode, int duration) onCompleteInstantly;
-  final VoidCallback onSnooze;
-  final VoidCallback onEdit;
-  final VoidCallback onViewDetails;
+  final Future<void> Function(String selectedMode) onStartTimer;
+  final Future<void> Function(String selectedMode, int duration) onCompleteInstantly;
+  final Future<void> Function() onSnooze;
+  final Future<void> Function() onEdit;
+  final Future<void> Function() onViewDetails;
 
   static Future<void> show({
     required BuildContext context,
     required Routine routine,
     String initialMode = 'FULL',
-    required Function(String selectedMode) onStartTimer,
-    required Function(String selectedMode, int duration) onCompleteInstantly,
-    required VoidCallback onSnooze,
-    required VoidCallback onEdit,
-    required VoidCallback onViewDetails,
+    required Future<void> Function(String selectedMode) onStartTimer,
+    required Future<void> Function(String selectedMode, int duration) onCompleteInstantly,
+    required Future<void> Function() onSnooze,
+    required Future<void> Function() onEdit,
+    required Future<void> Function() onViewDetails,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -57,11 +56,42 @@ class RoutineNiyyahSheet extends StatefulWidget {
 
 class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
   late String selectedMode;
+  bool _busy = false;
+  String? _actionTag;
 
   @override
   void initState() {
     super.initState();
-    selectedMode = widget.initialMode;
+    final hasTiers = (widget.routine.lightDurationMinutes != null && widget.routine.lightDurationMinutes! > 0) ||
+                     (widget.routine.minimalDurationMinutes != null && widget.routine.minimalDurationMinutes! > 0);
+    if (!hasTiers) {
+      selectedMode = 'FULL';
+    } else {
+      selectedMode = widget.initialMode;
+    }
+  }
+
+  Future<void> _runAction(String tag, Future<void> Function() action) async {
+    if (_busy) return;
+    if (mounted) {
+      setState(() {
+        _busy = true;
+        _actionTag = tag;
+      });
+    }
+    try {
+      await action();
+    } catch (e, st) {
+      debugPrint('[RoutineNiyyahSheet] Action error: $e\n$st');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _actionTag = null;
+        });
+        Navigator.pop(context);
+      }
+    }
   }
 
   @override
@@ -73,10 +103,13 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
     final lightMinutes = widget.routine.lightDurationMinutes ?? 20;
     final minimalMinutes = widget.routine.minimalDurationMinutes ?? 10;
 
-    final canStartTimer = fullMinutes > 0 || lightMinutes > 0 || minimalMinutes > 0;
+    final hasRawLight = widget.routine.lightDurationMinutes != null && widget.routine.lightDurationMinutes! > 0;
+    final hasRawMinimal = widget.routine.minimalDurationMinutes != null && widget.routine.minimalDurationMinutes! > 0;
+    final hasRawFull = fullMinutes > 0;
 
-    final hasTiers = (widget.routine.lightDurationMinutes != null && widget.routine.lightDurationMinutes! > 0) ||
-                     (widget.routine.minimalDurationMinutes != null && widget.routine.minimalDurationMinutes! > 0);
+    final canStartTimer = hasRawFull || hasRawLight || hasRawMinimal;
+
+    final hasTiers = hasRawLight || hasRawMinimal;
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -129,7 +162,7 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
                     // Full Mode
                     Expanded(
                       child: GestureDetector(
-                        onTap: () {
+                        onTap: _busy ? null : () {
                           RitmoHaptics.tap();
                           setState(() => selectedMode = 'FULL');
                         },
@@ -187,10 +220,10 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
                     const SizedBox(width: 8),
 
                     // Light Mode
-                    if (widget.routine.lightDurationMinutes != null && widget.routine.lightDurationMinutes! > 0)
+                    if (hasRawLight)
                       Expanded(
                         child: GestureDetector(
-                          onTap: () {
+                          onTap: _busy ? null : () {
                             RitmoHaptics.tap();
                             setState(() => selectedMode = 'LIGHT');
                           },
@@ -217,7 +250,7 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
                                         blurRadius: 8,
                                         offset: const Offset(0, 3),
                                       )
-                                  ]
+                                    ]
                                   : null,
                             ),
                             child: Column(
@@ -245,14 +278,14 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
                           ),
                         ),
                       ),
-                    if (widget.routine.lightDurationMinutes != null && widget.routine.lightDurationMinutes! > 0)
+                    if (hasRawLight)
                       const SizedBox(width: 8),
 
                     // Minimal Mode
-                    if (widget.routine.minimalDurationMinutes != null && widget.routine.minimalDurationMinutes! > 0)
+                    if (hasRawMinimal)
                       Expanded(
                         child: GestureDetector(
-                          onTap: () {
+                          onTap: _busy ? null : () {
                             RitmoHaptics.tap();
                             setState(() => selectedMode = 'MINIMAL');
                           },
@@ -351,12 +384,19 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        onPressed: () {
-                          RitmoHaptics.confirm();
-                          Navigator.pop(context);
-                          widget.onStartTimer(selectedMode);
-                        },
-                        icon: const Icon(CupertinoIcons.timer, size: 18),
+                        onPressed: _busy
+                            ? null
+                            : () => _runAction('start_timer', () async {
+                                  RitmoHaptics.confirm();
+                                  await widget.onStartTimer(selectedMode);
+                                }),
+                        icon: _busy && _actionTag == 'start_timer'
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(CupertinoIcons.timer, size: 18),
                         label: const Text('شروع تایمر تمرکز', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
                       ),
                     ),
@@ -370,15 +410,22 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        onPressed: () {
-                          RitmoHaptics.confirm();
-                          Navigator.pop(context);
-                          final duration = selectedMode == 'FULL'
-                              ? fullMinutes
-                              : (selectedMode == 'LIGHT' ? lightMinutes : minimalMinutes);
-                          widget.onCompleteInstantly(selectedMode, duration);
-                        },
-                        child: const Text('ثبت فوری بدون تایمر', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
+                        onPressed: _busy
+                            ? null
+                            : () => _runAction('complete', () async {
+                                  RitmoHaptics.confirm();
+                                  final duration = selectedMode == 'FULL'
+                                      ? fullMinutes
+                                      : (selectedMode == 'LIGHT' ? lightMinutes : minimalMinutes);
+                                  await widget.onCompleteInstantly(selectedMode, duration);
+                                }),
+                        child: _busy && _actionTag == 'complete'
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.green),
+                              )
+                            : const Text('ثبت فوری بدون تایمر', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
                       ),
                     ),
                   ],
@@ -391,15 +438,22 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  onPressed: () {
-                    RitmoHaptics.confirm();
-                    Navigator.pop(context);
-                    final duration = selectedMode == 'FULL'
-                        ? fullMinutes
-                        : (selectedMode == 'LIGHT' ? lightMinutes : minimalMinutes);
-                    widget.onCompleteInstantly(selectedMode, duration);
-                  },
-                  child: const Text('ثبت فوری بدون تایمر', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
+                  onPressed: _busy
+                      ? null
+                      : () => _runAction('complete', () async {
+                            RitmoHaptics.confirm();
+                            final duration = selectedMode == 'FULL'
+                                ? fullMinutes
+                                : (selectedMode == 'LIGHT' ? lightMinutes : minimalMinutes);
+                            await widget.onCompleteInstantly(selectedMode, duration);
+                          }),
+                  child: _busy && _actionTag == 'complete'
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.green),
+                        )
+                      : const Text('ثبت فوری بدون تایمر', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
                 ),
               const SizedBox(height: 16),
               Row(
@@ -412,12 +466,19 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      onPressed: () {
-                        RitmoHaptics.tap();
-                        Navigator.pop(context);
-                        widget.onSnooze();
-                      },
-                      icon: const Icon(CupertinoIcons.time, size: 16),
+                      onPressed: _busy
+                          ? null
+                          : () => _runAction('snooze', () async {
+                                RitmoHaptics.tap();
+                                await widget.onSnooze();
+                              }),
+                      icon: _busy && _actionTag == 'snooze'
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
+                            )
+                          : const Icon(CupertinoIcons.time, size: 16),
                       label: const Text('تعویق روتین', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ),
@@ -430,12 +491,19 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      onPressed: () {
-                        RitmoHaptics.tap();
-                        Navigator.pop(context);
-                        widget.onEdit();
-                      },
-                      icon: const Icon(CupertinoIcons.pencil, size: 16),
+                      onPressed: _busy
+                          ? null
+                          : () => _runAction('edit', () async {
+                                RitmoHaptics.tap();
+                                await widget.onEdit();
+                              }),
+                      icon: _busy && _actionTag == 'edit'
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+                            )
+                          : const Icon(CupertinoIcons.pencil, size: 16),
                       label: const Text('ویرایش روتین', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ),
@@ -448,12 +516,19 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      onPressed: () {
-                        RitmoHaptics.tap();
-                        Navigator.pop(context);
-                        widget.onViewDetails();
-                      },
-                      icon: const Icon(CupertinoIcons.chart_bar_fill, size: 16),
+                      onPressed: _busy
+                          ? null
+                          : () => _runAction('details', () async {
+                                RitmoHaptics.tap();
+                                await widget.onViewDetails();
+                              }),
+                      icon: _busy && _actionTag == 'details'
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xffA78BFA)),
+                            )
+                          : const Icon(CupertinoIcons.chart_bar_fill, size: 16),
                       label: const Text('مشاهده جزئیات', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ),

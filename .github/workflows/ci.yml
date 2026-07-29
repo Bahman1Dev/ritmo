@@ -1,46 +1,102 @@
-name: Ritmo CI Pipeline
+name: Ritmo CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
+    tags: [ 'v*' ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, master ]
 
 jobs:
   analyze_and_test:
-    name: Analyze & Test
+    name: Flutter Static Analysis & Unit Tests
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: 'zulu'
           java-version: '17'
 
-      - name: Set up Flutter
+      - name: Set up Pinned Flutter SDK
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.2'
           channel: 'stable'
           cache: true
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: flutter pub get
 
-      - name: Check Code Format
-        run: dart format --output=none --set-exit-if-changed .
+      - name: Verify formatting
+        run: dart format --set-exit-if-changed .
 
-      - name: Analyze Code
-        run: flutter analyze lib/
+      - name: Static analysis on entire codebase
+        run: flutter analyze --fatal-warnings .
 
-      - name: Run Unit & Widget Tests
+      - name: Run unit & integration tests
         run: flutter test --coverage
 
-      - name: Verify Key Properties Fallback Protection
+  build_release:
+    name: Build Market Release APKs (Bazaar & Myket)
+    needs: analyze_and_test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Pinned Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Inject Android Key Properties from Secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -f "android/key.properties" ]; then
-            echo "key.properties exists in repo - error!" && exit 1
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/ritmo_release.jks
+            cat <<EOF > android/key.properties
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=ritmo_release.jks
+          EOF
           fi
 
+      - name: Build Bazaar Release APK
+        run: flutter build apk --release --flavor bazaar
+
+      - name: Build Myket Release APK
+        run: flutter build apk --release --flavor myket
+
+      - name: Upload Bazaar APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-bazaar-release
+          path: build/app/outputs/flutter-apk/app-bazaar-release.apk
+
+      - name: Upload Myket APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-myket-release
+          path: build/app/outputs/flutter-apk/app-myket-release.apk

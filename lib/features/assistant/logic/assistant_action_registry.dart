@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
+import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/engines/routine_occurrence_generator.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
@@ -1465,10 +1466,12 @@ class AssistantActionRegistry {
     }
 
     try {
+      for (final id in routines) {
+        await RitmoExecutionKernel.instance.execute(
+          DeleteRoutineCommand(routineId: id),
+        );
+      }
       await db.transaction((txn) async {
-        for (final id in routines) {
-          await txn.delete('routines', where: 'id = ?', whereArgs: [id]);
-        }
         for (final id in worship) {
           await txn.delete('worship_practices', where: 'id = ?', whereArgs: [id]);
         }

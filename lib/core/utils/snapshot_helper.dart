@@ -96,6 +96,7 @@ class SnapshotHelper {
     if (kIsWeb) return;
     final prefs = await SharedPreferences.getInstance();
     final data = {
+      'schemaVersion': 1,
       'dateStr': dateStr,
       'remainingText': remainingText,
       'items': items,

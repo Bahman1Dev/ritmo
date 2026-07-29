@@ -5,6 +5,7 @@ import 'package:ritmo/core/domain/engines/medical_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/health/presentation/widgets/medication_form_sheet.dart';
@@ -431,10 +432,10 @@ class _MedicationsSectionState extends State<MedicationsSection> with SingleTick
 
   Future<void> _deleteMedication(String id) async {
     try {
-      final db = await DatabaseHelper.instance.database;
-      await db.delete('routines', where: 'id = ?', whereArgs: [id]);
-      await db.delete('routine_schedules', where: 'routineId = ?', whereArgs: [id]);
-      
+      await RitmoExecutionKernel.instance.execute(
+        DeleteRoutineCommand(routineId: id),
+      );
+
       RitmoEventBus().fire(RitmoEvent(
         type: 'RoutineDeleted',
         timestamp: DateTime.now(),
@@ -445,7 +446,7 @@ class _MedicationsSectionState extends State<MedicationsSection> with SingleTick
       await _loadData();
       await _loadHistory();
     } catch (e) {
-      debugPrint('Error deleting routine: $e');
+      RitmoLog.error('MedicationsSection', 'Error deleting medication routine', e);
     }
   }
 

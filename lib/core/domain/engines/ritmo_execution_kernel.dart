@@ -3,6 +3,7 @@ import 'package:ritmo/core/domain/engines/reshuffle_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/execution/command_context.dart';
 import 'package:ritmo/core/domain/execution/kernel_command_handler_registry.dart';
+import 'package:ritmo/core/domain/execution/handlers/archive_routine_handler.dart';
 import 'package:ritmo/core/domain/execution/handlers/complete_occurrence_handler.dart';
 import 'package:ritmo/core/domain/execution/handlers/confirm_reshuffle_handler.dart';
 import 'package:ritmo/core/domain/execution/handlers/create_routine_handler.dart';
@@ -42,6 +43,16 @@ class EditRoutineCommand extends KernelCommand {
 
 class DeleteRoutineCommand extends KernelCommand {
   const DeleteRoutineCommand({required this.routineId});
+  final String routineId;
+}
+
+class ArchiveRoutineCommand extends KernelCommand {
+  const ArchiveRoutineCommand({required this.routineId});
+  final String routineId;
+}
+
+class UnarchiveRoutineCommand extends KernelCommand {
+  const UnarchiveRoutineCommand({required this.routineId});
   final String routineId;
 }
 
@@ -93,6 +104,8 @@ class RitmoExecutionKernel {
           createRoutineHandler: CreateRoutineHandler(),
           editRoutineHandler: EditRoutineHandler(),
           deleteRoutineHandler: DeleteRoutineHandler(),
+          archiveRoutineHandler: ArchiveRoutineHandler(),
+          unarchiveRoutineHandler: UnarchiveRoutineHandler(),
           completeOccurrenceHandler: CompleteOccurrenceHandler(),
           skipOccurrenceHandler: SkipOccurrenceHandler(),
           snoozeReminderHandler: SnoozeReminderHandler(),

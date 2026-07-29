@@ -133,12 +133,12 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
             onSaved: () {
               widget.onSaved();
               if (mounted) {
+                RitmoToast.show(
+                  context,
+                  'مستحب سفارشی با موفقیت افزوده شد.',
+                );
                 Navigator.pop(context);
               }
-              RitmoToast.show(
-                context,
-                'مستحب سفارشی با موفقیت افزوده شد.',
-              );
             },
           );
         },
@@ -217,7 +217,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
       listenable: _controller,
       builder: (context, _) {
         return PopScope(
-          canPop: _controller.title.trim().isEmpty || _controller.showSuccessAnim,
+          canPop: !_controller.isDirty || _controller.showSuccessAnim,
           onPopInvokedWithResult: (didPop, result) async {
             if (didPop) return;
             

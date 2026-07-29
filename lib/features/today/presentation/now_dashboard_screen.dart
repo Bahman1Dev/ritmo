@@ -10,6 +10,7 @@ import 'package:ritmo/core/ai/ai_context_builder.dart';
 import 'package:ritmo/core/ai/ai_gateway.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/di/service_locator.dart';
+import 'package:ritmo/core/domain/completion/snooze_policy.dart';
 import 'package:ritmo/core/domain/engines/engine_enums.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
@@ -24,6 +25,7 @@ import 'package:ritmo/core/services/central_inbox_service.dart';
 import 'package:ritmo/core/services/premium_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/theme/theme_repository.dart';
+import 'package:ritmo/core/utils/ritmo_date.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
 import 'package:ritmo/features/assistant/logic/mid_day_replan_service.dart';
@@ -601,8 +603,8 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
     );
   }
 
-  Future<void> _completeTask(Routine routine, String resultType) async {
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+  Future<void> _completeTask(Routine routine, String resultType, [int? customDuration]) async {
+    final todayStr = RitmoDate.now().value;
 
     if (resultType == 'SKIPPED') {
       await RitmoExecutionKernel.instance.execute(
@@ -614,9 +616,9 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
           : _safeDur(routine.targetDurationMinutes, 30);
       final lightMinutes = _safeDur(routine.lightDurationMinutes, 20);
       final minimalMinutes = _safeDur(routine.minimalDurationMinutes, 10);
-      final duration = resultType == 'FULL'
+      final duration = customDuration ?? (resultType == 'FULL'
           ? fullMinutes
-          : (resultType == 'LIGHT' ? lightMinutes : minimalMinutes);
+          : (resultType == 'LIGHT' ? lightMinutes : minimalMinutes));
 
       await RitmoExecutionKernel.instance.execute(
         CompleteOccurrenceCommand(
@@ -923,19 +925,17 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
   }
 
   void _showMoreSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return ProfileScreen(
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileScreen(
           onLogout: widget.onLogout,
           themeRepository: widget.themeRepository,
           localeRepository: widget.localeRepository,
-        );
-      },
+        ),
+      ),
     ).then((_) {
-      _loadDashboardData();
+      if (mounted) _loadDashboardData();
     });
   }
 
@@ -950,12 +950,36 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
   }
 
   Future<void> _snoozeRoutineWithMinutes(Routine routine, int snoozeMin) async {
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final todayStr = RitmoDate.now().value;
+    final decision = SnoozePolicy.evaluate(
+      itemId: routine.id,
+      now: DateTime.now(),
+      requestedMinutes: snoozeMin,
+      currentDeferCount: 0,
+      category: routine.category.name,
+      isEssential: routine.isEssential ? 1 : 0,
+    );
+
+    final isBlocked = decision.verdict == SnoozeVerdict.exhausted ||
+        decision.verdict == SnoozeVerdict.blockedMidnight;
+
+    if (isBlocked) {
+      if (mounted) {
+        RitmoToast.show(
+          context,
+          decision.userMessage ?? 'امکان تعویق وجود ندارد.',
+          icon: Icons.error_outline_rounded,
+          iconColor: Colors.redAccent,
+        );
+      }
+      return;
+    }
+
     await RoutineActions.snoozeRoutine(
       context: context,
       routineId: routine.id,
       dateStr: todayStr,
-      minutes: snoozeMin,
+      minutes: decision.allowedMinutes,
       onDone: () {
         if (mounted) _loadDashboardData();
       },
@@ -967,16 +991,16 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
       context: context,
       routine: routine,
       initialMode: initialMode,
-      onStartTimer: (selectedMode) {
+      onStartTimer: (selectedMode) async {
         _startTimerFlow(routine, selectedMode);
       },
-      onCompleteInstantly: (selectedMode, duration) {
-        _completeTask(routine, selectedMode);
+      onCompleteInstantly: (selectedMode, duration) async {
+        await _completeTask(routine, selectedMode, duration);
       },
-      onSnooze: () {
+      onSnooze: () async {
         _snoozeTask(routine);
       },
-      onEdit: () {
+      onEdit: () async {
         final rMap = {
           'id': routine.id,
           'title': routine.title,
@@ -992,7 +1016,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
           'minimalDurationMinutes': routine.minimalDurationMinutes,
         };
 
-        Navigator.push(
+        await Navigator.push(
           context,
           PageRouteBuilder(
             opaque: false,
@@ -1004,7 +1028,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
           ),
         );
       },
-      onViewDetails: () {
+      onViewDetails: () async {
         _showDetailsSheet(routine);
       },
     );

@@ -8,6 +8,7 @@ import 'package:ritmo/core/domain/execution/command_handler.dart';
 import 'package:ritmo/core/domain/execution/events/kernel_event_factory.dart';
 import 'package:ritmo/core/domain/execution/kernel_mutation_result.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/domain/models/reminder_state.dart';
 import 'package:ritmo/core/platform/alarm_platform.dart';
 import 'package:ritmo/core/services/snapshot_sync_service.dart';
 import 'package:sqflite/sqflite.dart';
@@ -23,24 +24,34 @@ class EditRoutineHandler implements KernelCommandHandler<EditRoutineCommand> {
     final id = command.routineId;
     final tasks = <Future<void> Function()>[];
 
+    final routineMap = Map<String, dynamic>.from(command.routineData)..remove('id');
+
     await context.txn.update(
       'routines',
-      command.routineData,
+      routineMap,
       where: 'id = ?',
       whereArgs: [id],
     );
 
     RecurrenceRule? rule;
     if (command.scheduleData != null) {
-      await context.txn.update(
+      final scheduleMap = Map<String, dynamic>.from(command.scheduleData!)..remove('id');
+      final updated = await context.txn.update(
         'routine_schedules',
-        command.scheduleData!,
+        scheduleMap,
         where: 'routineId = ?',
         whereArgs: [id],
       );
+      if (updated == 0) {
+        // Upsert schedule row if missing (WU-17)
+        final newSchedule = Map<String, dynamic>.from(command.scheduleData!)
+          ..['id'] = command.scheduleData!['id'] ?? 'sched_$id'
+          ..['routineId'] = id;
+        await context.txn.insert('routine_schedules', newSchedule, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
 
-      final ruleMap =
-          jsonDecode(command.scheduleData!['recurrenceRule'] as String? ?? '{}');
+      final ruleStr = command.scheduleData!['recurrenceRule'] as String? ?? '{}';
+      final ruleMap = jsonDecode(ruleStr) as Map<String, dynamic>;
       rule = RecurrenceRule.fromMap(ruleMap);
     } else {
       final existingSchedules = await context.txn.query(
@@ -56,7 +67,7 @@ class EditRoutineHandler implements KernelCommandHandler<EditRoutineCommand> {
 
     final pending = await context.txn.query(
       'pending_reminders',
-      where: "routineId = ? AND (state = 'unknown' OR state = 'delayed')",
+      where: "routineId = ? AND (state = 'unknown' OR state = 'delayed' OR state = 'active')",
       whereArgs: [id],
     );
 
@@ -68,62 +79,28 @@ class EditRoutineHandler implements KernelCommandHandler<EditRoutineCommand> {
     await context.txn.update(
       'pending_reminders',
       {
-        'state': 'CANCELLED',
+        'state': ReminderState.cancelled.dbValue,
         'updatedAt': context.now.millisecondsSinceEpoch,
       },
-      where: "routineId = ? AND (state = 'unknown' OR state = 'delayed')",
+      where: "routineId = ? AND (state = 'unknown' OR state = 'delayed' OR state = 'active')",
       whereArgs: [id],
     );
 
     if (rule != null) {
-      if (command.applyToAll) {
-        await context.txn.delete(
-          'routine_occurrences',
-          where: 'routine_id = ?',
-          whereArgs: [id],
-        );
+      final todayStr = context.now.toIso8601String().substring(0, 10);
 
-        final today = DateTime(
-          context.now.year,
-          context.now.month,
-          context.now.day,
-        );
+      // WU-10: Past and completed/skipped occurrences MUST NEVER be deleted!
+      await context.txn.delete(
+        'routine_occurrences',
+        where: 'routine_id = ? AND date >= ? AND status = ?',
+        whereArgs: [id, todayStr, 'pending'],
+      );
 
-        for (var i = -30; i < 30; i++) {
-          final targetDate = today.add(Duration(days: i));
-          final dateStr = targetDate.toIso8601String().substring(0, 10);
-
-          if (RoutineOccurrenceGenerator.shouldOccurOnDate(targetDate, rule)) {
-            final timeStr =
-                rule.reminderTimes.isNotEmpty ? rule.reminderTimes.first : '08:00';
-
-            await context.txn.insert(
-              'routine_occurrences',
-              {
-                'routine_id': id,
-                'date': dateStr,
-                'scheduled_time': timeStr,
-                'status': 'pending',
-              },
-              conflictAlgorithm: ConflictAlgorithm.ignore,
-            );
-          }
-        }
-      } else {
-        final todayStr = context.now.toIso8601String().substring(0, 10);
-
-        await context.txn.delete(
-          'routine_occurrences',
-          where: 'routine_id = ? AND date >= ?',
-          whereArgs: [id, todayStr],
-        );
-
-        await RoutineOccurrenceGenerator.generateFutureOccurrences(
-          context.txn,
-          id,
-          rule,
-        );
-      }
+      await RoutineOccurrenceGenerator.generateFutureOccurrences(
+        context.txn,
+        id,
+        rule,
+      );
     }
 
     tasks.add(SnapshotSyncService.syncAll);

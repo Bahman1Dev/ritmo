@@ -14,54 +14,14 @@ class AccountResetService {
     // 1. Create emergency backup before wiping
     await LegacyDatabaseRecovery.createEmergencyBackup(db.path);
 
-    // 2. Perform transactional wipe across all user data tables
+    // 2. Perform transactional wipe across all database tables dynamically fetched from sqlite_master
     await db.transaction((txn) async {
-      final userTables = [
-        'routines',
-        'routine_schedules',
-        'routine_completions',
-        'routine_occurrences',
-        'skip_reasons',
-        'goals',
-        'goal_steps',
-        'worship_completions',
-        'worship_practices',
-        'worship_debts',
-        'fasting_debt',
-        'cycle_periods',
-        'cycle_logs',
-        'ss_workout_plan',
-        'ss_workout_exercise_crossref',
-        'ss_workout_session_log',
-        'ss_exercise_feeling_log',
-        'ss_user_profile',
-        'ss_decision_log',
-        'ss_workout_set_log',
-        'konkur_study_logs',
-        'konkur_study_sessions',
-        'konkur_mock_exam_results',
-        'course_sessions',
-        'course_active_timers',
-        'health_logs',
-        'allergies',
-        'blood_pressure_logs',
-        'blood_sugar_logs',
-        'doctor_visits',
-        'medical_documents',
-        'medication_logs',
-        'vaccinations',
-        'vital_signs_logs',
-        'notification_history',
-        'pending_reminders',
-        'active_timers',
-        'daily_reflections',
-        'ai_memory',
-        'ss_ai_memory',
-        'inbox_items',
-        'app_settings',
-      ];
+      final tableRows = await txn.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'android_%'",
+      );
+      final tables = tableRows.map((r) => r['name'] as String).toList();
 
-      for (final table in userTables) {
+      for (final table in tables) {
         try {
           await txn.delete(table);
         } catch (e) {

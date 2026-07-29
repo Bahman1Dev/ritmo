@@ -9,6 +9,7 @@ void main() {
       id: 'item_missing_meta',
       sourceId: 'non_existent_routine_id',
       domain: AgendaDomain.routine,
+      category: Category.personal,
       title: 'برنامه ناموجود',
       dateStr: '2026-07-26',
     );

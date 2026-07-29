@@ -29,6 +29,7 @@ class CompletionGateway {
         final CourseSessionCompletion req   => _handleCourseCompletion(req),
         final KonkurSessionCompletion req   => _handleKonkurCompletion(req),
         final WorshipCompletion req         => _handleWorshipCompletion(req),
+        final PrayerCompletion req          => _handlePrayerCompletion(req),
         final WorshipSkip req               => _handleWorshipSkip(req),
         final WorshipDebtProgress req       => _handleWorshipDebtProgress(req),
         final GoalStepCompletion req       => _handleGoalStepCompletion(req),
@@ -301,6 +302,20 @@ class CompletionGateway {
 
     _notifySuccess(domain: 'worship', itemId: req.practiceId, dateStr: req.dateStr, result: 'FULL');
     return CompletionOutcome.success(undoToken: 'worship:$recordId');
+  }
+
+  Future<CompletionOutcome> _handlePrayerCompletion(PrayerCompletion req) async {
+    final resultType = req.mode == 'QADA' ? 'QADA_ADDED' : 'DONE';
+    final recordId = await WorshipCompletionRepository.instance.logDone(
+      practiceId: req.prayerKey,
+      dateStr: req.dateStr,
+      practiceType: 'PRAYER',
+      countDone: 1,
+      countTarget: 1,
+    );
+
+    _notifySuccess(domain: 'prayer', itemId: req.prayerKey, dateStr: req.dateStr, result: resultType);
+    return CompletionOutcome.success(undoToken: 'prayer:$recordId');
   }
 
   Future<CompletionOutcome> _handleWorshipSkip(WorshipSkip req) async {

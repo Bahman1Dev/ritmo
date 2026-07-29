@@ -7,6 +7,7 @@ import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/domain/models/duration_bounds.dart';
+import 'package:ritmo/features/routines/domain/routine_recurrence.dart';
 import 'package:ritmo/features/routines/domain/strategies/planner_category_strategy.dart';
 import 'package:ritmo/features/routines/domain/strategies/planner_save_context.dart';
 
@@ -65,18 +66,27 @@ class GenericStrategy implements PlannerCategoryStrategy {
     };
 
     final timeStr = c.formatTime(c.selectedTime);
+    RoutineRecurrence recurrence = const DailyRecurrence();
+    if (c.itemType == 'TASK') {
+      recurrence = OnceRecurrence(date: c.selectedDate);
+    } else if (c.recurrenceType == 'CUSTOM_DAYS' && c.worshipSelectedDays.isNotEmpty) {
+      recurrence = WeekdaysRecurrence(weekdays: c.worshipSelectedDays.toSet());
+    }
+
+    final (schedType, daysOfWeek) = deriveScheduleParams(recurrence);
+    final recurrenceJson = encodeRecurrenceRule(
+      recurrence: recurrence,
+      startDate: c.selectedDate,
+      reminderTimes: [timeStr],
+    );
+
     final scheduleData = {
       'id': 'sched_$routineId',
       'routineId': routineId,
-      'scheduleType': c.itemType == 'TASK'
-          ? 'DAILY'
-          : (c.recurrenceType == 'CUSTOM_DAYS' ? 'SPECIFIC_DAYS' : 'RECURRENCE'),
+      'scheduleType': schedType,
       'timeOfDay': timeStr,
-      'daysOfWeek': '6,7,1,2,3,4,5',
-      'recurrenceRule': jsonEncode({
-        'weekdays': [1, 2, 3, 4, 5, 6, 7],
-        'startDate': c.formatDate(c.selectedDate),
-      }),
+      'daysOfWeek': daysOfWeek,
+      'recurrenceRule': recurrenceJson,
       'createdAt': c.isEditing ? c.routineToEdit!['createdAt'] ?? now : now,
       'updatedAt': now,
     };

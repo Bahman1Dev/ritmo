@@ -1103,11 +1103,31 @@ class PlannerController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Timer? _voiceTimer;
+  Timer? _saveTimer;
+
+  bool get isDirty {
+    if (isEditing) {
+      return title != (routineToEdit?['title'] as String? ?? '');
+    }
+    return title.trim().isNotEmpty;
+  }
+
+  @override
+  void dispose() {
+    _nlpDebounceTimer?.cancel();
+    _voiceTimer?.cancel();
+    _saveTimer?.cancel();
+    inputController.dispose();
+    super.dispose();
+  }
+
   void triggerVoiceSimulate() {
     isListening = true;
     notifyListeners();
 
-    Timer(const Duration(seconds: 3), () {
+    _voiceTimer?.cancel();
+    _voiceTimer = Timer(const Duration(seconds: 3), () {
       isListening = false;
       inputController.text = 'فردا ساعت ۸ باشگاه ورزشی بروم';
       parseNLPText();
@@ -1226,6 +1246,11 @@ class PlannerController extends ChangeNotifier {
       return;
     }
 
+    if (isSaving) return;
+
+    isSaving = true;
+    notifyListeners();
+
     try {
       final saveCtx = _buildSaveContext();
       final strategy = PlannerStrategyRegistry.resolve(
@@ -1237,13 +1262,16 @@ class PlannerController extends ChangeNotifier {
       showSuccessAnim = true;
       notifyListeners();
 
-      Timer(const Duration(milliseconds: 1400), () {
+      _saveTimer?.cancel();
+      _saveTimer = Timer(const Duration(milliseconds: 1400), () {
         onSaved();
         if (context.mounted) {
           Navigator.pop(context);
         }
       });
     } catch (e) {
+      isSaving = false;
+      notifyListeners();
       debugPrint('Save error: $e');
       RitmoToast.show(context, 'خطا در ثبت اطلاعات: $e', icon: Icons.error_outline, iconColor: Colors.red);
     }

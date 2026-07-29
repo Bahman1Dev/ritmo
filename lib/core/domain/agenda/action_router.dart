@@ -13,6 +13,7 @@ import 'package:ritmo/core/domain/models/duration_bounds.dart';
 import 'package:ritmo/core/services/ritmo_timer_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
+import 'package:ritmo/core/utils/ritmo_date.dart';
 import 'package:ritmo/features/konkur/logic/konkur_repository.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_study_sheet.dart';
@@ -31,6 +32,39 @@ class ActionRouter {
     switch (item.domain) {
       case AgendaDomain.routine:
         await _handleRoutineAction(context, item);
+        break;
+
+      case AgendaDomain.prayer:
+        await _showDomainConfirmationSheet(
+          context,
+          item: item,
+          title: item.title,
+          domainLabel: 'نماز',
+          successMessage: 'نماز اول وقت ثبت شد',
+          onConfirm: () => CompletionGateway.instance.submit(
+            PrayerCompletion(
+              prayerKey: item.sourceId,
+              dateStr: item.dateStr,
+              mode: 'ON_TIME',
+            ),
+          ),
+        );
+        break;
+
+      case AgendaDomain.mustahab:
+        await _showDomainConfirmationSheet(
+          context,
+          item: item,
+          title: item.title,
+          domainLabel: 'مستحبات',
+          successMessage: 'مستحب انجام شد',
+          onConfirm: () => CompletionGateway.instance.submit(
+            WorshipCompletion(
+              practiceId: item.sourceId,
+              dateStr: item.dateStr,
+            ),
+          ),
+        );
         break;
 
       case AgendaDomain.course:
@@ -52,24 +86,6 @@ class ActionRouter {
 
       case AgendaDomain.konkur:
         await _handleKonkurAction(context, item);
-        break;
-
-      case AgendaDomain.prayer:
-      case AgendaDomain.mustahab:
-        await _showDomainConfirmationSheet(
-          context,
-          item: item,
-          title: item.title,
-          domainLabel: 'عبادت',
-          successMessage: 'عبادت ثبت شد',
-          onConfirm: () => CompletionGateway.instance.submit(
-            WorshipCompletion(
-              practiceId: item.sourceId,
-              dateStr: item.dateStr,
-              practiceType: item.domain == AgendaDomain.prayer ? 'PRAYER' : 'MUSTAHAB',
-            ),
-          ),
-        );
         break;
 
       case AgendaDomain.worshipDebt:
@@ -94,11 +110,13 @@ class ActionRouter {
           presetDate: DateTime.tryParse(item.dateStr) ?? DateTime.now(),
           presetDurationMinutes: item.durationMinutes,
           onLogged: () {
-            ActionFeedback.success(
-              context,
-              message: 'فعالیت ورزشی ثبت شد',
-              dateStr: item.dateStr,
-            );
+            if (context.mounted) {
+              ActionFeedback.success(
+                context,
+                message: 'فعالیت ورزشی ثبت شد',
+                dateStr: item.dateStr,
+              );
+            }
           },
         );
         break;
@@ -145,19 +163,21 @@ class ActionRouter {
             final val = rows.first['value'] as String?;
             canShow = CyclePrivacyGuard.isVisible({'user_gender': val ?? ''});
           }
-        } catch (_) {}
+        } catch (e, st) {
+          debugPrint('[ActionRouter] Error checking cycle privacy: $e\n$st');
+        }
 
         if (!canShow) {
-          ActionFeedback.failure(
-            context,
-            message: 'برای مشاهده وارد بخش سلامت شوید',
-          );
+          if (context.mounted) {
+            ActionFeedback.info(
+              context,
+              message: 'سیستم چرخه سلامت غیرفعال یا پنهان است.',
+            );
+          }
         } else {
-          ActionFeedback.success(
-            context,
-            message: 'اطلاعات چرخه سلامت در دسترس است',
-            dateStr: item.dateStr,
-          );
+          if (context.mounted) {
+            Navigator.pushNamed(context, '/cycle');
+          }
         }
         break;
     }
@@ -519,11 +539,12 @@ class ActionRouter {
                       ),
                       onPressed: () async {
                         Navigator.pop(sheetCtx);
+                        final tomorrowStr = RitmoDate.parse(dateStr)!.addDays(1).value;
                         final outcome = await CompletionGateway.instance.submit(
-                          RoutineSkip(
+                          RoutineReschedule(
                             routineId: routine.id,
-                            dateStr: dateStr,
-                            reason: 'موکول شد به فردا',
+                            fromDateStr: dateStr,
+                            toDateStr: tomorrowStr,
                           ),
                         );
                         if (!context.mounted) return;

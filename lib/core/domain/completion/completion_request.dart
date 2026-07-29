@@ -108,6 +108,18 @@ final class WorshipCompletion extends CompletionRequest {
   String get worshipId => practiceId;
 }
 
+final class PrayerCompletion extends CompletionRequest {
+  const PrayerCompletion({
+    required this.prayerKey,
+    required this.dateStr,
+    this.mode = 'ON_TIME',
+  });
+
+  final String prayerKey;
+  final String dateStr;
+  final String mode;
+}
+
 final class WorshipSkip extends CompletionRequest {
   const WorshipSkip({
     required this.practiceId,

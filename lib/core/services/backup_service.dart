@@ -76,6 +76,11 @@ class BackupService {
       throw Exception('فرمت فایل پشتیبان معتبر نیست.');
     }
 
+    final backupVersion = (backupMap['version'] as num?)?.toInt() ?? 1;
+    if (backupVersion > 2) {
+      throw Exception('نسخه فایل پشتیبان جدیدتر از این نسخه اپلیکیشن است. لطفاً ریتمو را بروزرسانی کنید.');
+    }
+
     final saltBytes = base64.decode(backupMap['salt'] as String);
     final ivBytes = base64.decode(backupMap['iv'] as String);
     final ciphertextBase64 = backupMap['ciphertext'] as String;

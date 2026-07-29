@@ -145,10 +145,7 @@ class ModuleManagementService {
             await safeDeleteSettingsLike('prayer_%');
             await safeDeleteSettingsLike('quran_%');
             await safeDeleteSettingsLike('fasting_%');
-            try {
-              await txn.rawDelete("DELETE FROM routine_logs WHERE routineId IN (SELECT id FROM routines WHERE category = 'religious')");
-              await txn.delete('routines', where: "category = 'religious'");
-            } catch (_) {}
+            await _safeDeleteRoutinesByCategory(txn, 'religious');
             break;
 
           case 'module_medicine_enabled':
@@ -173,29 +170,29 @@ class ModuleManagementService {
             await safeDeleteSettingsLike('medical_%');
             await safeDeleteSettingsLike('medication_%');
             await safeDeleteSettingsLike('medicine_%');
-            try {
-              await txn.rawDelete("DELETE FROM routine_logs WHERE routineId IN (SELECT id FROM routines WHERE category = 'medical')");
-              await txn.delete('routines', where: "category = 'medical'");
-            } catch (_) {}
+            await _safeDeleteRoutinesByCategory(txn, 'medical');
             break;
 
           case 'module_sports_enabled':
-          case 'module_supplementary_sports_enabled':
             await safeDelete('workout_logs');
             await safeDelete('workout_split_days');
             await safeDelete('workout_recovery_logs');
-            await safeDelete('ss_user_profile');
-            await safeDelete('ss_workout_plans');
-            await safeDelete('ss_workout_sessions');
-            await safeDelete('ss_exercise_logs');
-            await safeDelete('ss_favorites');
             await safeDeleteSettingsLike('sports_%');
-            await safeDeleteSettingsLike('ss_%');
             await safeDeleteSettingsLike('workout_%');
-            try {
-              await txn.rawDelete("DELETE FROM routine_logs WHERE routineId IN (SELECT id FROM routines WHERE category = 'sports')");
-              await txn.delete('routines', where: "category = 'sports'");
-            } catch (_) {}
+            await _safeDeleteRoutinesByCategory(txn, 'sports');
+            break;
+
+          case 'module_supplementary_sports_enabled':
+            await safeDelete('ss_user_profile');
+            await safeDelete('ss_workout_plan');
+            await safeDelete('ss_workout_exercise_crossref');
+            await safeDelete('ss_workout_session_log');
+            await safeDelete('ss_exercise_feeling_log');
+            await safeDelete('ss_plan_version_history');
+            await safeDelete('ss_decision_log');
+            await safeDelete('ss_weight_log');
+            await safeDelete('ss_workout_set_log');
+            await safeDeleteSettingsLike('ss_%');
             break;
 
           case 'module_cycle_enabled':
@@ -265,10 +262,7 @@ class ModuleManagementService {
             await safeDeleteSettingsLike('habit_%');
             await safeDeleteSettingsLike('reflection_%');
             await safeDeleteSettingsLike('checkin_%');
-            try {
-              await txn.rawDelete("DELETE FROM routine_logs WHERE routineId IN (SELECT id FROM routines WHERE category = 'habits')");
-              await txn.delete('routines', where: "category = 'habits'");
-            } catch (_) {}
+            await _safeDeleteRoutinesByCategory(txn, 'habits');
             break;
         }
 
@@ -288,6 +282,19 @@ class ModuleManagementService {
       RitmoEvents.notifyRoutineChanged();
     } catch (e) {
       debugPrint('ModuleManagementService: Error resetting module data for $key: $e');
+    }
+  }
+
+  static Future<void> _safeDeleteRoutinesByCategory(DatabaseExecutor txn, String category) async {
+    final rows = await txn.query('routines', columns: ['id'], where: 'category = ?', whereArgs: [category]);
+    for (final row in rows) {
+      final rId = row['id'] as String;
+      await txn.delete('pending_reminders', where: 'routineId = ?', whereArgs: [rId]);
+      await txn.delete('routine_occurrences', where: 'routine_id = ?', whereArgs: [rId]);
+      await txn.delete('routine_completions', where: 'routineId = ?', whereArgs: [rId]);
+      await txn.delete('routine_logs', where: 'routineId = ?', whereArgs: [rId]);
+      await txn.delete('routine_schedules', where: 'routineId = ?', whereArgs: [rId]);
+      await txn.delete('routines', where: 'id = ?', whereArgs: [rId]);
     }
   }
 }

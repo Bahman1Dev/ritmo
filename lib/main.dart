@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +10,6 @@ import 'package:workmanager/workmanager.dart';
 import 'package:ritmo/core/services/background_worker.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:ritmo/core/database/database_helper.dart';
-import 'package:ritmo/core/database/seed/mock_data_seeder.dart';
 import 'package:ritmo/core/services/account_reset_service.dart';
 import 'package:ritmo/core/services/device_service.dart';
 import 'package:ritmo/core/security/app_lock_gate.dart';
@@ -34,10 +34,14 @@ import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/time/ritmo_clock.dart';
 
+import 'package:ritmo/core/diagnostics/privacy_error_sink.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await PrivacyErrorSink.instance.init();
 
   FlutterError.onError = (details) {
+    PrivacyErrorSink.instance.logError('FlutterError', details.exceptionAsString(), details.exception, details.stack);
     RitmoLog.error('FlutterError', details.exceptionAsString(), details.exception, details.stack);
     if (kDebugMode) {
       FlutterError.presentError(details);
@@ -45,12 +49,13 @@ void main() async {
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
+    PrivacyErrorSink.instance.logError('PlatformError', error.toString(), error, stack);
     RitmoLog.error('PlatformError', error.toString(), error, stack);
     return true;
   };
 
   if (!kIsWeb) {
-    Future.microtask(() async {
+    unawaited(Future.microtask(() async {
       try {
         final prefs = await SharedPreferences.getInstance();
         final handle = PluginUtilities.getCallbackHandle(notificationActionDispatcher)?.toRawHandle();
@@ -67,7 +72,7 @@ void main() async {
 
         final wmRegistered = prefs.getBool('wm_registered_v2') ?? false;
         if (!wmRegistered) {
-          Workmanager().initialize(ritmoCallbackDispatcher);
+          unawaited(Workmanager().initialize(ritmoCallbackDispatcher));
           await Workmanager().registerPeriodicTask(
             'ritmo_periodic_reschedule',
             'ritmoRescheduleTask',
@@ -79,9 +84,10 @@ void main() async {
           await prefs.setBool('wm_registered_v2', true);
         }
       } catch (e, st) {
+        PrivacyErrorSink.instance.logError('BackgroundInit', 'Workmanager init error', e, st);
         RitmoLog.error('BackgroundInit', 'Workmanager init error', e, st);
       }
-    });
+    }));
   }
 
   ErrorWidget.builder = (details) {
@@ -238,8 +244,8 @@ class _RitmoAppState extends State<RitmoApp> {
       // 5. Check if onboarding is completed via OnboardingGate
       _onboardingCompleted = await OnboardingGate.isCompleted(db);
     } catch (e, st) {
-      RitmoLog.error('Init', 'Critical startup error in _initialize', e, st);
       _initError = e;
+      RitmoLog.error('Init', 'Critical startup error in _initialize', e, st);
       rethrow;
     }
   }

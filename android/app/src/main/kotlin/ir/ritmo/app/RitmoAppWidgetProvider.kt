@@ -30,19 +30,26 @@ class RitmoAppWidgetProvider : AppWidgetProvider() {
 
             if (widgetJsonStr != null) {
                 val jsonObj = JSONObject(widgetJsonStr)
-                val nextActionTitle = jsonObj.optString("nextActionTitle", "استراحت 🌿")
-                val rhythmScore = jsonObj.optInt("rhythmScore", 0)
-                val currentEnergyLevel = jsonObj.optString("currentEnergyLevel", "متوسط")
+                val schemaVersion = jsonObj.optInt("schemaVersion", 1)
+                if (schemaVersion > 1) {
+                    views.setTextViewText(R.id.widget_next_action_title, "برای به‌روزرسانی ضربه بزنید")
+                    views.setTextViewText(R.id.widget_rhythm_score, "نبض امروز: %۰")
+                    views.setTextViewText(R.id.widget_energy_level, "انرژی: متوسط 🔋")
+                } else {
+                    val nextActionTitle = jsonObj.optString("nextActionTitle", "استراحت 🌿")
+                    val rhythmScore = jsonObj.optInt("rhythmScore", 0)
+                    val currentEnergyLevel = jsonObj.optString("currentEnergyLevel", "متوسط")
 
-                views.setTextViewText(R.id.widget_next_action_title, "کار بعدی: $nextActionTitle")
-                views.setTextViewText(R.id.widget_rhythm_score, "نبض امروز: %$rhythmScore")
-                
-                val energyFa = when (currentEnergyLevel.uppercase()) {
-                    "LOW" -> "کم ⚡"
-                    "HIGH" -> "زیاد 🔥"
-                    else -> "متوسط 🔋"
+                    views.setTextViewText(R.id.widget_next_action_title, "کار بعدی: $nextActionTitle")
+                    views.setTextViewText(R.id.widget_rhythm_score, "نبض امروز: %$rhythmScore")
+                    
+                    val energyFa = when (currentEnergyLevel.uppercase()) {
+                        "LOW" -> "کم ⚡"
+                        "HIGH" -> "زیاد 🔥"
+                        else -> "متوسط 🔋"
+                    }
+                    views.setTextViewText(R.id.widget_energy_level, "انرژی: $energyFa")
                 }
-                views.setTextViewText(R.id.widget_energy_level, "انرژی: $energyFa")
             } else {
                 views.setTextViewText(R.id.widget_next_action_title, "کار بعدی: استراحت 🌿")
                 views.setTextViewText(R.id.widget_rhythm_score, "نبض امروز: %۰")

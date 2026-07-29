@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/agenda/action_router.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
@@ -237,34 +238,34 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
                   });
                 },
                 onArchiveSelected: () async {
-                  final db = await DatabaseHelper.instance.database;
                   for (final id in _selectedIds) {
                     final srcId = id.split(':').last;
-                    await db.update(
-                      'routines',
-                      {'isArchived': 1},
-                      where: 'id = ?',
-                      whereArgs: [srcId],
+                    await RitmoExecutionKernel.instance.execute(
+                      ArchiveRoutineCommand(routineId: srcId),
                     );
                   }
-                  setState(() {
-                    _isSelectionMode = false;
-                    _selectedIds.clear();
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _isSelectionMode = false;
+                      _selectedIds.clear();
+                    });
+                  }
                   RegistryIndex.instance.invalidate();
                   await _refreshData();
                 },
                 onDeleteSelected: () async {
-                  final db = await DatabaseHelper.instance.database;
                   for (final id in _selectedIds) {
                     final srcId = id.split(':').last;
-                    await db.delete('routines', where: 'id = ?', whereArgs: [srcId]);
-                    await db.delete('routine_schedules', where: 'routineId = ?', whereArgs: [srcId]);
+                    await RitmoExecutionKernel.instance.execute(
+                      DeleteRoutineCommand(routineId: srcId),
+                    );
                   }
-                  setState(() {
-                    _isSelectionMode = false;
-                    _selectedIds.clear();
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _isSelectionMode = false;
+                      _selectedIds.clear();
+                    });
+                  }
                   RegistryIndex.instance.invalidate();
                   await _refreshData();
                 },
