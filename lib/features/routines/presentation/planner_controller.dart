@@ -922,12 +922,14 @@ class PlannerController extends ChangeNotifier {
 
         estimateDurationIfNeeded();
         loadOccupancyForDate(selectedDate);
-      } else {
+      } else if (context.mounted) {
         RitmoToast.show(context, 'چیزی پیدا نشد', icon: Icons.info_outline, iconColor: Colors.amber);
       }
     } catch (e) {
       debugPrint('AI parse error: $e');
-      RitmoToast.show(context, 'خطا در ارتباط با هوش مصنوعی', icon: Icons.error_outline, iconColor: Colors.red);
+      if (context.mounted) {
+        RitmoToast.show(context, 'خطا در ارتباط با هوش مصنوعی', icon: Icons.error_outline, iconColor: Colors.red);
+      }
     } finally {
       isAiParsing = false;
       notifyListeners();
@@ -1273,7 +1275,9 @@ class PlannerController extends ChangeNotifier {
       isSaving = false;
       notifyListeners();
       debugPrint('Save error: $e');
-      RitmoToast.show(context, 'خطا در ثبت اطلاعات: $e', icon: Icons.error_outline, iconColor: Colors.red);
+      if (context.mounted) {
+        RitmoToast.show(context, 'خطا در ثبت اطلاعات: $e', icon: Icons.error_outline, iconColor: Colors.red);
+      }
     }
   }
 }
