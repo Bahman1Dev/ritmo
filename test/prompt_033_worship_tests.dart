@@ -173,7 +173,7 @@ void main() {
 
       RitmoEventBus().fire(RitmoEvent(
         type: 'WorshipUpdated',
-        timestamp: DateTime.now().millisecondsSinceEpoch,
+        timestamp: DateTime.now(),
         payload: {'date': '2026-07-26'},
       ));
 

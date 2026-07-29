@@ -69,7 +69,7 @@ void main() {
             primarySubmitAction: SubmitAction(
               id: 'sub_1',
               label: 'تایید',
-              onSubmit: () async => const WorshipCompletedOutcome(recordId: 'rec_1'),
+              onSubmit: () async => CompletionOutcome.success(),
             ),
           ),
         ),

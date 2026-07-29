@@ -9,7 +9,7 @@ import 'package:ritmo/core/widgets/action/sheet_actions.dart';
 void main() {
   group('Prompt 036 - Action Sheet Contracts Tests (WU-8 to WU-11)', () {
     test('ActionSheetResult exhaustiveness test', () {
-      final ActionSheetResult res1 = ActionSheetSubmitted(const WorshipCompletedOutcome(recordId: 'rec_1'));
+      final ActionSheetResult res1 = ActionSheetSubmitted(CompletionOutcome.success());
       final ActionSheetResult res2 = ActionSheetHandoff(const OpenEditorHandoff());
 
       switch (res1) {
