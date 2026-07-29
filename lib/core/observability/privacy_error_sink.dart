@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
@@ -26,17 +27,19 @@ class PrivacyErrorSink implements LogSink {
   @override
   void log(String level, String scope, String message, [Object? error, StackTrace? st]) {
     if (level == 'ERROR') {
-      logError(scope, message, error, st);
+      unawaited(logError(scope, message, error, st));
     }
   }
 
   Future<void> logError(String scope, String message, [Object? error, StackTrace? st]) async {
     final exceptionType = error != null ? error.runtimeType.toString() : 'UnknownException';
+    final cleanMessage = sanitize(message);
     final cleanError = error != null ? sanitize(error.toString()) : null;
     final cleanStack = st != null ? sanitize(st.toString()) : null;
 
     await _writeCrashReport(
       scope: scope,
+      messageStr: cleanMessage,
       exceptionType: exceptionType,
       errorStr: cleanError,
       stStr: cleanStack,
@@ -45,6 +48,7 @@ class PrivacyErrorSink implements LogSink {
 
   static Future<void> _writeCrashReport({
     required String scope,
+    required String messageStr,
     required String exceptionType,
     String? errorStr,
     String? stStr,
@@ -81,6 +85,7 @@ class PrivacyErrorSink implements LogSink {
       final content = StringBuffer()
         ..writeln('Timestamp: ${DateTime.now().toIso8601String()}')
         ..writeln('Scope: $scope')
+        ..writeln('Message: $messageStr')
         ..writeln('ExceptionType: $exceptionType');
 
       if (errorStr != null && errorStr.isNotEmpty) {

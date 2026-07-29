@@ -6,10 +6,16 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 class KonkurRepository {
-  KonkurRepository._init();
-  static final KonkurRepository instance = KonkurRepository._init();
+  KonkurRepository({DatabaseHelper? dbHelper, RitmoEventBus? eventBus})
+      : _dbHelper = dbHelper ?? DatabaseHelper.instance,
+        _eventBus = eventBus ?? RitmoEventBus();
 
-  Future<Database> get _database async => DatabaseHelper.instance.database;
+  static final KonkurRepository instance = KonkurRepository();
+
+  final DatabaseHelper _dbHelper;
+  final RitmoEventBus _eventBus;
+
+  Future<Database> get _database async => _dbHelper.database;
 
   /// Seeds the database with the complete Konkur curriculum for a given field.
   /// Only inserts if no subjects exist yet for this field (idempotent).
@@ -83,7 +89,6 @@ class KonkurRepository {
     };
   }
 
-
   // READ METHODS
   Future<List<KonkurSubject>> getSubjects() async {
     final db = await _database;
@@ -139,15 +144,25 @@ class KonkurRepository {
     return {for (final item in maps) if (item['key'] != null) item['key'].toString(): item['value']?.toString() ?? ''};
   }
 
-  // WRITE/UPDATE METHODS
+  // WRITE/UPDATE METHODS WITH EVENT DISPATCH
   Future<void> insertSubject(KonkurSubject subject) async {
     final db = await _database;
     await db.insert('konkur_subjects', subject.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.konkurItemChanged.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_subject', 'id': subject.id, 'action': 'insert'},
+    ));
   }
 
   Future<void> updateSubject(KonkurSubject subject) async {
     final db = await _database;
     await db.update('konkur_subjects', subject.toMap(), where: 'id = ?', whereArgs: [subject.id]);
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.konkurItemChanged.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_subject', 'id': subject.id, 'action': 'update'},
+    ));
   }
 
   Future<void> deleteSubject(String subjectId) async {
@@ -159,16 +174,31 @@ class KonkurRepository {
       await txn.delete('konkur_study_sessions', where: 'subjectId = ?', whereArgs: [subjectId]);
       await txn.delete('konkur_mock_exam_results', where: 'subjectId = ?', whereArgs: [subjectId]);
     });
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.completionDeleted.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_subject_deleted', 'subjectId': subjectId},
+    ));
   }
 
   Future<void> insertTopic(KonkurTopic topic) async {
     final db = await _database;
     await db.insert('konkur_topics', topic.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.konkurItemChanged.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_topic', 'id': topic.id, 'action': 'insert'},
+    ));
   }
 
   Future<void> updateTopic(KonkurTopic topic) async {
     final db = await _database;
     await db.update('konkur_topics', topic.toMap(), where: 'id = ?', whereArgs: [topic.id]);
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.konkurItemChanged.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_topic', 'id': topic.id, 'action': 'update'},
+    ));
   }
 
   Future<void> deleteTopic(String topicId) async {
@@ -178,6 +208,11 @@ class KonkurRepository {
       await txn.delete('konkur_plan_items', where: 'topicId = ?', whereArgs: [topicId]);
       await txn.delete('konkur_study_sessions', where: 'topicId = ?', whereArgs: [topicId]);
     });
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.completionDeleted.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_topic_deleted', 'topicId': topicId},
+    ));
   }
 
   Future<void> insertStudySession(KonkurStudySession session) async {
@@ -205,18 +240,28 @@ class KonkurRepository {
         }
       }
     });
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.completionRecorded.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_study_session', 'id': session.id, 'duration': session.durationMinutes, 'dateStr': session.dateIso},
+    ));
   }
 
   Future<void> deleteStudySession(String sessionId) async {
     final db = await _database;
     await db.delete('konkur_study_sessions', where: 'id = ?', whereArgs: [sessionId]);
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.completionDeleted.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_study_session_deleted', 'id': sessionId},
+    ));
   }
 
   Future<void> insertMockExam(KonkurMockExam exam) async {
     final db = await _database;
     await db.insert('konkur_mock_exams', exam.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
-    RitmoEventBus().fire(RitmoEvent(
-      type: RitmoEventType.completionRecorded.code,
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.konkurItemChanged.code,
       timestamp: DateTime.now(),
       payload: {'domain': 'konkur_mock_exam', 'examId': exam.id, 'dateStr': exam.examDate},
     ));
@@ -228,8 +273,8 @@ class KonkurRepository {
       await txn.delete('konkur_mock_exams', where: 'id = ?', whereArgs: [examId]);
       await txn.delete('konkur_mock_exam_results', where: 'mockExamId = ?', whereArgs: [examId]);
     });
-    RitmoEventBus().fire(RitmoEvent(
-      type: RitmoEventType.completionRecorded.code,
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.completionDeleted.code,
       timestamp: DateTime.now(),
       payload: {'domain': 'konkur_mock_exam_deleted', 'examId': examId},
     ));
@@ -238,7 +283,7 @@ class KonkurRepository {
   Future<void> insertMockResult(KonkurMockResult result) async {
     final db = await _database;
     await db.insert('konkur_mock_exam_results', result.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
-    RitmoEventBus().fire(RitmoEvent(
+    _eventBus.fire(RitmoEvent(
       type: RitmoEventType.completionRecorded.code,
       timestamp: DateTime.now(),
       payload: {'domain': 'konkur_mock_result', 'resultId': result.id, 'mockExamId': result.mockExamId},
@@ -248,8 +293,8 @@ class KonkurRepository {
   Future<void> deleteMockResult(String resultId) async {
     final db = await _database;
     await db.delete('konkur_mock_exam_results', where: 'id = ?', whereArgs: [resultId]);
-    RitmoEventBus().fire(RitmoEvent(
-      type: RitmoEventType.completionRecorded.code,
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.completionDeleted.code,
       timestamp: DateTime.now(),
       payload: {'domain': 'konkur_mock_result_deleted', 'resultId': resultId},
     ));
@@ -258,11 +303,30 @@ class KonkurRepository {
   Future<void> insertPlanItem(KonkurPlanItem item) async {
     final db = await _database;
     await db.insert('konkur_plan_items', item.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.konkurItemChanged.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_plan_item', 'id': item.id, 'action': 'insert'},
+    ));
   }
 
+  /// MAIN KONKUR COMPLETION PATH
   Future<void> updatePlanItemStatus(String itemId, String status) async {
     final db = await _database;
     await db.update('konkur_plan_items', {'status': status}, where: 'id = ?', whereArgs: [itemId]);
+    if (status == 'DONE') {
+      _eventBus.fire(RitmoEvent(
+        type: RitmoEventType.completionRecorded.code,
+        timestamp: DateTime.now(),
+        payload: {'domain': 'konkur_plan_item', 'id': itemId, 'status': 'DONE'},
+      ));
+    } else {
+      _eventBus.fire(RitmoEvent(
+        type: RitmoEventType.konkurItemChanged.code,
+        timestamp: DateTime.now(),
+        payload: {'domain': 'konkur_plan_item', 'id': itemId, 'status': status},
+      ));
+    }
   }
 
   Future<List<KonkurStudySession>> getRecentStudySessions({int days = 14}) async {
@@ -322,6 +386,12 @@ class KonkurRepository {
       }
       await batch.commit(noResult: true);
     });
+
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.konkurItemChanged.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_plan_items', 'count': items.length, 'action': 'smart_save'},
+    ));
   }
 
   Future<Map<String, int>> getPendingCarryOverCountByTopic() async {
@@ -413,6 +483,12 @@ class KonkurRepository {
         );
       }
     });
+
+    _eventBus.fire(RitmoEvent(
+      type: RitmoEventType.konkurItemChanged.code,
+      timestamp: DateTime.now(),
+      payload: {'domain': 'konkur_module', 'action': 'reset'},
+    ));
   }
 
   Future<int> getTodayPlannedMinutes() async {

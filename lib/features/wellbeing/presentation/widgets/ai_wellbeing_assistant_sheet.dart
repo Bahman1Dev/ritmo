@@ -532,14 +532,14 @@ $_wellbeingContext
 
   Future<void> _applySuggestion() async {
     Navigator.pop(context);
-    showModalBottomSheet(
+    unawaited(showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => DailyReflectionSheet(
         onSaved: widget.onSaved,
       ),
-    );
+    ));
     
     if (_proposedWins != null || _proposedGratitude != null || _proposedChallenges != null) {
       try {

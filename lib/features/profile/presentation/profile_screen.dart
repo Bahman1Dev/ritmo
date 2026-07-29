@@ -3669,8 +3669,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: const Icon(CupertinoIcons.doc_text_search, size: 18),
                 label: const Text('مشاهده گزارش‌های فنی خطا', style: TextStyle(fontFamily: 'Vazirmatn')),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.primary,
-                  side: BorderSide(color: colors.primary.withValues(alpha: 0.5)),
+                  foregroundColor: const Color(0xff5B8AF5),
+                  side: BorderSide(color: const Color(0xff5B8AF5).withValues(alpha: 0.5)),
                   minimumSize: const Size(double.infinity, 44),
                 ),
               ),

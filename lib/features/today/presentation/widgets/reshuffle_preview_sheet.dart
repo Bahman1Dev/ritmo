@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -220,7 +221,7 @@ class _ReshufflePreviewSheetState extends State<ReshufflePreviewSheet> {
         ConfirmReshuffleCommand(actions: _reshuffleResult!.actions),
       );
 
-      HapticFeedback.vibrate();
+      unawaited(HapticFeedback.vibrate());
       widget.onApplied();
       
       if (mounted) {

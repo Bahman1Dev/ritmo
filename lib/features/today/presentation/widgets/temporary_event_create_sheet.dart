@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -94,7 +95,7 @@ class _TemporaryEventCreateSheetState extends State<TemporaryEventCreateSheet> {
         'createdAt': nowMs,
       });
 
-      HapticFeedback.mediumImpact();
+      unawaited(HapticFeedback.mediumImpact());
       widget.onSaved();
       if (mounted) {
         Navigator.pop(context);

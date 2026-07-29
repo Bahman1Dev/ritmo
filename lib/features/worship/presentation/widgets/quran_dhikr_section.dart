@@ -1298,7 +1298,7 @@ class _ScaleOnTapState extends State<ScaleOnTap> with SingleTickerProviderStateM
       onTapDown: (_) => _controller.forward(),
       onTapUp: (_) async {
         await _controller.forward();
-        _controller.reverse();
+        unawaited(_controller.reverse());
         widget.onTap();
       },
       onTapCancel: () => _controller.reverse(),

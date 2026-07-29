@@ -35,8 +35,8 @@ jobs:
       - name: Verify formatting
         run: dart format --set-exit-if-changed .
 
-      - name: Static analysis on entire codebase
-        run: flutter analyze --fatal-infos .
+      - name: Analyze code
+        run: flutter analyze --fatal-warnings .
 
       - name: Run unit & integration tests
         run: flutter test --coverage

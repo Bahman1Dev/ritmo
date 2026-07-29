@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -61,7 +62,7 @@ class _EducationManagementSheetState extends State<EducationManagementSheet> {
         );
       }
 
-      HapticFeedback.lightImpact();
+      unawaited(HapticFeedback.lightImpact());
       await _loadCoursesData();
       widget.onSaved();
     } catch (e) {
@@ -73,7 +74,7 @@ class _EducationManagementSheetState extends State<EducationManagementSheet> {
     try {
       await CoursesRepository.instance.deleteCourse(courseId);
 
-      HapticFeedback.mediumImpact();
+      unawaited(HapticFeedback.mediumImpact());
       await _loadCoursesData();
       widget.onSaved();
     } catch (e) {

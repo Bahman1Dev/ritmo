@@ -516,7 +516,7 @@ class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
 
   Future<void> _skipGroupAndPromptQada(String groupTitle, List<WorshipPractice> groupPractices) async {
     final colors = context.colors;
-    HapticFeedback.vibrate();
+    unawaited(HapticFeedback.vibrate());
     
     // Show confirmation dialog to add to Qada debts
     final addToQada = await showDialog<bool>(
@@ -1003,7 +1003,7 @@ class _AllPrayersReminderSettingsSheetState extends State<_AllPrayersReminderSet
   }
 
   Future<void> _save() async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -1222,7 +1222,7 @@ class _ReminderSettingsSheetState extends State<_ReminderSettingsSheet> {
   }
 
   Future<void> _save() async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final db = await DatabaseHelper.instance.database;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -1419,7 +1419,7 @@ class _SnoozeSelectionDialogState extends State<_SnoozeSelectionDialog> {
   }
 
   Future<void> _applySnooze() async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     var mins = _selectedMinutes;
     if (_isCustom) {
       mins = int.tryParse(_customController.text) ?? 15;

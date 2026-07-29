@@ -200,9 +200,9 @@ class _AiWorshipAssistantSheetState extends State<AiWorshipAssistantSheet> {
   }
 
   Future<void> _handleAction(ChatAction action) async {
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     if (action.type == 'openPage' && action.targetRoute != null) {
-      Navigator.pushNamed(context, action.targetRoute!);
+      unawaited(Navigator.pushNamed(context, action.targetRoute!));
       return;
     }
 

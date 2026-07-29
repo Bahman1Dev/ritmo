@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -162,8 +163,8 @@ class _GoalsManagementSheetState extends State<GoalsManagementSheet> {
         whereArgs: [goalId],
       );
 
-      HapticFeedback.lightImpact();
-      _loadGoalsData();
+      unawaited(HapticFeedback.lightImpact());
+      await _loadGoalsData();
       widget.onSaved();
     } catch (e) {
       debugPrint('Error toggling goal step: $e');
@@ -400,7 +401,7 @@ class _GoalsManagementSheetState extends State<GoalsManagementSheet> {
         _isCreatingGoal = false;
       });
 
-      HapticFeedback.mediumImpact();
+      unawaited(HapticFeedback.mediumImpact());
       await _loadGoalsData();
       widget.onSaved();
     } catch (e) {
@@ -414,8 +415,8 @@ class _GoalsManagementSheetState extends State<GoalsManagementSheet> {
       // Cascade delete handles step deletion due to foreign key constraint
       await db.delete('goals', where: 'id = ?', whereArgs: [goalId]);
 
-      HapticFeedback.mediumImpact();
-      _loadGoalsData();
+      unawaited(HapticFeedback.mediumImpact());
+      await _loadGoalsData();
       widget.onSaved();
     } catch (e) {
       debugPrint('Error deleting goal: $e');

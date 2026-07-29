@@ -72,7 +72,7 @@ class _MustahabSectionState extends State<MustahabSection> {
   }
 
   Future<void> _toggleDone(WorshipPractice practice, bool isDone) async {
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     try {
       final db = await DatabaseHelper.instance.database;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -890,7 +890,7 @@ class _ManageMustahabSheetState extends State<_ManageMustahabSheet> {
 
     if (!mounted) return;
 
-    showModalBottomSheet(
+    unawaited(showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
