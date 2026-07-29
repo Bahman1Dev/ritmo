@@ -41,7 +41,6 @@ void main() async {
   await PrivacyErrorSink.instance.init();
 
   FlutterError.onError = (details) {
-    PrivacyErrorSink.instance.logError('FlutterError', details.exceptionAsString(), details.exception, details.stack);
     RitmoLog.error('FlutterError', details.exceptionAsString(), details.exception, details.stack);
     if (kDebugMode) {
       FlutterError.presentError(details);
@@ -49,9 +48,8 @@ void main() async {
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    PrivacyErrorSink.instance.logError('PlatformError', error.toString(), error, stack);
     RitmoLog.error('PlatformError', error.toString(), error, stack);
-    return true;
+    return kReleaseMode;
   };
 
   if (!kIsWeb) {

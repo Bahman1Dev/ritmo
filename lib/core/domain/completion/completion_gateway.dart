@@ -35,7 +35,6 @@ class CompletionGateway {
         final GoalStepCompletion req       => _handleGoalStepCompletion(req),
         final MedicationTake req           => _handleMedicationTake(req),
         final MovementCompletion req       => _handleMovementCompletion(req),
-        _                                  => CompletionOutcome.failure('نوع درخواست شناخته‌شده نیست'),
       };
     } catch (e, st) {
       debugPrint('CompletionGateway submission error: $e\n$st');

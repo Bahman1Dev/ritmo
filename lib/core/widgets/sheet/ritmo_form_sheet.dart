@@ -153,8 +153,10 @@ class _RitmoFormSheetState extends State<RitmoFormSheet> {
             if (_currentStepIndex > 0) ...[
               Expanded(
                 child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                   onPressed: _busy ? null : _onPrevious,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: const Text('قبلی'),
                 ),
               ),

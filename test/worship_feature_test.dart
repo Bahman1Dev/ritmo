@@ -6,6 +6,9 @@ import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:sqflite/sqflite.dart';
 
 class MockWorshipDatabase implements Database {
+  @override
+  bool get isOpen => true;
+
   final Map<String, List<Map<String, dynamic>>> tables = {
     'worship_practices': [],
     'app_settings': [],

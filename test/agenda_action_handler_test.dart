@@ -39,6 +39,9 @@ class MockBatch implements Batch {
 }
 
 class MockDatabase implements Database {
+  @override
+  bool get isOpen => true;
+
   final Map<String, List<Map<String, dynamic>>> tables = {};
 
   @override

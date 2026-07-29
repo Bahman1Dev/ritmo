@@ -203,12 +203,16 @@ class ActionRouter {
     }
 
     if (routine == null) {
-      ActionFeedback.failure(context, message: 'اطلاعات این برنامه در دسترس نیست');
+      if (context.mounted) {
+        ActionFeedback.failure(context, message: 'اطلاعات این برنامه در دسترس نیست');
+      }
       debugPrint('[ActionRouter] routine meta and DB fallback missing for item ${item.id}');
       return;
     }
 
     final targetRoutine = routine;
+
+    if (!context.mounted) return;
 
     await RoutineNiyyahSheet.show(
       context: context,

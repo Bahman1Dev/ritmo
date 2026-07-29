@@ -75,7 +75,7 @@ class PrivacyErrorSink implements LogSink {
           try {
             await files[i].delete();
           } catch (e, st) {
-            RitmoLog.error('PrivacyErrorSink', 'Failed to prune old crash report file', e, st);
+            debugPrint('[PrivacyErrorSink] Failed to prune old crash report file: $e\n$st');
           }
         }
       }
@@ -97,7 +97,7 @@ class PrivacyErrorSink implements LogSink {
 
       await file.writeAsString(content.toString());
     } catch (e, st) {
-      RitmoLog.error('PrivacyErrorSink', 'Failed to write crash report to disk', e, st);
+      debugPrint('[PrivacyErrorSink] Failed to write crash report to disk: $e\n$st');
     }
   }
 
@@ -116,7 +116,7 @@ class PrivacyErrorSink implements LogSink {
       files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
       return files;
     } catch (e, st) {
-      RitmoLog.error('PrivacyErrorSink', 'Failed to list crash reports', e, st);
+      debugPrint('[PrivacyErrorSink] Failed to list crash reports: $e\n$st');
       return [];
     }
   }
@@ -130,7 +130,7 @@ class PrivacyErrorSink implements LogSink {
         await f.delete();
       }
     } catch (e, st) {
-      RitmoLog.error('PrivacyErrorSink', 'Failed to clear crash reports', e, st);
+      debugPrint('[PrivacyErrorSink] Failed to clear crash reports: $e\n$st');
     }
   }
 }

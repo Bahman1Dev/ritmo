@@ -17,4 +17,8 @@ class RitmoHaptics {
   static void subtle() => HapticFeedback.selectionClick();
 
   static void selection() => tap();
+
+  static void sheetOpen() => HapticFeedback.lightImpact();
+  static void sheetClose() => HapticFeedback.selectionClick();
+  static void error() => HapticFeedback.heavyImpact();
 }

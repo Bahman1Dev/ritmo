@@ -356,12 +356,13 @@ class _RitmoActionSheetState extends State<RitmoActionSheet> {
     return switch (domain) {
       AgendaDomain.routine => CupertinoIcons.repeat,
       AgendaDomain.prayer => CupertinoIcons.sun_max,
-      AgendaDomain.worship => CupertinoIcons.heart,
+      AgendaDomain.mustahab => CupertinoIcons.heart,
       AgendaDomain.worshipDebt => CupertinoIcons.book,
       AgendaDomain.sport => CupertinoIcons.sportscourt,
       AgendaDomain.goalStep => CupertinoIcons.flag,
       AgendaDomain.medicine => CupertinoIcons.bandage,
       AgendaDomain.konkur => CupertinoIcons.pencil,
+      AgendaDomain.course => CupertinoIcons.book_circle,
       AgendaDomain.cycle => CupertinoIcons.drop,
     };
   }
@@ -370,7 +371,7 @@ class _RitmoActionSheetState extends State<RitmoActionSheet> {
     return switch (domain) {
       AgendaDomain.routine => 'روتین',
       AgendaDomain.prayer => 'نماز',
-      AgendaDomain.worship => 'مستحبات',
+      AgendaDomain.mustahab => 'مستحبات',
       AgendaDomain.worshipDebt => 'بدهی عبادی',
       AgendaDomain.sport => 'ورزش',
       AgendaDomain.goalStep => 'گام هدف',
