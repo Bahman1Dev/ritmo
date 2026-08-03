@@ -73,7 +73,7 @@ class _DayPlanTemplateManagementScreenState extends State<DayPlanTemplateManagem
                   await DayPlanTemplateService.instance.renameTemplate(template.id, newName);
                   if (ctx.mounted) {
                     Navigator.pop(ctx);
-                    _loadTemplates();
+                    await _loadTemplates();
                     RitmoToast.show(ctx, 'نام قالب تغییر یافت ✏️');
                   }
                 } catch (e) {
@@ -114,7 +114,7 @@ class _DayPlanTemplateManagementScreenState extends State<DayPlanTemplateManagem
                   await DayPlanTemplateService.instance.deleteTemplate(template.id);
                   if (ctx.mounted) {
                     Navigator.pop(ctx);
-                    _loadTemplates();
+                    await _loadTemplates();
                     RitmoToast.show(ctx, 'قالب با موفقیت حذف شد 🗑️');
                   }
                 } catch (e) {
