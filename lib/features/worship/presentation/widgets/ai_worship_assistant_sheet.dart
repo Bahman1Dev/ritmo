@@ -727,9 +727,9 @@ $_worshipContext
                                       if (sess.id == _sessionId) {
                                         if (updated.isNotEmpty) {
                                           _sessionId = updated.first.id;
-                                          _loadMessages();
+                                          await _loadMessages();
                                         } else {
-                                          _loadActiveSession();
+                                          await _loadActiveSession();
                                         }
                                       }
                                     },
