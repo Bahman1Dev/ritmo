@@ -94,7 +94,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
       _pausedAt = null;
 
       if (_isLocked && _lockEnabled && (_biometricEnabled || _useDeviceLock)) {
-        _authenticateDeviceLock();
+        unawaited(_authenticateDeviceLock());
       }
     } catch (e) {
       debugPrint('Error handling app lock resume: $e');
@@ -122,7 +122,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
       if (shouldLock && (_biometricEnabled || _useDeviceLock) && !kIsWeb) {
         Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted && _isLocked) {
-            _authenticateDeviceLock();
+            unawaited(_authenticateDeviceLock());
           }
         });
       }
@@ -153,7 +153,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
       );
 
       if (success) {
-        HapticFeedback.mediumImpact();
+        await HapticFeedback.mediumImpact();
         if (mounted) {
           setState(() {
             _isLocked = false;
@@ -162,7 +162,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
           });
         }
       } else {
-        HapticFeedback.heavyImpact();
+        await HapticFeedback.heavyImpact();
         if (mounted) {
           setState(() {
             _pinErrorMessage = 'احراز هویت انجام نشد. لطفاً مجدداً تلاش کنید.';
