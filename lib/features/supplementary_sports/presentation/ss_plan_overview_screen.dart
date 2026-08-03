@@ -49,7 +49,7 @@ class _SSPlanOverviewScreenState extends State<SSPlanOverviewScreen> {
         _selectedWeek = prefs.getInt('ss_active_week') ?? 1;
       });
     } catch (_) {}
-    _loadWeeklyPlan();
+    await _loadWeeklyPlan();
   }
 
   String? _userGender;
@@ -381,7 +381,7 @@ class _SSPlanOverviewScreenState extends State<SSPlanOverviewScreen> {
       }
 
       if (mounted) {
-        showModalBottomSheet(
+        unawaited(showModalBottomSheet(
           context: context,
           backgroundColor: Colors.transparent,
           builder: (context) {
@@ -551,7 +551,7 @@ class _SSPlanOverviewScreenState extends State<SSPlanOverviewScreen> {
                       final prefs = await SharedPreferences.getInstance();
                       await prefs.setInt('ss_active_week', weekNum);
                     } catch (_) {}
-                    _loadWeeklyPlan();
+                    await _loadWeeklyPlan();
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
