@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -250,7 +251,7 @@ class AssistantActionRegistry {
                 onComplete();
               },
             ),
-          );
+          ));
         }
 
       case AssistantActionType.openPage:
@@ -461,7 +462,7 @@ class AssistantActionRegistry {
                 ],
               ),
             ),
-          );
+          ));
         }
 
       case AssistantActionType.skipRoutine:
@@ -644,7 +645,7 @@ class AssistantActionRegistry {
                 ],
               ),
             ),
-          );
+          ));
         }
 
       case AssistantActionType.editGoal:
