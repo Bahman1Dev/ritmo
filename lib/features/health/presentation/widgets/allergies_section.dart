@@ -81,7 +81,7 @@ class _AllergiesSectionState extends State<AllergiesSection> {
         allergy.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error saving allergy: $e');
     }
@@ -91,7 +91,7 @@ class _AllergiesSectionState extends State<AllergiesSection> {
     try {
       final db = await DatabaseHelper.instance.database;
       await db.delete('allergies', where: 'id = ?', whereArgs: [id]);
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error deleting allergy: $e');
     }
