@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/ai/memory/ai_memory_service.dart';
@@ -196,7 +197,7 @@ class _AiMemoryManagementScreenState extends State<AiMemoryManagementScreen> {
           ),
         );
       },
-    );
+    ));
   }
 
   Future<void> _archiveOrRestoreMemory(MemoryEntry memory, MemoryStatus targetStatus) async {
@@ -290,7 +291,7 @@ class _AiMemoryManagementScreenState extends State<AiMemoryManagementScreen> {
           ),
         );
       },
-    );
+    ));
   }
 
   void _showSecondClearConfirmation() {

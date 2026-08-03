@@ -1,10 +1,12 @@
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:ritmo/core/di/service_locator.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/execution/command_context.dart';
 import 'package:ritmo/core/domain/execution/command_handler.dart';
 import 'package:ritmo/core/domain/execution/events/kernel_event_factory.dart';
 import 'package:ritmo/core/domain/execution/kernel_mutation_result.dart';
+import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/platform/alarm_platform.dart';
 import 'package:ritmo/core/services/snapshot_sync_service.dart';
 
@@ -29,14 +31,35 @@ class SkipOccurrenceHandler
       'resultSource': 'USER',
       'note': command.reason,
       'createdAt': nowMs,
+      'updatedAt': nowMs,
     });
 
-    await context.txn.update(
-      'routine_occurrences',
-      {'status': 'skipped'},
-      where: 'routine_id = ? AND date = ?',
-      whereArgs: [command.routineId, command.dateStr],
+    try {
+      await context.txn.insert('skip_reasons', {
+        'id': 'skip_${command.routineId}_$nowMs',
+        'itemId': command.routineId,
+        'domain': 'routine',
+        'dateStr': command.dateStr,
+        'reason': command.reason ?? 'SKIPPED',
+        'note': null,
+        'createdAt': nowMs,
+      });
+    } catch (e, st) {
+      RitmoLog.warning('SkipOccurrenceHandler', 'Failed to insert skip_reason record', e, st);
+    }
+
+    final affected = await context.txn.rawUpdate(
+      'UPDATE routine_occurrences SET status = ? WHERE routine_id = ? AND date = ?',
+      ['skipped', command.routineId, command.dateStr],
     );
+
+    if (affected == 0) {
+      await context.txn.insert('routine_occurrences', {
+        'routine_id': command.routineId,
+        'date': command.dateStr,
+        'status': 'skipped',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
 
     final dateDateTime = DateTime.parse(command.dateStr);
     final startOfDay = DateTime(

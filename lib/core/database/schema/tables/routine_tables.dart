@@ -128,5 +128,12 @@ class RoutineTables {
     ''');
     await db.execute('CREATE INDEX index_routine_logs_routineId ON routine_logs(routineId);');
     await db.execute('CREATE INDEX index_routine_logs_completionId ON routine_logs(completionId);');
+
+    // 6. routine_actual_completions view for analytics
+    await db.execute('''
+      CREATE VIEW IF NOT EXISTS routine_actual_completions AS
+      SELECT * FROM routine_completions
+      WHERE resultType IN ('FULL', 'PARTIAL', 'MINIMAL', 'DONE', 'LIGHT', 'COMPLETED');
+    ''');
   }
 }

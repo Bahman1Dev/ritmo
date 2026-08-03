@@ -17,6 +17,8 @@ class CompletionOutcome {
   final String? errorMessage;
   final String? userMessage;
 
+  bool get isSuccess => didWrite && errorMessage == null;
+
   factory CompletionOutcome.failure(String message) =>
       CompletionOutcome(didWrite: false, errorMessage: message);
 

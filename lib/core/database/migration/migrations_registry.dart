@@ -2955,6 +2955,50 @@ class MigrationV59 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV60 extends Migration {
+  @override
+  int get version => 60;
+
+  @override
+  Future<void> up(Database db) async {
+    try {
+      // 1. De-duplicate routine_completions keeping the latest record
+      await db.execute('''
+        DELETE FROM routine_completions
+        WHERE id NOT IN (
+          SELECT id FROM (
+            SELECT id, ROW_NUMBER() OVER (
+              PARTITION BY routineId, completionDate, resultType
+              ORDER BY createdAt DESC, id DESC
+            ) as row_num
+            FROM routine_completions
+          ) WHERE row_num = 1
+        );
+      ''');
+
+      // 2. Create unique index on routine_completions
+      await db.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_routine_completions_routine_date_result
+        ON routine_completions(routineId, completionDate, resultType);
+      ''');
+
+      // 3. Create routine_actual_completions view
+      await db.execute('''
+        CREATE VIEW IF NOT EXISTS routine_actual_completions AS
+        SELECT * FROM routine_completions
+        WHERE resultType IN ('FULL', 'PARTIAL', 'MINIMAL', 'DONE', 'LIGHT', 'COMPLETED');
+      ''');
+
+      debugPrint('[MigrationV60] Applied unique index and routine_actual_completions view');
+    } catch (e) {
+      debugPrint('[MigrationV60] Error applying migration V60: $e');
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
 
 
 

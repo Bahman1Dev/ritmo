@@ -315,25 +315,78 @@ class CompletionGateway {
       final idPayload = parts.sublist(1).join(':');
 
       switch (domain) {
-        case 'routine':
-          final rows = await db.query('routine_completions', where: 'id = ?', whereArgs: [idPayload]);
-          if (rows.isNotEmpty) {
-            final comp = rows.first;
-            final rId = comp['routineId']! as String;
-            final dateStr = comp['completionDate']! as String;
+        case 'reschedule':
+          final resParts = idPayload.split('|');
+          if (resParts.length >= 2) {
+            final rId = resParts[0];
+            final fromDateStr = resParts[1];
+            final toDateStr = resParts.length >= 3 ? resParts[2] : null;
 
             await db.transaction((txn) async {
-              await txn.delete('routine_completions', where: 'id = ?', whereArgs: [idPayload]);
-              await txn.delete('skip_reasons', where: 'itemId = ? AND dateStr = ?', whereArgs: [rId, dateStr]);
+              await txn.delete('routine_completions', where: 'routineId = ? AND completionDate = ? AND resultType = ?', whereArgs: [rId, fromDateStr, 'RESCHEDULED']);
+              await txn.delete('skip_reasons', where: 'itemId = ? AND dateStr = ?', whereArgs: [rId, fromDateStr]);
               await txn.rawUpdate('''
                 UPDATE routine_occurrences 
                 SET status = 'pending'
                 WHERE routine_id = ? AND date = ?
-              ''', [rId, dateStr]);
+              ''', [rId, fromDateStr]);
+
+              if (toDateStr != null) {
+                await txn.delete(
+                  'routine_occurrences',
+                  where: 'routine_id = ? AND date = ? AND status = ?',
+                  whereArgs: [rId, toDateStr, 'pending'],
+                );
+              }
             });
 
-            DayAgendaService.instance.invalidateDate(dateStr);
-            return CompletionOutcome.success();
+            DayAgendaService.instance.invalidateDate(fromDateStr);
+            if (toDateStr != null) DayAgendaService.instance.invalidateDate(toDateStr);
+            return CompletionOutcome.success(userMessage: 'انتقال روتین لغو شد');
+          }
+          return CompletionOutcome.failure('توکن لغو جابه‌جایی نامعتبر است');
+
+        case 'routine':
+          final rParts = idPayload.split('|');
+          final rId = rParts[0];
+          final dateStr = rParts.length >= 2 ? rParts[1] : '';
+          final compId = rParts.length >= 3 ? rParts[2] : rId;
+
+          final rows = await db.query('routine_completions', where: 'id = ? OR (routineId = ? AND completionDate = ?)', whereArgs: [compId, rId, dateStr]);
+          if (rows.isNotEmpty) {
+            final comp = rows.first;
+            final actualRoutineId = comp['routineId']! as String;
+            final actualDateStr = comp['completionDate']! as String;
+
+            await db.transaction((txn) async {
+              await txn.delete('routine_completions', where: 'id = ?', whereArgs: [comp['id']]);
+              await txn.delete('skip_reasons', where: 'itemId = ? AND dateStr = ?', whereArgs: [actualRoutineId, actualDateStr]);
+              await txn.rawUpdate('''
+                UPDATE routine_occurrences 
+                SET status = 'pending'
+                WHERE routine_id = ? AND date = ?
+              ''', [actualRoutineId, actualDateStr]);
+
+              if (rParts.length >= 5) {
+                final prevCurr = int.tryParse(rParts[3]);
+                final prevDone = int.tryParse(rParts[4]);
+                if (prevCurr != null && prevDone != null) {
+                  await txn.update(
+                    'routines',
+                    {
+                      'progressionCurrent': prevCurr,
+                      'progressionDoneSinceAdvance': prevDone,
+                      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+                    },
+                    where: 'id = ?',
+                    whereArgs: [actualRoutineId],
+                  );
+                }
+              }
+            });
+
+            DayAgendaService.instance.invalidateDate(actualDateStr);
+            return CompletionOutcome.success(userMessage: 'انجام روتین لغو شد');
           }
           return CompletionOutcome.failure('توکن لغو روتین یافت نشد');
 

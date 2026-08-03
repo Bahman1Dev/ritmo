@@ -1,4 +1,5 @@
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:ritmo/core/di/service_locator.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/execution/command_context.dart';
@@ -56,12 +57,18 @@ class SnoozeReminderHandler
       whereArgs: [command.reminderId],
     );
 
-    await context.txn.update(
-      'routine_occurrences',
-      {'status': 'snoozed'},
-      where: 'routine_id = ? AND date = ?',
-      whereArgs: [routineId, dateStr],
+    final affected = await context.txn.rawUpdate(
+      'UPDATE routine_occurrences SET status = ? WHERE routine_id = ? AND date = ?',
+      ['rescheduled', routineId, dateStr],
     );
+
+    if (affected == 0) {
+      await context.txn.insert('routine_occurrences', {
+        'routine_id': routineId,
+        'date': dateStr,
+        'status': 'rescheduled',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
 
     final routineList = await context.txn.query(
       'routines',

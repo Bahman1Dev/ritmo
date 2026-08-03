@@ -112,12 +112,8 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
   }
 
   Future<void> _archiveEntry(RegistryEntry entry) async {
-    final db = await DatabaseHelper.instance.database;
-    await db.update(
-      'routines',
-      {'isArchived': 1, 'updatedAt': DateTime.now().millisecondsSinceEpoch},
-      where: 'id = ?',
-      whereArgs: [entry.sourceId],
+    await RitmoExecutionKernel.instance.execute(
+      ArchiveRoutineCommand(routineId: entry.sourceId),
     );
 
     RegistryIndex.instance.invalidate();
@@ -128,11 +124,8 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
         context,
         '«${entry.title}» بایگانی شد',
         onUndo: () async {
-          await db.update(
-            'routines',
-            {'isArchived': 0, 'updatedAt': DateTime.now().millisecondsSinceEpoch},
-            where: 'id = ?',
-            whereArgs: [entry.sourceId],
+          await RitmoExecutionKernel.instance.execute(
+            UnarchiveRoutineCommand(routineId: entry.sourceId),
           );
           RegistryIndex.instance.invalidate();
           await _refreshData();
