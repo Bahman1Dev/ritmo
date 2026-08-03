@@ -143,7 +143,7 @@ class _AiMemoryManagementScreenState extends State<AiMemoryManagementScreen> {
 
   Future<void> _editMemory(MemoryEntry memory) async {
     final editController = TextEditingController(text: memory.content);
-    showDialog(
+    unawaited(showDialog(
       context: context,
       builder: (context) {
         final colors = context.colors;
@@ -219,7 +219,7 @@ class _AiMemoryManagementScreenState extends State<AiMemoryManagementScreen> {
   }
 
   Future<void> _deleteMemoryPermanently(MemoryEntry memory) async {
-    showDialog(
+    unawaited(showDialog(
       context: context,
       builder: (context) {
         final colors = context.colors;
@@ -254,11 +254,11 @@ class _AiMemoryManagementScreenState extends State<AiMemoryManagementScreen> {
           ),
         );
       },
-    );
+    ));
   }
 
   Future<void> _clearAllMemories() async {
-    showDialog(
+    unawaited(showDialog(
       context: context,
       builder: (context) {
         final colors = context.colors;
