@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
@@ -193,7 +194,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         );
       },
-    );
+    ));
   }
 
   Future<void> _processImagePick(ImageSource source) async {
