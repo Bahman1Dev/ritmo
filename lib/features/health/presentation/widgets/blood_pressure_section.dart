@@ -129,7 +129,7 @@ class _BloodPressureSectionState extends State<BloodPressureSection> {
       if (!mounted) return;
       FocusScope.of(context).unfocus();
       
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error saving blood pressure log: $e');
     }
@@ -139,7 +139,7 @@ class _BloodPressureSectionState extends State<BloodPressureSection> {
     try {
       final db = await DatabaseHelper.instance.database;
       await db.delete('blood_pressure_logs', where: 'id = ?', whereArgs: [id]);
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error deleting blood pressure log: $e');
     }
