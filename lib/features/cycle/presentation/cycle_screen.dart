@@ -409,14 +409,14 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
 
     if (!hasActivePeriod) {
       if (_forgottenPeriod != null) {
-        showDialog(
+        unawaited(showDialog(
           context: context,
           builder: (context) => _buildConfirmDialog(
             title: 'خطا در ثبت دوره جدید',
             content: 'شما یک دورهٔ باز قدیمی (فراموش‌شده) دارید. لطفاً ابتدا از بخش هشدار بالای صفحه تکلیف آن را مشخص کنید تا بتوانید دورهٔ جدید ثبت کنید.',
             confirmText: 'فهمیدم',
           ),
-        );
+        ));
         return;
       }
       // Start Period dialog
@@ -1586,7 +1586,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
                       value: _settings['cycle_send_fasting_debt_to_worship'] == 'true',
                       activeTrackColor: const Color(0xffEC4899),
                       onChanged: (val) async {
-                        HapticFeedback.selectionClick();
+                        await HapticFeedback.selectionClick();
                         await _toggleFastingDebtSync(val);
                       },
                     ),
@@ -1638,7 +1638,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
                           color: debt.isResolved ? Colors.white10 : const Color(0xffEC4899),
                           borderRadius: BorderRadius.circular(12),
                           onPressed: () async {
-                            HapticFeedback.mediumImpact();
+                            await HapticFeedback.mediumImpact();
                             await CycleConsentBridge.resolveFastingDebt(debt.id, !debt.isResolved);
                             await _loadData();
                           },
@@ -3812,21 +3812,21 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
               Future.delayed(const Duration(milliseconds: 250), () async {
                 if (step == 0) {
                   if (enteredPin == currentPassword) {
-                    HapticFeedback.mediumImpact();
+                    await HapticFeedback.mediumImpact();
                     setSheetState(() {
                       step = 1;
                       enteredPin = '';
                       errorMessage = '';
                     });
                   } else {
-                    HapticFeedback.heavyImpact();
+                    await HapticFeedback.heavyImpact();
                     setSheetState(() {
                       enteredPin = '';
                       errorMessage = 'رمز عبور فعلی نادرست است.';
                     });
                   }
                 } else if (step == 1) {
-                  HapticFeedback.mediumImpact();
+                  await HapticFeedback.mediumImpact();
                   setSheetState(() {
                     firstNewPin = enteredPin;
                     enteredPin = '';
@@ -3846,7 +3846,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
                       },
                       conflictAlgorithm: ConflictAlgorithm.replace,
                     );
-                    HapticFeedback.mediumImpact();
+                    await HapticFeedback.mediumImpact();
                     await _loadData();
                     if (context.mounted) {
                       Navigator.pop(context); // Close sheet
@@ -3857,7 +3857,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
                       );
                     }
                   } else {
-                    HapticFeedback.heavyImpact();
+                    await HapticFeedback.heavyImpact();
                     setSheetState(() {
                       enteredPin = '';
                       firstNewPin = null;
