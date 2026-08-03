@@ -310,7 +310,7 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
       final limit = PremiumService.instance.limitFor(PremiumFeature.unlimitedGoals);
 
       if (activeCount >= limit && mounted) {
-        PremiumUpgradeSheet.show(context);
+        unawaited(PremiumUpgradeSheet.show(context));
         return;
       }
     }
@@ -398,7 +398,7 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
         );
       }
 
-      HapticFeedback.mediumImpact();
+      await HapticFeedback.mediumImpact();
       widget.onSaved();
       if (mounted) {
         Navigator.pop(context);
