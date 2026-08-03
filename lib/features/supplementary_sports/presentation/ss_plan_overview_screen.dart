@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -427,7 +428,7 @@ class _SSPlanOverviewScreenState extends State<SSPlanOverviewScreen> {
               ),
             );
           },
-        );
+        ));
       }
     } catch (e) {
       debugPrint('Error loading version histories: $e');
