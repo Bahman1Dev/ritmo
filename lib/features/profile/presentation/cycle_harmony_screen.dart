@@ -83,7 +83,7 @@ class _CycleHarmonyScreenState extends State<CycleHarmonyScreen> {
 
   Future<void> _toggleCycleModule(bool enabled) async {
     await ModuleManagementService.instance.setModuleEnabled('module_cycle_enabled', enabled);
-    _loadData();
+    await _loadData();
   }
 
   Future<void> _togglePeriodToday() async {
@@ -193,7 +193,7 @@ class _CycleHarmonyScreenState extends State<CycleHarmonyScreen> {
     }
 
     RitmoEvents.notifyRoutineChanged();
-    _loadData();
+    await _loadData();
   }
 
   Future<void> _showLogPeriodDialog({Map<String, dynamic>? log}) async {
@@ -339,7 +339,7 @@ class _CycleHarmonyScreenState extends State<CycleHarmonyScreen> {
                       if (context.mounted) {
                         Navigator.pop(context);
                       }
-                      _loadData();
+                      await _loadData();
                     },
                     child: const Text('ذخیره', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
                   ),
@@ -446,7 +446,7 @@ class _CycleHarmonyScreenState extends State<CycleHarmonyScreen> {
                       if (context.mounted) {
                         Navigator.pop(context);
                       }
-                      _loadData();
+                      await _loadData();
                     },
                     child: const Text('ذخیره', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
                   ),
@@ -886,7 +886,7 @@ class _CycleHarmonyScreenState extends State<CycleHarmonyScreen> {
                       }
 
                       RitmoEvents.notifyRoutineChanged();
-                      _loadData();
+                      await _loadData();
                     },
                     child: Ink(
                       decoration: BoxDecoration(
@@ -1276,7 +1276,7 @@ class _CycleHarmonyScreenState extends State<CycleHarmonyScreen> {
                                   final db = await DatabaseHelper.instance.database;
                                   await db.delete('cycle_logs', where: 'id = ?', whereArgs: [log['id']]);
                                   RitmoEvents.notifyRoutineChanged();
-                                  _loadData();
+                                  await _loadData();
                                 }
                               },
                               tooltip: 'حذف دوره',
