@@ -81,7 +81,7 @@ class _VaccinationsSectionState extends State<VaccinationsSection> {
         vac.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error saving vaccination: $e');
     }
@@ -91,7 +91,7 @@ class _VaccinationsSectionState extends State<VaccinationsSection> {
     try {
       final db = await DatabaseHelper.instance.database;
       await db.delete('vaccinations', where: 'id = ?', whereArgs: [id]);
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error deleting vaccination: $e');
     }
