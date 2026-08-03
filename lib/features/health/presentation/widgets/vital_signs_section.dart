@@ -132,7 +132,7 @@ class _VitalSignsSectionState extends State<VitalSignsSection> with SingleTicker
       setState(() {
         _height = parsedHeight;
       });
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error saving height: $e');
     }
@@ -183,7 +183,7 @@ class _VitalSignsSectionState extends State<VitalSignsSection> with SingleTicker
       if (!mounted) return;
       FocusScope.of(context).unfocus();
       
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error saving vital log: $e');
     }
@@ -193,7 +193,7 @@ class _VitalSignsSectionState extends State<VitalSignsSection> with SingleTicker
     try {
       final db = await DatabaseHelper.instance.database;
       await db.delete('vital_signs_logs', where: 'id = ?', whereArgs: [id]);
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error deleting vital log: $e');
     }
