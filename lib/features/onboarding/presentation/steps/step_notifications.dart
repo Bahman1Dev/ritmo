@@ -22,7 +22,7 @@ class _StepNotificationsState extends State<StepNotifications> {
     setState(() {
       _isLoading = true;
     });
-    HapticFeedback.mediumImpact();
+    await HapticFeedback.mediumImpact();
 
     try {
       final flutterLocalNotificationsPlugin =
@@ -123,7 +123,7 @@ class _StepNotificationsState extends State<StepNotifications> {
           const SizedBox(height: 12),
           TextButton(
             onPressed: () async {
-              HapticFeedback.lightImpact();
+              await HapticFeedback.lightImpact();
               try {
                 final db = await DatabaseHelper.instance.database;
                 final now = DateTime.now().millisecondsSinceEpoch;
