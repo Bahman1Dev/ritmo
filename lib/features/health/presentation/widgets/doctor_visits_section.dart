@@ -161,7 +161,7 @@ class _DoctorVisitsSectionState extends State<DoctorVisitsSection> with SingleTi
         await db.delete('pending_reminders', where: 'id = ?', whereArgs: [alarmId]);
       }
 
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error saving visit: $e');
     }
@@ -175,7 +175,7 @@ class _DoctorVisitsSectionState extends State<DoctorVisitsSection> with SingleTi
       // Remove from pending_reminders so snapshot stays clean
       await db.delete('pending_reminders', where: 'id = ?', whereArgs: ['visit_$id']);
       await SnapshotSyncService.syncAll();
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error deleting visit: $e');
     }
