@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/models/inbox_item.dart';
 import 'package:ritmo/core/services/central_inbox_service.dart';
@@ -17,46 +18,46 @@ class InboxNavigator {
     // 2. Resolve destination module/action
     switch (item.linkModule) {
       case 'routines':
-        Navigator.push(
+        unawaited(Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const CalendarScreen()),
-        );
+        ));
 
       case 'insights':
-        Navigator.push(
+        unawaited(Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const InsightsScreen()),
-        );
+        ));
 
       case 'assistant':
-        Navigator.push(
+        unawaited(Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const AssistantScreen()),
-        );
+        ));
 
       case 'home':
         if (item.linkAction == 'open_checkin') {
-          showModalBottomSheet(
+          unawaited(showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
             builder: (context) => MorningCheckinSheet(
               onSaved: () {
-                CentralInboxService.markActioned(item.id);
+                unawaited(CentralInboxService.markActioned(item.id));
               },
             ),
-          );
+          ));
         } else if (item.linkAction == 'open_reflection') {
-          showModalBottomSheet(
+          unawaited(showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
             builder: (context) => DailyReflectionSheet(
               onSaved: () {
-                CentralInboxService.markActioned(item.id);
+                unawaited(CentralInboxService.markActioned(item.id));
               },
             ),
-          );
+          ));
         } else {
           // Fallback: pop current screen or show snackbar
           ScaffoldMessenger.of(context).showSnackBar(
