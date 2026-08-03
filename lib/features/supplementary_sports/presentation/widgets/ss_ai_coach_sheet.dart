@@ -221,9 +221,9 @@ class _SSAiCoachSheetState extends State<SSAiCoachSheet> {
   }
 
   Future<void> _handleAction(ChatAction action) async {
-    HapticFeedback.mediumImpact();
-    if (action.type == 'openPage' && action.targetRoute != null) {
-      Navigator.pushNamed(context, action.targetRoute!);
+    await HapticFeedback.mediumImpact();
+    if (action.type == 'openPage' && action.targetRoute != null && context.mounted) {
+      unawaited(Navigator.pushNamed(context, action.targetRoute!));
       return;
     }
 
