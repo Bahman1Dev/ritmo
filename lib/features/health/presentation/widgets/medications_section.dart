@@ -265,9 +265,9 @@ class _MedicationsSectionState extends State<MedicationsSection> with SingleTick
       ));
       RitmoEvents.notifyRoutineChanged();
 
-      _loadData();
+      await _loadData();
       if (_tabController.index == 2) {
-        _loadHistory();
+        await _loadHistory();
       }
     } catch (e) {
       debugPrint('Error logging scheduled medication: $e');
@@ -376,9 +376,9 @@ class _MedicationsSectionState extends State<MedicationsSection> with SingleTick
       ));
       RitmoEvents.notifyRoutineChanged();
 
-      _loadData();
+      await _loadData();
       if (_tabController.index == 2) {
-        _loadHistory();
+        await _loadHistory();
       }
     } catch (e) {
       debugPrint('Error consuming medication: $e');
@@ -395,7 +395,7 @@ class _MedicationsSectionState extends State<MedicationsSection> with SingleTick
         whereArgs: [id],
       );
       RitmoEvents.notifyRoutineChanged();
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error archiving: $e');
     }
