@@ -200,7 +200,7 @@ class _BloodSugarSectionState extends State<BloodSugarSection> {
       if (!mounted) return;
       FocusScope.of(context).unfocus();
       
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error saving blood sugar log: $e');
     }
@@ -210,7 +210,7 @@ class _BloodSugarSectionState extends State<BloodSugarSection> {
     try {
       final db = await DatabaseHelper.instance.database;
       await db.delete('blood_sugar_logs', where: 'id = ?', whereArgs: [id]);
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error deleting blood sugar log: $e');
     }
