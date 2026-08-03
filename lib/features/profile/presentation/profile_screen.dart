@@ -158,7 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _pickProfileImage() async {
     final colors = context.colors;
     
-    showModalBottomSheet(
+    unawaited(showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
@@ -2172,7 +2172,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (confirm ?? false) {
       try {
         await DatabaseHelper.instance.deleteNotificationHistory();
-        HapticFeedback.mediumImpact();
+        await HapticFeedback.mediumImpact();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
