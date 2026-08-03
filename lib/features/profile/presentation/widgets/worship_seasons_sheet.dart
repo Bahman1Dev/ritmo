@@ -149,9 +149,9 @@ class _WorshipSeasonsSheetState extends State<WorshipSeasonsSheet> {
       );
 
       await _triggerSystemSync();
-      HapticFeedback.mediumImpact();
+      await HapticFeedback.mediumImpact();
       _closeForm();
-      _loadSeasons();
+      await _loadSeasons();
     } catch (e) {
       debugPrint('Error saving worship season: $e');
     }
@@ -173,8 +173,8 @@ class _WorshipSeasonsSheetState extends State<WorshipSeasonsSheet> {
       );
 
       await _triggerSystemSync();
-      HapticFeedback.mediumImpact();
-      _loadSeasons();
+      await HapticFeedback.mediumImpact();
+      await _loadSeasons();
     } catch (e) {
       debugPrint('Error toggling season active: $e');
     }
@@ -186,8 +186,8 @@ class _WorshipSeasonsSheetState extends State<WorshipSeasonsSheet> {
       await db.delete('worship_seasons', where: 'id = ?', whereArgs: [id]);
       
       await _triggerSystemSync();
-      HapticFeedback.mediumImpact();
-      _loadSeasons();
+      await HapticFeedback.mediumImpact();
+      await _loadSeasons();
     } catch (e) {
       debugPrint('Error deleting worship season: $e');
     }
