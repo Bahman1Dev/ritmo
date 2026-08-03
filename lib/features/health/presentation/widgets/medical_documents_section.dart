@@ -132,7 +132,7 @@ class _MedicalDocumentsSectionState extends State<MedicalDocumentsSection> {
         }
       });
 
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error saving medical document: $e');
     }
@@ -142,7 +142,7 @@ class _MedicalDocumentsSectionState extends State<MedicalDocumentsSection> {
     try {
       final db = await DatabaseHelper.instance.database;
       await db.delete('medical_documents', where: 'id = ?', whereArgs: [id]);
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error deleting document: $e');
     }
