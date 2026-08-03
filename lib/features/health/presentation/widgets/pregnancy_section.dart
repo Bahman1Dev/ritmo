@@ -253,7 +253,7 @@ class _PregnancySectionState extends State<PregnancySection> with TickerProvider
         });
       }
 
-      _checkVisibilityAndLoad();
+      await _checkVisibilityAndLoad();
     } catch (e) {
       debugPrint('Error starting pregnancy tracker: $e');
     }
@@ -299,7 +299,7 @@ class _PregnancySectionState extends State<PregnancySection> with TickerProvider
         where: 'id = ?',
         whereArgs: [trackerId],
       );
-      _checkVisibilityAndLoad();
+      await _checkVisibilityAndLoad();
     } catch (e) {
       debugPrint('Error ending pregnancy tracker: $e');
     }
@@ -317,7 +317,7 @@ class _PregnancySectionState extends State<PregnancySection> with TickerProvider
         where: 'id = ?',
         whereArgs: [id],
       );
-      _checkVisibilityAndLoad();
+      await _checkVisibilityAndLoad();
     } catch (e) {
       debugPrint('Error toggling checkup: $e');
     }
@@ -368,7 +368,7 @@ class _PregnancySectionState extends State<PregnancySection> with TickerProvider
         _isCountingKicks = false;
         _kickSessionStart = null;
       });
-      _checkVisibilityAndLoad();
+      await _checkVisibilityAndLoad();
     } catch (e) {
       debugPrint('Error saving kick session: $e');
     }
@@ -426,7 +426,7 @@ class _PregnancySectionState extends State<PregnancySection> with TickerProvider
         _isTimingContraction = false;
         _contractionStart = null;
       });
-      _checkVisibilityAndLoad();
+      await _checkVisibilityAndLoad();
     } catch (e) {
       debugPrint('Error saving contraction: $e');
     }
@@ -505,7 +505,7 @@ class _PregnancySectionState extends State<PregnancySection> with TickerProvider
         const SnackBar(content: Text('علائم و مکمل‌های روز با موفقیت ثبت شدند.', style: TextStyle(fontFamily: 'Vazirmatn'))),
       );
 
-      _checkVisibilityAndLoad();
+      await _checkVisibilityAndLoad();
     } catch (e) {
       debugPrint('Error saving symptoms: $e');
     }
