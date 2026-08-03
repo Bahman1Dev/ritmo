@@ -171,11 +171,11 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                       onRefresh: _loadData,
                       onRestoreGoal: (goalId) async {
                         await GoalsRepository.instance.updateGoalStatus(goalId, 'ACTIVE');
-                        _loadData();
+                        await _loadData();
                       },
                       onDeleteGoal: (goalId) async {
                         await GoalsRepository.instance.deleteGoal(goalId);
-                        _loadData();
+                        await _loadData();
                       },
                     ),
                   ),
@@ -414,11 +414,11 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                                 onRefresh: _loadData,
                                 onToggleStep: (step, goalId) async {
                                   await GoalsRepository.instance.toggleStep(step.id, step.isCompleted, goalId);
-                                  _loadData();
+                                  await _loadData();
                                 },
                                 onDeleteGoal: (goalId) async {
                                   await GoalsRepository.instance.deleteGoal(goalId);
-                                  _loadData();
+                                  await _loadData();
                                 },
                                 onEditGoal: (goal) {
                                   _showCreateGoalSheet(editGoal: goal);
@@ -433,11 +433,11 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                                 onRefresh: _loadData,
                                 onToggleStep: (step, goalId) async {
                                   await GoalsRepository.instance.toggleStep(step.id, step.isCompleted, goalId);
-                                  _loadData();
+                                  await _loadData();
                                 },
                                 onDeleteGoal: (goalId) async {
                                   await GoalsRepository.instance.deleteGoal(goalId);
-                                  _loadData();
+                                  await _loadData();
                                 },
                                 onEditGoal: (goal) {
                                   _showCreateGoalSheet(editGoal: goal);
@@ -452,7 +452,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                           onRefresh: _loadData,
                           onToggleStep: (step, goalId) async {
                             await GoalsRepository.instance.toggleStep(step.id, step.isCompleted, goalId);
-                            _loadData();
+                            await _loadData();
                           },
                         ),
                       ],
