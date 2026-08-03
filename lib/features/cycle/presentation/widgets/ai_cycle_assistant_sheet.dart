@@ -523,11 +523,11 @@ class _AiCycleAssistantSheetState extends State<AiCycleAssistantSheet> {
   }
 
   Future<void> _handleAction(ChatAction action) async {
-    HapticFeedback.mediumImpact();
+    await HapticFeedback.mediumImpact();
     if (action.type == 'openPage') {
       final route = action.targetRoute ?? action.payload['targetRoute']?.toString();
-      if (route != null && route.isNotEmpty) {
-        Navigator.pushNamed(context, route);
+      if (route != null && route.isNotEmpty && context.mounted) {
+        unawaited(Navigator.pushNamed(context, route));
       }
       return;
     }
