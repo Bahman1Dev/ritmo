@@ -114,7 +114,7 @@ class _CycleLockGateState extends State<CycleLockGate> with WidgetsBindingObserv
       );
       
       if (didAuthenticate) {
-        HapticFeedback.mediumImpact();
+        await HapticFeedback.mediumImpact();
         if (mounted) {
           setState(() {
             _isLocked = false;
@@ -170,7 +170,7 @@ class _CycleLockGateState extends State<CycleLockGate> with WidgetsBindingObserv
                 conflictAlgorithm: ConflictAlgorithm.replace,
               );
               
-              HapticFeedback.mediumImpact();
+              await HapticFeedback.mediumImpact();
               final settingsList = await db.query('app_settings');
               final updatedSettings = {for (final s in settingsList) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''};
               
@@ -183,7 +183,7 @@ class _CycleLockGateState extends State<CycleLockGate> with WidgetsBindingObserv
                 });
               }
             } else {
-              HapticFeedback.heavyImpact();
+              await HapticFeedback.heavyImpact();
               if (mounted) {
                 setState(() {
                   _enteredPin = '';
@@ -195,7 +195,7 @@ class _CycleLockGateState extends State<CycleLockGate> with WidgetsBindingObserv
           }
         } else {
           if (_enteredPin == _settings['app_lock_password']) {
-            HapticFeedback.mediumImpact();
+            await HapticFeedback.mediumImpact();
             if (mounted) {
               setState(() {
                 _isLocked = false;
@@ -203,7 +203,7 @@ class _CycleLockGateState extends State<CycleLockGate> with WidgetsBindingObserv
               });
             }
           } else {
-            HapticFeedback.heavyImpact();
+            await HapticFeedback.heavyImpact();
             if (mounted) {
               setState(() {
                 _enteredPin = '';
