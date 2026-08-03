@@ -84,7 +84,7 @@ class _CycleRemindersScreenState extends State<CycleRemindersScreen> {
                 ['app_lock_password', _enteredPin, nowMs],
               );
               
-              HapticFeedback.mediumImpact();
+              await HapticFeedback.mediumImpact();
               final settingsList = await db.query('app_settings');
               if (mounted) {
                 setState(() {
@@ -95,7 +95,7 @@ class _CycleRemindersScreenState extends State<CycleRemindersScreen> {
                 });
               }
             } else {
-              HapticFeedback.heavyImpact();
+              await HapticFeedback.heavyImpact();
               if (mounted) {
                 setState(() {
                   _enteredPin = '';
@@ -107,7 +107,7 @@ class _CycleRemindersScreenState extends State<CycleRemindersScreen> {
           }
         } else {
           if (_enteredPin == _settings['app_lock_password']) {
-            HapticFeedback.mediumImpact();
+            await HapticFeedback.mediumImpact();
             if (mounted) {
               setState(() {
                 _isLocked = false;
@@ -115,7 +115,7 @@ class _CycleRemindersScreenState extends State<CycleRemindersScreen> {
               });
             }
           } else {
-            HapticFeedback.heavyImpact();
+            await HapticFeedback.heavyImpact();
             if (mounted) {
               setState(() {
                 _enteredPin = '';
