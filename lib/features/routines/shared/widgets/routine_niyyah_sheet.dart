@@ -127,10 +127,11 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
           top: 16,
           bottom: MediaQuery.of(context).padding.bottom + 20,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // Handle bar
             Center(
               child: Container(
@@ -333,7 +334,8 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

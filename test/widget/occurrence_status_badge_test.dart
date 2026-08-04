@@ -6,10 +6,10 @@ import 'package:ritmo/core/widgets/occurrence_status_badge.dart';
 void main() {
   Widget buildTestableWidget(Widget child) {
     return MaterialApp(
+      theme: RitmoTheme.lightTheme,
+      darkTheme: RitmoTheme.darkTheme,
       home: Scaffold(
-        body: RitmoTheme(
-          child: child,
-        ),
+        body: child,
       ),
     );
   }

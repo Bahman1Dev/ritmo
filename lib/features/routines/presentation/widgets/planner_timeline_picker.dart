@@ -128,9 +128,12 @@ class _PlannerTimelinePickerState extends State<PlannerTimelinePicker> {
                               ]
                             : null,
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                           Text(
                             line1,
                             style: TextStyle(
@@ -166,6 +169,7 @@ class _PlannerTimelinePickerState extends State<PlannerTimelinePicker> {
                             ),
                           ),
                         ],
+                        ),
                       ),
                     ),
                   );
