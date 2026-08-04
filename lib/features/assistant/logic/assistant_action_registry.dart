@@ -4,6 +4,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/completion/completion_gateway.dart';
+import 'package:ritmo/core/domain/completion/completion_request.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/engines/routine_occurrence_generator.dart';
@@ -413,46 +415,11 @@ class AssistantActionRegistry {
                   TextButton(
                     onPressed: () async {
                       Navigator.pop(context);
-                      final now = DateTime.now().millisecondsSinceEpoch;
                       final todayStr = DateTime.now().toIso8601String().substring(0, 10);
                       
-                      final existing = await db.query(
-                        'routine_completions',
-                        where: 'routineId = ? AND completionDate = ?',
-                        whereArgs: [routineId, todayStr],
+                      await CompletionGateway.instance.submit(
+                        RoutineCompletion(routineId: routineId, dateStr: todayStr),
                       );
-
-                      if (existing.isNotEmpty) {
-                        await db.update(
-                          'routine_completions',
-                          {
-                            'completionTime': now,
-                            'resultType': 'COMPLETED',
-                          },
-                          where: 'routineId = ? AND completionDate = ?',
-                          whereArgs: [routineId, todayStr],
-                        );
-                      } else {
-                        await db.insert('routine_completions', {
-                          'id': 'comp_${routineId}_$now',
-                          'routineId': routineId,
-                          'completionDate': todayStr,
-                          'completionTime': now,
-                          'resultType': 'COMPLETED',
-                          'resultSource': 'USER',
-                          'createdAt': now,
-                        });
-                      }
-
-                      // Save to audit
-                      final auditId = '${DateTime.now().microsecondsSinceEpoch}_${math.Random().nextInt(10000)}';
-                      await db.insert('assistant_audit_log', {
-                        'id': auditId,
-                        'actionType': 'completeRoutine',
-                        'targetKey': routineId,
-                        'newValue': 'COMPLETED',
-                        'appliedAt': DateTime.now().millisecondsSinceEpoch,
-                      });
 
                       RitmoEvents.notifyRoutineChanged();
                       onComplete();
@@ -493,46 +460,11 @@ class AssistantActionRegistry {
                   TextButton(
                     onPressed: () async {
                       Navigator.pop(context);
-                      final now = DateTime.now().millisecondsSinceEpoch;
                       final todayStr = DateTime.now().toIso8601String().substring(0, 10);
                       
-                      final existing = await db.query(
-                        'routine_completions',
-                        where: 'routineId = ? AND completionDate = ?',
-                        whereArgs: [routineId, todayStr],
+                      await CompletionGateway.instance.submit(
+                        RoutineSkip(routineId: routineId, dateStr: todayStr),
                       );
-
-                      if (existing.isNotEmpty) {
-                        await db.update(
-                          'routine_completions',
-                          {
-                            'completionTime': now,
-                            'resultType': 'SKIPPED',
-                          },
-                          where: 'routineId = ? AND completionDate = ?',
-                          whereArgs: [routineId, todayStr],
-                        );
-                      } else {
-                        await db.insert('routine_completions', {
-                          'id': 'skip_${routineId}_$now',
-                          'routineId': routineId,
-                          'completionDate': todayStr,
-                          'completionTime': now,
-                          'resultType': 'SKIPPED',
-                          'resultSource': 'USER',
-                          'createdAt': now,
-                        });
-                      }
-
-                      // Save to audit
-                      final auditId = '${DateTime.now().microsecondsSinceEpoch}_${math.Random().nextInt(10000)}';
-                      await db.insert('assistant_audit_log', {
-                        'id': auditId,
-                        'actionType': 'skipRoutine',
-                        'targetKey': routineId,
-                        'newValue': 'SKIPPED',
-                        'appliedAt': DateTime.now().millisecondsSinceEpoch,
-                      });
 
                       RitmoEvents.notifyRoutineChanged();
                       onComplete();

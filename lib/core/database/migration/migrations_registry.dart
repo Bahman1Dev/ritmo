@@ -6,6 +6,7 @@ import 'package:ritmo/core/database/schema/tables/day_plan_tables.dart';
 import 'package:ritmo/core/database/schema/tables/supplementary_sports_tables.dart';
 import 'package:ritmo/core/database/seed/seed_service.dart';
 import 'package:ritmo/core/domain/models/duration_bounds.dart';
+import 'package:ritmo/core/time/ritmo_clock.dart';
 import 'package:sqflite/sqflite.dart';
 
 class MigrationV2 extends Migration {
@@ -2899,7 +2900,7 @@ class MigrationV59 extends Migration {
         }
       }
 
-      final nowStr = DateTime.now().toIso8601String().substring(0, 10);
+      final nowStr = DateTime.now().toIso8601String().split('T').first;
       int syncedOccurrencesCount = 0;
       for (final sched in schedules) {
         final rId = sched['routineId'] as String?;

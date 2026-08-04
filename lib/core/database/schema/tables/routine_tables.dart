@@ -92,6 +92,7 @@ class RoutineTables {
           delayMinutes INTEGER,
           note TEXT,
           actual_duration_minutes INTEGER,
+          partialRatio REAL,
           createdAt INTEGER NOT NULL,
           FOREIGN KEY(routineId) REFERENCES routines(id) ON DELETE CASCADE
       );
