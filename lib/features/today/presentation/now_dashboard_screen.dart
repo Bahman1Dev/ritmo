@@ -17,6 +17,7 @@ import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/engines/ritmo_intelligence_engine.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/domain/models/daily_behavior.dart';
+import 'package:ritmo/core/domain/models/duration_bounds.dart';
 import 'package:ritmo/core/domain/models/inbox_item.dart';
 import 'package:ritmo/core/localization/locale_repository.dart';
 import 'package:ritmo/core/platform/notification_platform.dart';
@@ -610,14 +611,14 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
         SkipOccurrenceCommand(routineId: routine.id, dateStr: todayStr),
       );
     } else {
-      final fullMinutes = routine.currentTargetMinutes > 0
-          ? routine.currentTargetMinutes
-          : _safeDur(routine.targetDurationMinutes, 30);
-      final lightMinutes = _safeDur(routine.lightDurationMinutes, 20);
-      final minimalMinutes = _safeDur(routine.minimalDurationMinutes, 10);
-      final duration = customDuration ?? (resultType == 'FULL'
-          ? fullMinutes
-          : (resultType == 'LIGHT' ? lightMinutes : minimalMinutes));
+      final duration = DurationBounds.resolveForCompletion(
+        targetMinutes: routine.targetDurationMinutes,
+        lightMinutes: routine.lightDurationMinutes,
+        minimalMinutes: routine.minimalDurationMinutes,
+        resultType: resultType,
+        customDuration: customDuration,
+        currentTargetMinutes: routine.currentTargetMinutes,
+      );
 
       await RitmoExecutionKernel.instance.execute(
         CompleteOccurrenceCommand(

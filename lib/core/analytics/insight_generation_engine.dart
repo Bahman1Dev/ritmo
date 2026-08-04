@@ -204,7 +204,8 @@ class InsightGenerationEngine implements CachedEngine<InsightGenerationEngineInp
       // Query religious routines
       final religiousRoutines = await db.query(
         'routines',
-        where: "category = 'RELIGIOUS' AND isArchived = 0",
+        where: 'category = ? AND isArchived = 0',
+        whereArgs: ['RELIGIOUS'],
       );
       
       final religiousIds = religiousRoutines.map((r) => r['id']! as String).toList();

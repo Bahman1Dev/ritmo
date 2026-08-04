@@ -5,6 +5,7 @@ import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 import 'package:ritmo/core/ux/ritmo_pressable.dart';
+import 'package:ritmo/core/widgets/ritmo_swipeable_row.dart';
 
 class RoutineCard extends StatelessWidget {
 
@@ -37,52 +38,10 @@ class RoutineCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: Dismissible(
-          key: ValueKey('swipe_${routine.id}_${DateTime.now().millisecondsSinceEpoch}'),
-          confirmDismiss: (direction) async {
-            RitmoHaptics.confirm();
-            if (direction == DismissDirection.startToEnd) {
-              // Swipe Right (startToEnd) -> Swipe Right options / management
-              if (onSwipeManage != null) {
-                onSwipeManage!();
-              }
-            } else {
-              // Swipe Left (endToStart) -> Niyyah Sheet / Tap Action
-              onTap();
-            }
-            return false; // Never dismiss directly
-          },
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: colors.success.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Row(
-              children: [
-                Icon(CupertinoIcons.sparkles, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text('اقدامات روتین ✨', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: Colors.white)),
-              ],
-            ),
-          ),
-          secondaryBackground: Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: colors.warning.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text('مدیریت و تعویق ⏳', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: Colors.white)),
-                SizedBox(width: 8),
-                Icon(CupertinoIcons.ellipsis, color: Colors.white, size: 20),
-              ],
-            ),
-          ),
+        child: RitmoSwipeableRow(
+          itemId: routine.id,
+          onSwipeComplete: onComplete ?? onTap,
+          onSwipeManage: onSwipeManage ?? onSnooze,
           child: RitmoPressable(
             onTap: onTap,
             child: Container(

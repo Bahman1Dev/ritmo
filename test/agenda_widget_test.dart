@@ -125,7 +125,9 @@ void main() {
         ),
       );
 
-      final container = tester.widget<Container>(find.byType(Container).first);
+      final container = tester.widget<Container>(
+        find.descendant(of: find.byType(PrayerAgendaCard), matching: find.byType(Container)).first,
+      );
       final decoration = container.decoration! as BoxDecoration;
       expect(decoration.color, isNotNull);
       expect(decoration.border, isNotNull);

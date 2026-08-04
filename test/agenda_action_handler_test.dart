@@ -127,6 +127,9 @@ class MockTransaction implements Transaction {
   final MockDatabase db;
 
   @override
+  bool get isOpen => db.isOpen;
+
+  @override
   Batch batch() => MockBatch(db);
 
   @override

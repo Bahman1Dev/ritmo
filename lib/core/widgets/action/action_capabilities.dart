@@ -30,4 +30,7 @@ class ActionCapabilities {
   });
 
   static const ActionCapabilities empty = ActionCapabilities();
+
+  /// Indicates if this action is simple (no variants, timer, or count selection).
+  bool get isSimple => variants.isEmpty && !canTimer && !canIncrementalCount;
 }

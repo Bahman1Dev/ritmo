@@ -19,6 +19,7 @@ class OccurrenceStatusBadge extends StatelessWidget {
       'done' || 'completed' || 'full' => ('انجام شد', colors.success, Icons.check_circle_rounded),
       'skipped' => ('رد شد', colors.error, Icons.cancel_rounded),
       'rescheduled' || 'snoozed' => ('موکول شد', colors.warning, Icons.update_rounded),
+      'unfulfilled' || 'past_unfulfilled' || 'missed' => ('ثبت‌نشده', colors.textSecondary, Icons.history_rounded),
       _ => ('در انتظار', colors.textSecondary, Icons.hourglass_bottom_rounded),
     };
 

@@ -46,6 +46,9 @@ class AlarmSchedulerMockBatch implements Batch {
 }
 
 class AlarmSchedulerMockDatabase implements Database {
+  @override
+  bool get isOpen => true;
+
   final Map<String, List<Map<String, dynamic>>> tables = {};
 
   @override
@@ -158,6 +161,9 @@ class AlarmSchedulerMockDatabase implements Database {
 class AlarmSchedulerMockTransaction implements Transaction {
   AlarmSchedulerMockTransaction(this.db);
   final AlarmSchedulerMockDatabase db;
+
+  @override
+  bool get isOpen => db.isOpen;
 
   @override
   Batch batch() {
