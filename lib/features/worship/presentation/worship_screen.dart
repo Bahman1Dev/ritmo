@@ -6,6 +6,7 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/services/prayer_time_provider.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
+import 'package:ritmo/core/widgets/ritmo_module_app_bar.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:ritmo/features/worship/presentation/widgets/ai_worship_assistant_sheet.dart';
 import 'package:ritmo/features/worship/presentation/widgets/mustahab_section.dart';
@@ -339,15 +340,18 @@ class _WorshipScreenState extends State<WorshipScreen> {
         context: context,
         child: Scaffold(
           backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: const Text(
-              'عبادت',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 19.5,
-                fontFamily: 'Vazirmatn',
+          appBar: RitmoModuleAppBar(
+            title: 'عبادت و معنویت',
+            subtitle: 'اذان، ادعیه و نمازهای مستحبی',
+            statusBadge: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xff10B981).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                'فعال',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Color(0xff10B981), fontWeight: FontWeight.bold),
               ),
             ),
             actions: [

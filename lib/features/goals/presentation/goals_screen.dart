@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ritmo/core/analytics/goals_engine.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
-import 'package:ritmo/core/ux/ritmo_directional_icon.dart';
+import 'package:ritmo/core/widgets/ritmo_module_app_bar.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
 import 'package:ritmo/features/courses/models/course_models.dart';
 import 'package:ritmo/features/goals/logic/goals_repository.dart';
@@ -262,20 +262,18 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: colors.bg,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: RitmoIcons.back(context, color: colors.textPrimary),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(
-            'اهداف و برنامه‌ها',
-            style: TextStyle(
-              fontSize: 17.5,
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
-              fontFamily: 'Vazirmatn',
+        appBar: RitmoModuleAppBar(
+          title: 'اهداف و دستاوردها',
+          subtitle: 'نقشه راه رشد و گام‌های عملی',
+          statusBadge: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xffF97316).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text(
+              'فعال',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Color(0xffF97316), fontWeight: FontWeight.bold),
             ),
           ),
           actions: [

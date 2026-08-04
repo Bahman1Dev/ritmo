@@ -7,6 +7,7 @@ import 'package:ritmo/core/analytics/health_engine.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
+import 'package:ritmo/core/widgets/ritmo_module_app_bar.dart';
 import 'package:ritmo/features/health/models/health_models.dart';
 import 'package:ritmo/features/health/presentation/pages/health_insights_page.dart';
 // Import new subpages
@@ -391,6 +392,28 @@ class _HealthScreenState extends State<HealthScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: colors.bg,
+        appBar: RitmoModuleAppBar(
+          title: 'دارو و سلامت',
+          subtitle: 'پایش داروها، سنجش‌های حیاتی و پرونده پزشکی',
+          statusBadge: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xffEF4444).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text(
+              'فعال',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Color(0xffEF4444), fontWeight: FontWeight.bold),
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(CupertinoIcons.sparkles, color: Color(0xffEF4444)),
+              tooltip: 'دستیار هوشمند سلامت',
+              onPressed: _openAiAssistant,
+            ),
+          ],
+        ),
         body: SafeArea(
           child: _isLoading
               ? Padding(
@@ -402,10 +425,6 @@ class _HealthScreenState extends State<HealthScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SlideFadeTransition(
-                        delay: Duration.zero,
-                        child: _buildHeader(),
-                      ),
                       if (_criticalAlerts.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         SlideFadeTransition(
@@ -439,61 +458,7 @@ class _HealthScreenState extends State<HealthScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    final colors = context.colors;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.arrow_back, color: colors.textPrimary),
-                  onPressed: () => Navigator.maybePop(context),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'سلامت',
-                  style: TextStyle(
-                    fontFamily: 'Vazirmatn',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 24,
-                    color: colors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'پایش داروها، سنجش‌های حیاتی و پرونده پزشکی',
-              style: TextStyle(
-                fontFamily: 'Vazirmatn',
-                fontSize: 12,
-                color: colors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-        GestureDetector(
-          onTap: _openAiAssistant,
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: colors.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-              border: Border.all(color: colors.primary.withValues(alpha: 0.15)),
-            ),
-            child: Icon(CupertinoIcons.sparkles, color: colors.primary, size: 20),
-          ),
-        ),
-      ],
-    );
-  }
+
 
   Widget _buildAlertsBanner() {
     final colors = context.colors;

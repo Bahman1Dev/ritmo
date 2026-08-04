@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ritmo/core/analytics/courses_engine.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
-import 'package:ritmo/core/ux/ritmo_directional_icon.dart';
+import 'package:ritmo/core/widgets/ritmo_module_app_bar.dart';
 import 'package:ritmo/core/ux/ritmo_empty_state.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
 import 'package:ritmo/features/courses/logic/courses_repository.dart';
@@ -142,25 +142,23 @@ class _CoursesScreenState extends State<CoursesScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: colors.bg,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: RitmoIcons.back(context, color: colors.textPrimary),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(
-            'دوره‌ها و برنامه‌های آموزشی',
-            style: TextStyle(
-              fontFamily: 'Vazirmatn',
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
+        appBar: RitmoModuleAppBar(
+          title: 'دوره‌های آموزشی',
+          subtitle: 'مدیریت دروس و جلسات مطالعاتی',
+          statusBadge: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xff3B82F6).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text(
+              'فعال',
+              style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Color(0xff3B82F6), fontWeight: FontWeight.bold),
             ),
           ),
           actions: [
             IconButton(
-              icon: Icon(CupertinoIcons.doc_on_clipboard_fill, color: colors.primary),
+              icon: const Icon(CupertinoIcons.doc_on_clipboard_fill, color: Color(0xff8B5CF6)),
               tooltip: 'ورود سرفصل AI',
               onPressed: _openAiSyllabusSheet,
             ),
