@@ -5,7 +5,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
-import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/courses/presentation/widgets/create_course_sheet.dart';
 import 'package:ritmo/features/goals/presentation/widgets/create_goal_sheet.dart';
 import 'package:ritmo/features/health/presentation/widgets/medication_form_sheet.dart';
@@ -98,21 +97,18 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
   Widget build(BuildContext context) {
     // Wire up the medical sheet opener here so `context` is always current
     _controller.setMedicalSheetOpener(([prefillData]) {
+      if (mounted) Navigator.of(context).pop();
       MedicationFormSheet.show(
         context,
         prefillData: prefillData ?? _controller.tempMedicationData,
         onFormCompleted: (formData) {
-          _controller.title = formData.name;
-          _controller.description = formData.dose;
-          _controller.tempMedicationData = formData;
-          _controller.selectedCategory = Category.medical;
-          _controller.itemType = 'REMINDER';
-          _controller.updatePage(2);
+          widget.onSaved?.call();
         },
       );
     });
 
     _controller.setWorshipSheetOpener(({prefill}) {
+      if (mounted) Navigator.of(context).pop();
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -131,13 +127,6 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
             ) : null,
             onSaved: () {
               widget.onSaved?.call();
-              if (mounted) {
-                RitmoToast.show(
-                  context,
-                  'مستحب سفارشی با موفقیت افزوده شد.',
-                );
-                Navigator.pop(context);
-              }
             },
           );
         },
@@ -145,6 +134,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
     });
 
     _controller.setCourseSheetOpener(({initialValues}) {
+      if (mounted) Navigator.of(context).pop();
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -154,9 +144,6 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
             initialValues: initialValues,
             onCourseCreated: () {
               widget.onSaved?.call();
-              if (mounted) {
-                Navigator.pop(context);
-              }
             },
           );
         },
@@ -164,6 +151,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
     });
 
     _controller.setGoalSheetOpener(({templateData}) {
+      if (mounted) Navigator.of(context).pop();
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -175,9 +163,6 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
             templateData: templateData,
             onSaved: () {
               widget.onSaved?.call();
-              if (mounted) {
-                Navigator.pop(context);
-              }
             },
           );
         },
@@ -185,27 +170,23 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
     });
 
     _controller.setSportsLogSheetOpener(({durationMinutes}) {
+      if (mounted) Navigator.of(context).pop();
       showMovementLogSheet(
         context,
         presetDurationMinutes: durationMinutes,
         onLogged: () {
           widget.onSaved?.call();
-          if (mounted) {
-            Navigator.pop(context);
-          }
         },
       );
     });
 
     _controller.setSportsScreenOpener(() {
+      if (mounted) Navigator.of(context).pop();
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const SSHomeDashboardScreen()),
       ).then((_) {
         widget.onSaved?.call();
-        if (context.mounted) {
-          Navigator.of(context).pop();
-        }
       });
     });
 

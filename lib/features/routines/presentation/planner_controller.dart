@@ -491,14 +491,14 @@ class PlannerController extends ChangeNotifier {
       }
     }
 
-    if (itemType == 'GOAL' || (selectedCategory == Category.custom && openGoalSheet != null)) {
+    if (itemType == 'GOAL' || selectedCategory == Category.custom) {
       if (openGoalSheet != null) {
         openGoalSheet!(templateData: _buildGoalTemplateData());
         return true;
       }
     }
 
-    if (selectedCategory == Category.religious && worshipType != 'DEBT') {
+    if (selectedCategory == Category.religious) {
       if (openWorshipSheet != null) {
         openWorshipSheet!(prefill: _buildWorshipPrefill());
         return true;
@@ -512,7 +512,7 @@ class PlannerController extends ChangeNotifier {
       }
     }
 
-    if (selectedCategory == Category.fitness && sportsOpType == 'LOG') {
+    if (selectedCategory == Category.fitness) {
       if (openSportsLogSheet != null) {
         openSportsLogSheet!(
           durationMinutes: sportsDuration,
