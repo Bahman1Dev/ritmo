@@ -10,8 +10,6 @@ import 'package:ritmo/core/domain/models/inbox_item.dart';
 import 'package:ritmo/core/services/alarm_scheduler_service.dart';
 import 'package:ritmo/core/services/central_inbox_service.dart';
 import 'package:ritmo/core/services/premium_service.dart';
-
-import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:ritmo/core/utils/snapshot_helper.dart';
 import 'package:ritmo/features/onboarding/logic/day_arc_inferencer.dart';
 import 'package:ritmo/features/onboarding/logic/onboarding_draft.dart';
@@ -325,7 +323,7 @@ class OnboardingController extends ChangeNotifier {
           ? selectedStarterRoutines.first.titleFa
           : 'ریتمو';
 
-      SnapshotHelper.updateWidgetSnapshot(
+      await SnapshotHelper.updateWidgetSnapshot(
         nextActionTitle: firstRoutineTitle,
         rhythmScore: 100,
         currentEnergyLevel: energyProfile,
