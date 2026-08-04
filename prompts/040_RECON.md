@@ -1,6 +1,6 @@
-# گزارش اجرای فازهای ۰، ۱، ۲، ۳، ۴، ۵ و ۶ — `prompts/040_RECON.md`
+# گزارش اجرای تکمیلی فاز ۰ تا ۷ — `prompts/040_RECON.md`
 
-تاریخ تکمیل: ۳ اوت ۲۰۲۶  
+تاریخ تکمیل: ۴ اوت ۲۰۲۶  
 نویسنده: مهندس ارشد نرم‌افزار (Antigravity AI)
 
 ---
@@ -66,7 +66,7 @@
 
 ## خروجی‌های فاز ۵ (تفکیک انجام واقعی در آنالیتیکس):
 
-1. **ایجاد VIEW دیتابیس `routine_actual_completions` (K-26):** تعریف این نمای دیتابیسی در `routine_tables.dart` و `MigrationV60` جهت فیلتر کردن هوشمند ردیف‌های انجام واقعی (`FULL`, `PARTIAL`, `MINIMAL`, `DONE`, `LIGHT`, `COMPLETED`).
+1. **ایجاد VIEW دیتابیس `routine_actual_completions` (K-26):** تعریف این نمای دیتابیسی در `routine_tables.dart` و `MigrationV60`.
 2. **تست‌های فاز ۵ (K-29):** ایجاد فایل `routine_actual_completions_view_test.dart`.
 
 ---
@@ -74,9 +74,17 @@
 ## خروجی‌های فاز ۶ (اصلاح ترمینولوژی و جداسازی مرز تقویم/مخزن):
 
 1. **انطباق واژه‌نامه (K-30):** انطباق عناوین و رشته‌های رابط کاربری بر اساس `docs/GLOSSARY.md`.
-2. **یکپارچه‌سازی بایگانی روتین‌ها (K-32):** جایگزینی SQL خام بایگانی روتین‌ها در `all_plans_screen.dart:114` با دستورهای رسمی `ArchiveRoutineCommand` و `UnarchiveRoutineCommand` از طریق کرنل اجرا.
-3. **تست‌های فاز ۶ (K-33):** ایجاد فایل [archive_routine_kernel_command_test.dart](file:///mnt/c/Users/bahman/Desktop/Besme-Allah/Ritmo3/ritmo/test/registry/archive_routine_kernel_command_test.dart).
+2. **یکپارچه‌سازی بایگانی روتین‌ها (K-32):** جایگزینی SQL خام بایگانی روتین‌ها در `all_plans_screen.dart:114` با دستورهای رسمی `ArchiveRoutineCommand` و `UnarchiveRoutineCommand`.
+3. **تست‌های فاز ۶ (K-33):** ایجاد فایل `archive_routine_kernel_command_test.dart`.
 
 ---
 
-فازهای ۰ تا ۶ با موفقیت به اتمام رسیدند. آمادهٔ اجرای فاز ۷ (پرداخت و پولیش UX) هستم. ✅
+## خروجی‌های فاز ۷ (پرداخت UX و تثبیت نهایی):
+
+1. **ایجاد ویجت `OccurrenceStatusBadge` (K-34):** پیاده‌سازی ویجت نشانگر وضعیت رخدادها در [occurrence_status_badge.dart](file:///mnt/c/Users/bahman/Desktop/Besme-Allah/Ritmo3/ritmo/lib/core/widgets/occurrence_status_badge.dart) با پشتیبانی کامل از تم، رنگ‌های استاندارد و فونت وزیرمتن.
+2. **تست‌های ویجت نشانگر وضعیت (K-35):** ایجاد فایل [occurrence_status_badge_test.dart](file:///mnt/c/Users/bahman/Desktop/Besme-Allah/Ritmo3/ritmo/test/widget/occurrence_status_badge_test.dart).
+3. **مستندساری کامل نهایی (K-36 و K-37):** تکمیل فایل‌های [040_REPORT.md](file:///mnt/c/Users/bahman/Desktop/Besme-Allah/Ritmo3/ritmo/prompts/040_REPORT.md) و [walkthrough.md](file:///home/bahman/.gemini/antigravity/brain/4928ef32-50df-431c-b7b4-c9fb3e0d6818/walkthrough.md).
+
+---
+
+تمامی فازهای ۰ تا ۷ به صورت ۱۰۰٪ کامل و تست‌شده به اتمام رسیدند. ✅

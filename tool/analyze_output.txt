@@ -1,2 +1,231 @@
 Resolving dependencies...
 Downloading packages...
+  _fe_analyzer_shared 99.0.0 (105.0.0 available)
+  analyzer 12.1.0 (14.1.0 available)
+  build 4.0.7 (4.0.10 available)
+  build_config 1.3.1 (1.3.2 available)
+  build_runner 2.15.1 (2.16.0 available)
+  cli_util 0.4.2 (0.5.2 available)
+  dart_style 3.1.8 (3.1.12 available)
+  flutter_local_notifications 22.1.0 (22.2.0 available)
+  flutter_local_notifications_platform_interface 12.0.1 (12.1.0 available)
+  flutter_riverpod 3.3.2 (3.4.2 available)
+  flutter_secure_storage_darwin 0.3.2 (0.4.0 available)
+! flutter_secure_storage_windows 4.2.2 (overridden)
+  freezed 3.2.6-dev.1 (4.0.0-dev.3 available)
+  google_mobile_ads 4.0.0 (9.0.0 available)
+  google_sign_in_android 7.2.15 (7.2.16 available)
+  hooks 2.0.2 (2.1.0 available)
+  image 4.8.0 (4.9.1 available)
+  intl 0.20.2 (0.20.3 available)
+  jni 1.0.0 (1.0.3 available)
+  jni_flutter 1.0.1 (1.0.2 available)
+  json_serializable 6.14.0 (6.14.1 available)
+  matcher 0.12.19 (0.12.20 available)
+  meta 1.18.0 (1.19.0 available)
+  mockito 5.6.4 (5.8.0 available)
+  native_toolchain_c 0.19.2 (0.19.3 available)
+  objective_c 9.4.1 (9.5.0 available)
+  package_config 2.2.0 (3.0.0 available)
+  pointycastle 3.9.1 (4.0.0 available)
+  record_use 0.6.0 (1.0.0 available)
+  riverpod 3.3.2 (3.4.2 available)
+  riverpod_analyzer_utils 1.0.0-dev.10 (1.0.0-dev.11 available)
+  riverpod_annotation 4.0.3 (4.0.6 available)
+  riverpod_generator 4.0.4 (4.0.8 available)
+  source_helper 1.3.12 (1.3.13 available)
+  test 1.31.0 (1.31.2 available)
+  test_api 0.7.11 (0.7.13 available)
+  test_core 0.6.17 (0.6.19 available)
+  vector_math 2.2.0 (2.4.2 available)
+  webview_flutter 4.9.0 (4.14.1 available)
+  webview_flutter_android 3.16.9 (4.13.0 available)
+! win32 6.3.0 (overridden)
+  workmanager 0.9.0+3 (0.10.4 available)
+  workmanager_android 0.9.0+2 (0.10.3 available)
+  workmanager_apple 0.9.1+2 (0.9.9 available)
+  workmanager_platform_interface 0.9.1+1 (0.10.3 available)
+  xml 6.6.1 (7.0.1 available)
+Got dependencies!
+44 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing ritmo...                                              
+
+warning - Unused import: 'package:flutter_secure_storage/flutter_secure_storage.dart'. Try removing the import directive - lib\core\database\database_helper.dart:5:8 - unused_import
+warning - Unused import: 'package:flutter/foundation.dart'. Try removing the import directive - lib\core\database\legacy_database_recovery.dart:2:8 - unused_import
+   info - Unnecessary escape in string literal. Remove the '\' escape - lib\core\database\legacy_database_recovery.dart:22:43 - unnecessary_string_escapes
+warning - Unused import: 'package:ritmo/core/domain/models/duration_bounds.dart'. Try removing the import directive - lib\core\database\migration\migrations_registry.dart:8:8 - unused_import
+warning - Unused import: 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart'. Try removing the import directive - lib\core\di\service_locator.dart:22:8 - unused_import
+warning - Duplicate import. Try removing all but one import of the library - lib\core\di\service_locator.dart:28:8 - duplicate_import
+warning - Duplicate import. Try removing all but one import of the library - lib\core\di\service_locator.dart:29:8 - duplicate_import
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\core\domain\agenda\action_router.dart:179:23 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\core\domain\agenda\agenda_renderer_registry.dart:324:27 - unawaited_futures
+   info - Unnecessary braces in a string interpolation. Try removing the braces - lib\core\domain\agenda\day_agenda_service.dart:666:23 - unnecessary_brace_in_string_interps
+   info - Unnecessary braces in a string interpolation. Try removing the braces - lib\core\domain\agenda\day_agenda_service.dart:753:23 - unnecessary_brace_in_string_interps
+warning - Unused import: 'package:ritmo/core/domain/engines/progression_engine.dart'. Try removing the import directive - lib\core\domain\completion\completion_gateway.dart:7:8 - unused_import
+warning - This case is covered by the previous cases. Try removing the case clause, or restructuring the preceding patterns - lib\core\domain\completion\completion_gateway.dart:458:9 - unreachable_switch_case
+warning - Unused import: 'package:ritmo/core/domain/models/reminder_state.dart'. Try removing the import directive - lib\core\domain\execution\handlers\delete_routine_handler.dart:7:8 - unused_import
+warning - The value of the local variable 'outcome' isn't used. Try removing the variable or using it - lib\core\domain\execution\handlers\undo_completion_handler.dart:17:11 - unused_local_variable
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\core\services\local_backup_service.dart:61:13 - prefer_const_constructors
+   info - Unnecessary use of a null check ('!'). Try removing the null check - lib\core\services\sync\agenda_widget_snapshot_service.dart:72:74 - unnecessary_null_checks
+   info - Unnecessary use of multiple underscores. Try using '_' - lib\core\widgets\sheet\ritmo_picker_sheet.dart:138:35 - unnecessary_underscores
+  error - Don't use 'BuildContext's across async gaps. Try rewriting the code to not use the 'BuildContext', or guard the use with a 'mounted' check - lib\features\assistant\presentation\day_plan_template_management_screen.dart:77:37 - use_build_context_synchronously
+  error - Don't use 'BuildContext's across async gaps. Try rewriting the code to not use the 'BuildContext', or guard the use with a 'mounted' check - lib\features\assistant\presentation\day_plan_template_management_screen.dart:118:37 - use_build_context_synchronously
+warning - Unused import: 'package:ritmo/features/calendar/presentation/utils/calendar_motion.dart'. Try removing the import directive - lib\features\calendar\presentation\journey_screen.dart:16:8 - unused_import
+warning - The value of the local variable 'colorScheme' isn't used. Try removing the variable or using it - lib\features\calendar\presentation\journey_screen.dart:232:11 - unused_local_variable
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\calendar\presentation\journey_screen.dart:385:83 - prefer_const_constructors
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\calendar\presentation\journey_screen.dart:387:39 - unawaited_futures
+   info - Unnecessary use of a null check ('!'). Try removing the null check - lib\features\calendar\presentation\models\now_pill_view_model.dart:77:93 - unnecessary_null_checks
+   info - Unnecessary use of a null check ('!'). Try removing the null check - lib\features\calendar\presentation\models\now_pill_view_model.dart:97:84 - unnecessary_null_checks
+   info - Unnecessary use of a null check ('!'). Try removing the null check - lib\features\calendar\presentation\widgets\calendar_search_delegate.dart:133:77 - unnecessary_null_checks
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\calendar\presentation\widgets\domain_selection_sheet.dart:177:21 - unawaited_futures
+   info - Unnecessary use of a null check ('!'). Try removing the null check - lib\features\calendar\presentation\widgets\journey_suggestions_section.dart:202:82 - unnecessary_null_checks
+   info - Unnecessary use of multiple underscores. Try using '_' - lib\features\calendar\presentation\widgets\timeline_grid.dart:504:34 - unnecessary_underscores
+   info - Unnecessary use of multiple underscores. Try using '_' - lib\features\calendar\presentation\widgets\timeline_overflow_card.dart:53:43 - unnecessary_underscores
+   info - Unnecessary use of a null check ('!'). Try removing the null check - lib\features\calendar\presentation\widgets\timeline_overflow_card.dart:75:63 - unnecessary_null_checks
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\chat\presentation\ai_chat_screen.dart:166:9 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\chat\presentation\ai_chat_screen.dart:227:9 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\chat\presentation\ai_chat_screen.dart:1069:17 - unawaited_futures
+   info - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' - lib\features\courses\logic\courses_repository.dart:24:9 - use_null_aware_elements
+   info - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' - lib\features\courses\logic\courses_repository.dart:25:9 - use_null_aware_elements
+   info - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' - lib\features\courses\logic\courses_repository.dart:35:11 - use_null_aware_elements
+   info - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' - lib\features\courses\logic\courses_repository.dart:36:11 - use_null_aware_elements
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\courses\presentation\course_detail_screen.dart:112:7 - unawaited_futures
+  error - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\features\cycle\presentation\widgets\ai_cycle_assistant_sheet.dart:530:39 - use_build_context_synchronously
+  error - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\features\cycle\presentation\widgets\ai_cycle_assistant_sheet.dart:535:29 - use_build_context_synchronously
+  error - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\features\cycle\presentation\widgets\ai_cycle_assistant_sheet.dart:536:20 - use_build_context_synchronously
+  error - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\features\cycle\presentation\widgets\ai_cycle_assistant_sheet.dart:539:7 - use_build_context_synchronously
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\cycle\presentation\widgets\ai_cycle_assistant_sheet.dart:1037:43 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\cycle\presentation\widgets\ai_cycle_assistant_sheet.dart:1039:43 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\energy\presentation\widgets\quick_log_sheet.dart:105:22 - unawaited_futures
+  error - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\features\goals\presentation\widgets\ai_goals_assistant_sheet.dart:146:39 - use_build_context_synchronously
+  error - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\features\goals\presentation\widgets\ai_goals_assistant_sheet.dart:151:29 - use_build_context_synchronously
+  error - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\features\goals\presentation\widgets\ai_goals_assistant_sheet.dart:152:20 - use_build_context_synchronously
+  error - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\features\goals\presentation\widgets\ai_goals_assistant_sheet.dart:155:7 - use_build_context_synchronously
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\goals\presentation\widgets\ai_goals_assistant_sheet.dart:588:43 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\goals\presentation\widgets\ai_goals_assistant_sheet.dart:590:43 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\health\presentation\widgets\medical_profile_section.dart:182:7 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\inbox\presentation\inbox_screen.dart:84:17 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\konkur\presentation\konkur_screen.dart:395:15 - unawaited_futures
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\konkur\presentation\widgets\ai_konkur_assistant_sheet.dart:669:13 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\konkur\presentation\widgets\konkur_study_sheet.dart:349:19 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\konkur\presentation\widgets\konkur_study_sheet.dart:374:19 - deprecated_member_use
+warning - Unused import: 'package:ritmo/core/utils/ritmo_id_factory.dart'. Try removing the import directive - lib\features\onboarding\logic\onboarding_controller.dart:14:8 - unused_import
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\onboarding\logic\onboarding_controller.dart:328:22 - unawaited_futures
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\onboarding\logic\starter_pack_catalog.dart:27:5 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\onboarding\logic\starter_pack_catalog.dart:35:5 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\onboarding\logic\starter_pack_catalog.dart:43:5 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\onboarding\logic\starter_pack_catalog.dart:51:5 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\onboarding\logic\starter_pack_catalog.dart:59:5 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\onboarding\logic\starter_pack_catalog.dart:67:5 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\onboarding\logic\starter_pack_catalog.dart:75:5 - prefer_const_constructors
+   info - The import of 'package:flutter/services.dart' is unnecessary because all of the used elements are also provided by the import of 'dart:ui'. Try removing the import directive - lib\features\onboarding\presentation\onboarding_screen.dart:5:8 - unnecessary_import
+   info - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' - lib\features\onboarding\presentation\onboarding_screen.dart:239:43 - use_null_aware_elements
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\onboarding\presentation\steps\step_focus.dart:147:19 - deprecated_member_use
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\profile\presentation\backup_screen.dart:818:47 - unawaited_futures
+warning - Unused import: 'package:ritmo/core/ux/ritmo_pressable.dart'. Try removing the import directive - lib\features\profile\presentation\crash_reports_screen.dart:7:8 - unused_import
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\registry\presentation\all_plans_screen.dart:468:14 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\registry\presentation\all_plans_screen.dart:469:16 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes. Try adding 'const' before the literal - lib\features\registry\presentation\all_plans_screen.dart:471:21 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\registry\presentation\all_plans_screen.dart:472:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\registry\presentation\all_plans_screen.dart:474:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\registry\presentation\all_plans_screen.dart:476:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\registry\presentation\widgets\registry_health_card.dart:51:22 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes. Try adding 'const' before the literal - lib\features\registry\presentation\widgets\registry_health_card.dart:52:27 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\registry\presentation\widgets\registry_health_card.dart:53:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\registry\presentation\widgets\registry_health_card.dart:55:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\registry\presentation\widgets\registry_health_card.dart:57:28 - prefer_const_constructors
+   info - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' - lib\features\routines\domain\routine_recurrence.dart:62:5 - use_null_aware_elements
+warning - Unused import: 'dart:convert'. Try removing the import directive - lib\features\routines\domain\strategies\generic_strategy.dart:3:8 - unused_import
+warning - Unused import: 'dart:convert'. Try removing the import directive - lib\features\routines\domain\strategies\sports_strategy.dart:3:8 - unused_import
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\routines\domain\strategies\sports_strategy.dart:33:7 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\routines\presentation\planner_controller.dart:923:9 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\routines\presentation\planner_controller.dart:924:9 - unawaited_futures
+warning - Unused import: 'package:ritmo/core/domain/agenda/agenda_item.dart'. Try removing the import directive - lib\features\routines\presentation\widgets\routine_action_body.dart:2:8 - unused_import
+warning - Unused import: 'package:ritmo/core/domain/completion/completion_outcome.dart'. Try removing the import directive - lib\features\routines\presentation\widgets\routine_action_body.dart:3:8 - unused_import
+warning - Unused import: 'package:ritmo/core/widgets/action/action_sheet_result.dart'. Try removing the import directive - lib\features\routines\presentation\widgets\routine_action_body.dart:10:8 - unused_import
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\features\routines\presentation\widgets\routine_action_body.dart:26:42 - prefer_const_constructors
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\sleep\presentation\widgets\sleep_last_night_section.dart:63:22 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\sleep\presentation\widgets\sleep_log_sheet.dart:197:22 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\sleep\presentation\widgets\sleep_target_sheet.dart:147:22 - unawaited_futures
+   info - The private field _jointImpact could be 'final'. Try making the field 'final' - lib\features\supplementary_sports\movement\presentation\movement_custom_kind_sheet.dart:43:7 - prefer_final_fields
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\movement\presentation\movement_custom_kind_sheet.dart:85:5 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\movement\presentation\movement_custom_kind_sheet.dart:115:22 - unawaited_futures
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\supplementary_sports\movement\presentation\movement_custom_kind_sheet.dart:288:23 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\supplementary_sports\movement\presentation\movement_custom_kind_sheet.dart:289:23 - deprecated_member_use
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\supplementary_sports\movement\presentation\movement_custom_kind_sheet.dart:294:23 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\supplementary_sports\movement\presentation\movement_custom_kind_sheet.dart:295:23 - deprecated_member_use
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\supplementary_sports\movement\presentation\movement_custom_kind_sheet.dart:300:23 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\supplementary_sports\movement\presentation\movement_custom_kind_sheet.dart:301:23 - deprecated_member_use
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\movement\presentation\movement_log_sheet.dart:208:22 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\presentation\ss_home_dashboard_screen.dart:2225:19 - unawaited_futures
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - lib\features\supplementary_sports\presentation\ss_movement_tab_screen.dart:63:5 - prefer_const_declarations
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\presentation\ss_movement_tab_screen.dart:188:35 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\presentation\ss_onboarding_flow.dart:251:19 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\presentation\ss_plan_day_detail_screen.dart:371:9 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\presentation\ss_plan_day_detail_screen.dart:440:9 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\presentation\ss_settings_screen.dart:268:5 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\presentation\ss_workout_session_notifier.dart:508:9 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\presentation\ss_workout_session_screen.dart:342:9 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\presentation\ss_workout_session_screen.dart:479:19 - unawaited_futures
+  error - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\features\supplementary_sports\presentation\widgets\ss_ai_coach_sheet.dart:226:37 - use_build_context_synchronously
+  error - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\features\supplementary_sports\presentation\widgets\ss_ai_coach_sheet.dart:230:29 - use_build_context_synchronously
+  error - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check. Guard a 'State.context' use with a 'mounted' check on the State, and other BuildContext use with a 'mounted' check on the BuildContext - lib\features\supplementary_sports\presentation\widgets\ss_ai_coach_sheet.dart:231:20 - use_build_context_synchronously
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\presentation\widgets\ss_ai_coach_sheet.dart:708:43 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\supplementary_sports\presentation\widgets\ss_ai_coach_sheet.dart:710:43 - unawaited_futures
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - lib\features\supplementary_sports\presentation\widgets\ss_cant_today_sheet.dart:24:5 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - lib\features\supplementary_sports\presentation\widgets\ss_cant_today_sheet.dart:84:5 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - lib\features\supplementary_sports\presentation\widgets\ss_recovery_card.dart:57:5 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - lib\features\supplementary_sports\presentation\widgets\ss_recovery_card.dart:105:5 - prefer_const_declarations
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\today\presentation\now_dashboard_screen.dart:419:7 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\today\presentation\now_dashboard_screen.dart:420:7 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\today\presentation\systems_hub_screen.dart:1050:11 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\today\presentation\systems_hub_screen.dart:1073:15 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\today\presentation\widgets\daily_reflection_sheet.dart:137:22 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\today\presentation\widgets\dashboard\ai_suggestions_carousel.dart:60:9 - unawaited_futures
+  error - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited' - lib\features\today\presentation\widgets\dashboard\ai_suggestions_carousel.dart:78:9 - unawaited_futures
+   info - Unnecessary use of a null check ('!'). Try removing the null check - lib\features\today\presentation\widgets\dashboard\pulse_hero_card.dart:237:75 - unnecessary_null_checks
+   info - Unnecessary use of a null check ('!'). Try removing the null check - lib\features\today\presentation\widgets\dashboard\today_schedule_preview_card.dart:138:109 - unnecessary_null_checks
+   info - Local variables should be final. Try making the variable final - lib\features\worship\logic\worship_completion_repository.dart:38:5 - prefer_final_locals
+   info - Angle brackets will be interpreted as HTML. Try using backticks around the content with angle brackets, or try replacing `<` with `&lt;` and `>` with `&gt;` - lib\features\worship\logic\worship_completion_repository.dart:66:18 - unintended_html_in_doc_comment
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeTrackColor instead. This feature was deprecated after v3.24.0-0.2.pre. Try replacing the use of the deprecated member with the replacement - lib\features\worship\presentation\widgets\prayer_action_body.dart:179:21 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:127:12 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:129:14 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:130:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - lib\main.dart:132:18 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes. Try adding 'const' before the literal - lib\main.dart:134:23 - prefer_const_literals_to_create_immutables
+warning - The value of the field '_initError' isn't used. Try removing the field, or using it - lib\main.dart:206:11 - unused_field
+warning - The value of the local variable 'allowedWritingFiles' isn't used. Try removing the variable or using it - test\completion\single_completion_write_path_test.dart:6:11 - unused_local_variable
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\completion\undo_token_reschedule_test.dart:68:7 - prefer_const_declarations
+   info - The imported package 'path_provider_platform_interface' isn't a dependency of the importing package. Try adding a dependency for 'path_provider_platform_interface' in the 'pubspec.yaml' file - test\logger_redaction_test.dart:4:8 - depend_on_referenced_packages
+   info - The imported package 'plugin_platform_interface' isn't a dependency of the importing package. Try adding a dependency for 'plugin_platform_interface' in the 'pubspec.yaml' file - test\logger_redaction_test.dart:5:8 - depend_on_referenced_packages
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\logger_redaction_test.dart:76:64 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_033_worship_tests.dart:13:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_033_worship_tests.dart:42:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_033_worship_tests.dart:65:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_033_worship_tests.dart:89:21 - prefer_const_constructors
+warning - Unused import: 'package:ritmo/core/widgets/action/sheet_actions.dart'. Try removing the import directive - test\prompt_036_contracts_test.dart:7:8 - unused_import
+   info - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation - test\prompt_036_contracts_test.dart:13:38 - prefer_const_constructors
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_037\edit_preserves_past_occurrences_test.dart:74:7 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_037\edit_preserves_past_occurrences_test.dart:75:7 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_037\edit_preserves_past_occurrences_test.dart:76:7 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_037\edit_preserves_past_occurrences_test.dart:116:7 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_038\backup_restore_test.dart:9:7 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_038\backup_restore_test.dart:20:7 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' - test\prompt_038\error_redaction_test.dart:7:7 - prefer_const_declarations
+warning - Unused import: 'package:ritmo/core/domain/agenda/action_router.dart'. Try removing the import directive - test\unit\minutes_for_mode_test.dart:2:8 - unused_import
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\niyyah_details_test.dart:7:70 - avoid_types_on_closure_parameters
+   info - Unnecessary use of multiple underscores. Try using '_' - test\widget\niyyah_details_test.dart:26:38 - unnecessary_underscores
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\niyyah_edit_opens_planner_test.dart:7:63 - avoid_types_on_closure_parameters
+   info - Unnecessary use of multiple underscores. Try using '_' - test\widget\niyyah_edit_opens_planner_test.dart:26:38 - unnecessary_underscores
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\niyyah_instant_log_test.dart:7:86 - avoid_types_on_closure_parameters
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\niyyah_snooze_test.dart:7:65 - avoid_types_on_closure_parameters
+   info - Unnecessary use of multiple underscores. Try using '_' - test\widget\niyyah_snooze_test.dart:26:38 - unnecessary_underscores
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\niyyah_start_timer_test.dart:7:85 - avoid_types_on_closure_parameters
+   info - Unnecessary use of multiple underscores. Try using '_' - test\widget\niyyah_start_timer_test.dart:31:38 - unnecessary_underscores
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\prayer_confirm_sheet_test.dart:8:75 - avoid_types_on_closure_parameters
+warning - Unused import: 'package:flutter/material.dart'. Try removing the import directive - test\widget\router_gateway_failure_test.dart:1:8 - unused_import
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\router_gateway_failure_test.dart:6:67 - avoid_types_on_closure_parameters
+   info - Unnecessary type annotation on a function expression parameter. Try removing the type annotation - test\widget\router_missing_meta_test.dart:8:72 - avoid_types_on_closure_parameters
+
+176 issues found. (ran in 7.0s)
