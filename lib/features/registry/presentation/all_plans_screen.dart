@@ -21,6 +21,7 @@ import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dar
 
 enum PlanSortMode {
   displayOrder,
+  closestDue,
   time,
   duration,
   alphabetical,
@@ -80,8 +81,24 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
     }
   }
 
+  int _getRemainingMinutes(RegistryEntry entry) {
+    final timeStr = entry.agendaProxy.timeOfDay?.trim();
+    if (timeStr == null || timeStr.isEmpty) return 99999;
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(timeStr);
+    if (match == null) return 99999;
+    final h = int.parse(match.group(1)!);
+    final m = int.parse(match.group(2)!);
+    final now = DateTime.now();
+    final target = DateTime(now.year, now.month, now.day, h, m);
+    final diff = target.difference(now).inMinutes;
+    return diff < -45 ? 99990 : diff;
+  }
+
   void _applySort() {
     switch (_sortMode) {
+      case PlanSortMode.closestDue:
+        _entries.sort((a, b) => _getRemainingMinutes(a).compareTo(_getRemainingMinutes(b)));
+        break;
       case PlanSortMode.time:
         _entries.sort((a, b) {
           final timeA = a.agendaProxy.timeOfDay ?? '23:59';
@@ -266,6 +283,16 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
                               Icon(Icons.dashboard_rounded, size: 18, color: _sortMode == PlanSortMode.displayOrder ? theme.colorScheme.primary : null),
                               const SizedBox(width: 8),
                               Text('ترتیب پیش‌فرض', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: _sortMode == PlanSortMode.displayOrder ? FontWeight.bold : FontWeight.normal)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: PlanSortMode.closestDue,
+                          child: Row(
+                            children: [
+                              Icon(Icons.hourglass_top_rounded, size: 18, color: _sortMode == PlanSortMode.closestDue ? theme.colorScheme.primary : null),
+                              const SizedBox(width: 8),
+                              Text('نزدیک‌ترین موعد انجام', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: _sortMode == PlanSortMode.closestDue ? FontWeight.bold : FontWeight.normal)),
                             ],
                           ),
                         ),

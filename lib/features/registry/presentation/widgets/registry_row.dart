@@ -6,6 +6,7 @@ import 'package:ritmo/core/ux/ritmo_haptics.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 import 'package:ritmo/features/registry/domain/registry_entry.dart';
+import 'package:ritmo/features/registry/presentation/widgets/registry_countdown_badge.dart';
 
 class RegistryRow extends StatelessWidget {
   const RegistryRow({
@@ -151,6 +152,14 @@ class RegistryRow extends StatelessWidget {
               ),
 
               const SizedBox(width: 8),
+
+              // Countdown Timer Badge
+              RegistryCountdownBadge(
+                agendaItem: entry.agendaProxy,
+                onTap: () => ActionRouter.open(context, item: entry.agendaProxy),
+              ),
+
+              const SizedBox(width: 6),
 
               // Reminder Health Badge
               _buildReminderBadge(entry.reminderHealth),
