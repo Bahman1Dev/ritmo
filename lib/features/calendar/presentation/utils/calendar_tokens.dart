@@ -37,6 +37,17 @@ class CalendarTokens {
   static const double accentBarWidth = 3.0;
   static const double nowLineThickness = 2.0;
 
+  // ─── Registry Screen Tokens ───
+  static const double radiusCardLg = 20.0;
+  static const double registryCardHeight = 92.0;
+  static const double registryCardGap = 10.0;
+  static const double iconContainerSize = 40.0;
+  static const double iconContainerRadius = 12.0;
+  static const double searchBarHeight = 48.0;
+  static const double chipHeight = 36.0;
+  static const double fabHeight = 54.0;
+  static const double fabRadius = 18.0;
+
   // ─── Split Day Layout ───
   /// مرز تقسیم روز به دو ستون (بر حسب دقیقه از نیمه‌شب). ۷۲۰ = ساعت ۱۲:۰۰
   static const int splitBoundaryMinutes = 720;

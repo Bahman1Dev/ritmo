@@ -54,7 +54,40 @@ void main() {
         ),
       );
 
+      // Should show a countdown text (not "شناور")
+      expect(find.text('شناور'), findsNothing);
       expect(find.byType(RegistryCountdownBadge), findsOneWidget);
+    });
+
+    testWidgets('Badge has no gradient decorations (simplified)', (tester) async {
+      final item = AgendaItem(
+        id: 'rt_3',
+        domain: AgendaDomain.routine,
+        sourceId: '3',
+        title: 'تست ساده',
+        dateStr: '2026-08-05',
+        timeOfDay: '14:00',
+        category: Category.personal,
+        deepLink: const AgendaDeepLink(domain: AgendaDomain.routine, targetId: '3'),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: RegistryCountdownBadge(agendaItem: item),
+            ),
+          ),
+        ),
+      );
+
+      // Verify no BoxShadow or LinearGradient in the widget tree
+      final animatedContainer = tester.widget<AnimatedContainer>(
+        find.byType(AnimatedContainer),
+      );
+      final decoration = animatedContainer.decoration as BoxDecoration?;
+      expect(decoration?.gradient, isNull);
+      expect(decoration?.boxShadow, isNull);
     });
   });
 }

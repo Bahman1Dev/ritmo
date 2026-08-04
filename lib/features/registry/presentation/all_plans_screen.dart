@@ -17,6 +17,7 @@ import 'package:ritmo/features/registry/logic/registry_service.dart';
 import 'package:ritmo/features/registry/presentation/widgets/registry_bulk_bar.dart';
 import 'package:ritmo/features/registry/presentation/widgets/registry_health_card.dart';
 import 'package:ritmo/features/registry/presentation/widgets/registry_row.dart';
+import 'package:ritmo/features/registry/presentation/widgets/registry_skeleton.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
 
 enum PlanSortMode {
@@ -97,7 +98,10 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
   void _applySort() {
     switch (_sortMode) {
       case PlanSortMode.closestDue:
-        _entries.sort((a, b) => _getRemainingMinutes(a).compareTo(_getRemainingMinutes(b)));
+        _entries.sort(
+          (a, b) =>
+              _getRemainingMinutes(a).compareTo(_getRemainingMinutes(b)),
+        );
         break;
       case PlanSortMode.time:
         _entries.sort((a, b) {
@@ -107,7 +111,10 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
         });
         break;
       case PlanSortMode.duration:
-        _entries.sort((a, b) => (b.agendaProxy.durationMinutes ?? 0).compareTo(a.agendaProxy.durationMinutes ?? 0));
+        _entries.sort(
+          (a, b) => (b.agendaProxy.durationMinutes ?? 0)
+              .compareTo(a.agendaProxy.durationMinutes ?? 0),
+        );
         break;
       case PlanSortMode.alphabetical:
         _entries.sort((a, b) => a.title.compareTo(b.title));
@@ -181,6 +188,13 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
     }
   }
 
+  int get _activeFilterCount {
+    int count = 0;
+    if (_query.domainFilter.isNotEmpty) count += _query.domainFilter.length;
+    if (_sortMode != PlanSortMode.displayOrder) count++;
+    return count;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -189,230 +203,121 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'همه برنامه‌ها',
-            style: TextStyle(
-              fontFamily: 'Vazirmatn',
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+        backgroundColor: isDark
+            ? theme.scaffoldBackgroundColor
+            : const Color(0xFFF8F9FA),
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ─── Custom Header ───
+              _buildHeader(theme),
+
+              // ─── Search Bar (integrated filter) ───
+              _buildSearchBar(theme, isDark),
+
+              const SizedBox(height: 12),
+
+              // ─── Level 1: Lens Switcher ───
+              _buildLensSwitcher(theme, isDark),
+
+              const SizedBox(height: 10),
+
+              // ─── Level 2: Domain Chips (only for items lens) ───
+              if (_query.lens == RegistryLens.items)
+                _buildDomainFilterChips(theme, isDark),
+
+              if (_query.lens == RegistryLens.items)
+                const SizedBox(height: 8),
+
+              // ─── Main Content ───
+              Expanded(
+                child: _isLoading
+                    ? const RegistrySkeleton()
+                    : _query.lens == RegistryLens.health
+                        ? _buildHealthLensList()
+                        : _buildItemsList(theme, isDark),
+              ),
+
+              // ─── Bulk Action Bar ───
+              if (_isSelectionMode)
+                RegistryBulkBar(
+                  selectedCount: _selectedIds.length,
+                  onCancel: () {
+                    setState(() {
+                      _isSelectionMode = false;
+                      _selectedIds.clear();
+                    });
+                  },
+                  onArchiveSelected: () async {
+                    for (final id in _selectedIds) {
+                      final srcId = id.split(':').last;
+                      await RitmoExecutionKernel.instance.execute(
+                        ArchiveRoutineCommand(routineId: srcId),
+                      );
+                    }
+                    if (mounted) {
+                      setState(() {
+                        _isSelectionMode = false;
+                        _selectedIds.clear();
+                      });
+                    }
+                    RegistryIndex.instance.invalidate();
+                    await _refreshData();
+                  },
+                  onDeleteSelected: () async {
+                    for (final id in _selectedIds) {
+                      final srcId = id.split(':').last;
+                      await RitmoExecutionKernel.instance.execute(
+                        DeleteRoutineCommand(routineId: srcId),
+                      );
+                    }
+                    if (mounted) {
+                      setState(() {
+                        _isSelectionMode = false;
+                        _selectedIds.clear();
+                      });
+                    }
+                    RegistryIndex.instance.invalidate();
+                    await _refreshData();
+                  },
+                ),
+            ],
           ),
-          actions: [
-            if (_isSelectionMode)
-              IconButton(
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () {
-                  setState(() {
-                    _isSelectionMode = false;
-                    _selectedIds.clear();
-                  });
-                },
-              ),
-          ],
         ),
-        body: Column(
-          children: [
-            // Search Input & Sort Menu
-            Padding(
-              padding: const EdgeInsets.all(CalendarTokens.spacingL),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: _onSearchChanged,
-                      textDirection: TextDirection.rtl,
-                      decoration: InputDecoration(
-                        hintText: 'جست‌وجو در همه برنامه‌ها...',
-                        hintStyle: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
-                        prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear_rounded, size: 18),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _onSearchChanged('');
-                                },
-                              )
-                            : null,
-                        filled: true,
-                        fillColor: isDark
-                            ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.5)
-                            : theme.cardColor,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(CalendarTokens.radiusPill),
-                          borderSide: BorderSide(
-                            color: theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.5)
-                          : theme.cardColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder),
-                      ),
-                    ),
-                    child: PopupMenuButton<PlanSortMode>(
-                      icon: Icon(
-                        Icons.sort_rounded,
-                        color: _sortMode != PlanSortMode.displayOrder
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurface,
-                      ),
-                      tooltip: 'مرتب‌سازی برنامه‌ها',
-                      onSelected: (mode) {
-                        setState(() {
-                          _sortMode = mode;
-                          _applySort();
-                        });
-                      },
-                      itemBuilder: (ctx) => [
-                        PopupMenuItem(
-                          value: PlanSortMode.displayOrder,
-                          child: Row(
-                            children: [
-                              Icon(Icons.dashboard_rounded, size: 18, color: _sortMode == PlanSortMode.displayOrder ? theme.colorScheme.primary : null),
-                              const SizedBox(width: 8),
-                              Text('ترتیب پیش‌فرض', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: _sortMode == PlanSortMode.displayOrder ? FontWeight.bold : FontWeight.normal)),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: PlanSortMode.closestDue,
-                          child: Row(
-                            children: [
-                              Icon(Icons.hourglass_top_rounded, size: 18, color: _sortMode == PlanSortMode.closestDue ? theme.colorScheme.primary : null),
-                              const SizedBox(width: 8),
-                              Text('نزدیک‌ترین موعد انجام', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: _sortMode == PlanSortMode.closestDue ? FontWeight.bold : FontWeight.normal)),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: PlanSortMode.time,
-                          child: Row(
-                            children: [
-                              Icon(Icons.schedule_rounded, size: 18, color: _sortMode == PlanSortMode.time ? theme.colorScheme.primary : null),
-                              const SizedBox(width: 8),
-                              Text('زمان اجرا (صبح تا شب)', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: _sortMode == PlanSortMode.time ? FontWeight.bold : FontWeight.normal)),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: PlanSortMode.duration,
-                          child: Row(
-                            children: [
-                              Icon(Icons.timer_rounded, size: 18, color: _sortMode == PlanSortMode.duration ? theme.colorScheme.primary : null),
-                              const SizedBox(width: 8),
-                              Text('مدت زمان (بلند به کوتاه)', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: _sortMode == PlanSortMode.duration ? FontWeight.bold : FontWeight.normal)),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: PlanSortMode.alphabetical,
-                          child: Row(
-                            children: [
-                              Icon(Icons.sort_by_alpha_rounded, size: 18, color: _sortMode == PlanSortMode.alphabetical ? theme.colorScheme.primary : null),
-                              const SizedBox(width: 8),
-                              Text('حروف الفبا (آ-ی)', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: _sortMode == PlanSortMode.alphabetical ? FontWeight.bold : FontWeight.normal)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
 
-            // Lens Switcher
-            _buildLensSwitcher(theme),
-
-            const SizedBox(height: 8),
-
-            // Domain Filter Chips (only for items lens)
-            if (_query.lens == RegistryLens.items) _buildDomainFilterChips(theme),
-
-            const SizedBox(height: 8),
-
-            // Main Content Area
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _query.lens == RegistryLens.health
-                      ? _buildHealthLensList()
-                      : _buildItemsList(),
-            ),
-
-            // Bulk Action Bar
-            if (_isSelectionMode)
-              RegistryBulkBar(
-                selectedCount: _selectedIds.length,
-                onCancel: () {
-                  setState(() {
-                    _isSelectionMode = false;
-                    _selectedIds.clear();
-                  });
-                },
-                onArchiveSelected: () async {
-                  for (final id in _selectedIds) {
-                    final srcId = id.split(':').last;
-                    await RitmoExecutionKernel.instance.execute(
-                      ArchiveRoutineCommand(routineId: srcId),
-                    );
-                  }
-                  if (mounted) {
-                    setState(() {
-                      _isSelectionMode = false;
-                      _selectedIds.clear();
-                    });
-                  }
-                  RegistryIndex.instance.invalidate();
-                  await _refreshData();
-                },
-                onDeleteSelected: () async {
-                  for (final id in _selectedIds) {
-                    final srcId = id.split(':').last;
-                    await RitmoExecutionKernel.instance.execute(
-                      DeleteRoutineCommand(routineId: srcId),
-                    );
-                  }
-                  if (mounted) {
-                    setState(() {
-                      _isSelectionMode = false;
-                      _selectedIds.clear();
-                    });
-                  }
-                  RegistryIndex.instance.invalidate();
-                  await _refreshData();
-                },
-              ),
-          ],
-        ),
+        // ─── FAB ───
         floatingActionButton: _query.lens == RegistryLens.items
-            ? FloatingActionButton.extended(
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (ctx) => UniversalPlannerSheet(onSaved: () => setState(() {})),
-                  );
-                },
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: Colors.white,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text(
-                  'برنامه جدید',
-                  style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold),
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: FloatingActionButton.extended(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (ctx) => UniversalPlannerSheet(
+                        onSaved: () => setState(() {}),
+                      ),
+                    );
+                  },
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      CalendarTokens.fabRadius,
+                    ),
+                  ),
+                  icon: const Icon(Icons.add_rounded, size: 22),
+                  label: const Text(
+                    'افزودن برنامه',
+                    style: TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               )
             : null,
@@ -420,34 +325,291 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
     );
   }
 
-  Widget _buildLensSwitcher(ThemeData theme) {
+  // ═══════════════════════════════════════════
+  // ──────────── HEADER ──────────────────────
+  // ═══════════════════════════════════════════
+
+  Widget _buildHeader(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: CalendarTokens.spacingL),
+      padding: const EdgeInsets.fromLTRB(
+        CalendarTokens.spacingL,
+        CalendarTokens.spacingM,
+        CalendarTokens.spacingL,
+        CalendarTokens.spacingS,
+      ),
+      child: Row(
+        children: [
+          // Back button
+          IconButton(
+            icon: const Icon(Icons.arrow_forward_rounded, size: 22),
+            onPressed: () => Navigator.of(context).pop(),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          ),
+          const SizedBox(width: 8),
+
+          // Title + Subtitle
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'همه برنامه‌ها',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
+                ),
+                if (!_isLoading)
+                  Text(
+                    '${toPersianDigits(_entries.length.toString())} برنامه فعال',
+                    style: TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 13,
+                      color: theme.textTheme.bodySmall?.color
+                          ?.withValues(alpha: 0.55),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Selection mode close
+          if (_isSelectionMode)
+            IconButton(
+              icon: const Icon(Icons.close_rounded),
+              onPressed: () {
+                setState(() {
+                  _isSelectionMode = false;
+                  _selectedIds.clear();
+                });
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════
+  // ──────────── SEARCH BAR ──────────────────
+  // ═══════════════════════════════════════════
+
+  Widget _buildSearchBar(ThemeData theme, bool isDark) {
+    return Padding(
+      padding:
+          const EdgeInsets.symmetric(horizontal: CalendarTokens.spacingL),
+      child: SizedBox(
+        height: CalendarTokens.searchBarHeight,
+        child: TextField(
+          controller: _searchController,
+          onChanged: _onSearchChanged,
+          textDirection: TextDirection.rtl,
+          style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14),
+          decoration: InputDecoration(
+            hintText: 'جست‌وجو در برنامه‌ها',
+            hintStyle: TextStyle(
+              fontFamily: 'Vazirmatn',
+              fontSize: 13.5,
+              color: theme.textTheme.bodySmall?.color
+                  ?.withValues(alpha: 0.4),
+            ),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              size: 20,
+              color: theme.textTheme.bodySmall?.color
+                  ?.withValues(alpha: 0.4),
+            ),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
+                    icon: Icon(
+                      Icons.clear_rounded,
+                      size: 18,
+                      color: theme.textTheme.bodySmall?.color
+                          ?.withValues(alpha: 0.4),
+                    ),
+                    onPressed: () {
+                      _searchController.clear();
+                      _onSearchChanged('');
+                    },
+                  ),
+                // Sort / Filter icon inside search bar
+                Stack(
+                  children: [
+                    PopupMenuButton<PlanSortMode>(
+                      icon: Icon(
+                        Icons.tune_rounded,
+                        size: 20,
+                        color:
+                            _sortMode != PlanSortMode.displayOrder
+                                ? theme.colorScheme.primary
+                                : theme.textTheme.bodySmall?.color
+                                    ?.withValues(alpha: 0.4),
+                      ),
+                      tooltip: 'مرتب‌سازی',
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      onSelected: (mode) {
+                        setState(() {
+                          _sortMode = mode;
+                          _applySort();
+                        });
+                      },
+                      itemBuilder: _buildSortMenuItems,
+                    ),
+                    if (_activeFilterCount > 0)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            toPersianDigits(
+                              _activeFilterCount.toString(),
+                            ),
+                            style: const TextStyle(
+                              fontFamily: 'Vazirmatn',
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 4),
+              ],
+            ),
+            filled: true,
+            fillColor: isDark
+                ? theme.colorScheme.surfaceContainerHigh
+                    .withValues(alpha: 0.20)
+                : Colors.grey.shade100,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<PopupMenuEntry<PlanSortMode>> _buildSortMenuItems(
+    BuildContext ctx,
+  ) {
+    final theme = Theme.of(ctx);
+    PopupMenuEntry<PlanSortMode> item(PlanSortMode mode, IconData icon, String label) {
+      final isActive = _sortMode == mode;
+      return PopupMenuItem(
+        value: mode,
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isActive ? theme.colorScheme.primary : null,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 13,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return [
+      item(PlanSortMode.displayOrder, Icons.dashboard_rounded,
+          'ترتیب پیش‌فرض'),
+      item(PlanSortMode.closestDue, Icons.hourglass_top_rounded,
+          'نزدیک‌ترین موعد'),
+      item(PlanSortMode.time, Icons.schedule_rounded,
+          'زمان اجرا (صبح تا شب)'),
+      item(PlanSortMode.duration, Icons.timer_rounded,
+          'مدت زمان (بلند به کوتاه)'),
+      item(PlanSortMode.alphabetical, Icons.sort_by_alpha_rounded,
+          'حروف الفبا'),
+    ];
+  }
+
+  // ═══════════════════════════════════════════
+  // ──────────── LENS SWITCHER ───────────────
+  // ═══════════════════════════════════════════
+
+  Widget _buildLensSwitcher(ThemeData theme, bool isDark) {
+    return Padding(
+      padding:
+          const EdgeInsets.symmetric(horizontal: CalendarTokens.spacingL),
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(CalendarTokens.radiusPill),
+          color: isDark
+              ? theme.colorScheme.surfaceContainerHigh
+                  .withValues(alpha: 0.20)
+              : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
             Expanded(
-              child: _buildLensOption(
+              child: _buildLensTab(
+                theme,
+                isDark,
                 RegistryLens.items,
-                '📚 آیتم‌ها (${toPersianDigits(_entries.length.toString())})',
+                'برنامه‌ها',
+                badgeText: _isLoading
+                    ? null
+                    : toPersianDigits(_entries.length.toString()),
               ),
             ),
             Expanded(
-              child: _buildLensOption(
+              child: _buildLensTab(
+                theme,
+                isDark,
                 RegistryLens.reminders,
-                '🔔 یادآورها',
+                'یادآورها',
               ),
             ),
             Expanded(
-              child: _buildLensOption(
+              child: _buildLensTab(
+                theme,
+                isDark,
                 RegistryLens.health,
-                '🩺 سلامت',
-                badgeCount: _healthIssues.length,
+                'سلامت',
+                showWarningDot: _healthIssues.isNotEmpty,
               ),
             ),
           ],
@@ -456,44 +618,85 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
     );
   }
 
-  Widget _buildLensOption(RegistryLens lens, String label, {int badgeCount = 0}) {
-    final active = _query.lens == lens;
-    final theme = Theme.of(context);
+  Widget _buildLensTab(
+    ThemeData theme,
+    bool isDark,
+    RegistryLens lens,
+    String label, {
+    String? badgeText,
+    bool showWarningDot = false,
+  }) {
+    final isActive = _query.lens == lens;
 
-    return InkWell(
+    return GestureDetector(
       onTap: () {
         setState(() {
           _query = _query.copyWith(lens: lens);
         });
         _refreshData();
       },
-      borderRadius: BorderRadius.circular(CalendarTokens.radiusPill),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+      child: AnimatedContainer(
+        duration: CalendarTokens.durationStandard,
+        curve: CalendarTokens.curveDefault,
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: active ? theme.colorScheme.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(CalendarTokens.radiusPill),
+          color: isActive
+              ? (isDark
+                  ? theme.colorScheme.surfaceContainerHigh
+                      .withValues(alpha: 0.5)
+                  : Colors.white)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
         alignment: Alignment.center,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               label,
               style: TextStyle(
                 fontFamily: 'Vazirmatn',
-                fontSize: 12.5,
-                fontWeight: active ? FontWeight.bold : FontWeight.normal,
-                color: active ? Colors.white : theme.textTheme.bodyMedium?.color,
+                fontSize: 13,
+                fontWeight:
+                    isActive ? FontWeight.bold : FontWeight.w500,
+                color: isActive
+                    ? theme.textTheme.bodyLarge?.color
+                    : theme.textTheme.bodyMedium?.color
+                        ?.withValues(alpha: 0.55),
               ),
             ),
-            if (badgeCount > 0) ...[
-              const SizedBox(width: 4),
+            if (badgeText != null) ...[
+              const SizedBox(width: 5),
+              Text(
+                badgeText,
+                style: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isActive
+                      ? theme.colorScheme.primary
+                      : theme.textTheme.bodySmall?.color
+                          ?.withValues(alpha: 0.4),
+                ),
+              ),
+            ],
+            if (showWarningDot) ...[
+              const SizedBox(width: 5),
               Container(
-                width: 7,
-                height: 7,
+                width: 6,
+                height: 6,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFF43F5E),
+                  color: Color(0xFFF59E0B),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -504,39 +707,53 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
     );
   }
 
-  Widget _buildDomainFilterChips(ThemeData theme) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: CalendarTokens.spacingL),
-      child: Row(
+  // ═══════════════════════════════════════════
+  // ──────────── DOMAIN FILTER CHIPS ─────────
+  // ═══════════════════════════════════════════
+
+  Widget _buildDomainFilterChips(ThemeData theme, bool isDark) {
+    return SizedBox(
+      height: CalendarTokens.chipHeight,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+          horizontal: CalendarTokens.spacingL,
+        ),
         children: [
-          FilterChip(
-            label: const Text('همه', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
-            selected: _query.domainFilter.isEmpty,
-            onSelected: (_) {
+          _buildFilterChip(
+            theme,
+            isDark,
+            label: 'همه',
+            isSelected: _query.domainFilter.isEmpty,
+            onTap: () {
               setState(() {
                 _query = _query.copyWith(domainFilter: {});
               });
               _refreshData();
             },
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           for (final d in RegistryDomain.values)
-            if (d.settingsKey.isEmpty || _settingsMap[d.settingsKey] == 'true')
+            if (d.settingsKey.isEmpty ||
+                _settingsMap[d.settingsKey] == 'true')
               Padding(
-                padding: const EdgeInsets.only(right: 6.0),
-                child: FilterChip(
-                  label: Text(d.faLabel, style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12)),
-                  selected: _query.domainFilter.contains(d),
-                  onSelected: (sel) {
-                    final nextFilter = Set<RegistryDomain>.from(_query.domainFilter);
-                    if (sel) {
-                      nextFilter.add(d);
-                    } else {
+                padding: const EdgeInsets.only(left: 8),
+                child: _buildFilterChip(
+                  theme,
+                  isDark,
+                  label: d.faLabel,
+                  isSelected: _query.domainFilter.contains(d),
+                  onTap: () {
+                    final nextFilter =
+                        Set<RegistryDomain>.from(_query.domainFilter);
+                    if (_query.domainFilter.contains(d)) {
                       nextFilter.remove(d);
+                    } else {
+                      nextFilter.add(d);
                     }
                     setState(() {
-                      _query = _query.copyWith(domainFilter: nextFilter);
+                      _query =
+                          _query.copyWith(domainFilter: nextFilter);
                     });
                     _refreshData();
                   },
@@ -547,29 +764,118 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
     );
   }
 
-  Widget _buildItemsList() {
-    if (_entries.isEmpty) {
-      return const Center(
+  Widget _buildFilterChip(
+    ThemeData theme,
+    bool isDark, {
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    const accentColor = Color(0xFF14B8A6); // Teal-500 muted
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: CalendarTokens.durationStandard,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? accentColor.withValues(alpha: 0.10)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected
+                ? accentColor.withValues(alpha: 0.35)
+                : theme.dividerColor.withValues(alpha: 0.08),
+            width: 1,
+          ),
+        ),
         child: Text(
-          'هیچ برنامه‌ای یافت نشد',
-          style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.grey),
+          label,
+          style: TextStyle(
+            fontFamily: 'Vazirmatn',
+            fontSize: 13,
+            fontWeight:
+                isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected
+                ? accentColor
+                : theme.textTheme.bodyMedium?.color
+                    ?.withValues(alpha: 0.55),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════
+  // ──────────── ITEMS LIST ──────────────────
+  // ═══════════════════════════════════════════
+
+  Widget _buildItemsList(ThemeData theme, bool isDark) {
+    if (_entries.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inbox_rounded,
+              size: 48,
+              color: theme.textTheme.bodySmall?.color
+                  ?.withValues(alpha: 0.25),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _query.searchText.isNotEmpty
+                  ? 'نتیجه‌ای یافت نشد'
+                  : 'هنوز برنامه‌ای ثبت نشده',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: theme.textTheme.bodySmall?.color
+                    ?.withValues(alpha: 0.4),
+              ),
+            ),
+            if (_query.searchText.isEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                'با دکمه «افزودن برنامه» شروع کنید.',
+                style: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 13,
+                  color: theme.textTheme.bodySmall?.color
+                      ?.withValues(alpha: 0.3),
+                ),
+              ),
+            ],
+          ],
         ),
       );
     }
 
     return ListView.builder(
       itemCount: _entries.length,
-      itemExtent: 80,
-      padding: const EdgeInsets.only(bottom: 80),
+      padding: const EdgeInsets.only(bottom: 88),
       itemBuilder: (context, index) {
         final entry = _entries[index];
         return Dismissible(
           key: Key(entry.id),
-          direction: _isSelectionMode ? DismissDirection.none : DismissDirection.startToEnd,
+          direction: _isSelectionMode
+              ? DismissDirection.none
+              : DismissDirection.startToEnd,
           background: Container(
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            color: Colors.amber.shade800,
+            margin: const EdgeInsets.symmetric(
+              horizontal: CalendarTokens.spacingL,
+              vertical: CalendarTokens.registryCardGap / 2,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFF64748B),
+              borderRadius: BorderRadius.circular(
+                CalendarTokens.radiusCardLg,
+              ),
+            ),
             child: const Row(
               children: [
                 Icon(Icons.archive_rounded, color: Colors.white),
@@ -602,13 +908,18 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
                   setState(() {
                     if (_selectedIds.contains(entry.id)) {
                       _selectedIds.remove(entry.id);
-                      if (_selectedIds.isEmpty) _isSelectionMode = false;
+                      if (_selectedIds.isEmpty) {
+                        _isSelectionMode = false;
+                      }
                     } else {
                       _selectedIds.add(entry.id);
                     }
                   });
                 } else {
-                  ActionRouter.open(context, item: entry.agendaProxy);
+                  ActionRouter.open(
+                    context,
+                    item: entry.agendaProxy,
+                  );
                 }
               },
               onLongPress: () {
@@ -625,16 +936,24 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════
+  // ──────────── HEALTH LENS ─────────────────
+  // ═══════════════════════════════════════════
+
   Widget _buildHealthLensList() {
     if (_healthIssues.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.verified_rounded, color: CalendarTokens.emerald, size: 48),
-            SizedBox(height: 12),
-            Text(
-              'همه چیز مرتب است 🎉',
+            const Icon(
+              Icons.verified_rounded,
+              color: CalendarTokens.emerald,
+              size: 48,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'همه چیز مرتب است',
               style: TextStyle(
                 fontFamily: 'Vazirmatn',
                 fontSize: 16,
@@ -642,10 +961,14 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
                 color: CalendarTokens.emerald,
               ),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               'هیچ ناهنجاری یا مشکلی در دیتابیس برنامه‌ها یافت نشد.',
-              style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: Colors.grey),
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 13,
+                color: Colors.grey.shade500,
+              ),
             ),
           ],
         ),
