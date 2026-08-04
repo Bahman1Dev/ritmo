@@ -17,6 +17,7 @@ import 'package:ritmo/features/routines/presentation/forms/sports_step2_form.dar
 // Extracted components & controller
 import 'package:ritmo/features/routines/presentation/planner_controller.dart';
 import 'package:ritmo/features/routines/presentation/widgets/confetti_widget.dart';
+import 'package:ritmo/features/routines/presentation/widgets/dedicated_builder_sheet.dart';
 import 'package:ritmo/features/supplementary_sports/movement/presentation/movement_log_sheet.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_category_grid.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_header.dart';
@@ -97,18 +98,17 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
   Widget build(BuildContext context) {
     // Wire up the medical sheet opener here so `context` is always current
     _controller.setMedicalSheetOpener(([prefillData]) {
-      if (mounted) Navigator.of(context).pop();
       MedicationFormSheet.show(
         context,
         prefillData: prefillData ?? _controller.tempMedicationData,
         onFormCompleted: (formData) {
           widget.onSaved?.call();
+          if (mounted) Navigator.of(context).pop();
         },
       );
     });
 
     _controller.setWorshipSheetOpener(({prefill}) {
-      if (mounted) Navigator.of(context).pop();
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -127,6 +127,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
             ) : null,
             onSaved: () {
               widget.onSaved?.call();
+              if (mounted) Navigator.of(context).pop();
             },
           );
         },
@@ -134,7 +135,6 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
     });
 
     _controller.setCourseSheetOpener(({initialValues}) {
-      if (mounted) Navigator.of(context).pop();
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -144,6 +144,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
             initialValues: initialValues,
             onCourseCreated: () {
               widget.onSaved?.call();
+              if (mounted) Navigator.of(context).pop();
             },
           );
         },
@@ -151,7 +152,6 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
     });
 
     _controller.setGoalSheetOpener(({templateData}) {
-      if (mounted) Navigator.of(context).pop();
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -163,6 +163,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
             templateData: templateData,
             onSaved: () {
               widget.onSaved?.call();
+              if (mounted) Navigator.of(context).pop();
             },
           );
         },
@@ -170,23 +171,79 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
     });
 
     _controller.setSportsLogSheetOpener(({durationMinutes}) {
-      if (mounted) Navigator.of(context).pop();
       showMovementLogSheet(
         context,
         presetDurationMinutes: durationMinutes,
         onLogged: () {
           widget.onSaved?.call();
+          if (mounted) Navigator.of(context).pop();
+        },
+      );
+    });
+
+    _controller.setEventSheetOpener(() {
+      DedicatedBuilderSheet.show(
+        context: context,
+        title: '✨ ثبت رویداد جدید',
+        subtitle: 'تنظیمات زمان و مشخصات رویداد در مسیر زندگی',
+        controller: _controller,
+        formWidget: GenericStep2Form(controller: _controller),
+        onSaved: () {
+          widget.onSaved?.call();
+          if (mounted) Navigator.of(context).pop();
+        },
+      );
+    });
+
+    _controller.setReminderSheetOpener(() {
+      DedicatedBuilderSheet.show(
+        context: context,
+        title: '✨ ثبت یادآور جدید',
+        subtitle: 'تنظیم زمان و یادآوری هشدار ساده',
+        controller: _controller,
+        formWidget: GenericStep2Form(controller: _controller),
+        onSaved: () {
+          widget.onSaved?.call();
+          if (mounted) Navigator.of(context).pop();
+        },
+      );
+    });
+
+    _controller.setReflectionSheetOpener(() {
+      DedicatedBuilderSheet.show(
+        context: context,
+        title: '✨ ثبت یادداشت و بازتاب',
+        subtitle: 'ثبت احوال، دستاوردها و یادداشت‌های روزانه',
+        controller: _controller,
+        formWidget: ReflectionStep2Form(controller: _controller),
+        onSaved: () {
+          widget.onSaved?.call();
+          if (mounted) Navigator.of(context).pop();
+        },
+      );
+    });
+
+    _controller.setGenericSheetOpener(() {
+      DedicatedBuilderSheet.show(
+        context: context,
+        title: '✨ ساخت روتین عمومی',
+        subtitle: 'برنامه‌ریزی، زمان‌بندی و تکرار روتین جدید',
+        controller: _controller,
+        formWidget: GenericStep2Form(controller: _controller),
+        onSaved: () {
+          widget.onSaved?.call();
+          if (mounted) Navigator.of(context).pop();
         },
       );
     });
 
     _controller.setSportsScreenOpener(() {
-      if (mounted) Navigator.of(context).pop();
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const SSHomeDashboardScreen()),
       ).then((_) {
         widget.onSaved?.call();
+        if (mounted) Navigator.of(context).pop();
       });
     });
 
@@ -293,10 +350,6 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
                                              PlannerNaturalInput(controller: _controller),
                                              const SizedBox(height: 16),
                                              PlannerCategoryGrid(controller: _controller),
-                                             const SizedBox(height: 16),
-                                             const Divider(),
-                                             const SizedBox(height: 16),
-                                             _buildDynamicSubsystemForm(),
                                              const SizedBox(height: 24),
                                            ],
                                          ],
@@ -304,11 +357,12 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
                                     ),
                                   ),
 
-                                  // Fixed Bottom section (Submit button)
-                                  Padding(
-                                    padding: EdgeInsets.fromLTRB(24, 8, 24, 16 + MediaQuery.of(context).padding.bottom),
-                                    child: PlannerSubmitButton(controller: _controller),
-                                  ),
+                                  // Fixed Bottom section (Submit button for edit mode)
+                                  if (_controller.isEditing)
+                                    Padding(
+                                      padding: EdgeInsets.fromLTRB(24, 8, 24, 16 + MediaQuery.of(context).padding.bottom),
+                                      child: PlannerSubmitButton(controller: _controller),
+                                    ),
                                 ],
                               ),
 

@@ -480,7 +480,18 @@ class PlannerController extends ChangeNotifier {
     };
   }
 
-  /// If this item belongs to a dedicated module, opens its canonical sheet and returns true.
+  /// Callbacks set by UniversalPlannerSheet to open dedicated builder sheets
+  VoidCallback? openEventSheet;
+  VoidCallback? openReminderSheet;
+  VoidCallback? openReflectionSheet;
+  VoidCallback? openGenericSheet;
+
+  void setEventSheetOpener(VoidCallback opener) => openEventSheet = opener;
+  void setReminderSheetOpener(VoidCallback opener) => openReminderSheet = opener;
+  void setReflectionSheetOpener(VoidCallback opener) => openReflectionSheet = opener;
+  void setGenericSheetOpener(VoidCallback opener) => openGenericSheet = opener;
+
+  /// If this item belongs to a dedicated module or category, opens its canonical sheet and returns true.
   bool delegateToOwnerModule(BuildContext context) {
     if (itemType == 'COURSE' ||
         selectedCategory == Category.learning ||
@@ -519,6 +530,32 @@ class PlannerController extends ChangeNotifier {
         );
         return true;
       }
+    }
+
+    if (itemType == 'EVENT') {
+      if (openEventSheet != null) {
+        openEventSheet!();
+        return true;
+      }
+    }
+
+    if (itemType == 'REMINDER') {
+      if (openReminderSheet != null) {
+        openReminderSheet!();
+        return true;
+      }
+    }
+
+    if (itemType == 'REFLECT') {
+      if (openReflectionSheet != null) {
+        openReflectionSheet!();
+        return true;
+      }
+    }
+
+    if (openGenericSheet != null) {
+      openGenericSheet!();
+      return true;
     }
 
     return false;
