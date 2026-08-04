@@ -19,12 +19,9 @@ import 'package:ritmo/core/domain/engines/cycle_engine.dart';
 import 'package:ritmo/core/domain/engines/medical_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
-import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/engines/ritmo_intelligence_orchestrator.dart';
 import 'package:ritmo/core/localization/locale_repository.dart';
 // Platform Interfaces
-import 'package:ritmo/core/platform/alarm_platform.dart';
-import 'package:ritmo/core/platform/backup_platform.dart';
 import 'package:ritmo/core/platform/alarm_platform.dart';
 import 'package:ritmo/core/platform/backup_platform.dart';
 import 'package:ritmo/core/platform/notification_platform.dart';
