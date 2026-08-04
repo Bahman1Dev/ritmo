@@ -241,57 +241,63 @@ class _RegistryRowState extends State<RegistryRow> {
   }
 
   Widget _buildOverflowMenu(BuildContext context, ThemeData theme) {
-    return PopupMenuButton<String>(
-      icon: Icon(
-        Icons.more_vert_rounded,
-        size: 20,
-        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4),
-      ),
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 40, maxWidth: 40),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      onSelected: (action) {
-        switch (action) {
-          case 'edit':
-            ActionRouter.open(context, item: entry.agendaProxy);
-            break;
-          case 'archive':
-            widget.onArchive?.call();
-            break;
-        }
-      },
-      itemBuilder: (_) => [
-        if (entry.caps.canEdit)
-          const PopupMenuItem(
-            value: 'edit',
-            child: Row(
-              children: [
-                Icon(Icons.edit_rounded, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'ویرایش',
-                  style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
-                ),
-              ],
+    return SizedBox(
+      width: 36,
+      height: 36,
+      child: PopupMenuButton<String>(
+        icon: Icon(
+          Icons.more_vert_rounded,
+          size: 20,
+          color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4),
+        ),
+        padding: EdgeInsets.zero,
+        iconSize: 20,
+        splashRadius: 18,
+        position: PopupMenuPosition.under,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        onSelected: (action) {
+          switch (action) {
+            case 'edit':
+              ActionRouter.open(context, item: entry.agendaProxy);
+              break;
+            case 'archive':
+              widget.onArchive?.call();
+              break;
+          }
+        },
+        itemBuilder: (_) => [
+          if (entry.caps.canEdit)
+            const PopupMenuItem(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit_rounded, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'ویرایش',
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+                  ),
+                ],
+              ),
             ),
-          ),
-        if (entry.caps.canArchive)
-          const PopupMenuItem(
-            value: 'archive',
-            child: Row(
-              children: [
-                Icon(Icons.archive_rounded, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'بایگانی',
-                  style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
-                ),
-              ],
+          if (entry.caps.canArchive)
+            const PopupMenuItem(
+              value: 'archive',
+              child: Row(
+                children: [
+                  Icon(Icons.archive_rounded, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'بایگانی',
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+                  ),
+                ],
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
