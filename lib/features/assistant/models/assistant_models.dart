@@ -87,8 +87,15 @@ enum AssistantActionType {
   static AssistantActionType fromString(String val) {
     return AssistantActionType.values.firstWhere(
       (e) => e.name == val,
-      orElse: () => AssistantActionType.openPage,
+      orElse: () => throw ArgumentError('اکشن ناشناخته است: "$val"'),
     );
+  }
+
+  static AssistantActionType? tryFromString(String val) {
+    for (final e in AssistantActionType.values) {
+      if (e.name == val) return e;
+    }
+    return null;
   }
 }
 

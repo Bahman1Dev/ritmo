@@ -15,6 +15,7 @@ import 'package:ritmo/core/analytics/sleep_engine.dart';
 import 'package:ritmo/core/behavior/behavioral_intelligence_orchestrator.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
+import 'package:ritmo/core/domain/commands/commands_registry.dart';
 import 'package:ritmo/core/domain/engines/cycle_engine.dart';
 import 'package:ritmo/core/domain/engines/medical_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
@@ -49,6 +50,7 @@ class AppBootstrapper {
     }
 
     // 1. Initialize Event Bus and Engine Bus
+    registerAllRitmoCommands();
     final eventBus = RitmoEventBus();
     sl.registerSingleton<RitmoEventBus>(eventBus);
 

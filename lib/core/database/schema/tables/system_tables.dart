@@ -247,7 +247,8 @@ class SystemTables {
           targetKey TEXT,
           oldValue TEXT,
           newValue TEXT,
-          appliedAt INTEGER NOT NULL
+          appliedAt INTEGER NOT NULL,
+          assistant_id TEXT
       );
     ''');
 
