@@ -67,6 +67,7 @@ class MigrationRunner {
     MigrationV60(),
     MigrationV61(),
     MigrationV62(), // T3(p045): deduplicate routine_completions for non-interval routines
+    MigrationV63(), // Fix active_timers schema alignment & legacy NOT NULL constraint compatibility
   ];
 
   static Future<void> run(Database db, int oldVersion, int newVersion) async {

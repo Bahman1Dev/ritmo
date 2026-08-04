@@ -136,14 +136,20 @@ class SystemTables {
 
     // 18. active_timers table
     await db.execute('''
-      CREATE TABLE active_timers (
+      CREATE TABLE IF NOT EXISTS active_timers (
           id TEXT PRIMARY KEY,
-          routineId TEXT NOT NULL,
-          startedAt INTEGER NOT NULL,
-          plannedDurationMinutes INTEGER NOT NULL,
-          pausedAccumulatedMs INTEGER NOT NULL DEFAULT 0,
-          state TEXT NOT NULL DEFAULT 'RUNNING',
-          FOREIGN KEY(routineId) REFERENCES routines(id) ON DELETE CASCADE
+          domain TEXT,
+          itemId TEXT,
+          mode TEXT,
+          direction TEXT,
+          targetTimestamp INTEGER,
+          durationSeconds INTEGER,
+          createdAt INTEGER,
+          routineId TEXT,
+          startedAt INTEGER,
+          plannedDurationMinutes INTEGER,
+          pausedAccumulatedMs INTEGER DEFAULT 0,
+          state TEXT DEFAULT 'RUNNING'
       );
     ''');
 

@@ -3106,7 +3106,6 @@ class MigrationV62 extends Migration {
         if (rows.length <= 1) continue;
 
         // Keep the first (most recent) id, delete the rest
-        final keepId = rows.first['id'] as String;
         final deleteIds = rows.skip(1).map((r) => r['id'] as String).toList();
 
         for (final delId in deleteIds) {
@@ -3128,3 +3127,33 @@ class MigrationV62 extends Migration {
   @override
   Future<void> down(Database db) async {}
 }
+
+/// MigrationV63: Ensure active_timers table columns are safely aligned
+/// and compatible with both legacy and new RitmoTimerService inserts.
+class MigrationV63 extends Migration {
+  @override
+  int get version => 63;
+
+  @override
+  Future<void> up(Database db) async {
+    try {
+      await safeAddColumn(db, 'active_timers', 'domain', 'TEXT');
+      await safeAddColumn(db, 'active_timers', 'itemId', 'TEXT');
+      await safeAddColumn(db, 'active_timers', 'mode', 'TEXT');
+      await safeAddColumn(db, 'active_timers', 'direction', 'TEXT');
+      await safeAddColumn(db, 'active_timers', 'targetTimestamp', 'INTEGER');
+      await safeAddColumn(db, 'active_timers', 'durationSeconds', 'INTEGER');
+      await safeAddColumn(db, 'active_timers', 'createdAt', 'INTEGER');
+      await safeAddColumn(db, 'active_timers', 'routineId', 'TEXT');
+      await safeAddColumn(db, 'active_timers', 'startedAt', 'INTEGER');
+      await safeAddColumn(db, 'active_timers', 'plannedDurationMinutes', 'INTEGER');
+      debugPrint('[MigrationV63] Successfully aligned active_timers schema.');
+    } catch (e) {
+      debugPrint('[MigrationV63] Error: $e');
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
