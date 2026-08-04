@@ -1071,15 +1071,29 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
   }
 
   void _startTimerFlow(Routine routine, String mode) {
+    // T4: compute today's date explicitly and pass as dateStr
+    final now = DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ActiveTimerOverlay(
           routine: routine,
           completionMode: mode,
-          onFinished: () {
+          dateStr: todayStr,         // T4: explicit, not hidden DateTime.now() inside overlay
+          onCompleted: (outcome) {  // T6: only on confirmed completion
             Navigator.pop(context);
             _loadDashboardData();
+            if (outcome.didWrite) {
+              RitmoToast.show(context, 'روتین با تایمر ثبت شد ✓');
+            } else {
+              RitmoToast.show(context, outcome.errorMessage ?? 'ثبت انجام نشد');
+            }
+          },
+          onCancelled: () {         // T6: neutral — no success message
+            Navigator.pop(context);
+            // No feedback — user chose not to complete
           },
         ),
       ),
@@ -1762,60 +1776,5 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
 // CUSTOM PAINTERS & INDICATORS
 // ---------------------------------------------------------------------------
 
-class _EnergyRingPainter extends CustomPainter {
 
-  _EnergyRingPainter({required this.percentage, required this.colors});
-  final double percentage;
-  final List<Color> colors;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 4;
-    const strokeWidth = 5.0;
-
-    final rect = Rect.fromCircle(center: center, radius: radius);
-
-    // Draw background track
-    final paintBg = Paint()
-      ..color = colors.first.withValues(alpha: 0.08)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
-    canvas.drawCircle(center, radius, paintBg);
-
-    // Create gradient
-    final gradient = SweepGradient(
-      colors: colors,
-      startAngle: -math.pi / 2,
-      endAngle: 3 * math.pi / 2,
-    );
-
-    // Glow effect
-    final paintGlow = Paint()
-      ..shader = gradient.createShader(rect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth + 3.0
-      ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.5);
-
-    // Foreground track
-    final paintFg = Paint()
-      ..shader = gradient.createShader(rect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    final sweepAngle = 2 * math.pi * (percentage / 100);
-
-    // Draw glow first
-    canvas.drawArc(rect, -math.pi / 2, sweepAngle, false, paintGlow);
-    // Draw crisp path on top
-    canvas.drawArc(rect, -math.pi / 2, sweepAngle, false, paintFg);
-  }
-
-  @override
-  bool shouldRepaint(covariant _EnergyRingPainter oldDelegate) {
-    return oldDelegate.percentage != percentage || oldDelegate.colors != colors;
-  }
-}
 

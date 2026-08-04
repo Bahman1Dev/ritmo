@@ -66,6 +66,7 @@ class MigrationRunner {
     MigrationV59(),
     MigrationV60(),
     MigrationV61(),
+    MigrationV62(), // T3(p045): deduplicate routine_completions for non-interval routines
   ];
 
   static Future<void> run(Database db, int oldVersion, int newVersion) async {

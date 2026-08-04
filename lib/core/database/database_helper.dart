@@ -20,7 +20,7 @@ class DatabaseHelper {
   DatabaseHelper._init();
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
-  static const int _dbVersion = 61;
+  static const int _dbVersion = 62;
 
   @visibleForTesting
   static set databaseInstance(Database? db) => _database = db;
@@ -33,14 +33,11 @@ class DatabaseHelper {
 
     _dbInitCompleter = Completer<Database>();
     try {
-      // NOTE: Database is stored locally in the Android private app sandbox ('ritmo.db' / 'ritmo_secure.db').
-      // It is protected by Android OS app sandboxing, biometric app lock, and encrypted manual export backups.
       final db = await _initDB('ritmo.db');
       _database = db;
       _dbInitCompleter!.complete(db);
       return db;
-    } catch (e, st) {
-      _dbInitCompleter!.completeError(e, st);
+    } catch (e) {
       _dbInitCompleter = null;
       rethrow;
     }

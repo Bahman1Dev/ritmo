@@ -3064,6 +3064,67 @@ class MigrationV61 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+/// T3 (prompt-045): Deduplicate routine_completions for non-interval routines.
+/// Keeps the most recent row per (routineId, completionDate); removes older duplicates.
+/// Interval routines (routineId with intervalHours > 0 in routine_schedules) are
+/// excluded because multiple completions in one day are intentional for them.
+class MigrationV62 extends Migration {
+  @override
+  int get version => 62;
 
+  @override
+  Future<void> up(Database db) async {
+    try {
+      // 1. Find all non-interval routineIds
+      final intervalIds = (await db.rawQuery(
+        'SELECT DISTINCT routineId FROM routine_schedules WHERE intervalHours > 0',
+      )).map((r) => r['routineId'] as String).toSet();
 
+      // 2. Find duplicate (routineId, completionDate) groups among non-interval routines
+      final duplicates = await db.rawQuery('''
+        SELECT routineId, completionDate, COUNT(*) as c
+          FROM routine_completions
+         GROUP BY routineId, completionDate
+        HAVING c > 1
+      ''');
 
+      var mergedCount = 0;
+
+      for (final dup in duplicates) {
+        final rid = dup['routineId'] as String;
+        final dateStr = dup['completionDate'] as String;
+
+        // Skip interval routines — multiple completions per day is correct
+        if (intervalIds.contains(rid)) continue;
+
+        // Find the most recent row's id
+        final rows = await db.rawQuery(
+          'SELECT id FROM routine_completions WHERE routineId = ? AND completionDate = ? ORDER BY completionTime DESC',
+          [rid, dateStr],
+        );
+
+        if (rows.length <= 1) continue;
+
+        // Keep the first (most recent) id, delete the rest
+        final keepId = rows.first['id'] as String;
+        final deleteIds = rows.skip(1).map((r) => r['id'] as String).toList();
+
+        for (final delId in deleteIds) {
+          await db.delete(
+            'routine_completions',
+            where: 'id = ?',
+            whereArgs: [delId],
+          );
+          mergedCount++;
+        }
+      }
+
+      debugPrint('[MigrationV62] Merged $mergedCount duplicate completion rows for non-interval routines.');
+    } catch (e) {
+      debugPrint('[MigrationV62] Error: $e');
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}

@@ -327,9 +327,13 @@ class RoutineAgendaRenderer extends AgendaTileRenderer {
                     builder: (context) => ActiveTimerOverlay(
                       routine: routine,
                       completionMode: selectedMode,
-                      onFinished: () {
+                      dateStr: item.dateStr,        // T4: item's date
+                      onCompleted: (outcome) {      // T6: only on confirmed completion
                         Navigator.pop(context);
                         onChanged();
+                      },
+                      onCancelled: () {             // T6: neutral — no success
+                        Navigator.pop(context);
                       },
                     ),
                   ),

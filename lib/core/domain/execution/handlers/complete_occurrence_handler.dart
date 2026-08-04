@@ -65,11 +65,29 @@ class CompleteOccurrenceHandler
       }
     }
 
-    // 2. Insert into routine_completions with ConflictAlgorithm.replace
+    // 2. Determine if this is an interval routine (may complete multiple times/day)
+    final scheduleRows = await context.txn.query(
+      'routine_schedules',
+      columns: ['intervalHours'],
+      where: 'routineId = ?',
+      whereArgs: [command.routineId],
+      limit: 1,
+    );
+    final isInterval = scheduleRows.isNotEmpty &&
+        (scheduleRows.first['intervalHours'] as int? ?? 0) > 0;
+
+    // T3: Deterministic ID for non-interval routines so ConflictAlgorithm.replace
+    // actually deduplicates. Interval routines keep timestamp-based ID since they
+    // may legitimately have multiple completions in one day.
+    final completionId = isInterval
+        ? 'comp_${command.routineId}_$nowMs'
+        : 'comp_${command.routineId}_${command.dateStr}';
+
+    // 3. Insert into routine_completions with ConflictAlgorithm.replace
     await context.txn.insert(
       'routine_completions',
       {
-        'id': 'comp_${command.routineId}_$nowMs',
+        'id': completionId,
         'routineId': command.routineId,
         'completionDate': command.dateStr,
         'completionTime': nowMs,

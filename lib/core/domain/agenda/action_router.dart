@@ -229,6 +229,21 @@ class ActionRouter {
 
     if (!context.mounted) return;
 
+    // T1: Single decision point — completed/skipped items go to details, not niyyah.
+    // ⛔ This is the ONLY place this check lives; do not duplicate in journey_screen or renderer.
+    if (item.isCompleted || item.completion == AgendaCompletion.skipped) {
+      await RoutineDetailsSheet.show(
+        context: context,
+        routine: targetRoutine,
+        targetDate: item.dateStr,
+        onReverted: () {
+          DayAgendaService.instance.invalidateDate(item.dateStr);
+          onChanged?.call();
+        },
+      );
+      return;
+    }
+
     await RoutineNiyyahSheet.show(
       context: context,
       routine: targetRoutine,
@@ -246,6 +261,8 @@ class ActionRouter {
               return;
             }
 
+            // T7: router starts timer with canonical ID; overlay's _startTimer
+            // calls startTimer with the same ID — ConflictAlgorithm.replace deduplicates.
             await RitmoTimerService.instance.startTimer(
               id: 'routine_${targetRoutine.id}',
               domain: 'routine',
@@ -262,15 +279,30 @@ class ActionRouter {
                 builder: (ctx) => ActiveTimerOverlay(
                   routine: targetRoutine,
                   completionMode: selectedMode,
-                  onFinished: () {
+                  dateStr: item.dateStr,    // T4: item date, not DateTime.now()
+                  onCompleted: (outcome) {  // T6: only fires on confirmed completion
                     Navigator.pop(ctx);
                     DayAgendaService.instance.invalidateDate(item.dateStr);
                     onChanged?.call();
-                    ActionFeedback.success(
-                      context,
-                      message: 'تایمر به پایان رسید و روتین ثبت شد',
-                      dateStr: item.dateStr,
-                    );
+                    if (outcome.didWrite) {
+                      ActionFeedback.success(
+                        context,
+                        message: 'تایمر تمام شد و روتین ثبت شد',
+                        dateStr: item.dateStr,
+                        undoToken: outcome.undoToken,
+                      );
+                    } else {
+                      ActionFeedback.failure(
+                        context,
+                        message: outcome.errorMessage ?? 'ثبت پس از تایمر انجام نشد. دوباره تلاش کن.',
+                      );
+                    }
+                  },
+                  onCancelled: () {         // T6: neutral — no success message
+                    Navigator.pop(ctx);
+                    DayAgendaService.instance.invalidateDate(item.dateStr);
+                    onChanged?.call();
+                    ActionFeedback.info(context, message: 'تایمر لغو شد');
                   },
                 ),
               ),

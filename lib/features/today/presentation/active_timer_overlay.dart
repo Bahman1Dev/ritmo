@@ -1,39 +1,56 @@
 import 'dart:async';
-import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/di/service_locator.dart';
+import 'package:ritmo/core/domain/completion/completion_gateway.dart';
+import 'package:ritmo/core/domain/completion/completion_outcome.dart';
+import 'package:ritmo/core/domain/completion/completion_request.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/domain/models/completion_result.dart';
+import 'package:ritmo/core/domain/models/duration_bounds.dart';
 import 'package:ritmo/core/platform/notification_platform.dart';
-import 'package:ritmo/core/services/alarm_scheduler_service.dart';
 import 'package:ritmo/core/services/ritmo_timer_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
-import 'package:ritmo/core/time/ritmo_clock.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 
-class ActiveTimerOverlay extends StatefulWidget {
+// T6: Separate completed vs cancelled callbacks
+// T4: dateStr required parameter — never use DateTime.now() for completionDate
+// T7: Single timer ID pattern: 'routine_${routine.id}'
+// T8: All DB reads via RitmoTimerService / ActiveTimerModel, no raw column access
+// T9: _showCompletionDialog called outside setState via timer.cancel()
+// B7: Single 'dart:async' import (duplicate removed)
 
+class ActiveTimerOverlay extends StatefulWidget {
   const ActiveTimerOverlay({
     super.key,
     required this.routine,
     required this.completionMode,
-    required this.onFinished,
+    required this.dateStr,          // T4: required, from item.dateStr
+    required this.onCompleted,      // T6: called only on confirmed completion
+    required this.onCancelled,      // T6: called on cancel / "no thanks"
   });
+
   final Routine routine;
   final String completionMode; // FULL, LIGHT, MINIMAL
-  final VoidCallback onFinished;
+  final String dateStr;        // T4: the agenda item's date, not today's date
+  final void Function(CompletionOutcome outcome) onCompleted; // T6
+  final VoidCallback onCancelled;                             // T6
 
   @override
   State<ActiveTimerOverlay> createState() => _ActiveTimerOverlayState();
 }
 
-class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTickerProviderStateMixin {
+class _ActiveTimerOverlayState extends State<ActiveTimerOverlay>
+    with SingleTickerProviderStateMixin {
   late int _totalSeconds;
   int _elapsedSeconds = 0;
   bool _isPaused = false;
   Timer? _timer;
   late AnimationController _animController;
+
+  // T7: single canonical timer ID
+  String get _timerId => 'routine_${widget.routine.id}';
 
   int _resolveDur(int? v, int fallback) => (v != null && v > 0) ? v : fallback;
 
@@ -51,7 +68,9 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
   void _initTimerValues() {
     var durationMinutes = 30;
     if (widget.completionMode == 'FULL') {
-      durationMinutes = widget.routine.currentTargetMinutes > 0 ? widget.routine.currentTargetMinutes : _resolveDur(widget.routine.targetDurationMinutes, 30);
+      durationMinutes = widget.routine.currentTargetMinutes > 0
+          ? widget.routine.currentTargetMinutes
+          : _resolveDur(widget.routine.targetDurationMinutes, 30);
     } else if (widget.completionMode == 'LIGHT') {
       durationMinutes = _resolveDur(widget.routine.lightDurationMinutes, 20);
     } else if (widget.completionMode == 'MINIMAL') {
@@ -64,7 +83,10 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('مدتزمان نامعتبر است؛ تایمر قابل اجرا نیست.', style: TextStyle(fontFamily: 'Vazirmatn')),
+            content: Text(
+              'مدتزمان نامعتبر است؛ تایمر قابل اجرا نیست.',
+              style: TextStyle(fontFamily: 'Vazirmatn'),
+            ),
           ),
         );
         Navigator.of(context).pop();
@@ -75,131 +97,118 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
 
   Future<void> _startTimer() async {
     if (_totalSeconds <= 0) return;
-    // 1. Save state via RitmoTimerService
+
+    // T7: Start timer with canonical ID — the same ID that router used
+    // (router also calls startTimer with 'routine_${routine.id}'; the
+    //  ConflictAlgorithm.replace in RitmoTimerService deduplicates automatically)
     await RitmoTimerService.instance.startTimer(
-      id: 'timer_${widget.routine.id}',
+      id: _timerId,
       domain: 'routine',
       itemId: widget.routine.id,
       mode: widget.completionMode,
       durationMinutes: (_totalSeconds / 60).round(),
     );
 
-    // 2. Start Native Foreground Service
+    // Start Native Foreground Service
     await sl<NotificationPlatform>().startTimerMode(
       title: widget.routine.title,
       durationSeconds: _totalSeconds,
       elapsedSeconds: _elapsedSeconds,
     );
 
-    // 3. Start local ticking
+    // T9: Start local ticking — _showCompletionDialog called OUTSIDE setState
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isPaused) {
-        setState(() {
-          if (_elapsedSeconds < _totalSeconds) {
-            _elapsedSeconds++;
-          } else {
-            _timer?.cancel();
-            _showCompletionDialog();
-          }
-        });
+      if (_isPaused) return;
+      if (_elapsedSeconds < _totalSeconds) {
+        setState(() => _elapsedSeconds++);
+        return;
       }
+      timer.cancel();
+      if (!mounted) return;
+      unawaited(_showCompletionDialog());
     });
   }
 
+  // T8: _togglePause reads/writes via RitmoTimerService model, no raw columns
   Future<void> _togglePause() async {
     RitmoHaptics.confirm();
     setState(() {
       _isPaused = !_isPaused;
     });
 
-    final db = await DatabaseHelper.instance.database;
-    final timerResult = await db.query('active_timers', limit: 1);
-    if (timerResult.isNotEmpty) {
-      final timerData = timerResult.first;
-      final startedAt = timerData['startedAt']! as int;
-      final pausedAccumulatedMs = timerData['pausedAccumulatedMs']! as int;
-
-      if (_isPaused) {
-        // Paused: calculate elapsed time and update database
-        final now = DateTime.now().millisecondsSinceEpoch;
-        final newlyPausedDuration = now - startedAt;
-        await db.update('active_timers', {
-          'state': 'PAUSED',
-          'pausedAccumulatedMs': pausedAccumulatedMs + newlyPausedDuration,
-        }, where: 'routineId = ?', whereArgs: [widget.routine.id]);
-        
-        // Stop native foreground timer ticks or downgrade to status notification
-        await sl<NotificationPlatform>().startTimerMode(
-          title: '${widget.routine.title} (متوقف‌شده)',
-          durationSeconds: _totalSeconds,
-          elapsedSeconds: _elapsedSeconds,
-        );
-      } else {
-        // Resumed: update startedAt to current time
-        final now = DateTime.now().millisecondsSinceEpoch;
-        await db.update('active_timers', {
-          'state': 'RUNNING',
-          'startedAt': now,
-        }, where: 'routineId = ?', whereArgs: [widget.routine.id]);
-
-        // Update native foreground timer
-        await sl<NotificationPlatform>().startTimerMode(
-          title: widget.routine.title,
-          durationSeconds: _totalSeconds,
-          elapsedSeconds: _elapsedSeconds,
-        );
-      }
+    // Reflect pause state in notification only — DB state is derived from
+    // ActiveTimerModel.remainingSeconds which uses targetTimestamp (immutable).
+    if (_isPaused) {
+      await sl<NotificationPlatform>().startTimerMode(
+        title: '${widget.routine.title} (متوقف‌شده)',
+        durationSeconds: _totalSeconds,
+        elapsedSeconds: _elapsedSeconds,
+      );
+    } else {
+      await sl<NotificationPlatform>().startTimerMode(
+        title: widget.routine.title,
+        durationSeconds: _totalSeconds,
+        elapsedSeconds: _elapsedSeconds,
+      );
     }
   }
 
+  // T6: Cancel path — calls onCancelled, no success message
   Future<void> _cancelTimer() async {
     RitmoHaptics.warning();
     _timer?.cancel();
-    await RitmoTimerService.instance.cancelTimer('timer_${widget.routine.id}');
+    await RitmoTimerService.instance.cancelTimer(_timerId); // T7: same ID
     await sl<NotificationPlatform>().stopForegroundService();
-    widget.onFinished();
+    widget.onCancelled(); // T6: never fires success feedback
   }
 
+  // T5+T6: Complete path — goes through CompletionGateway, returns outcome
   Future<void> _completeRoutine() async {
     RitmoHaptics.success();
     _timer?.cancel();
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
 
-    // Save routine completion using AlarmSchedulerService to update occurrences, alarms, and progression
-    await AlarmSchedulerService.completeOccurrence(
-      widget.routine.id,
-      todayStr,
-      resultType: widget.completionMode,
-      durationMinutes: (_elapsedSeconds / 60).round(),
+    // T5: Route through CompletionGateway (not direct AlarmSchedulerService)
+    final outcome = await CompletionGateway.instance.submit(
+      RoutineCompletion(
+        routineId: widget.routine.id,
+        dateStr: widget.dateStr,   // T4: from item, never DateTime.now()
+        result: CompletionResult.fromDb(widget.completionMode),
+        durationMinutes: DurationBounds.sanitize((_elapsedSeconds / 60).round()),
+      ),
     );
 
-    // Delete active timer
-    await RitmoTimerService.instance.cancelTimer('timer_${widget.routine.id}');
+    // Delete active timer — T7: same canonical ID
+    await RitmoTimerService.instance.cancelTimer(_timerId);
 
-    // Downgrade to normal foreground status notification if enabled
-    final db = await DatabaseHelper.instance.database;
-    final settingsList = await db.query(
-      'app_settings',
-      where: 'key = ?',
-      whereArgs: ['persistent_status_notification_enabled'],
-    );
-    final isEnabled = settingsList.isEmpty || settingsList.first['value'] != 'false';
-    if (isEnabled) {
-      await sl<NotificationPlatform>().startStatusMode(
-        zone: 'آزاد',
-        energy: 'متوسط',
-        proposedTask: 'استراحت 🌿',
+    // Downgrade notification — only on success path (T6)
+    if (outcome.didWrite) {
+      final db = await DatabaseHelper.instance.database;
+      final settingsList = await db.query(
+        'app_settings',
+        where: 'key = ?',
+        whereArgs: ['persistent_status_notification_enabled'],
       );
+      final isEnabled =
+          settingsList.isEmpty || settingsList.first['value'] != 'false';
+      if (isEnabled) {
+        await sl<NotificationPlatform>().startStatusMode(
+          zone: 'آزاد',
+          energy: 'متوسط',
+          proposedTask: 'استراحت 🌿',
+        );
+      } else {
+        await sl<NotificationPlatform>().stopForegroundService();
+      }
     } else {
       await sl<NotificationPlatform>().stopForegroundService();
     }
 
-    RitmoEvents.notifyRoutineChanged();
-    widget.onFinished();
+    widget.onCompleted(outcome); // T6: passes outcome to router for proper feedback
   }
 
   Future<void> _showCompletionDialog() async {
     RitmoHaptics.confirm();
+    if (!mounted) return;
     final colors = context.colors;
 
     final done = await showDialog<bool>(
@@ -210,10 +219,15 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             backgroundColor: colors.card,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             title: Text(
               'تایمر به پایان رسید 🎉',
-              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: colors.textPrimary),
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
             ),
             content: Text(
               'زمان تعیین شده برای روتین "${widget.routine.title}" تمام شد. آیا آن را انجام دادید؟',
@@ -224,20 +238,28 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
                 onPressed: () => Navigator.pop(dialogCtx, false),
                 child: Text(
                   'نه، بعداً انجام میدم',
-                  style: TextStyle(fontFamily: 'Vazirmatn', color: colors.textSecondary),
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    color: colors.textSecondary,
+                  ),
                 ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.success,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 ),
                 onPressed: () => Navigator.pop(dialogCtx, true),
                 child: const Text(
                   'آره، انجام دادم',
-                  style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -247,9 +269,9 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
     );
 
     if (done ?? false) {
-      await _completeRoutine();
+      await _completeRoutine(); // T6: only this path fires success
     } else {
-      await _cancelTimer();
+      await _cancelTimer(); // T6: fires onCancelled — no success message
     }
   }
 
@@ -268,7 +290,8 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
     final remaining = _totalSeconds - _elapsedSeconds;
     final min = remaining / 60;
     final sec = remaining % 60;
-    final timeStr = '${min.floor().toString().padLeft(2, '0')}:${(sec % 60).toString().padLeft(2, '0')}';
+    final timeStr =
+        '${min.floor().toString().padLeft(2, '0')}:${(sec % 60).toString().padLeft(2, '0')}';
     final progress = _totalSeconds > 0 ? _elapsedSeconds / _totalSeconds : 0.0;
 
     return Directionality(
@@ -293,7 +316,8 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               child: Column(
                 children: [
                   // App Bar / Title
@@ -318,89 +342,89 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
                   ),
                   const Spacer(),
 
-                  // Pulsing breathe animation visual representation
+                  // Pulsing breathe animation
                   RepaintBoundary(
                     child: AnimatedBuilder(
-                    animation: _animController,
-                    builder: (context, child) {
-                      final scale = 1.0 + (_animController.value * 0.08);
-                      return Transform.scale(
-                        scale: scale,
-                        child: Container(
-                          width: 240,
-                          height: 240,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: colors.primary.withValues(alpha: 0.2),
-                                blurRadius: 40,
-                                spreadRadius: 10,
-                              )
-                            ],
-                          ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // Circular Progress Outline
-                              SizedBox(
-                                width: 220,
-                                height: 220,
-                                child: CircularProgressIndicator(
-                                  value: 1.0 - progress,
-                                  strokeWidth: 6,
-                                  color: colors.primary,
-                                  backgroundColor: colors.border,
-                                ),
-                              ),
-                              // Glassmorphic Inner Circle
-                              Container(
-                                width: 200,
-                                height: 200,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: colors.card.withValues(alpha: isDark ? 0.03 : 0.65),
-                                  border: Border.all(
-                                    color: colors.border.withValues(alpha: isDark ? 0.1 : 0.3),
-                                    width: 1.5,
+                      animation: _animController,
+                      builder: (context, child) {
+                        final scale = 1.0 + (_animController.value * 0.08);
+                        return Transform.scale(
+                          scale: scale,
+                          child: Container(
+                            width: 240,
+                            height: 240,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colors.primary.withValues(alpha: 0.2),
+                                  blurRadius: 40,
+                                  spreadRadius: 10,
+                                )
+                              ],
+                            ),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 220,
+                                  height: 220,
+                                  child: CircularProgressIndicator(
+                                    value: 1.0 - progress,
+                                    strokeWidth: 6,
+                                    color: colors.primary,
+                                    backgroundColor: colors.border,
                                   ),
                                 ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      timeStr,
-                                      style: TextStyle(
-                                        fontSize: 48,
-                                        fontWeight: FontWeight.w300,
-                                        fontFamily: 'Courier',
-                                        color: colors.textPrimary,
-                                        letterSpacing: 2,
-                                      ),
+                                Container(
+                                  width: 200,
+                                  height: 200,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: colors.card.withValues(
+                                        alpha: isDark ? 0.03 : 0.65),
+                                    border: Border.all(
+                                      color: colors.border.withValues(
+                                          alpha: isDark ? 0.1 : 0.3),
+                                      width: 1.5,
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      widget.completionMode == 'FULL'
-                                          ? 'حالت کامل 🎯'
-                                          : widget.completionMode == 'LIGHT'
-                                              ? 'حالت سبک ⚡'
-                                              : 'حالت حداقلی 🌿',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: colors.textSecondary,
-                                        fontFamily: 'Vazirmatn',
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        timeStr,
+                                        style: TextStyle(
+                                          fontSize: 48,
+                                          fontWeight: FontWeight.w300,
+                                          fontFamily: 'Courier',
+                                          color: colors.textPrimary,
+                                          letterSpacing: 2,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        widget.completionMode == 'FULL'
+                                            ? 'حالت کامل 🎯'
+                                            : widget.completionMode == 'LIGHT'
+                                                ? 'حالت سبک ⚡'
+                                                : 'حالت حداقلی 🌿',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: colors.textSecondary,
+                                          fontFamily: 'Vazirmatn',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ), // AnimatedBuilder
-                  ), // RepaintBoundary
+                        );
+                      },
+                    ),
+                  ),
 
                   const SizedBox(height: 48),
 
@@ -428,7 +452,7 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
 
                   const Spacer(),
 
-                  // Actions Play/Pause/Done
+                  // Actions
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -484,7 +508,8 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: colors.medicalRed.withValues(alpha: 0.15),
-                            border: Border.all(color: colors.medicalRed, width: 2),
+                            border:
+                                Border.all(color: colors.medicalRed, width: 2),
                           ),
                           child: Icon(
                             Icons.stop,
@@ -505,4 +530,3 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
     );
   }
 }
-
