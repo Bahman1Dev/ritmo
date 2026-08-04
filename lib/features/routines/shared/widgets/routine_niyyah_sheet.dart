@@ -5,24 +5,24 @@ import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 
+enum NiyyahAction { startTimer, completeInstantly, snooze, edit, viewDetails }
+
+class NiyyahIntent {
+  const NiyyahIntent(this.action, {this.mode = 'FULL', this.duration = 0});
+  final NiyyahAction action;
+  final String mode;
+  final int duration;
+}
+
 class RoutineNiyyahSheet extends StatefulWidget {
   const RoutineNiyyahSheet({
     super.key,
     required this.routine,
     this.initialMode = 'FULL',
-    required this.onStartTimer,
-    required this.onCompleteInstantly,
-    required this.onSnooze,
-    required this.onEdit,
-    required this.onViewDetails,
   });
+
   final Routine routine;
   final String initialMode;
-  final Future<void> Function(String selectedMode) onStartTimer;
-  final Future<void> Function(String selectedMode, int duration) onCompleteInstantly;
-  final Future<void> Function() onSnooze;
-  final Future<void> Function() onEdit;
-  final Future<void> Function() onViewDetails;
 
   static Future<void> show({
     required BuildContext context,
@@ -33,21 +33,37 @@ class RoutineNiyyahSheet extends StatefulWidget {
     required Future<void> Function() onSnooze,
     required Future<void> Function() onEdit,
     required Future<void> Function() onViewDetails,
-  }) {
-    return showModalBottomSheet(
+  }) async {
+    final intent = await showModalBottomSheet<NiyyahIntent>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => RoutineNiyyahSheet(
         routine: routine,
         initialMode: initialMode,
-        onStartTimer: onStartTimer,
-        onCompleteInstantly: onCompleteInstantly,
-        onSnooze: onSnooze,
-        onEdit: onEdit,
-        onViewDetails: onViewDetails,
       ),
     );
+
+    if (intent == null) return; // User dismissed sheet
+    if (!context.mounted) return;
+
+    switch (intent.action) {
+      case NiyyahAction.startTimer:
+        await onStartTimer(intent.mode);
+        break;
+      case NiyyahAction.completeInstantly:
+        await onCompleteInstantly(intent.mode, intent.duration);
+        break;
+      case NiyyahAction.snooze:
+        await onSnooze();
+        break;
+      case NiyyahAction.edit:
+        await onEdit();
+        break;
+      case NiyyahAction.viewDetails:
+        await onViewDetails();
+        break;
+    }
   }
 
   @override
@@ -56,8 +72,6 @@ class RoutineNiyyahSheet extends StatefulWidget {
 
 class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
   late String selectedMode;
-  bool _busy = false;
-  String? _actionTag;
 
   @override
   void initState() {
@@ -71,27 +85,9 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
     }
   }
 
-  Future<void> _runAction(String tag, Future<void> Function() action) async {
-    if (_busy) return;
-    if (mounted) {
-      setState(() {
-        _busy = true;
-        _actionTag = tag;
-      });
-    }
-    try {
-      await action();
-    } catch (e, st) {
-      debugPrint('[RoutineNiyyahSheet] Action error: $e\n$st');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          _actionTag = null;
-        });
-        Navigator.pop(context);
-      }
-    }
+  void _dispatchIntent(NiyyahIntent intent) {
+    RitmoHaptics.confirm();
+    Navigator.pop(context, intent);
   }
 
   @override
@@ -99,443 +95,300 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
     final colors = context.colors;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    final fullMinutes = widget.routine.currentTargetMinutes > 0 ? widget.routine.currentTargetMinutes : (widget.routine.targetDurationMinutes ?? 30);
+    final targetMinutes = widget.routine.currentTargetMinutes > 0
+        ? widget.routine.currentTargetMinutes
+        : (widget.routine.targetDurationMinutes ?? 30);
     final lightMinutes = widget.routine.lightDurationMinutes ?? 20;
     final minimalMinutes = widget.routine.minimalDurationMinutes ?? 10;
 
-    final hasRawLight = widget.routine.lightDurationMinutes != null && widget.routine.lightDurationMinutes! > 0;
-    final hasRawMinimal = widget.routine.minimalDurationMinutes != null && widget.routine.minimalDurationMinutes! > 0;
-    final hasRawFull = fullMinutes > 0;
+    final hasLight = widget.routine.lightDurationMinutes != null && widget.routine.lightDurationMinutes! > 0;
+    final hasMinimal = widget.routine.minimalDurationMinutes != null && widget.routine.minimalDurationMinutes! > 0;
+    final hasTiers = hasLight || hasMinimal;
 
-    final canStartTimer = hasRawFull || hasRawLight || hasRawMinimal;
+    final canStartTimer = widget.routine.targetDurationMinutes != null && widget.routine.targetDurationMinutes! > 0;
 
-    final hasTiers = hasRawLight || hasRawMinimal;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDarkMode ? const Color(0xFF1E222B) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 16,
+          bottom: MediaQuery.of(context).padding.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colors.textSecondary.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
 
-    return Container(
-      margin: const EdgeInsets.all(16),
-      child: RitmoTheme.glassCardLight(
-        blurSigma: 20,
-        color: colors.card.withValues(alpha: isDarkMode ? 0.85 : 0.9),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  height: 5,
-                  width: 40,
+            // Header
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: colors.textPrimary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(3),
+                    color: colors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    CupertinoIcons.sparkles,
+                    color: colors.primary,
+                    size: 22,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'نیت انجام روتین',
+                        style: TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.routine.title,
+                        style: TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Mode Selection (if routine has tiers)
+            if (hasTiers) ...[
               Text(
-                'نیت انجام: ${widget.routine.title}',
-                textAlign: TextAlign.center,
+                'کیفیت و سطح انجام',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
                   fontFamily: 'Vazirmatn',
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textSecondary,
                 ),
               ),
-              if (widget.routine.description != null && widget.routine.description!.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  widget.routine.description!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    fontFamily: 'Vazirmatn',
-                  ),
-                ),
-              ],
-              if (hasTiers) ...[
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    // Full Mode
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _busy ? null : () {
-                          RitmoHaptics.tap();
-                          setState(() => selectedMode = 'FULL');
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            gradient: selectedMode == 'FULL'
-                                ? LinearGradient(
-                                    colors: [colors.primary, colors.primary.withValues(alpha: 0.8)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
-                                : null,
-                            color: selectedMode == 'FULL' ? null : Colors.transparent,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: selectedMode == 'FULL' ? colors.primary : colors.border.withValues(alpha: 0.5),
-                              width: 1.5,
-                            ),
-                            boxShadow: selectedMode == 'FULL'
-                                ? [
-                                    BoxShadow(
-                                      color: colors.primary.withValues(alpha: 0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    )
-                                  ]
-                                : null,
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                'کامل 🎯',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: selectedMode == 'FULL' ? Colors.white : colors.textPrimary,
-                                  fontFamily: 'Vazirmatn',
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${PersianDigits.convert(fullMinutes.toString())} دقیقه',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: selectedMode == 'FULL' ? Colors.white70 : colors.textSecondary,
-                                  fontFamily: 'Vazirmatn',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Light Mode
-                    if (hasRawLight)
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: _busy ? null : () {
-                            RitmoHaptics.tap();
-                            setState(() => selectedMode = 'LIGHT');
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              gradient: selectedMode == 'LIGHT'
-                                  ? LinearGradient(
-                                      colors: [colors.success, colors.success.withValues(alpha: 0.8)],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    )
-                                  : null,
-                              color: selectedMode == 'LIGHT' ? null : Colors.transparent,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: selectedMode == 'LIGHT' ? colors.success : colors.border.withValues(alpha: 0.5),
-                                width: 1.5,
-                              ),
-                              boxShadow: selectedMode == 'LIGHT'
-                                  ? [
-                                      BoxShadow(
-                                        color: colors.success.withValues(alpha: 0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3),
-                                      )
-                                    ]
-                                  : null,
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  'سبک ⚡',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: selectedMode == 'LIGHT' ? Colors.white : colors.textPrimary,
-                                    fontFamily: 'Vazirmatn',
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${PersianDigits.convert(lightMinutes.toString())} دقیقه',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: selectedMode == 'LIGHT' ? Colors.white70 : colors.textSecondary,
-                                    fontFamily: 'Vazirmatn',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (hasRawLight)
-                      const SizedBox(width: 8),
-
-                    // Minimal Mode
-                    if (hasRawMinimal)
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: _busy ? null : () {
-                            RitmoHaptics.tap();
-                            setState(() => selectedMode = 'MINIMAL');
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              gradient: selectedMode == 'MINIMAL'
-                                  ? const LinearGradient(
-                                      colors: [Colors.orange, Colors.orangeAccent],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    )
-                                  : null,
-                              color: selectedMode == 'MINIMAL' ? null : Colors.transparent,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: selectedMode == 'MINIMAL' ? Colors.orange : colors.border.withValues(alpha: 0.5),
-                                width: 1.5,
-                              ),
-                              boxShadow: selectedMode == 'MINIMAL'
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.orange.withValues(alpha: 0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3),
-                                      )
-                                    ]
-                                  : null,
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  'حداقلی 🌿',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: selectedMode == 'MINIMAL' ? Colors.white : colors.textPrimary,
-                                    fontFamily: 'Vazirmatn',
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${PersianDigits.convert(minimalMinutes.toString())} دقیقه',
-                                  style: TextStyle(
-                                    color: selectedMode == 'MINIMAL' ? Colors.white70 : colors.textSecondary,
-                                    fontFamily: 'Vazirmatn',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ] else ...[
-                const SizedBox(height: 16),
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: colors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.primary.withValues(alpha: 0.15)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(CupertinoIcons.clock, color: colors.primary, size: 16),
-                        const SizedBox(width: 8),
-                        Text(
-                          'مدت زمان هدف: ${PersianDigits.convert(fullMinutes.toString())} دقیقه',
-                          style: TextStyle(
-                            fontFamily: 'Vazirmatn',
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              if (canStartTimer)
-                Row(
-                  children: [
-                    // Start Timer
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onPressed: _busy
-                            ? null
-                            : () => _runAction('start_timer', () async {
-                                  RitmoHaptics.confirm();
-                                  await widget.onStartTimer(selectedMode);
-                                }),
-                        icon: _busy && _actionTag == 'start_timer'
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(CupertinoIcons.timer, size: 18),
-                        label: const Text('شروع تایمر تمرکز', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Log Instantly
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: colors.success,
-                          side: BorderSide(color: colors.success, width: 1.5),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onPressed: _busy
-                            ? null
-                            : () => _runAction('complete', () async {
-                                  RitmoHaptics.confirm();
-                                  final duration = selectedMode == 'FULL'
-                                      ? fullMinutes
-                                      : (selectedMode == 'LIGHT' ? lightMinutes : minimalMinutes);
-                                  await widget.onCompleteInstantly(selectedMode, duration);
-                                }),
-                        child: _busy && _actionTag == 'complete'
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.green),
-                              )
-                            : const Text('ثبت فوری بدون تایمر', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-                      ),
-                    ),
-                  ],
-                )
-              else
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: colors.success,
-                    side: BorderSide(color: colors.success, width: 1.5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  onPressed: _busy
-                      ? null
-                      : () => _runAction('complete', () async {
-                            RitmoHaptics.confirm();
-                            final duration = selectedMode == 'FULL'
-                                ? fullMinutes
-                                : (selectedMode == 'LIGHT' ? lightMinutes : minimalMinutes);
-                            await widget.onCompleteInstantly(selectedMode, duration);
-                          }),
-                  child: _busy && _actionTag == 'complete'
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.green),
-                        )
-                      : const Text('ثبت فوری بدون تایمر', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-                ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               Row(
                 children: [
-                  // Snooze Option
                   Expanded(
-                    child: TextButton.icon(
-                      style: TextButton.styleFrom(
-                        foregroundColor: colors.warning,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      onPressed: _busy
-                          ? null
-                          : () => _runAction('snooze', () async {
-                                RitmoHaptics.tap();
-                                await widget.onSnooze();
-                              }),
-                      icon: _busy && _actionTag == 'snooze'
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
-                            )
-                          : const Icon(CupertinoIcons.time, size: 16),
-                      label: const Text('تعویق روتین', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: _ModeSelectorTile(
+                      label: 'کامل',
+                      durationMinutes: targetMinutes,
+                      isSelected: selectedMode == 'FULL',
+                      color: colors.success,
+                      onTap: () => setState(() => selectedMode = 'FULL'),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  // Edit Option
-                  Expanded(
-                    child: TextButton.icon(
-                      style: TextButton.styleFrom(
-                        foregroundColor: colors.textSecondary,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  if (hasLight) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ModeSelectorTile(
+                        label: 'سبک',
+                        durationMinutes: lightMinutes,
+                        isSelected: selectedMode == 'LIGHT',
+                        color: colors.primary,
+                        onTap: () => setState(() => selectedMode = 'LIGHT'),
                       ),
-                      onPressed: _busy
-                          ? null
-                          : () => _runAction('edit', () async {
-                                RitmoHaptics.tap();
-                                await widget.onEdit();
-                              }),
-                      icon: _busy && _actionTag == 'edit'
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
-                            )
-                          : const Icon(CupertinoIcons.pencil, size: 16),
-                      label: const Text('ویرایش روتین', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Details Option
-                  Expanded(
-                    child: TextButton.icon(
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xffA78BFA),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ],
+                  if (hasMinimal) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ModeSelectorTile(
+                        label: 'حداقلی',
+                        durationMinutes: minimalMinutes,
+                        isSelected: selectedMode == 'MINIMAL',
+                        color: colors.warning,
+                        onTap: () => setState(() => selectedMode = 'MINIMAL'),
                       ),
-                      onPressed: _busy
-                          ? null
-                          : () => _runAction('details', () async {
-                                RitmoHaptics.tap();
-                                await widget.onViewDetails();
-                              }),
-                      icon: _busy && _actionTag == 'details'
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xffA78BFA)),
-                            )
-                          : const Icon(CupertinoIcons.chart_bar_fill, size: 16),
-                      label: const Text('مشاهده جزئیات', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
-                  ),
+                  ],
                 ],
               ),
+              const SizedBox(height: 20),
             ],
+
+            // Action 1: Start Focus Timer
+            if (canStartTimer)
+              ElevatedButton.icon(
+                onPressed: () => _dispatchIntent(NiyyahIntent(NiyyahAction.startTimer, mode: selectedMode)),
+                icon: const Icon(CupertinoIcons.play_circle_fill, size: 20),
+                label: const Text(
+                  'شروع تایمر تمرکز',
+                  style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colors.textSecondary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'برای این روتین مدت‌زمانی تعریف نشده است',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 10),
+
+            // Action 2: Instant Completion
+            OutlinedButton.icon(
+              onPressed: () => _dispatchIntent(NiyyahIntent(NiyyahAction.completeInstantly, mode: selectedMode)),
+              icon: Icon(CupertinoIcons.check_mark_circled, size: 20, color: colors.success),
+              label: Text(
+                'ثبت فوری بدون تایمر',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: colors.success),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: colors.success.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Secondary Actions Row: Snooze, Edit, Details
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () => _dispatchIntent(const NiyyahIntent(NiyyahAction.snooze)),
+                    icon: Icon(CupertinoIcons.time, size: 18, color: colors.warning),
+                    label: Text(
+                      'تعویق روتین',
+                      style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.warning),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () => _dispatchIntent(const NiyyahIntent(NiyyahAction.edit)),
+                    icon: Icon(CupertinoIcons.pencil, size: 18, color: colors.primary),
+                    label: Text(
+                      'ویرایش',
+                      style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.primary),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () => _dispatchIntent(const NiyyahIntent(NiyyahAction.viewDetails)),
+                    icon: Icon(CupertinoIcons.info_circle, size: 18, color: colors.textSecondary),
+                    label: Text(
+                      'جزئیات',
+                      style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.textSecondary),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeSelectorTile extends StatelessWidget {
+  const _ModeSelectorTile({
+    required this.label,
+    required this.durationMinutes,
+    required this.isSelected,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final int durationMinutes;
+  final bool isSelected;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withValues(alpha: 0.15) : colors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : colors.border.withValues(alpha: 0.4),
+            width: isSelected ? 2 : 1,
           ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: isSelected ? color : colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${PersianDigits.convert(durationMinutes.toString())} دقیقه',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 11,
+                color: isSelected ? color : colors.textSecondary,
+              ),
+            ),
+          ],
         ),
       ),
     );

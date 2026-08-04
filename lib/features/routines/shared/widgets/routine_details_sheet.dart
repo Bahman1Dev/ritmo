@@ -23,13 +23,13 @@ class RoutineDetailsSheet extends StatelessWidget {
   final VoidCallback? onReverted;
   final BuildContext parentContext;
 
-  static void show({
+  static Future<T?> show<T>({
     required BuildContext context,
     required Routine routine,
     String? targetDate,
     VoidCallback? onReverted,
   }) {
-    showModalBottomSheet(
+    return showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

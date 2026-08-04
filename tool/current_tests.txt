@@ -17,4 +17,17 @@ Got dependencies!
 00:05 +14: test/completion/undo_token_reschedule_test.dart: True Reschedule Undo reverts status and removes target occurrence
 00:06 +15: test/analytics/routine_actual_completions_view_test.dart: routine_actual_completions includes actual completions and excludes SKIPPED / RESCHEDULED
 00:06 +16: test/registry/archive_routine_kernel_command_test.dart: ArchiveRoutineHandler and UnarchiveRoutineHandler update isArchived via Kernel
-01:15 +412: All tests passed!
+00:07 +17: test/widget/occurrence_status_badge_test.dart: OccurrenceStatusBadge Tests renders done status badge correctly
+00:07 +18: test/widget/occurrence_status_badge_test.dart: OccurrenceStatusBadge Tests renders skipped status badge correctly
+00:07 +19: test/widget/occurrence_status_badge_test.dart: OccurrenceStatusBadge Tests renders rescheduled status badge correctly
+00:07 +20: test/widget/occurrence_status_badge_test.dart: OccurrenceStatusBadge Tests renders pending status badge as fallback
+00:08 +21: test/widget/swipe_completes_routine_test.dart: RitmoSwipeableRow Swipe Tests Swipe Right triggers onSwipeComplete callback
+00:08 +22: test/terminology_test.dart: GLOSSARY Terminology Guard Test UI strings do not contain banned terms from GLOSSARY.md
+00:09 +23: test/widget/niyyah_returns_intent_test.dart: RoutineNiyyahSheet Intent Return Tests Tapping Start Focus Timer pops NiyyahIntent.startTimer
+00:09 +24: test/widget/niyyah_returns_intent_test.dart: RoutineNiyyahSheet Intent Return Tests Tapping Instant Completion pops NiyyahIntent.completeInstantly
+00:09 +25: test/widget/niyyah_returns_intent_test.dart: RoutineNiyyahSheet Intent Return Tests Tapping Edit pops NiyyahIntent.edit
+00:10 +26: test/widget/niyyah_edit_sheet_stays_open_test.dart: Niyyah Edit Sheet Stays Open Tests Tapping Edit opens UniversalPlannerSheet and keeps it open on Navigator stack
+00:10 +27: test/widget/niyyah_details_sheet_stays_open_test.dart: Niyyah Details Sheet Stays Open Tests Tapping Details opens RoutineDetailsSheet and keeps it open on Navigator stack
+00:11 +28: test/widget/calendar_refresh_after_action_test.dart: Calendar Refresh After Action Tests ActionRouter.open calls onChanged callback when action executes
+00:11 +29: test/unit/active_timers_single_writer_test.dart: Single Writer Guard Test for active_timers No file other than ritmo_timer_service.dart writes directly to active_timers
+01:15 +424: All tests passed!

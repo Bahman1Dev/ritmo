@@ -28,10 +28,10 @@ import 'package:ritmo/features/today/presentation/active_timer_overlay.dart';
 class ActionRouter {
   ActionRouter._();
 
-  static Future<void> open(BuildContext context, {required AgendaItem item}) async {
+  static Future<void> open(BuildContext context, {required AgendaItem item, VoidCallback? onChanged}) async {
     switch (item.domain) {
       case AgendaDomain.routine:
-        await _handleRoutineAction(context, item);
+        await _handleRoutineAction(context, item, onChanged: onChanged);
         break;
 
       case AgendaDomain.prayer:
@@ -183,14 +183,29 @@ class ActionRouter {
     }
   }
 
-  static Future<void> _handleRoutineAction(BuildContext context, AgendaItem item) async {
+  static Future<void> _guard(
+    BuildContext context, {
+    required String tag,
+    required Future<void> Function() run,
+    required String failureMessage,
+  }) async {
+    try {
+      await run();
+    } catch (e, st) {
+      debugPrint('[ActionRouter][$tag] $e\n$st');
+      if (context.mounted) {
+        ActionFeedback.failure(context, message: failureMessage);
+      }
+    }
+  }
+
+  static Future<void> _handleRoutineAction(BuildContext context, AgendaItem item, {VoidCallback? onChanged}) async {
     Routine? routine;
     final routineMap = item.meta['routine'] as Map<String, dynamic>?;
 
     if (routineMap != null) {
       routine = Routine.fromMap(routineMap);
     } else {
-      // Fallback: Query routine from database by sourceId
       try {
         final db = await DatabaseHelper.instance.database;
         final rows = await db.query('routines', where: 'id = ?', whereArgs: [item.sourceId], limit: 1);
@@ -218,119 +233,170 @@ class ActionRouter {
       context: context,
       routine: targetRoutine,
       onStartTimer: (selectedMode) async {
-        final minutes = _minutesForMode(targetRoutine, selectedMode);
-        if (minutes <= 0) {
-          ActionFeedback.failure(context, message: 'مدت زمانی برای این حالت تعریف نشده است');
-          return;
-        }
-
-        await RitmoTimerService.instance.startTimer(
-          id: 'routine_${targetRoutine.id}',
-          domain: 'routine',
-          itemId: targetRoutine.id,
-          mode: selectedMode,
-          durationMinutes: minutes,
-        );
-
-        if (!context.mounted) return;
-
-        await Navigator.push(
+        await _guard(
           context,
-          MaterialPageRoute(
-            builder: (ctx) => ActiveTimerOverlay(
-              routine: targetRoutine,
-              completionMode: selectedMode,
-              onFinished: () {
-                Navigator.pop(ctx);
-                ActionFeedback.success(
-                  context,
-                  message: 'تایمر به پایان رسید و روتین ثبت شد',
-                  dateStr: item.dateStr,
-                );
-              },
-            ),
-          ),
+          tag: 'startTimer',
+          failureMessage: 'تایمر شروع نشد. دوباره تلاش کن.',
+          run: () async {
+            final minutes = _minutesForMode(targetRoutine, selectedMode);
+            if (minutes <= 0) {
+              if (context.mounted) {
+                ActionFeedback.failure(context, message: 'مدت زمانی برای این حالت تعریف نشده است');
+              }
+              return;
+            }
+
+            await RitmoTimerService.instance.startTimer(
+              id: 'routine_${targetRoutine.id}',
+              domain: 'routine',
+              itemId: targetRoutine.id,
+              mode: selectedMode,
+              durationMinutes: minutes,
+            );
+
+            if (!context.mounted) return;
+
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (ctx) => ActiveTimerOverlay(
+                  routine: targetRoutine,
+                  completionMode: selectedMode,
+                  onFinished: () {
+                    Navigator.pop(ctx);
+                    DayAgendaService.instance.invalidateDate(item.dateStr);
+                    onChanged?.call();
+                    ActionFeedback.success(
+                      context,
+                      message: 'تایمر به پایان رسید و روتین ثبت شد',
+                      dateStr: item.dateStr,
+                    );
+                  },
+                ),
+              ),
+            );
+          },
         );
       },
       onCompleteInstantly: (modeStr, duration) async {
-        final outcome = await CompletionGateway.instance.submit(
-          RoutineCompletion(
-            routineId: targetRoutine.id,
-            dateStr: item.dateStr,
-            result: CompletionResult.fromDb(modeStr),
-            durationMinutes: DurationBounds.sanitize(duration),
-          ),
+        await _guard(
+          context,
+          tag: 'completeInstantly',
+          failureMessage: 'ثبت انجام نشد. دوباره تلاش کن.',
+          run: () async {
+            final outcome = await CompletionGateway.instance.submit(
+              RoutineCompletion(
+                routineId: targetRoutine.id,
+                dateStr: item.dateStr,
+                result: CompletionResult.fromDb(modeStr),
+                durationMinutes: DurationBounds.sanitize(duration),
+              ),
+            );
+
+            DayAgendaService.instance.invalidateDate(item.dateStr);
+            onChanged?.call();
+
+            if (!context.mounted) return;
+
+            if (outcome.didWrite) {
+              ActionFeedback.success(
+                context,
+                message: 'ثبت شد: ${_modeFaLabel(modeStr)}',
+                dateStr: item.dateStr,
+                undoToken: outcome.undoToken,
+              );
+            } else {
+              ActionFeedback.failure(context, message: outcome.errorMessage ?? 'ثبت انجام نشد');
+            }
+          },
         );
-
-        if (!context.mounted) return;
-
-        if (outcome.didWrite) {
-          ActionFeedback.success(
-            context,
-            message: 'ثبت شد: ${_modeFaLabel(modeStr)}',
-            dateStr: item.dateStr,
-            undoToken: outcome.undoToken,
-          );
-        } else {
-          ActionFeedback.failure(context, message: outcome.errorMessage ?? 'ثبت انجام نشد');
-        }
       },
       onSnooze: () async {
-        final currentDeferCount = await _getCurrentDeferCount(targetRoutine.id, item.dateStr);
-        final requestedMinutes = await _snoozeMinutesFromSettings();
-        final configuredMax = await _configuredMaxDefer();
-        final recurrenceRuleType = await _getRecurrenceRuleType(targetRoutine.id);
+        await _guard(
+          context,
+          tag: 'snooze',
+          failureMessage: 'تعویق انجام نشد. دوباره تلاش کن.',
+          run: () async {
+            final currentDeferCount = await _getCurrentDeferCount(targetRoutine.id, item.dateStr);
+            final requestedMinutes = await _snoozeMinutesFromSettings();
+            final configuredMax = await _configuredMaxDefer();
+            final recurrenceRuleType = await _getRecurrenceRuleType(targetRoutine.id);
 
-        final decision = SnoozePolicy.evaluate(
-          itemId: targetRoutine.id,
-          now: DateTime.now(),
-          requestedMinutes: requestedMinutes,
-          currentDeferCount: currentDeferCount,
-          category: targetRoutine.category.name,
-          isEssential: targetRoutine.isEssential ? 1 : 0,
-          configuredMax: configuredMax,
-          recurrenceRuleType: recurrenceRuleType,
-        );
-
-        if (!context.mounted) return;
-
-        switch (decision.verdict) {
-          case SnoozeVerdict.allowed:
-          case SnoozeVerdict.lastCall:
-            await RoutineActions.snoozeRoutine(
-              context: context,
-              routineId: targetRoutine.id,
-              dateStr: item.dateStr,
-              minutes: requestedMinutes,
-              onDone: () => DayAgendaService.instance.invalidateDate(item.dateStr),
+            final decision = SnoozePolicy.evaluate(
+              itemId: targetRoutine.id,
+              now: DateTime.now(),
+              requestedMinutes: requestedMinutes,
+              currentDeferCount: currentDeferCount,
+              category: targetRoutine.category.name,
+              isEssential: targetRoutine.isEssential ? 1 : 0,
+              configuredMax: configuredMax,
+              recurrenceRuleType: recurrenceRuleType,
             );
-            if (decision.verdict == SnoozeVerdict.lastCall && context.mounted) {
-              ActionFeedback.info(context, message: 'این آخرین تعویق ممکن برای امروز است');
+
+            if (!context.mounted) return;
+
+            switch (decision.verdict) {
+              case SnoozeVerdict.allowed:
+              case SnoozeVerdict.lastCall:
+                await RoutineActions.snoozeRoutine(
+                  context: context,
+                  routineId: targetRoutine.id,
+                  dateStr: item.dateStr,
+                  minutes: requestedMinutes,
+                  onDone: () {
+                    DayAgendaService.instance.invalidateDate(item.dateStr);
+                    onChanged?.call();
+                  },
+                );
+                if (decision.verdict == SnoozeVerdict.lastCall && context.mounted) {
+                  ActionFeedback.info(context, message: 'این آخرین تعویق ممکن برای امروز است');
+                }
+                break;
+
+              case SnoozeVerdict.exhausted:
+                await _showExitOptionsSheet(context, routine: targetRoutine, dateStr: item.dateStr);
+                break;
+
+              case SnoozeVerdict.blockedMidnight:
+                ActionFeedback.failure(context, message: 'زمان امروز به پایان رسیده است');
+                break;
             }
-            break;
-
-          case SnoozeVerdict.exhausted:
-            await _showExitOptionsSheet(context, routine: targetRoutine, dateStr: item.dateStr);
-            break;
-
-          case SnoozeVerdict.blockedMidnight:
-            ActionFeedback.failure(context, message: 'زمان امروز به پایان رسیده است');
-            break;
-        }
+          },
+        );
       },
       onEdit: () async {
-        UniversalPlannerSheet.show(
+        await _guard(
           context,
-          routineToEdit: targetRoutine.toMap(),
-          onSaved: () => DayAgendaService.instance.invalidateDate(item.dateStr),
+          tag: 'edit',
+          failureMessage: 'صفحهٔ ویرایش باز نشد.',
+          run: () async {
+            await UniversalPlannerSheet.show(
+              context: context,
+              routineToEdit: targetRoutine.toMap(),
+              onSaved: () {
+                DayAgendaService.instance.invalidateDate(item.dateStr);
+                onChanged?.call();
+              },
+            );
+          },
         );
       },
       onViewDetails: () async {
-        RoutineDetailsSheet.show(
-          context: context,
-          routine: targetRoutine,
-          targetDate: item.dateStr,
-          onReverted: () => DayAgendaService.instance.invalidateDate(item.dateStr),
+        await _guard(
+          context,
+          tag: 'viewDetails',
+          failureMessage: 'جزئیات بارگذاری نشد.',
+          run: () async {
+            await RoutineDetailsSheet.show(
+              context: context,
+              routine: targetRoutine,
+              targetDate: item.dateStr,
+              onReverted: () {
+                DayAgendaService.instance.invalidateDate(item.dateStr);
+                onChanged?.call();
+              },
+            );
+          },
         );
       },
     );

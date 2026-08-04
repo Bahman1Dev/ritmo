@@ -3000,6 +3000,70 @@ class MigrationV60 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV61 extends Migration {
+  @override
+  int get version => 61;
+
+  @override
+  Future<void> up(Database db) async {
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS active_timers (
+            id TEXT PRIMARY KEY,
+            domain TEXT,
+            itemId TEXT,
+            mode TEXT,
+            direction TEXT,
+            targetTimestamp INTEGER,
+            durationSeconds INTEGER,
+            createdAt INTEGER,
+            routineId TEXT,
+            startedAt INTEGER,
+            plannedDurationMinutes INTEGER,
+            pausedAccumulatedMs INTEGER DEFAULT 0,
+            state TEXT DEFAULT 'RUNNING'
+        );
+      ''');
+
+      final columns = <String>{};
+      final info = await db.rawQuery('PRAGMA table_info(active_timers);');
+      for (final col in info) {
+        final name = col['name'] as String?;
+        if (name != null) columns.add(name);
+      }
+
+      if (!columns.contains('domain')) {
+        try { await db.execute('ALTER TABLE active_timers ADD COLUMN domain TEXT;'); } catch (e) { debugPrint('[MigrationV61] $e'); }
+      }
+      if (!columns.contains('itemId')) {
+        try { await db.execute('ALTER TABLE active_timers ADD COLUMN itemId TEXT;'); } catch (e) { debugPrint('[MigrationV61] $e'); }
+      }
+      if (!columns.contains('mode')) {
+        try { await db.execute('ALTER TABLE active_timers ADD COLUMN mode TEXT;'); } catch (e) { debugPrint('[MigrationV61] $e'); }
+      }
+      if (!columns.contains('direction')) {
+        try { await db.execute('ALTER TABLE active_timers ADD COLUMN direction TEXT;'); } catch (e) { debugPrint('[MigrationV61] $e'); }
+      }
+      if (!columns.contains('targetTimestamp')) {
+        try { await db.execute('ALTER TABLE active_timers ADD COLUMN targetTimestamp INTEGER;'); } catch (e) { debugPrint('[MigrationV61] $e'); }
+      }
+      if (!columns.contains('durationSeconds')) {
+        try { await db.execute('ALTER TABLE active_timers ADD COLUMN durationSeconds INTEGER;'); } catch (e) { debugPrint('[MigrationV61] $e'); }
+      }
+      if (!columns.contains('createdAt')) {
+        try { await db.execute('ALTER TABLE active_timers ADD COLUMN createdAt INTEGER;'); } catch (e) { debugPrint('[MigrationV61] $e'); }
+      }
+
+      debugPrint('[MigrationV61] Successfully aligned active_timers table schema');
+    } catch (e) {
+      debugPrint('[MigrationV61] Error applying migration V61: $e');
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
 
 
 

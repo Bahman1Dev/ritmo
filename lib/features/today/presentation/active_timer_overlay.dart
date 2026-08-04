@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
@@ -6,7 +7,9 @@ import 'package:ritmo/core/di/service_locator.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/platform/notification_platform.dart';
 import 'package:ritmo/core/services/alarm_scheduler_service.dart';
+import 'package:ritmo/core/services/ritmo_timer_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/time/ritmo_clock.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 
 class ActiveTimerOverlay extends StatefulWidget {
@@ -72,21 +75,14 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
 
   Future<void> _startTimer() async {
     if (_totalSeconds <= 0) return;
-    // 1. Save state to active_timers table
-    final db = await DatabaseHelper.instance.database;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    
-    // Clear any previous active timer
-    await db.delete('active_timers');
-    
-    await db.insert('active_timers', {
-      'id': 'timer_${widget.routine.id}',
-      'routineId': widget.routine.id,
-      'startedAt': now,
-      'plannedDurationMinutes': (_totalSeconds / 60).round(),
-      'pausedAccumulatedMs': 0,
-      'state': 'RUNNING',
-    });
+    // 1. Save state via RitmoTimerService
+    await RitmoTimerService.instance.startTimer(
+      id: 'timer_${widget.routine.id}',
+      domain: 'routine',
+      itemId: widget.routine.id,
+      mode: widget.completionMode,
+      durationMinutes: (_totalSeconds / 60).round(),
+    );
 
     // 2. Start Native Foreground Service
     await sl<NotificationPlatform>().startTimerMode(
@@ -159,8 +155,7 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
   Future<void> _cancelTimer() async {
     RitmoHaptics.warning();
     _timer?.cancel();
-    final db = await DatabaseHelper.instance.database;
-    await db.delete('active_timers');
+    await RitmoTimerService.instance.cancelTimer('timer_${widget.routine.id}');
     await sl<NotificationPlatform>().stopForegroundService();
     widget.onFinished();
   }
@@ -179,10 +174,10 @@ class _ActiveTimerOverlayState extends State<ActiveTimerOverlay> with SingleTick
     );
 
     // Delete active timer
-    final db = await DatabaseHelper.instance.database;
-    await db.delete('active_timers');
+    await RitmoTimerService.instance.cancelTimer('timer_${widget.routine.id}');
 
     // Downgrade to normal foreground status notification if enabled
+    final db = await DatabaseHelper.instance.database;
     final settingsList = await db.query(
       'app_settings',
       where: 'key = ?',

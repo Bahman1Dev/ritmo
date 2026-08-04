@@ -167,7 +167,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
       _scrollToTimeString(item.timeOfDay);
     }
 
-    ActionRouter.open(context, item: item);
+    ActionRouter.open(context, item: item, onChanged: () => _controller.refresh());
   }
 
   void _openSmartPanel() {
