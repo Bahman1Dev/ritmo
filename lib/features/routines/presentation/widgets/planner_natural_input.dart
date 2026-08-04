@@ -153,7 +153,6 @@ class _PlannerNaturalInputState extends State<PlannerNaturalInput> {
                     onFieldSubmitted: (text) {
                       _debounce?.cancel();
                       widget.controller.onInputTextChanged(text, immediate: true);
-                      widget.controller.updatePage(1);
                     },
                     onChanged: (text) {
                       if (_debounce?.isActive ?? false) _debounce!.cancel();
@@ -174,9 +173,8 @@ class _PlannerNaturalInputState extends State<PlannerNaturalInput> {
                     onTap: () {
                       _debounce?.cancel();
                       widget.controller.onInputTextChanged(widget.controller.inputController.text, immediate: true);
-                      widget.controller.updatePage(1);
                     },
-                    child: Icon(Icons.arrow_back_rounded, color: colors.primary, size: 20),
+                    child: Icon(Icons.check_circle_outline_rounded, color: colors.primary, size: 22),
                   ),
               ],
             ),

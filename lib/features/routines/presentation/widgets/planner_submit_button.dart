@@ -14,28 +14,11 @@ class PlannerSubmitButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    // Disabled check: on step 1 with empty clean title, we block going forward
-    final isDisabled = controller.currentPage == 0 && controller.title.trim().isEmpty;
-
-    // Loading check
+    final isDisabled = controller.title.trim().isEmpty;
     final isLoading = controller.isSaving;
 
-    // Determine label and icon
-    var label = 'ادامه';
-    var icon = Icons.arrow_back_rounded; // Points left in RTL (direction of progress)
-    
-    if (controller.isEditing) {
-      label = 'ذخیره تغییرات';
-      icon = Icons.check_rounded;
-    } else if (controller.currentPage == 2) {
-      label = 'افزودن به مسیر';
-      icon = Icons.check_rounded;
-    }
-
-    final showQuickSave = controller.currentPage == 0 &&
-        !controller.isEditing &&
-        controller.title.trim().isNotEmpty &&
-        (controller.isTimeParsed || controller.prefilledTime != null);
+    var label = controller.isEditing ? 'ذخیره تغییرات' : 'ثبت ایستگاه ⚡';
+    var icon = controller.isEditing ? Icons.check_rounded : Icons.flash_on_rounded;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -43,42 +26,12 @@ class PlannerSubmitButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (showQuickSave) ...[
-            OutlinedButton.icon(
-              onPressed: isLoading ? null : () => controller.save(context),
-              icon: Icon(Icons.flash_on_rounded, color: colors.goldAccent, size: 18),
-              label: Text(
-                'ذخیره سریع ⚡',
-                style: TextStyle(
-                  fontFamily: 'Vazirmatn',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: colors.goldAccent,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: colors.goldAccent, width: 1.5),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          
           GestureDetector(
             onTap: (isDisabled || isLoading)
                 ? null
                 : () {
                     HapticFeedback.mediumImpact();
-                    if (controller.isEditing) {
-                      controller.save(context);
-                    } else if (controller.currentPage < 2) {
-                      controller.updatePage(controller.currentPage + 1);
-                    } else {
-                      controller.save(context);
-                    }
+                    controller.save(context);
                   },
             child: Opacity(
               opacity: isDisabled ? 0.4 : 1.0,

@@ -24,7 +24,6 @@ import 'package:ritmo/features/routines/presentation/widgets/planner_header.dart
 import 'package:ritmo/features/routines/presentation/widgets/planner_journey_preview.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_natural_input.dart';
 import 'package:ritmo/features/routines/presentation/widgets/planner_submit_button.dart';
-import 'package:ritmo/features/routines/presentation/widgets/planner_summary_card.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_home_dashboard_screen.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:ritmo/features/worship/presentation/widgets/mustahab_section.dart';
@@ -296,98 +295,30 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
                                   const SizedBox(height: 10),
       
                                   // Step Content PageView or Single Edit Form
+                                  // Single-Screen Continuous Content
                                   Expanded(
-                                    child: _controller.isEditing
-                                        ? SingleChildScrollView(
-                                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                                              children: [
-                                                PlannerNaturalInput(controller: _controller),
-                                                const SizedBox(height: 24),
-                                                const Divider(),
-                                                const SizedBox(height: 16),
-                                                _buildDynamicSubsystemForm(),
-                                                const SizedBox(height: 80), // Extra padding for the floating submit button
-                                              ],
-                                            ),
-                                          )
-                                        : PageView(
-                                            controller: _pageController,
-                                            physics: const NeverScrollableScrollPhysics(),
-                                            children: [
-                                              // STEP 1: What?
-                                              Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 24),
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                                  children: [
-                                                    PlannerNaturalInput(controller: _controller),
-                                                    const SizedBox(height: 12),
-                                                    Expanded(
-                                                      child: PlannerCategoryGrid(controller: _controller),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                  ],
-                                                ),
-                                              ),
-      
-                                              // STEP 2: When?
-                                              Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 24),
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                                  children: [
-                                                    Expanded(
-                                                      child: SingleChildScrollView(
-                                                        child: _buildDynamicSubsystemForm(),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 16),
-                                                  ],
-                                                ),
-                                              ),
-      
-                                              // STEP 3: Preview
-                                              Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 24),
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                                  children: [
-                                                    Expanded(
-                                                      child: SingleChildScrollView(
-                                                        child: Column(
-                                                          children: [
-                                                            PlannerSummaryCard(controller: _controller),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 16),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                    child: SingleChildScrollView(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          PlannerNaturalInput(controller: _controller),
+                                          const SizedBox(height: 16),
+                                          PlannerCategoryGrid(controller: _controller),
+                                          const SizedBox(height: 16),
+                                          const Divider(),
+                                          const SizedBox(height: 16),
+                                          _buildDynamicSubsystemForm(),
+                                          const SizedBox(height: 24),
+                                        ],
+                                      ),
+                                    ),
                                   ),
 
-                                  // Fixed Bottom section (Submit button / Continue button)
+                                  // Fixed Bottom section (Submit button)
                                   Padding(
-                                    padding: EdgeInsets.fromLTRB(24, 0, 24, 16 + MediaQuery.of(context).padding.bottom),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                                      children: [
-                                        if (!_controller.isEditing &&
-                                            _controller.selectedCategory != Category.medical &&
-                                            _controller.selectedCategory != Category.religious &&
-                                            _controller.currentPage > 0) ...[
-                                          CollapsibleJourneyPreview(controller: _controller),
-                                          const SizedBox(height: 8),
-                                        ],
-                                        PlannerSubmitButton(controller: _controller),
-                                      ],
-                                    ),
+                                    padding: EdgeInsets.fromLTRB(24, 8, 24, 16 + MediaQuery.of(context).padding.bottom),
+                                    child: PlannerSubmitButton(controller: _controller),
                                   ),
                                 ],
                               ),

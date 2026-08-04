@@ -22,41 +22,30 @@ class PlannerHeader extends StatelessWidget {
           // Close/Back Button (Mockup placement: Left side)
           GestureDetector(
             onTap: () {
-              if (controller.isEditing) {
-                Navigator.pop(context);
-              } else if (controller.currentPage > 0) {
-                // Medical skips step 2 — going back from preview goes straight to category selection
-                final prevPage = (controller.selectedCategory == Category.medical && controller.currentPage == 2)
-                    ? 0
-                    : controller.currentPage - 1;
-                controller.updatePage(prevPage);
-              } else {
-                Navigator.pop(context);
-              }
+              Navigator.pop(context);
             },
             child: Container(
-              padding: const EdgeInsets.all(8),
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: colors.card.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                (!controller.isEditing && controller.currentPage > 0) ? Icons.arrow_back_ios_new_rounded : Icons.close_rounded,
-                size: 20,
+                Icons.close_rounded,
+                size: 22,
                 color: colors.textPrimary,
               ),
             ),
           ),
 
-          // Title & Subtitle Centered (Mockup style)
+          // Title & Subtitle Centered
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  controller.currentPage == 0
-                      ? (controller.isEditing ? '✏️ ویرایش ایستگاه' : '✨ ایجاد ایستگاه جدید')
-                      : (controller.currentPage == 1 ? '📅 زمان‌بندی' : (controller.isEditing ? '👁️ پیش‌نمایش ویرایش' : '👁️ پیش‌نمایش ایستگاه')),
+                  controller.isEditing ? '✏️ ویرایش ایستگاه' : '✨ ثبت سریع ایستگاه',
                   style: TextStyle(
                     fontFamily: 'Vazirmatn',
                     fontSize: 16,
@@ -66,9 +55,7 @@ class PlannerHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  controller.currentPage == 0
-                      ? (controller.isEditing ? 'تغییر جزئیات این ایستگاه رشد' : 'چه چیزی می‌خواهی به مسیر زندگیت اضافه کنی؟')
-                      : (controller.currentPage == 1 ? 'زمان مناسب را روی مسیر انتخاب کن' : (controller.isEditing ? 'تغییرات این ایستگاه روی مسیر اعمال می‌شود' : 'این ایستگاه در مسیر اضافه می‌شود')),
+                  controller.isEditing ? 'تغییر جزئیات این ایستگاه رشد' : 'ایجاد مستقیم ایستگاه جدید در مسیر زندگی',
                   style: TextStyle(
                     fontFamily: 'Vazirmatn',
                     fontSize: 11,
@@ -79,7 +66,7 @@ class PlannerHeader extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(width: 36),
+          const SizedBox(width: 48),
         ],
       ),
     );

@@ -30,7 +30,7 @@ class SportsStrategy implements PlannerCategoryStrategy {
 
     // --- Case A: LOG mode ---
     if (c.sportsOpType == 'LOG') {
-      showMovementLogSheet(context);
+      await showMovementLogSheet(context);
       return;
     }
 

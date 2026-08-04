@@ -920,8 +920,8 @@ class PlannerController extends ChangeNotifier {
           cleanDate: isDateParsed,
         );
 
-        estimateDurationIfNeeded();
-        loadOccupancyForDate(selectedDate);
+        await estimateDurationIfNeeded();
+        await loadOccupancyForDate(selectedDate);
       } else if (context.mounted) {
         RitmoToast.show(context, 'چیزی پیدا نشد', icon: Icons.info_outline, iconColor: Colors.amber);
       }
