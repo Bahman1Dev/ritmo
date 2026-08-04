@@ -1,7 +1,6 @@
 // lib/features/routines/presentation/widgets/planner_header.dart
 
 import 'package:flutter/material.dart';
-import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/features/routines/presentation/planner_controller.dart';
 

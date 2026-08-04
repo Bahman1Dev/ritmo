@@ -298,6 +298,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
                                   // Single-Screen Continuous Content
                                   Expanded(
                                     child: SingleChildScrollView(
+                                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                                        child: Column(
                                          crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -1,6 +1,7 @@
 // lib/features/routines/presentation/widgets/planner_category_grid.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
@@ -83,6 +84,7 @@ class PlannerCategoryGrid extends StatelessWidget {
                           style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, color: colors.textPrimary),
                         ),
                         onPressed: () {
+                          HapticFeedback.selectionClick();
                           controller.applyFrequentStation(station);
                         },
                       ),
@@ -93,15 +95,13 @@ class PlannerCategoryGrid extends StatelessWidget {
               const SizedBox(height: 10),
             ],
 
-            Center(
-              child: Text(
-                'یا از دسته‌بندی‌ها انتخاب کن',
-                style: TextStyle(
-                  fontFamily: 'Vazirmatn',
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: colors.textSecondary.withValues(alpha: 0.65),
-                ),
+            Text(
+              'انتخاب دسته‌بندی ایستگاه',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: colors.textSecondary.withValues(alpha: 0.65),
               ),
             ),
             const SizedBox(height: 10),
@@ -142,6 +142,7 @@ class PlannerCategoryGrid extends StatelessWidget {
 
               return GestureDetector(
                 onTap: () {
+                  HapticFeedback.selectionClick();
                   controller.hasManuallySelectedCategory = true;
                   controller.selectCategory(cat, context, type: type);
                 },

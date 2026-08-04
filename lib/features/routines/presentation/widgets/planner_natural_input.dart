@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/routines/presentation/planner_controller.dart';
@@ -19,10 +20,33 @@ class PlannerNaturalInput extends StatefulWidget {
 
 class _PlannerNaturalInputState extends State<PlannerNaturalInput> {
   Timer? _debounce;
+  Timer? _placeholderTimer;
+  int _placeholderIndex = 0;
+
+  static const _placeholders = [
+    'مثلاً: هر روز ساعت ۸ صبح مطالعه ۲۰ دقیقه',
+    'مثلاً: فردا ساعت ۱۸ باشگاه چهل و پنج دقیقه',
+    'مثلاً: هر روز ساعت ۱۳ خوردن ویتامین c',
+    'مثلاً: شنبه تا چهارشنبه ساعت ۲۳ خواب',
+    'مثلاً: امروز ساعت ۲۰ پیاده‌روی نیم ساعت',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _placeholderTimer = Timer.periodic(const Duration(seconds: 4), (t) {
+      if (mounted && widget.controller.inputController.text.isEmpty) {
+        setState(() {
+          _placeholderIndex = (_placeholderIndex + 1) % _placeholders.length;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _placeholderTimer?.cancel();
     super.dispose();
   }
 
@@ -141,7 +165,7 @@ class _PlannerNaturalInputState extends State<PlannerNaturalInput> {
                       color: colors.textPrimary,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'مثلاً: فردا ساعت ۸ برم باشگاه',
+                      hintText: _placeholders[_placeholderIndex],
                       hintStyle: TextStyle(
                         fontFamily: 'Vazirmatn',
                         fontSize: 12.5,
@@ -172,6 +196,7 @@ class _PlannerNaturalInputState extends State<PlannerNaturalInput> {
                   GestureDetector(
                     onTap: () {
                       _debounce?.cancel();
+                      HapticFeedback.selectionClick();
                       widget.controller.onInputTextChanged(widget.controller.inputController.text, immediate: true);
                     },
                     child: Icon(Icons.check_circle_outline_rounded, color: colors.primary, size: 22),
@@ -192,19 +217,28 @@ class _PlannerNaturalInputState extends State<PlannerNaturalInput> {
                 if (widget.controller.isTimeParsed)
                   _buildChip(
                     label: _getTimeDateChipLabel(),
-                    onDelete: () => widget.controller.removeParsedEntity('time'),
+                    onDelete: () {
+                      HapticFeedback.lightImpact();
+                      widget.controller.removeParsedEntity('time');
+                    },
                     context: context,
                   ),
                 if (widget.controller.isRecurrenceParsed)
                   _buildChip(
                     label: _getRecurrenceChipLabel(),
-                    onDelete: () => widget.controller.removeParsedEntity('recurrence'),
+                    onDelete: () {
+                      HapticFeedback.lightImpact();
+                      widget.controller.removeParsedEntity('recurrence');
+                    },
                     context: context,
                   ),
                 if (widget.controller.isDurationParsed)
                   _buildChip(
                     label: _getDurationChipLabel(),
-                    onDelete: () => widget.controller.removeParsedEntity('duration'),
+                    onDelete: () {
+                      HapticFeedback.lightImpact();
+                      widget.controller.removeParsedEntity('duration');
+                    },
                     context: context,
                   ),
               ],
