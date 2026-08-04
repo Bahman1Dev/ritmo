@@ -107,6 +107,7 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
     });
 
     try {
+      RegistryIndex.instance.invalidate();
       final items = await _service.query(_query, _settingsMap);
       List<RegistryHealthIssue> health = [];
       try {

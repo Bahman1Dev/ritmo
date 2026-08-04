@@ -82,6 +82,9 @@ class RegistryIndex {
     Map<String, String> settingsMap,
   ) async {
     final results = <RegistryEntry>[];
+    final seenIds = <String>{};
+    final seenSourceIds = <String>{};
+    final seenTitleKeys = <String>{};
 
     // Single SQL query for next run dates
     final nextRunDates = await _fetchNextRunDates();
@@ -113,7 +116,17 @@ class RegistryIndex {
         final nextDate = nextRunDates[item.sourceId];
         final updated = item.copyWith(nextRunDateStr: nextDate);
         if (_matchesQuery(updated, query)) {
-          results.add(updated);
+          final titleKey = _normalizeFa(updated.title);
+          final isDuplicateId = seenIds.contains(updated.id);
+          final isDuplicateSource = updated.sourceId.isNotEmpty && seenSourceIds.contains(updated.sourceId);
+          final isDuplicateTitle = titleKey.isNotEmpty && seenTitleKeys.contains(titleKey);
+
+          if (!isDuplicateId && !isDuplicateSource && !isDuplicateTitle) {
+            seenIds.add(updated.id);
+            if (updated.sourceId.isNotEmpty) seenSourceIds.add(updated.sourceId);
+            if (titleKey.isNotEmpty) seenTitleKeys.add(titleKey);
+            results.add(updated);
+          }
         }
       }
     }
