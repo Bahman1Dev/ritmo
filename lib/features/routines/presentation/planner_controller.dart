@@ -233,6 +233,7 @@ class PlannerController extends ChangeNotifier {
   void _loadEditData() {
     final data = routineToEdit!;
     title = data['title'] as String? ?? '';
+    inputController.text = title;
     description = data['description'] as String? ?? '';
     selectedCategory = Category.values.firstWhere((e) => e.name == data['category'], orElse: () => Category.personal);
     priority = data['priority'] as double? ?? 1.0;

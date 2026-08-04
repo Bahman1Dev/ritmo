@@ -299,19 +299,26 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
                                   Expanded(
                                     child: SingleChildScrollView(
                                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                                        children: [
-                                          PlannerNaturalInput(controller: _controller),
-                                          const SizedBox(height: 16),
-                                          PlannerCategoryGrid(controller: _controller),
-                                          const SizedBox(height: 16),
-                                          const Divider(),
-                                          const SizedBox(height: 16),
-                                          _buildDynamicSubsystemForm(),
-                                          const SizedBox(height: 24),
-                                        ],
-                                      ),
+                                       child: Column(
+                                         crossAxisAlignment: CrossAxisAlignment.stretch,
+                                         children: [
+                                           if (_controller.isEditing) ...[
+                                             _buildEditHeaderCard(context),
+                                             const SizedBox(height: 16),
+                                             _buildDynamicSubsystemForm(),
+                                             const SizedBox(height: 24),
+                                           ] else ...[
+                                             PlannerNaturalInput(controller: _controller),
+                                             const SizedBox(height: 16),
+                                             PlannerCategoryGrid(controller: _controller),
+                                             const SizedBox(height: 16),
+                                             const Divider(),
+                                             const SizedBox(height: 16),
+                                             _buildDynamicSubsystemForm(),
+                                             const SizedBox(height: 24),
+                                           ],
+                                         ],
+                                       ),
                                     ),
                                   ),
 
@@ -376,6 +383,89 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildEditHeaderCard(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF16192E).withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: colors.primary.withValues(alpha: 0.25),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colors.primary.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.edit_rounded, size: 20, color: colors.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'عنوان ایستگاه',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: colors.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _controller.inputController,
+              onChanged: (val) {
+                _controller.title = val;
+                _controller.notifyListeners();
+              },
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: 'عنوان ایستگاه را وارد کنید...',
+                hintStyle: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 14,
+                  color: colors.textSecondary.withValues(alpha: 0.5),
+                ),
+                filled: true,
+                fillColor: isDark ? const Color(0xFF1E2235).withValues(alpha: 0.6) : Colors.black.withValues(alpha: 0.03),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: colors.border.withValues(alpha: 0.15)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: colors.border.withValues(alpha: 0.15)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: colors.primary, width: 1.5),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
