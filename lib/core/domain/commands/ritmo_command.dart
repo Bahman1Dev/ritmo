@@ -79,8 +79,8 @@ class CommandResult {
   final String? inverseToken;
 }
 
-/// Sealed base class for all commands in the Ritmo Command Layer
-sealed class RitmoCommand {
+/// Abstract base class for all commands in the Ritmo Command Layer
+abstract class RitmoCommand {
   const RitmoCommand();
 
   String get id;

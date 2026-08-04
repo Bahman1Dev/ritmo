@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/commands/ritmo_command.dart';
-import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// Central Command Bus for dispatching, dry-running, auditing, and inverting commands.
@@ -122,7 +121,7 @@ class RitmoCommandBus {
   }) async {
     try {
       final db = await DatabaseHelper.instance.database;
-      final auditId = RitmoIdFactory.uuid();
+      final auditId = DateTime.now().microsecondsSinceEpoch.toString();
       final now = DateTime.now().millisecondsSinceEpoch;
 
       // Ensure assistant_id column exists

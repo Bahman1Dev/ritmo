@@ -5,8 +5,9 @@ import 'package:ritmo/core/domain/agenda/action_router.dart';
 import 'package:ritmo/core/domain/commands/ritmo_command.dart';
 import 'package:ritmo/core/domain/commands/ritmo_command_bus.dart';
 import 'package:ritmo/core/domain/completion/completion_gateway.dart';
+import 'package:ritmo/core/domain/completion/completion_request.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
-import 'package:ritmo/core/utils/ritmo_id_factory.dart';
+import 'package:sqflite/sqflite.dart';
 
 /// Initializes and registers all 24 commands into RitmoCommandBus
 void registerAllRitmoCommands() {
@@ -38,6 +39,8 @@ void registerAllRitmoCommands() {
   ]);
 }
 
+String _genId() => DateTime.now().microsecondsSinceEpoch.toString();
+
 // 1. CreateRoutineRitmoCommand
 class CreateRoutineRitmoCommand extends RitmoCommand {
   const CreateRoutineRitmoCommand();
@@ -64,7 +67,7 @@ class CreateRoutineRitmoCommand extends RitmoCommand {
   Future<CommandResult> run(CommandContext ctx) async {
     final title = ctx.payload['title']?.toString() ?? 'روتین جدید';
     final category = ctx.payload['category']?.toString() ?? 'personal';
-    final routineId = ctx.payload['id']?.toString() ?? RitmoIdFactory.uuid();
+    final routineId = ctx.payload['id']?.toString() ?? _genId();
 
     final routineData = <String, dynamic>{
       'id': routineId,
@@ -77,28 +80,25 @@ class CreateRoutineRitmoCommand extends RitmoCommand {
       'createdAt': DateTime.now().millisecondsSinceEpoch,
     };
 
-    final result = await RitmoExecutionKernel.instance.executeCommand(
+    await RitmoExecutionKernel.instance.execute(
       CreateRoutineCommand(routineData: routineData),
     );
 
-    if (result.success) {
-      return CommandResult.ok(
-        commandId: id,
-        outputData: {'routineId': routineId},
-        inverseToken: 'routine|$routineId',
-      );
-    }
-    return CommandResult.failure(commandId: id, errorMessage: result.errorMessage ?? 'ایجاد روتین ناموفق بود');
+    return CommandResult.ok(
+      commandId: id,
+      outputData: {'routineId': routineId},
+      inverseToken: 'routine|$routineId',
+    );
   }
 
   @override
   Future<CommandResult?> inverse(CommandResult result) async {
     final routineId = result.outputData?['routineId']?.toString();
     if (routineId == null) return null;
-    final res = await RitmoExecutionKernel.instance.executeCommand(
+    await RitmoExecutionKernel.instance.execute(
       ArchiveRoutineCommand(routineId: routineId),
     );
-    return CommandResult(success: res.success, commandId: id);
+    return CommandResult.ok(commandId: id);
   }
 }
 
@@ -124,7 +124,7 @@ class CreateGoalRitmoCommand extends RitmoCommand {
   @override
   Future<CommandResult> run(CommandContext ctx) async {
     final title = ctx.payload['title']?.toString() ?? 'هدف جدید';
-    final goalId = ctx.payload['id']?.toString() ?? RitmoIdFactory.uuid();
+    final goalId = ctx.payload['id']?.toString() ?? _genId();
     final db = await DatabaseHelper.instance.database;
 
     await db.insert('goals', {
@@ -170,7 +170,7 @@ class LogSleepRitmoCommand extends RitmoCommand {
   @override
   Future<CommandResult> run(CommandContext ctx) async {
     final db = await DatabaseHelper.instance.database;
-    final logId = RitmoIdFactory.uuid();
+    final logId = _genId();
     await db.insert('bedtime_diagnostics', {
       'id': logId,
       'durationMinutes': ctx.payload['durationMinutes'] ?? 480,
@@ -206,7 +206,7 @@ class LogEnergyMoodRitmoCommand extends RitmoCommand {
   @override
   Future<CommandResult> run(CommandContext ctx) async {
     final db = await DatabaseHelper.instance.database;
-    final logId = RitmoIdFactory.uuid();
+    final logId = _genId();
     await db.insert('energy_logs', {
       'id': logId,
       'value': ctx.payload['energyLevel'] ?? 70,
@@ -241,7 +241,7 @@ class AddKonkurItemRitmoCommand extends RitmoCommand {
   @override
   Future<CommandResult> run(CommandContext ctx) async {
     final db = await DatabaseHelper.instance.database;
-    final idVal = RitmoIdFactory.uuid();
+    final idVal = _genId();
     await db.insert('konkur_plans', {
       'id': idVal,
       'topicName': ctx.payload['topicName'] ?? 'مبحث جدید',
@@ -277,7 +277,7 @@ class CreateCourseRitmoCommand extends RitmoCommand {
   @override
   Future<CommandResult> run(CommandContext ctx) async {
     final db = await DatabaseHelper.instance.database;
-    final courseId = RitmoIdFactory.uuid();
+    final courseId = _genId();
     await db.insert('courses', {
       'id': courseId,
       'title': ctx.payload['title'] ?? 'دوره جدید',
@@ -321,7 +321,7 @@ class OpenPageRitmoCommand extends RitmoCommand {
     final route = ctx.payload['targetRoute']?.toString() ?? '/';
     final buildContext = ctx.payload['buildContext'] as BuildContext?;
     if (buildContext != null && buildContext.mounted) {
-      ActionRouter.navigateToRoute(buildContext, route);
+      Navigator.of(buildContext).pushNamed(route);
     }
     return CommandResult.ok(commandId: id, outputData: {'route': route});
   }
@@ -413,23 +413,21 @@ class CompleteRoutineRitmoCommand extends RitmoCommand {
     final routineId = ctx.payload['routineId']?.toString() ?? '';
     final dateStr = ctx.payload['dateStr']?.toString() ?? DateTime.now().toIso8601String().split('T').first;
 
-    final res = await CompletionGateway.instance.registerCompletion(
-      routineId: routineId,
-      completionDate: dateStr,
-      resultType: 'DONE',
+    final res = await CompletionGateway.instance.submit(
+      RoutineCompletion(routineId: routineId, dateStr: dateStr),
     );
 
-    if (res.success) {
+    if (res.isSuccess) {
       return CommandResult.ok(commandId: id, inverseToken: res.undoToken);
     }
-    return CommandResult.failure(commandId: id, errorMessage: res.message);
+    return CommandResult.failure(commandId: id, errorMessage: res.userMessage ?? 'تکمیل روتین ناموفق بود');
   }
 
   @override
   Future<CommandResult?> inverse(CommandResult result) async {
     if (result.inverseToken == null) return null;
-    final undoRes = await CompletionGateway.instance.undoCompletion(result.inverseToken!);
-    return CommandResult(success: undoRes.success, commandId: id);
+    final undoRes = await CompletionGateway.instance.undo(result.inverseToken!);
+    return CommandResult(success: undoRes.isSuccess, commandId: id);
   }
 }
 
@@ -457,23 +455,21 @@ class SkipRoutineRitmoCommand extends RitmoCommand {
     final routineId = ctx.payload['routineId']?.toString() ?? '';
     final dateStr = ctx.payload['dateStr']?.toString() ?? DateTime.now().toIso8601String().split('T').first;
 
-    final res = await CompletionGateway.instance.registerSkip(
-      routineId: routineId,
-      dateStr: dateStr,
-      reasonTag: ctx.payload['reason']?.toString(),
+    final res = await CompletionGateway.instance.submit(
+      RoutineSkip(routineId: routineId, dateStr: dateStr, reason: ctx.payload['reason']?.toString()),
     );
 
-    if (res.success) {
+    if (res.isSuccess) {
       return CommandResult.ok(commandId: id, inverseToken: res.undoToken);
     }
-    return CommandResult.failure(commandId: id, errorMessage: res.message);
+    return CommandResult.failure(commandId: id, errorMessage: res.userMessage ?? 'رد کردن روتین ناموفق بود');
   }
 
   @override
   Future<CommandResult?> inverse(CommandResult result) async {
     if (result.inverseToken == null) return null;
-    final undoRes = await CompletionGateway.instance.undoCompletion(result.inverseToken!);
-    return CommandResult(success: undoRes.success, commandId: id);
+    final undoRes = await CompletionGateway.instance.undo(result.inverseToken!);
+    return CommandResult(success: undoRes.isSuccess, commandId: id);
   }
 }
 
@@ -499,10 +495,10 @@ class EditRoutineRitmoCommand extends RitmoCommand {
   @override
   Future<CommandResult> run(CommandContext ctx) async {
     final routineId = ctx.payload['routineId']?.toString() ?? '';
-    final res = await RitmoExecutionKernel.instance.executeCommand(
+    await RitmoExecutionKernel.instance.execute(
       EditRoutineCommand(routineId: routineId, routineData: ctx.payload),
     );
-    return CommandResult(success: res.success, commandId: id, errorMessage: res.errorMessage);
+    return CommandResult.ok(commandId: id);
   }
 
   @override
@@ -531,23 +527,20 @@ class DeleteRoutineRitmoCommand extends RitmoCommand {
   @override
   Future<CommandResult> run(CommandContext ctx) async {
     final routineId = ctx.payload['routineId']?.toString() ?? '';
-    final res = await RitmoExecutionKernel.instance.executeCommand(
+    await RitmoExecutionKernel.instance.execute(
       ArchiveRoutineCommand(routineId: routineId),
     );
-    if (res.success) {
-      return CommandResult.ok(commandId: id, outputData: {'routineId': routineId}, inverseToken: 'unarchive|$routineId');
-    }
-    return CommandResult.failure(commandId: id, errorMessage: res.errorMessage ?? 'حذف روتین ناموفق بود');
+    return CommandResult.ok(commandId: id, outputData: {'routineId': routineId}, inverseToken: 'unarchive|$routineId');
   }
 
   @override
   Future<CommandResult?> inverse(CommandResult result) async {
     final routineId = result.outputData?['routineId']?.toString();
     if (routineId == null) return null;
-    final res = await RitmoExecutionKernel.instance.executeCommand(
+    await RitmoExecutionKernel.instance.execute(
       UnarchiveRoutineCommand(routineId: routineId),
     );
-    return CommandResult(success: res.success, commandId: id);
+    return CommandResult.ok(commandId: id);
   }
 }
 
@@ -605,19 +598,19 @@ class CompleteGoalStepRitmoCommand extends RitmoCommand {
   Future<CommandResult> run(CommandContext ctx) async {
     final goalId = ctx.payload['goalId']?.toString() ?? '';
     final stepId = ctx.payload['stepId']?.toString() ?? '';
+    final dateStr = ctx.payload['dateStr']?.toString() ?? DateTime.now().toIso8601String().split('T').first;
 
-    final res = await CompletionGateway.instance.registerGoalStepCompletion(
-      goalId: goalId,
-      stepId: stepId,
+    final res = await CompletionGateway.instance.submit(
+      GoalStepCompletion(goalId: goalId, stepId: stepId, dateStr: dateStr),
     );
-    return CommandResult(success: res.success, commandId: id, inverseToken: res.undoToken);
+    return CommandResult(success: res.isSuccess, commandId: id, inverseToken: res.undoToken);
   }
 
   @override
   Future<CommandResult?> inverse(CommandResult result) async {
     if (result.inverseToken == null) return null;
-    final undoRes = await CompletionGateway.instance.undoCompletion(result.inverseToken!);
-    return CommandResult(success: undoRes.success, commandId: id);
+    final undoRes = await CompletionGateway.instance.undo(result.inverseToken!);
+    return CommandResult(success: undoRes.isSuccess, commandId: id);
   }
 }
 
@@ -643,7 +636,7 @@ class CreateWorshipItemRitmoCommand extends RitmoCommand {
   @override
   Future<CommandResult> run(CommandContext ctx) async {
     final db = await DatabaseHelper.instance.database;
-    final itemId = ctx.payload['id']?.toString() ?? RitmoIdFactory.uuid();
+    final itemId = ctx.payload['id']?.toString() ?? _genId();
     await db.insert('worship_practices', {
       'id': itemId,
       'title': ctx.payload['title'] ?? 'برنامه عبادی جدید',
@@ -723,7 +716,7 @@ class LogReflectionRitmoCommand extends RitmoCommand {
   @override
   Future<CommandResult> run(CommandContext ctx) async {
     final db = await DatabaseHelper.instance.database;
-    final idVal = RitmoIdFactory.uuid();
+    final idVal = _genId();
     await db.insert('mood_logs', {
       'id': idVal,
       'mood': ctx.payload['mood'] ?? 'neutral',
@@ -762,19 +755,17 @@ class RescheduleReminderRitmoCommand extends RitmoCommand {
     final fromDateStr = ctx.payload['fromDate']?.toString() ?? DateTime.now().toIso8601String().split('T').first;
     final toDateStr = ctx.payload['targetDate']?.toString() ?? fromDateStr;
 
-    final res = await CompletionGateway.instance.registerReschedule(
-      routineId: routineId,
-      fromDateStr: fromDateStr,
-      toDateStr: toDateStr,
+    final res = await CompletionGateway.instance.submit(
+      RoutineReschedule(routineId: routineId, fromDateStr: fromDateStr, toDateStr: toDateStr),
     );
-    return CommandResult(success: res.success, commandId: id, inverseToken: res.undoToken);
+    return CommandResult(success: res.isSuccess, commandId: id, inverseToken: res.undoToken);
   }
 
   @override
   Future<CommandResult?> inverse(CommandResult result) async {
     if (result.inverseToken == null) return null;
-    final undoRes = await CompletionGateway.instance.undoCompletion(result.inverseToken!);
-    return CommandResult(success: undoRes.success, commandId: id);
+    final undoRes = await CompletionGateway.instance.undo(result.inverseToken!);
+    return CommandResult(success: undoRes.isSuccess, commandId: id);
   }
 }
 
