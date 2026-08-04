@@ -43,6 +43,7 @@ class RoutineRegistrySource implements RegistrySource {
       FROM routines r
       LEFT JOIN routine_schedules s ON r.id = s.routineId
       WHERE $where
+      GROUP BY r.id
       ORDER BY r.displayOrder ASC, r.createdAt DESC
       LIMIT ? OFFSET ?
     ''', [limit, offset]);

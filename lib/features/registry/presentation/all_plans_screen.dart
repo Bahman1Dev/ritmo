@@ -19,6 +19,13 @@ import 'package:ritmo/features/registry/presentation/widgets/registry_health_car
 import 'package:ritmo/features/registry/presentation/widgets/registry_row.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
 
+enum PlanSortMode {
+  displayOrder,
+  time,
+  duration,
+  alphabetical,
+}
+
 class AllPlansScreen extends StatefulWidget {
   const AllPlansScreen({super.key});
 
@@ -39,6 +46,7 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
   bool _isLoading = true;
   bool _isSelectionMode = false;
   final Set<String> _selectedIds = {};
+  PlanSortMode _sortMode = PlanSortMode.displayOrder;
 
   @override
   void initState() {
@@ -72,6 +80,26 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
     }
   }
 
+  void _applySort() {
+    switch (_sortMode) {
+      case PlanSortMode.time:
+        _entries.sort((a, b) {
+          final timeA = a.agendaProxy.timeOfDay ?? '23:59';
+          final timeB = b.agendaProxy.timeOfDay ?? '23:59';
+          return timeA.compareTo(timeB);
+        });
+        break;
+      case PlanSortMode.duration:
+        _entries.sort((a, b) => (b.agendaProxy.durationMinutes ?? 0).compareTo(a.agendaProxy.durationMinutes ?? 0));
+        break;
+      case PlanSortMode.alphabetical:
+        _entries.sort((a, b) => a.title.compareTo(b.title));
+        break;
+      case PlanSortMode.displayOrder:
+        break;
+    }
+  }
+
   Future<void> _refreshData() async {
     if (!mounted) return;
     setState(() {
@@ -89,6 +117,7 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
         setState(() {
           _entries = items;
           _healthIssues = health;
+          _applySort();
         });
       }
     } catch (_) {
@@ -166,38 +195,113 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
         ),
         body: Column(
           children: [
-            // Search Input
+            // Search Input & Sort Menu
             Padding(
               padding: const EdgeInsets.all(CalendarTokens.spacingL),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                textDirection: TextDirection.rtl,
-                decoration: InputDecoration(
-                  hintText: 'جست‌وجو در همه برنامه‌ها...',
-                  hintStyle: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 18),
-                          onPressed: () {
-                            _searchController.clear();
-                            _onSearchChanged('');
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: isDark
-                      ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.5)
-                      : theme.cardColor,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(CalendarTokens.radiusPill),
-                    borderSide: BorderSide(
-                      color: theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      textDirection: TextDirection.rtl,
+                      decoration: InputDecoration(
+                        hintText: 'جست‌وجو در همه برنامه‌ها...',
+                        hintStyle: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+                        prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear_rounded, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _onSearchChanged('');
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: isDark
+                            ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.5)
+                            : theme.cardColor,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(CalendarTokens.radiusPill),
+                          borderSide: BorderSide(
+                            color: theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.5)
+                          : theme.cardColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder),
+                      ),
+                    ),
+                    child: PopupMenuButton<PlanSortMode>(
+                      icon: Icon(
+                        Icons.sort_rounded,
+                        color: _sortMode != PlanSortMode.displayOrder
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurface,
+                      ),
+                      tooltip: 'مرتب‌سازی برنامه‌ها',
+                      onSelected: (mode) {
+                        setState(() {
+                          _sortMode = mode;
+                          _applySort();
+                        });
+                      },
+                      itemBuilder: (ctx) => [
+                        PopupMenuItem(
+                          value: PlanSortMode.displayOrder,
+                          child: Row(
+                            children: [
+                              Icon(Icons.dashboard_rounded, size: 18, color: _sortMode == PlanSortMode.displayOrder ? theme.colorScheme.primary : null),
+                              const SizedBox(width: 8),
+                              Text('ترتیب پیش‌فرض', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: _sortMode == PlanSortMode.displayOrder ? FontWeight.bold : FontWeight.normal)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: PlanSortMode.time,
+                          child: Row(
+                            children: [
+                              Icon(Icons.schedule_rounded, size: 18, color: _sortMode == PlanSortMode.time ? theme.colorScheme.primary : null),
+                              const SizedBox(width: 8),
+                              Text('زمان اجرا (صبح تا شب)', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: _sortMode == PlanSortMode.time ? FontWeight.bold : FontWeight.normal)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: PlanSortMode.duration,
+                          child: Row(
+                            children: [
+                              Icon(Icons.timer_rounded, size: 18, color: _sortMode == PlanSortMode.duration ? theme.colorScheme.primary : null),
+                              const SizedBox(width: 8),
+                              Text('مدت زمان (بلند به کوتاه)', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: _sortMode == PlanSortMode.duration ? FontWeight.bold : FontWeight.normal)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: PlanSortMode.alphabetical,
+                          child: Row(
+                            children: [
+                              Icon(Icons.sort_by_alpha_rounded, size: 18, color: _sortMode == PlanSortMode.alphabetical ? theme.colorScheme.primary : null),
+                              const SizedBox(width: 8),
+                              Text('حروف الفبا (آ-ی)', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: _sortMode == PlanSortMode.alphabetical ? FontWeight.bold : FontWeight.normal)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -431,32 +535,62 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
       padding: const EdgeInsets.only(bottom: 80),
       itemBuilder: (context, index) {
         final entry = _entries[index];
-        return RepaintBoundary(
-          child: RegistryRow(
-            entry: entry,
-            isSelected: _selectedIds.contains(entry.id),
-            isSelectionMode: _isSelectionMode,
-            onTap: () {
-              if (_isSelectionMode) {
+        return Dismissible(
+          key: Key(entry.id),
+          direction: _isSelectionMode ? DismissDirection.none : DismissDirection.startToEnd,
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            color: Colors.amber.shade800,
+            child: const Row(
+              children: [
+                Icon(Icons.archive_rounded, color: Colors.white),
+                SizedBox(width: 8),
+                Text(
+                  'بایگانی',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          confirmDismiss: (direction) async {
+            if (direction == DismissDirection.startToEnd) {
+              await _archiveEntry(entry);
+              return true;
+            }
+            return false;
+          },
+          child: RepaintBoundary(
+            child: RegistryRow(
+              entry: entry,
+              isSelected: _selectedIds.contains(entry.id),
+              isSelectionMode: _isSelectionMode,
+              onTap: () {
+                if (_isSelectionMode) {
+                  setState(() {
+                    if (_selectedIds.contains(entry.id)) {
+                      _selectedIds.remove(entry.id);
+                      if (_selectedIds.isEmpty) _isSelectionMode = false;
+                    } else {
+                      _selectedIds.add(entry.id);
+                    }
+                  });
+                } else {
+                  ActionRouter.open(context, item: entry.agendaProxy);
+                }
+              },
+              onLongPress: () {
                 setState(() {
-                  if (_selectedIds.contains(entry.id)) {
-                    _selectedIds.remove(entry.id);
-                    if (_selectedIds.isEmpty) _isSelectionMode = false;
-                  } else {
-                    _selectedIds.add(entry.id);
-                  }
+                  _isSelectionMode = true;
+                  _selectedIds.add(entry.id);
                 });
-              } else {
-                ActionRouter.open(context, item: entry.agendaProxy);
-              }
-            },
-            onLongPress: () {
-              setState(() {
-                _isSelectionMode = true;
-                _selectedIds.add(entry.id);
-              });
-            },
-            onArchive: () => _archiveEntry(entry),
+              },
+              onArchive: () => _archiveEntry(entry),
+            ),
           ),
         );
       },
@@ -465,12 +599,12 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
 
   Widget _buildHealthLensList() {
     if (_healthIssues.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.verified_rounded, color: CalendarTokens.emerald, size: 48),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               'همه چیز مرتب است 🎉',
               style: TextStyle(
@@ -480,8 +614,8 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
                 color: CalendarTokens.emerald,
               ),
             ),
-            const SizedBox(height: 4),
-            const Text(
+            SizedBox(height: 4),
+            Text(
               'هیچ ناهنجاری یا مشکلی در دیتابیس برنامه‌ها یافت نشد.',
               style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: Colors.grey),
             ),
