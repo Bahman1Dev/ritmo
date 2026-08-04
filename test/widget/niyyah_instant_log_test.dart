@@ -37,9 +37,9 @@ void main() {
       ),
     );
 
-    expect(find.text('ثبت فوری (بدون تایمر)'), findsOneWidget);
+    expect(find.text('ثبت فوری بدون تایمر'), findsOneWidget);
 
-    await tester.tap(find.text('ثبت فوری (بدون تایمر)'));
+    await tester.tap(find.text('ثبت فوری بدون تایمر'));
     await tester.pump();
 
     expect(completedMode, equals('FULL'));
