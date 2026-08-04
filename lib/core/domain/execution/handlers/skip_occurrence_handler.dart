@@ -31,7 +31,6 @@ class SkipOccurrenceHandler
       'resultSource': 'USER',
       'note': command.reason,
       'createdAt': nowMs,
-      'updatedAt': nowMs,
     });
 
     try {
