@@ -34,7 +34,6 @@ class CompleteOccurrenceHandler
       'actual_duration_minutes': command.durationMinutes,
       'note': command.note,
       'createdAt': nowMs,
-      'updatedAt': nowMs,
     });
 
     final routineRows = await context.txn.query(
