@@ -34,21 +34,21 @@ class UniversalPlannerSheet extends StatefulWidget {
 
   const UniversalPlannerSheet({
     super.key,
-    required this.onSaved,
+    this.onSaved,
     this.routineToEdit,
     this.prefilledTime,
   });
   final Map<String, dynamic>? routineToEdit;
-  final VoidCallback onSaved;
+  final VoidCallback? onSaved;
   final TimeOfDay? prefilledTime;
 
-  static void show(
-    BuildContext context, {
+  static Future<T?> show<T>({
+    required BuildContext context,
     Map<String, dynamic>? routineToEdit,
-    required VoidCallback onSaved,
+    VoidCallback? onSaved,
     TimeOfDay? prefilledTime,
   }) {
-    showModalBottomSheet(
+    return showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -73,7 +73,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
     super.initState();
     _controller = PlannerController(
       routineToEdit: widget.routineToEdit,
-      onSaved: widget.onSaved,
+      onSaved: widget.onSaved ?? () {},
       prefilledTime: widget.prefilledTime,
       onPageChanged: (pageIndex) {
         if (_pageController.hasClients) {
@@ -131,7 +131,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
               reminderOffsetMinutes: prefill['reminderOffsetMinutes'] as int? ?? 0,
             ) : null,
             onSaved: () {
-              widget.onSaved();
+              widget.onSaved?.call();
               if (mounted) {
                 RitmoToast.show(
                   context,
@@ -154,7 +154,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
           return CreateCourseSheet(
             initialValues: initialValues,
             onCourseCreated: () {
-              widget.onSaved();
+              widget.onSaved?.call();
               if (mounted) {
                 Navigator.pop(context);
               }
@@ -175,7 +175,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
             routines: const [],
             templateData: templateData,
             onSaved: () {
-              widget.onSaved();
+              widget.onSaved?.call();
               if (mounted) {
                 Navigator.pop(context);
               }
@@ -190,7 +190,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
         context,
         presetDurationMinutes: durationMinutes,
         onLogged: () {
-          widget.onSaved();
+          widget.onSaved?.call();
           if (mounted) {
             Navigator.pop(context);
           }
@@ -203,7 +203,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
         context,
         MaterialPageRoute(builder: (context) => const SSHomeDashboardScreen()),
       ).then((_) {
-        widget.onSaved();
+        widget.onSaved?.call();
         if (context.mounted) {
           Navigator.of(context).pop();
         }

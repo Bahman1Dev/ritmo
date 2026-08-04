@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
@@ -1040,14 +1041,16 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
           (profileResult.first['onboardingCompleted'] as int? ?? 0) == 1;
 
       if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => hasCompletedOnboarding 
-                ? const SSHomeDashboardScreen() 
-                : const SSIntroScreen(),
-          ),
-        ).then((_) => _loadAllData());
+        unawaited(
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => hasCompletedOnboarding
+                  ? const SSHomeDashboardScreen()
+                  : const SSIntroScreen(),
+            ),
+          ).then((_) => _loadAllData()),
+        );
       }
     } else {
       _showActivationSheet(
@@ -1063,14 +1066,16 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
               (profileResult.first['onboardingCompleted'] as int? ?? 0) == 1;
 
           if (mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => hasCompletedOnboarding 
-                    ? const SSHomeDashboardScreen() 
-                    : const SSIntroScreen(),
-              ),
-            ).then((_) => _loadAllData());
+            unawaited(
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => hasCompletedOnboarding 
+                      ? const SSHomeDashboardScreen() 
+                      : const SSIntroScreen(),
+                ),
+              ).then((_) => _loadAllData()),
+            );
           }
         },
         colors: colors,

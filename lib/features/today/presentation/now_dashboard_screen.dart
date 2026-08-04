@@ -6,8 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:ritmo/core/ai/ai_briefing_service.dart';
-import 'package:ritmo/core/ai/ai_context_builder.dart';
-import 'package:ritmo/core/ai/ai_gateway.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/di/service_locator.dart';
 import 'package:ritmo/core/domain/completion/snooze_policy.dart';
@@ -24,8 +22,10 @@ import 'package:ritmo/core/platform/notification_platform.dart';
 import 'package:ritmo/core/services/ad_service.dart';
 import 'package:ritmo/core/services/central_inbox_service.dart';
 import 'package:ritmo/core/services/premium_service.dart';
+import 'package:ritmo/core/services/ritmo_timer_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/theme/theme_repository.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/utils/ritmo_date.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
@@ -51,13 +51,13 @@ import 'package:ritmo/features/supplementary_sports/presentation/ss_intro_screen
 import 'package:ritmo/features/today/presentation/active_timer_overlay.dart';
 import 'package:ritmo/features/today/presentation/dashboard_controller.dart';
 import 'package:ritmo/features/today/presentation/widgets/daily_reflection_sheet.dart';
-import 'package:ritmo/features/today/presentation/widgets/dashboard/ai_suggestions_carousel.dart';
 import 'package:ritmo/features/today/presentation/widgets/dashboard/assistant_card.dart';
-import 'package:ritmo/features/today/presentation/widgets/dashboard/context_strip.dart';
 import 'package:ritmo/features/today/presentation/widgets/dashboard/dashboard_header.dart';
 import 'package:ritmo/features/today/presentation/widgets/dashboard/dashboard_module_summary.dart';
+import 'package:ritmo/features/today/presentation/widgets/dashboard/energy_management_sheet.dart';
 import 'package:ritmo/features/today/presentation/widgets/dashboard/module_summary_grid.dart';
-import 'package:ritmo/features/today/presentation/widgets/dashboard/pulse_hero_card.dart';
+import 'package:ritmo/features/today/presentation/widgets/dashboard/next_action_hero.dart';
+import 'package:ritmo/features/today/presentation/widgets/dashboard/today_details_section.dart';
 import 'package:ritmo/features/today/presentation/widgets/dashboard/todays_tasks_section.dart';
 import 'package:ritmo/features/today/presentation/widgets/dashboard/zone_card.dart';
 import 'package:ritmo/features/today/presentation/widgets/morning_checkin_sheet.dart';
@@ -83,8 +83,6 @@ class NowDashboardScreen extends StatefulWidget {
   @override
   State<NowDashboardScreen> createState() => _NowDashboardScreenState();
 }
-
-int _safeDur(int? v, int fallback) => (v != null && v > 0) ? v : fallback;
 
 class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBindingObserver {
   bool _isLoading = true;
@@ -417,8 +415,8 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
         _showReplanBanner = showReplan;
       });
 
-      _pushCriticalAlerts();
-      _pushCheckinsAndReflections();
+      await _pushCriticalAlerts();
+      await _pushCheckinsAndReflections();
     });
   }
 
@@ -729,19 +727,6 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
     final colors = context.colors;
 
     final tasksList = _timelineItems.where((i) => i['type'] == 'task').toList();
-    final totalTasks = tasksList.length;
-    final completedTasks = tasksList.where((t) => t['isCompleted'] == true).length;
-    Map<String, dynamic>? nextTaskMap;
-    for (final t in tasksList) {
-      if (t['isCompleted'] == false) {
-        nextTaskMap = t;
-        break;
-      }
-    }
-    nextTaskMap ??= <String, dynamic>{};
-    final nextTaskTitle = nextTaskMap.isNotEmpty ? (nextTaskMap['title'] as String?) : null;
-    final nextTaskTime = nextTaskMap.isNotEmpty ? (nextTaskMap['time'] as String?) : null;
-    final nextTaskRoutine = nextTaskMap.isNotEmpty ? (nextTaskMap['routine'] as Routine?) : null;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -786,59 +771,31 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
                 ),
                 const SizedBox(height: RitmoSpacing.section),
 
-                // 2. نوار زمینه‌ی یکپارچه: وضعیت + سیستم‌های من
+                // 2. کارت هیروی اقدام بعدی (Next Action Hero)
                 _enter(
                   1,
-                  ContextStrip(
-                    dailyBehavior: _dailyBehavior,
-                    defaultEnergyLevel:
-                        _settingsMap['default_energy_level'] ?? 'MEDIUM',
-                    activeZoneName: _activeZoneName,
-                    onReshuffleApplied: _loadDashboardData,
-                    isWorshipActive:
-                        _settingsMap['module_religion_enabled'] == 'true',
-                    isMedicineActive:
-                        _settingsMap['module_medicine_enabled'] == 'true',
-                    isCoursesActive:
-                        _settingsMap['module_courses_enabled'] == 'true',
-                    isGoalsActive:
-                        _settingsMap['module_goals_enabled'] == 'true',
-                    onWorshipTap: () => _openModuleScreen('worship'),
-                    onHealthTap: () => _openModuleScreen('medicine'),
-                    onProjectsTap: () => _openModuleScreen('goals'),
-                    onEducationTap: () => _openModuleScreen('courses'),
+                  NextActionHero(
+                    data: _buildNextActionHeroData(),
                   ),
                 ),
                 const SizedBox(height: RitmoSpacing.section),
 
-                // 3. هشدارها و کارت‌های شرطی
-                _enter(2, _buildCriticalAlertsSection()),
-                _enter(2, _buildRecentInboxAlertsSection(colors)),
-                _enter(2, _buildCheckinReminderCard()),
-                _enter(2, _buildReflectionSuggestionCard()),
+                // 3. کارهای امروز (Agenda - max 3-5 items)
+                _enter(
+                  2,
+                  TodaysTasksSection(
+                    tasks: tasksList.take(5).toList(),
+                    onOpenDetails: _showDetailsSheet,
+                    onStartTask: _showNiyyahSheet,
+                    onReshuffleApplied: _loadDashboardData,
+                    onViewAll: () => widget.onNavigateToTab?.call(4),
+                  ),
+                ),
+                const SizedBox(height: RitmoSpacing.section),
 
-                // 4. کارت هیرو: نبض زندگی + خلاصه‌ی امروز
+                // 4. کارت خلاصه‌ی وضعیت تک‌عاملی (ZoneCard / Energy)
                 _enter(
                   3,
-                  PulseHeroCard(
-                    rhythmScore: _rhythmScore,
-                    totalTasks: totalTasks,
-                    completedTasks: completedTasks,
-                    nextTaskTitle: nextTaskTitle,
-                    nextTaskTime: nextTaskTime,
-                    onStartNext: () {
-                      if (nextTaskRoutine != null) {
-                        _showNiyyahSheet(nextTaskRoutine);
-                      }
-                    },
-                    onNavigateToTab: widget.onNavigateToTab,
-                  ),
-                ),
-                const SizedBox(height: RitmoSpacing.section),
-
-                // 5. کارت زون و انرژی
-                _enter(
-                  4,
                   ZoneCard(
                     isDarkMode: isDarkMode,
                     currentEnergyPercent: _currentEnergyPercent,
@@ -856,17 +813,9 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
                 ),
                 const SizedBox(height: RitmoSpacing.section),
 
-                if (_showReplanBanner) ...[
-                  _enter(
-                    5,
-                    _buildMidDayReplanBanner(),
-                  ),
-                  const SizedBox(height: RitmoSpacing.section),
-                ],
-
-                // 6. کارت دستیار یکپارچه: پیشنهاد هوشمند + بریفینگ AI
+                // 5. حداکثر یک پیشنهاد دستیار
                 _enter(
-                  5,
+                  4,
                   AssistantCard(
                     suggestedRoutine: _engineOutput?.suggestedRoutine,
                     suggestLightVersion:
@@ -884,34 +833,25 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
                 ),
                 const SizedBox(height: RitmoSpacing.section),
 
+                // 6. بخش تاشوی «جزئیات امروز» (پیش‌فرض بسته)
                 _enter(
-                  6,
-                  AiSuggestionsCarousel(
-                    onSuggestionApplied: _loadDashboardData,
-                  ),
-                ),
-                const SizedBox(height: RitmoSpacing.section),
-
-                // 7. گرید خلاصه‌ی ماژول‌های فعال
-                _enter(
-                  6,
-                  ModuleSummaryGrid(
-                    summaries: _moduleSummaries,
-                    onModuleTap: _openModuleScreen,
-                  ),
-                ),
-                if (_moduleSummaries.isNotEmpty)
-                  const SizedBox(height: RitmoSpacing.section),
-
-                // 8. کارهای امروز
-                _enter(
-                  7,
-                  TodaysTasksSection(
-                    tasks: tasksList,
-                    onOpenDetails: _showDetailsSheet,
-                    onStartTask: _showNiyyahSheet,
-                    onReshuffleApplied: _loadDashboardData,
-                    onViewAll: () => widget.onNavigateToTab?.call(4),
+                  5,
+                  TodayDetailsSection(
+                    itemCount: _moduleSummaries.length + (_showReplanBanner ? 1 : 0),
+                    children: [
+                      if (_showReplanBanner) ...[
+                        _buildMidDayReplanBanner(),
+                        const SizedBox(height: RitmoSpacing.md),
+                      ],
+                      ModuleSummaryGrid(
+                        summaries: _moduleSummaries,
+                        onModuleTap: _openModuleScreen,
+                      ),
+                      const SizedBox(height: RitmoSpacing.md),
+                      _buildCheckinReminderCard(),
+                      _buildReflectionSuggestionCard(),
+                      _buildRecentInboxAlertsSection(colors),
+                    ],
                   ),
                 ),
                 const SizedBox(height: RitmoSpacing.section),
@@ -921,6 +861,76 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
           ),
         ),
       ),
+    );
+  }
+
+  NextActionHeroData _buildNextActionHeroData() {
+    final timers = RitmoTimerService.instance.activeTimers;
+    final activeTimer = timers.isNotEmpty ? timers.first : null;
+    if (activeTimer != null) {
+      return NextActionHeroData(
+        type: HeroPriorityType.activeTimer,
+        title: 'کار در حال اجرا: ${activeTimer.itemId}',
+        subtitle: '${PersianDigits.convert(((activeTimer.durationSeconds) / 60).round().toString())} دقیقه · حالت ${activeTimer.mode}',
+        primaryCtaLabel: 'ادامه / مشاهده',
+        onPrimaryTap: () {
+          widget.onNavigateToTab?.call(2);
+        },
+      );
+    }
+
+    final nextItem = _timelineItems.isNotEmpty ? _timelineItems.first : null;
+    if (nextItem != null) {
+      final title = nextItem['title']?.toString() ?? 'برنامه‌ی بعدی';
+      final timeStr = nextItem['scheduled_time']?.toString() ?? 'امروز';
+      final routineId = nextItem['routine_id']?.toString() ?? nextItem['id']?.toString();
+      return NextActionHeroData(
+        type: HeroPriorityType.overdueOrNextItem,
+        title: title,
+        subtitle: 'زمان: ${PersianDigits.convert(timeStr)}',
+        primaryCtaLabel: 'ثبت / شروع',
+        onPrimaryTap: () async {
+          if (routineId != null) {
+            final db = await DatabaseHelper.instance.database;
+            final rows = await db.query('routines', where: 'id = ?', whereArgs: [routineId], limit: 1);
+            if (rows.isNotEmpty) {
+              final r = Routine.fromMap(rows.first);
+              _showNiyyahSheet(r);
+            }
+          }
+        },
+      );
+    }
+
+    if (_settingsMap['module_medicine_enabled'] == 'true' && _needCheckin) {
+      return NextActionHeroData(
+        type: HeroPriorityType.medicalSafety,
+        title: 'بررسی ایمنی دارویی و مصرف امروز',
+        subtitle: 'ثبت وضعیت مصرف داروهای فعال',
+        primaryCtaLabel: 'ثبت مصرف دارو',
+        isMedicalAlert: true,
+        onPrimaryTap: () => _openModuleScreen('medicine'),
+      );
+    }
+
+    if (_needCheckin) {
+      return NextActionHeroData(
+        type: HeroPriorityType.morningCheckIn,
+        title: 'ارزیابی انرژی اول روز',
+        subtitle: 'تنظیم ریتم فعالیت با چند پرسش کوتاه',
+        primaryCtaLabel: 'شروع ارزیابی',
+        onPrimaryTap: _showMorningCheckinSheet,
+      );
+    }
+
+    return NextActionHeroData(
+      type: HeroPriorityType.emptyState,
+      title: 'برنامه‌ای برای این زمان ثبت نشده است',
+      subtitle: 'با افزودن ایستگاه جدید، ریتم امروزتان را شکل دهید',
+      primaryCtaLabel: 'افزودن برنامه',
+      onPrimaryTap: () {
+        UniversalPlannerSheet.show(context: context);
+      },
     );
   }
 
@@ -983,6 +993,22 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
       onDone: () {
         if (mounted) _loadDashboardData();
       },
+    );
+  }
+
+  void _showMorningCheckinSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => MorningCheckinSheet(
+        onSaved: () {
+          final now = DateTime.now();
+          final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+          CentralInboxService.markActionedForEntity('system', 'checkin_$dateStr');
+          _loadDashboardData();
+        },
+      ),
     );
   }
 
@@ -1127,646 +1153,13 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
     );
   }
 
-  void _showEnergyManagementSheet(bool isDarkMode) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        final colors = context.colors;
-        final viewInsets = MediaQuery.of(context).viewInsets;
-        var selectedLevel = _settingsMap['default_energy_level'] ?? 'MEDIUM';
-        final noteController = TextEditingController();
-        String? aiRecommendation;
-        var loadingAi = false;
-        
-        // Checklist states
-        var poorSleep = false;
-        var highStress = false;
-        var physicalFatigue = false;
-        var lackOfFocus = false;
-        var aiConsent = false;
+  void _showEnergyManagementSheet(bool isDarkMode) async {
+    final result = await EnergyManagementSheet.present(context);
+    if (result == true) {
+      await _loadDashboardData();
+    }
+  }
 
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: viewInsets.bottom),
-              child: Directionality(
-                textDirection: TextDirection.rtl,
-                child: DraggableScrollableSheet(
-                  initialChildSize: 0.72,
-                  minChildSize: 0.5,
-                  expand: false,
-                  snap: true,
-                  snapSizes: const [0.72, 1.0],
-                  builder: (context, scrollController) {
-                    return RitmoTheme.glassCardLight(
-                      borderRadius: 30,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                        child: Scrollbar(
-                          controller: scrollController,
-                          thumbVisibility: true,
-                          thickness: 4.5,
-                          radius: const Radius.circular(8),
-                          child: ListView(
-                            controller: scrollController,
-                            padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
-                            children: [
-                            // Header drag bar
-                            Center(
-                              child: Container(
-                                width: 36,
-                                height: 4.5,
-                                margin: const EdgeInsets.only(bottom: 16),
-                                decoration: BoxDecoration(
-                                  color: colors.textSecondary.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              ),
-                            ),
-
-                            // Title
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: colors.primary.withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(CupertinoIcons.bolt_fill, size: 20, color: colors.warning),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'مدیریت و تحلیل انرژی ریتمو',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: colors.textPrimary,
-                                    fontFamily: 'Vazirmatn',
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 18),
-
-                            // Dynamic Ring Indicator
-                            Center(
-                              child: Column(
-                                children: [
-                                  SizedBox(
-                                    width: 64,
-                                    height: 64,
-                                    child: CustomPaint(
-                                      painter: _EnergyRingPainter(
-                                        percentage: _currentEnergyPercent,
-                                        colors: _currentEnergyLabel == 'بالا'
-                                            ? [colors.success, colors.primary]
-                                            : (_currentEnergyLabel == 'پایین'
-                                                ? [colors.medicalRed, colors.warning]
-                                                : [colors.warning, colors.success]),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          '${_currentEnergyPercent.toInt()}٪',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w900,
-                                            color: colors.textPrimary,
-                                            fontFamily: 'Vazirmatn',
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'درصد پویای انرژی فعلی شما: $_currentEnergyLabel',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: colors.textPrimary,
-                                      fontFamily: 'Vazirmatn',
-                                    ),
-                                  ),
-                                  Text(
-                                    _currentEnergyTimeAgo,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: colors.textSecondary,
-                                      fontFamily: 'Vazirmatn',
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Calculation Breakdown (Explainability)
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: colors.textPrimary.withValues(alpha: 0.02),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: colors.border.withValues(alpha: 0.3), width: 0.8),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'چرا این عدد؟ (فرمول محاسبه پویای انرژی)',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: colors.textPrimary,
-                                      fontFamily: 'Vazirmatn',
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  if (_currentEnergyExplanation.isEmpty)
-                                    Text(
-                                      'در حال محاسبه...',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: colors.textSecondary,
-                                        fontFamily: 'Vazirmatn',
-                                      ),
-                                    )
-                                  else
-                                    ..._currentEnergyExplanation.map((exp) => Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 2),
-                                      child: Row(
-                                        children: [
-                                          Icon(CupertinoIcons.circle_fill, size: 4, color: colors.primary),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              exp,
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                color: colors.textSecondary,
-                                                fontFamily: 'Vazirmatn',
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Energy selection cards
-                            Text(
-                              'تنظیم سطح انرژی پایه ثبت دستی:',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: colors.textSecondary,
-                                fontFamily: 'Vazirmatn',
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                _buildSelectableLevelCard(
-                                  label: 'پایین 💤',
-                                  value: 'LOW',
-                                  isSelected: selectedLevel == 'LOW',
-                                  activeColor: colors.medicalRed,
-                                  onTap: () {
-                                    setModalState(() {
-                                      selectedLevel = 'LOW';
-                                    });
-                                  },
-                                  colors: colors,
-                                ),
-                                const SizedBox(width: 8),
-                                _buildSelectableLevelCard(
-                                  label: 'متوسط ⚡',
-                                  value: 'MEDIUM',
-                                  isSelected: selectedLevel == 'MEDIUM',
-                                  activeColor: colors.warning,
-                                  onTap: () {
-                                    setModalState(() {
-                                      selectedLevel = 'MEDIUM';
-                                    });
-                                  },
-                                  colors: colors,
-                                ),
-                                const SizedBox(width: 8),
-                                _buildSelectableLevelCard(
-                                  label: 'بالا 🔥',
-                                  value: 'HIGH',
-                                  isSelected: selectedLevel == 'HIGH',
-                                  activeColor: colors.success,
-                                  onTap: () {
-                                    setModalState(() {
-                                      selectedLevel = 'HIGH';
-                                    });
-                                  },
-                                  colors: colors,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 18),
-
-                            // Selectable Factors
-                            Text(
-                              'فاکتورهای مؤثر بر خستگی یا افت انرژی امروز:',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: colors.textSecondary,
-                                fontFamily: 'Vazirmatn',
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _buildFactorChip(
-                                  label: 'خواب ضعیف 🛌',
-                                  selected: poorSleep,
-                                  onTap: () {
-                                    setModalState(() {
-                                      poorSleep = !poorSleep;
-                                    });
-                                  },
-                                  colors: colors,
-                                ),
-                                _buildFactorChip(
-                                  label: 'استرس بالا 🧠',
-                                  selected: highStress,
-                                  onTap: () {
-                                    setModalState(() {
-                                      highStress = !highStress;
-                                    });
-                                  },
-                                  colors: colors,
-                                ),
-                                _buildFactorChip(
-                                  label: 'خستگی جسمی 🏋️',
-                                  selected: physicalFatigue,
-                                  onTap: () {
-                                    setModalState(() {
-                                      physicalFatigue = !physicalFatigue;
-                                    });
-                                  },
-                                  colors: colors,
-                                ),
-                                _buildFactorChip(
-                                  label: 'عدم تمرکز ذهنی 🎯',
-                                  selected: lackOfFocus,
-                                  onTap: () {
-                                    setModalState(() {
-                                      lackOfFocus = !lackOfFocus;
-                                    });
-                                  },
-                                  colors: colors,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Note Field
-                            CupertinoTextField(
-                              controller: noteController,
-                              placeholder: 'توضیحات کوتاه یا خلق‌و‌خو (اختیاری)',
-                              placeholderStyle: const TextStyle(color: Colors.grey, fontSize: 11.5, fontFamily: 'Vazirmatn'),
-                              style: TextStyle(color: colors.textPrimary, fontSize: 12.5, fontFamily: 'Vazirmatn'),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: colors.textPrimary.withValues(alpha: 0.04),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: colors.border.withValues(alpha: 0.5), width: 0.8),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Save button
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: colors.primary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                padding: const EdgeInsets.symmetric(vertical: 13),
-                                elevation: 2,
-                              ),
-                              onPressed: () async {
-                                Navigator.pop(context);
-                                final db = await DatabaseHelper.instance.database;
-                                final now = DateTime.now().millisecondsSinceEpoch;
-
-                                final selectedFactors = <String>[];
-                                if (poorSleep) selectedFactors.add('خواب ضعیف');
-                                if (highStress) selectedFactors.add('استرس بالا');
-                                if (physicalFatigue) selectedFactors.add('خستگی جسمی');
-                                if (lackOfFocus) selectedFactors.add('عدم تمرکز ذهنی');
-
-                                final noteText = noteController.text.trim();
-                                final factorsString = selectedFactors.isNotEmpty
-                                    ? '[عوامل: ${selectedFactors.join("، ")}]'
-                                    : '';
-                                final finalNote = noteText.isNotEmpty
-                                    ? '$noteText $factorsString'
-                                    : (factorsString.isNotEmpty ? factorsString : '');
-
-                                await db.insert('energy_logs', {
-                                  'id': 'energy_$now',
-                                  'energyLevel': selectedLevel,
-                                  'source': 'MANUAL',
-                                  'note': finalNote.isEmpty ? null : finalNote,
-                                  'loggedAt': now,
-                                });
-
-                                await db.rawUpdate(
-                                  "UPDATE app_settings SET value = ?, updatedAt = ? WHERE key = 'default_energy_level'",
-                                  [selectedLevel, now],
-                                );
-
-                                await _loadDashboardData();
-                                _showToast('سطح انرژی با موفقیت به روز شد.');
-                              },
-                              child: const Text(
-                                'ثبت و ذخیره‌سازی وضعیت',
-                                style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-
-                            // AI Recommendation Section
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: colors.primary.withValues(alpha: 0.15),
-                                ),
-                                color: colors.primary.withValues(alpha: 0.02),
-                              ),
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(CupertinoIcons.sparkles, size: 14, color: colors.primary),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'تحلیل هوشمند دستیار ریتمو (AI)',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: colors.textPrimary,
-                                          fontFamily: 'Vazirmatn',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 10),
-                                  
-                                  // Data disclosure
-                                  Text(
-                                    'داده‌های ارسالی به هوش مصنوعی جهت تحلیل:',
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: colors.textSecondary,
-                                      fontFamily: 'Vazirmatn',
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '• درصد پویای محاسبه شده فعلی: ${_currentEnergyPercent.toInt()}٪\n'
-                                    '• عوامل موقت گزارش شده: ${[
-                                      if (poorSleep) 'خواب ضعیف',
-                                      if (highStress) 'استرس بالا',
-                                      if (physicalFatigue) 'خستگی جسمی',
-                                      if (lackOfFocus) 'عدم تمرکز ذهنی'
-                                    ].join("، ").isEmpty ? "هیچکدام" : [
-                                      if (poorSleep) 'خواب ضعیف',
-                                      if (highStress) 'استرس بالا',
-                                      if (physicalFatigue) 'خستگی جسمی',
-                                      if (lackOfFocus) 'عدم تمرکز ذهنی'
-                                    ].join("، ")}\n'
-                                    '• فاز ساعت زیستی بدن در ساعت فعلی روز\n'
-                                    '• تاریخچه خواب اخیر و وضعیت روتین‌های تکمیل‌شده',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: colors.textSecondary.withValues(alpha: 0.8),
-                                      fontFamily: 'Vazirmatn',
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  
-                                  // Consent Checkbox
-                                  GestureDetector(
-                                    onTap: () {
-                                      setModalState(() {
-                                        aiConsent = !aiConsent;
-                                      });
-                                    },
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          aiConsent ? CupertinoIcons.check_mark_circled_solid : CupertinoIcons.circle,
-                                          size: 16,
-                                          color: aiConsent ? colors.success : colors.textSecondary,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            'با ارسال امن داده‌های فوق جهت تحلیل موافقم.',
-                                            style: TextStyle(
-                                              fontSize: 10.5,
-                                              color: colors.textPrimary,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'Vazirmatn',
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-
-                                  if (aiRecommendation == null && !loadingAi)
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: aiConsent ? colors.primary.withValues(alpha: 0.08) : colors.textSecondary.withValues(alpha: 0.04),
-                                        foregroundColor: aiConsent ? colors.primary : colors.textSecondary,
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                      ),
-                                      onPressed: !aiConsent ? null : () async {
-                                        setModalState(() {
-                                          loadingAi = true;
-                                        });
-                                        try {
-                                          final selectedStr = [
-                                            if (poorSleep) 'خواب ضعیف',
-                                            if (highStress) 'استرس بالا',
-                                            if (physicalFatigue) 'خستگی جسمی',
-                                            if (lackOfFocus) 'عدم تمرکز ذهنی'
-                                          ].join('، ');
-
-                                          final result = await AIGateway.instance.sendQuery(
-                                            query: 'یک پیشنهاد کوتاه، انگیزاننده و کاربردی به زبان فارسی برای بهبود انرژی من بر اساس روتین‌ها و وضعیت خواب اخیرم بده. '
-                                                'درصد انرژی فعلی من ${_currentEnergyPercent.toInt()}٪ است و عوامل تاثیرگذار گزارش شده عبارتند از: $selectedStr. '
-                                                'توجه: فقط درباره روتین‌ها، کار، ورزش و سبک زندگی راهنمایی بده.',
-                                            consent: const ConsentProfile(),
-                                          );
-                                          setModalState(() {
-                                            aiRecommendation = (result['response'] as String?) ?? 'پیشنهادی یافت نشد.';
-                                            loadingAi = false;
-                                          });
-                                        } catch (e) {
-                                          setModalState(() {
-                                            aiRecommendation = 'خطا در اتصال به شبکه یا دریافت پاسخ.';
-                                            loadingAi = false;
-                                          });
-                                        }
-                                      },
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(CupertinoIcons.sparkles, size: 14),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            'تحلیل و دریافت پیشنهاد',
-                                            style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                  else if (loadingAi)
-                                    Row(
-                                      children: [
-                                        const SizedBox(
-                                          width: 14,
-                                          height: 14,
-                                          child: CircularProgressIndicator(strokeWidth: 1.5),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'در حال تحلیل داده‌های خواب و روتین‌ها توسط هوش مصنوعی...',
-                                          style: TextStyle(
-                                            fontSize: 10.5,
-                                            color: colors.textSecondary,
-                                            fontFamily: 'Vazirmatn',
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  else
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          aiRecommendation!,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: colors.textPrimary,
-                                            fontFamily: 'Vazirmatn',
-                                            height: 1.45,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        TextButton(
-                                          onPressed: () {
-                                            setModalState(() {
-                                              aiRecommendation = null;
-                                            });
-                                          },
-                                          child: Text(
-                                            'تحلیل مجدد 🔄',
-                                            style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10.5, color: colors.primary),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Local Analytics Section
-                            Text(
-                              'گزارش آماری موتور تحلیل انرژی (محلی):',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: colors.textSecondary,
-                                fontFamily: 'Vazirmatn',
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            FutureBuilder<Map<String, String?>>(
-                              future: _loadEnergyAnalyticsData(),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return const Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(12),
-                                      child: SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 1.5),
-                                      ),
-                                    ),
-                                  );
-                                }
-
-                                final peak = snapshot.data?['peak'] ?? 'داده ناکافی';
-                                final fatigued = snapshot.data?['fatigued'] ?? 'داده ناکافی';
-                                final productive = snapshot.data?['productive'] ?? 'داده ناکافی';
-
-                                return Column(
-                                  children: [
-                                    _buildAnalyticsItemRow(
-                                      icon: CupertinoIcons.chart_bar_alt_fill,
-                                      title: 'ساعت طلایی بازدهی:',
-                                      value: peak,
-                                      colors: colors,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    _buildAnalyticsItemRow(
-                                      icon: CupertinoIcons.battery_25,
-                                      title: 'بازه بیشترین خستگی:',
-                                      value: fatigued,
-                                      colors: colors,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    _buildAnalyticsItemRow(
-                                      icon: CupertinoIcons.calendar_today,
-                                      title: 'پربازده‌ترین روز:',
-                                      value: productive,
-                                      colors: colors,
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          );
-        },
-      );
-    },
-  );
-}
 
   void _showToast(String msg) {
     if (!mounted) return;

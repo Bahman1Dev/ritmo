@@ -11,7 +11,6 @@ import 'package:shamsi_date/shamsi_date.dart';
 /// هدر هیروی داشبورد: سلامِ زمان‌محور + تاریخ جلالی + آواتار با هاله‌ی گرادیان
 /// + زنگوله و دکمه‌ی دستیار. فقط لایه‌ی نمایش.
 class DashboardHeader extends StatelessWidget {
-
   const DashboardHeader({
     super.key,
     required this.userName,
@@ -22,6 +21,7 @@ class DashboardHeader extends StatelessWidget {
     required this.onBellTap,
     required this.onAssistantTap,
   });
+
   final String userName;
   final String? avatarPath;
   final bool isAssistantActive;
@@ -58,8 +58,9 @@ class DashboardHeader extends StatelessWidget {
           },
           customBorder: const CircleBorder(),
           child: Container(
-            height: 44,
-            width: 44,
+            height: 48,
+            width: 48,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: colors.card.withValues(alpha: 0.55),
               shape: BoxShape.circle,
@@ -82,16 +83,31 @@ class DashboardHeader extends StatelessWidget {
     final String dateStr;
     if (locale.languageCode == 'fa') {
       final jalali = Jalali.now();
-      dateStr =
-          '${jalali.formatter.wN} ${jalali.day} ${jalali.formatter.mN}';
+      dateStr = '${jalali.formatter.wN} ${jalali.day} ${jalali.formatter.mN}';
     } else {
       final now = DateTime.now();
       const weekdays = [
-        'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
       ];
       const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ];
       dateStr =
           '${weekdays[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
@@ -102,173 +118,165 @@ class DashboardHeader extends StatelessWidget {
         ? '${tg.greeting}، $userName'
         : l10n.welcomeUser(userName);
 
-    final hasAvatarFile = avatarPath != null &&
+    final hasAvatarFile =
+        avatarPath != null &&
         avatarPath!.isNotEmpty &&
         File(avatarPath!).existsSync();
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // راست: آواتار + سلام و تاریخ
-          Expanded(
-            child: Row(
-              children: [
-                // آواتار با هاله‌ی گرادیان انرژی
-                Semantics(
-                  button: true,
-                  label: 'پروفایل',
-                  child: GestureDetector(
-                    onTap: () {
-                      RitmoHaptics.tap();
-                      onAvatarTap();
-                    },
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // راست: آواتار + سلام و تاریخ
+        Expanded(
+          child: Row(
+            children: [
+              // آواتار با هاله‌ی گرادیان انرژی
+              Semantics(
+                button: true,
+                label: 'پروفایل',
+                child: GestureDetector(
+                  onTap: () {
+                    RitmoHaptics.tap();
+                    onAvatarTap();
+                  },
+                  child: Container(
+                    height: 48,
+                    width: 48,
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(colors: colors.energyGradient),
+                    ),
                     child: Container(
-                      height: 48,
-                      width: 48,
-                      padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient:
-                            LinearGradient(colors: colors.energyGradient),
+                        color: colors.bg,
+                        image: hasAvatarFile
+                            ? DecorationImage(
+                                image: FileImage(File(avatarPath!)),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: colors.bg,
-                          image: hasAvatarFile
-                              ? DecorationImage(
-                                  image: FileImage(File(avatarPath!)),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        // آواتار پیش‌فرض محلی: حرف اول نام روی گرادیان
-                        child: hasAvatarFile
-                            ? null
-                            : Center(
-                                child: Text(
-                                  userName.isNotEmpty ? userName[0] : '؟',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: colors.primary,
-                                    fontFamily: 'Vazirmatn',
-                                  ),
+                      child: hasAvatarFile
+                          ? null
+                          : Center(
+                              child: Text(
+                                userName.isNotEmpty ? userName[0] : '؟',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: colors.primary,
                                 ),
                               ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: RitmoSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              greetingLine,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                color: colors.textPrimary,
-                                fontFamily: 'Vazirmatn',
-                              ),
                             ),
-                          ),
-                          const SizedBox(width: RitmoSpacing.xs),
-                          Text(tg.emoji, style: const TextStyle(fontSize: 15)),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        toPersianDigits(dateStr),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                          fontFamily: 'Vazirmatn',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // چپ: دستیار (شرطی) + زنگوله
-          Row(
-            children: [
-              if (isAssistantActive) ...[
-                _iconButton(
-                  context: context,
-                  semanticLabel: 'گفتگو با دستیار',
-                  onTap: onAssistantTap,
-                  child: Icon(
-                    CupertinoIcons.sparkles,
-                    color: colors.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: RitmoSpacing.sm),
-              ],
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  _iconButton(
-                    context: context,
-                    semanticLabel: 'اعلان‌ها',
-                    onTap: onBellTap,
-                    child: Icon(
-                      Icons.notifications_none,
-                      color: colors.textPrimary,
-                      size: 20,
                     ),
                   ),
-                  if (unreadInboxCount > 0)
-                    Positioned(
-                      top: -2,
-                      right: -2,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: colors.primary,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: colors.bg.withValues(alpha: 0.8),
-                            width: 1.5,
-                          ),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
-                        ),
-                        child: Center(
+                ),
+              ),
+              const SizedBox(width: RitmoSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
                           child: Text(
-                            toPersianDigits(unreadInboxCount.toString()),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Vazirmatn',
+                            greetingLine,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary,
                             ),
                           ),
                         ),
+                        const SizedBox(width: RitmoSpacing.xs),
+                        Text(tg.emoji, style: const TextStyle(fontSize: 15)),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      toPersianDigits(dateStr),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colors.textSecondary,
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
-        ],
-      ),
+        ),
+
+        // چپ: دستیار + زنگوله
+        Row(
+          children: [
+            if (isAssistantActive) ...[
+              _iconButton(
+                context: context,
+                semanticLabel: 'گفتگو با دستیار',
+                onTap: onAssistantTap,
+                child: Icon(
+                  CupertinoIcons.sparkles,
+                  color: colors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: RitmoSpacing.sm),
+            ],
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                _iconButton(
+                  context: context,
+                  semanticLabel: 'اعلان‌ها',
+                  onTap: onBellTap,
+                  child: Icon(
+                    Icons.notifications_none,
+                    color: colors.textPrimary,
+                    size: 20,
+                  ),
+                ),
+                if (unreadInboxCount > 0)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: colors.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colors.bg.withValues(alpha: 0.8),
+                          width: 1.5,
+                        ),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Center(
+                        child: Text(
+                          toPersianDigits(unreadInboxCount.toString()),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

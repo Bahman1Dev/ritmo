@@ -57,7 +57,7 @@ class _AiSuggestionsCarouselState extends State<AiSuggestionsCarousel> {
           icon: CupertinoIcons.sparkles,
           iconColor: const Color(0xff06B6D4),
         );
-        _loadSuggestions();
+        await _loadSuggestions();
         widget.onSuggestionApplied();
       }
     } catch (e) {
@@ -75,7 +75,7 @@ class _AiSuggestionsCarouselState extends State<AiSuggestionsCarousel> {
           icon: CupertinoIcons.clear_circled,
           iconColor: Colors.grey,
         );
-        _loadSuggestions();
+        await _loadSuggestions();
       }
     } catch (e) {
       debugPrint('Error dismissing suggestion: $e');

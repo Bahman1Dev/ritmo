@@ -134,7 +134,7 @@ class _DailyReflectionSheetState extends State<DailyReflectionSheet> {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      HapticFeedback.mediumImpact();
+      await HapticFeedback.mediumImpact();
       widget.onSaved();
       if (mounted) {
         Navigator.pop(context);
