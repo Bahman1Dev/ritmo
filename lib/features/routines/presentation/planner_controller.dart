@@ -264,9 +264,16 @@ class PlannerController extends ChangeNotifier {
         orderBy: 'title ASC',
       );
       
+      final editingId = routineToEdit?['id'] as String?;
+      final editingTitle = routineToEdit?['title'] as String?;
+
       // Load schedules and merge
       final resolvedList = <Map<String, dynamic>>[];
       for (final r in list) {
+        if (isEditing) {
+          if (editingId != null && r['id'] == editingId) continue;
+          if (editingTitle != null && editingTitle.isNotEmpty && r['title'] == editingTitle) continue;
+        }
         final schedules = await db.query(
           'routine_schedules',
           where: 'routineId = ?',
@@ -972,7 +979,18 @@ class PlannerController extends ChangeNotifier {
         ranges.add(OccupiedRange(start: bedtime, end: wake, title: 'خواب', timeStr: sleepBedtime));
       }
 
+      final editingId = routineToEdit?['id'] as String?;
+      final editingTitle = routineToEdit?['title'] as String?;
+
       for (final item in dayAgenda.items) {
+        if (isEditing) {
+          if (editingId != null && (item.id == editingId || item.sourceId == editingId)) {
+            continue;
+          }
+          if (editingTitle != null && editingTitle.isNotEmpty && item.title == editingTitle) {
+            continue;
+          }
+        }
         if (item.timeOfDay != null && item.timeOfDay!.isNotEmpty) {
           final parts = item.timeOfDay!.split(':');
           if (parts.length >= 2) {
