@@ -455,45 +455,6 @@ class CompletionGateway {
           }
           return CompletionOutcome.failure('شناسه گام هدف غیرمجاز است');
 
-        case 'reschedule':
-          final reschParts = idPayload.split('|');
-          if (reschParts.length == 3) {
-            final routineId = reschParts[0];
-            final fromDateStr = reschParts[1];
-            final toDateStr = reschParts[2];
-
-            await db.transaction((txn) async {
-              await txn.delete(
-                'routine_occurrences',
-                where: 'routine_id = ? AND date = ? AND status = ?',
-                whereArgs: [routineId, toDateStr, 'pending'],
-              );
-
-              await txn.rawUpdate('''
-                UPDATE routine_occurrences 
-                SET status = 'pending'
-                WHERE routine_id = ? AND date = ?
-              ''', [routineId, fromDateStr]);
-
-              await txn.delete(
-                'skip_reasons',
-                where: 'itemId = ? AND dateStr = ?',
-                whereArgs: [routineId, fromDateStr],
-              );
-
-              await txn.delete(
-                'routine_completions',
-                where: 'routineId = ? AND completionDate = ? AND resultType = ?',
-                whereArgs: [routineId, fromDateStr, 'RESCHEDULED'],
-              );
-            });
-
-            DayAgendaService.instance.invalidateDate(fromDateStr);
-            DayAgendaService.instance.invalidateDate(toDateStr);
-            return CompletionOutcome.success();
-          }
-          return CompletionOutcome.failure('شناسه تعویق غیرمجاز است');
-
         default:
           return CompletionOutcome.failure('دامنه بازگردانی پشتیبانی نمی‌شود');
       }
