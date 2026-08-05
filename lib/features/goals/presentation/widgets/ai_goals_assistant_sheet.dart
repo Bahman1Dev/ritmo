@@ -1197,6 +1197,7 @@ class _GoalsMessageBubbleState extends State<GoalsMessageBubble> {
                           parentGoalId: null,
                           targetDate: targetDate,
                           steps: finalSteps,
+                          isPrivate: false,
                         );
 
                         await HapticFeedback.mediumImpact();

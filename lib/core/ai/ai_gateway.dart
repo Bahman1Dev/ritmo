@@ -196,10 +196,16 @@ class AIGateway {
     if (secKey.isNotEmpty) {
       final url = secUrl.isNotEmpty ? secUrl : primary.baseUrl;
       if (secKey != primary.apiKey || url != primary.baseUrl) {
+        String secModel = primary.model;
+        if (url.contains('cloudflare.com') && !secModel.startsWith('@cf/')) {
+          secModel = defaultModel;
+        } else if (url.contains('bigmodel.cn') && secModel.startsWith('@cf/')) {
+          secModel = defaultFeaturesModel;
+        }
         chain.add(AIGatewayConfig(
           baseUrl: url,
           apiKey: secKey,
-          model: primary.model,
+          model: secModel,
           timeoutMs: primary.timeoutMs,
         ));
       }
@@ -227,10 +233,16 @@ class AIGateway {
         final url = secUrl.isNotEmpty ? secUrl : assistantPrimary.baseUrl;
         final isDuplicate = chain.any((c) => c.apiKey == secKey && c.baseUrl == url);
         if (!isDuplicate) {
+          String secModel = assistantPrimary.model;
+          if (url.contains('cloudflare.com') && !secModel.startsWith('@cf/')) {
+            secModel = defaultModel;
+          } else if (url.contains('bigmodel.cn') && secModel.startsWith('@cf/')) {
+            secModel = defaultFeaturesModel;
+          }
           chain.add(AIGatewayConfig(
             baseUrl: url,
             apiKey: secKey,
-            model: assistantPrimary.model,
+            model: secModel,
             timeoutMs: assistantPrimary.timeoutMs,
           ));
         }
@@ -240,13 +252,21 @@ class AIGateway {
     return chain;
   }
 
-  /// Resolves the model name for a given credential set. The lightweight
-  /// Cloudflare model is substituted for quick-parse style requests.
+  /// Resolves the model name for a given credential set. If the endpoint provider
+  /// (e.g. Cloudflare vs Zhipu/BigModel) differs from the configured model's naming
+  /// scheme, automatically substitutes the valid default model for that endpoint.
   String _effectiveModel(AIGatewayConfig config, bool preferLightCloudflareModel) {
-    if (preferLightCloudflareModel &&
-        config.baseUrl.contains('cloudflare.com') &&
-        config.model.startsWith('@cf/zai-org/')) {
-      return '@cf/meta/llama-3.2-3b-instruct';
+    if (config.baseUrl.contains('cloudflare.com')) {
+      if (preferLightCloudflareModel) {
+        return '@cf/meta/llama-3.2-3b-instruct';
+      }
+      if (!config.model.startsWith('@cf/')) {
+        return defaultModel; // '@cf/zai-org/glm-4.7-flash'
+      }
+    } else if (config.baseUrl.contains('bigmodel.cn')) {
+      if (config.model.startsWith('@cf/')) {
+        return defaultFeaturesModel; // 'glm-5.2'
+      }
     }
     return config.model;
   }
@@ -328,8 +348,8 @@ class AIGateway {
                 )
                 .timeout(Duration(milliseconds: config.timeoutMs + extraTimeoutMs));
 
-            if (response.statusCode != 200 && tryJson) {
-              debugPrint('AIGateway: error ${response.statusCode} with JSON format, retrying without JSON format');
+            if (response.statusCode == 400 && tryJson) {
+              debugPrint('AIGateway: error 400 with JSON format, retrying without JSON format');
               tryJson = false;
               continue;
             }
@@ -422,8 +442,9 @@ class AIGateway {
       final client = http.Client();
 
       try {
+        final model = _effectiveModel(config, false);
         final requestBody = {
-          'model': config.model,
+          'model': model,
           'messages': messages,
           'temperature': temperature,
           'stream': true,

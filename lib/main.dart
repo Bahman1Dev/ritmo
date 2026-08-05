@@ -13,7 +13,10 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/services/account_reset_service.dart';
 import 'package:ritmo/core/services/device_service.dart';
 import 'package:ritmo/core/security/app_lock_gate.dart';
+import 'package:ritmo/core/theme/ritmo_colors.dart';
+import 'package:ritmo/core/theme/ritmo_palette.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/theme/theme_preferences.dart';
 import 'package:ritmo/core/widgets/restart_widget.dart';
 import 'package:ritmo/core/theme/theme_repository.dart';
 import 'package:ritmo/core/localization/locale_repository.dart';
@@ -166,14 +169,14 @@ void main() async {
 
   // Register Agenda Renderers
   AgendaRendererRegistry.register(AgendaDomain.prayer, const PrayerAgendaRenderer());
-  
+
   // 2. Initialize database and repository before runApp to avoid dark/light flashing on startup
   final themeRepository = sl<ThemeRepository>();
   await themeRepository.init();
-  
+
   final localeRepository = sl<LocaleRepository>();
   await localeRepository.init();
-  
+
   runApp(RestartWidget(
     child: ProviderScope(
       child: RitmoApp(
@@ -248,19 +251,42 @@ class _RitmoAppState extends State<RitmoApp> {
     }
   }
 
+  void _applySystemOverlay(RitmoColors colors, Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: brightness,
+        systemNavigationBarColor: colors.systemNavBar,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: widget.themeRepository.themeModeNotifier,
-      builder: (context, themeMode, _) {
+    return ValueListenableBuilder<ThemePreferences>(
+      valueListenable: widget.themeRepository.preferencesNotifier,
+      builder: (context, prefs, _) {
+        final palette = RitmoPalette.byId(prefs.paletteId);
         return ValueListenableBuilder<Locale>(
           valueListenable: widget.localeRepository.localeNotifier,
           builder: (context, locale, _) {
             return MaterialApp(
               title: 'Ritmo',
-              theme: RitmoTheme.lightTheme,
-              darkTheme: RitmoTheme.darkTheme,
-              themeMode: themeMode,
+              themeMode: prefs.mode,
+              theme: RitmoTheme.build(
+                palette: palette,
+                brightness: Brightness.light,
+                reduceTransparency: prefs.reduceTransparency,
+              ),
+              darkTheme: RitmoTheme.build(
+                palette: palette,
+                brightness: Brightness.dark,
+                reduceTransparency: prefs.reduceTransparency,
+                trueBlack: prefs.trueBlack,
+              ),
               locale: locale,
               localizationsDelegates: const [
                 PersianMaterialLocalizations.delegate,
@@ -273,16 +299,9 @@ class _RitmoAppState extends State<RitmoApp> {
               ],
               debugShowCheckedModeBanner: false,
               builder: (context, child) {
-                final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-                SystemChrome.setSystemUIOverlayStyle(
-                  SystemUiOverlayStyle(
-                    statusBarColor: Colors.transparent,
-                    statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
-                    statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
-                    systemNavigationBarColor: isDarkMode ? const Color(0xff08090C) : const Color(0xffF2F5FA),
-                    systemNavigationBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
-                  ),
-                );
+                final brightness = Theme.of(context).brightness;
+                final colors = Theme.of(context).extension<RitmoColors>() ?? palette.forBrightness(brightness);
+                _applySystemOverlay(colors, brightness);
                 return AppLockGate(child: child!);
               },
               home: AnimatedSwitcher(

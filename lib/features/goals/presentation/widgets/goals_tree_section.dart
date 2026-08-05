@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/analytics/goals_engine.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/features/goals/logic/goals_repository.dart';
 import 'package:ritmo/features/goals/models/goal_models.dart';
 import 'package:ritmo/features/goals/presentation/widgets/goals_formatters.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
@@ -24,7 +25,7 @@ class GoalsTreeSection extends StatefulWidget {
   final Map<String, List<GoalStep>> stepsByGoal;
   final Map<String, double> progressMap;
   final Map<String, LinkedRoutineStatus> routineStatusMap;
-  final List<Map<String, dynamic>> routines;
+  final List<RoutineRef> routines;
   final VoidCallback onRefresh;
   final void Function(GoalStep step, String goalId) onToggleStep;
   final void Function(String goalId) onDeleteGoal;
@@ -58,17 +59,21 @@ class _GoalsTreeSectionState extends State<GoalsTreeSection> {
       );
     }
 
+    final visited = <String>{};
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       itemCount: rootGoals.length,
       itemBuilder: (context, index) {
-        return _buildGoalNode(rootGoals[index], colors, 0);
+        return _buildGoalNode(rootGoals[index], colors, 0, visited);
       },
     );
   }
 
-  Widget _buildGoalNode(Goal goal, RitmoColors colors, int depth) {
+  Widget _buildGoalNode(Goal goal, RitmoColors colors, int depth, Set<String> visited) {
     final goalId = goal.id;
+    if (visited.contains(goalId)) return const SizedBox.shrink();
+    visited.add(goalId);
+
     final title = goal.title;
     final desc = goal.description;
     final isCompleted = goal.status == 'COMPLETED';
@@ -272,10 +277,10 @@ class _GoalsTreeSectionState extends State<GoalsTreeSection> {
                   final routineStatus = widget.routineStatusMap[step.id];
 
                   // Find routine details if connected
-                  Map<String, dynamic>? linkedRoutine;
+                  RoutineRef? linkedRoutine;
                   if (step.linkedRoutineId != null) {
                     try {
-                      linkedRoutine = widget.routines.firstWhere((r) => r['id'] == step.linkedRoutineId);
+                      linkedRoutine = widget.routines.firstWhere((r) => r.id == step.linkedRoutineId);
                     } catch (_) {}
                   }
 
@@ -340,7 +345,7 @@ class _GoalsTreeSectionState extends State<GoalsTreeSection> {
                                       Icon(Icons.repeat, size: 10, color: colors.primary),
                                       const SizedBox(width: 4),
                                       Text(
-                                        'روتین: ${linkedRoutine['title']}',
+                                        'روتین: ${linkedRoutine.title}',
                                         style: TextStyle(fontSize: 10.5, color: colors.primary, fontFamily: 'Vazirmatn', fontWeight: FontWeight.w500),
                                       ),
                                       if (routineStatus != null && routineStatus.doneCount > 0) ...[
@@ -370,7 +375,7 @@ class _GoalsTreeSectionState extends State<GoalsTreeSection> {
               ],
               if (children.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                ...children.map((child) => _buildGoalNode(child, colors, depth + 1)),
+                ...children.map((child) => _buildGoalNode(child, colors, depth + 1, visited)),
               ],
             ],
           ],
@@ -379,14 +384,20 @@ class _GoalsTreeSectionState extends State<GoalsTreeSection> {
     );
   }
 
-  Future<void> _openLinkedRoutine(Map<String, dynamic> routine) async {
+  Future<void> _openLinkedRoutine(RoutineRef routine) async {
     await Navigator.push(
       context,
       PageRouteBuilder<void>(
         opaque: false,
         barrierDismissible: true,
         pageBuilder: (context, _, _) => UniversalPlannerSheet(
-          routineToEdit: routine,
+          routineToEdit: {
+            'id': routine.id,
+            'title': routine.title,
+            'iconKey': routine.iconKey,
+            'scheduleSummary': routine.scheduleSummary,
+            'isArchived': routine.isArchived ? 1 : 0,
+          },
           onSaved: widget.onRefresh,
         ),
       ),
@@ -394,26 +405,39 @@ class _GoalsTreeSectionState extends State<GoalsTreeSection> {
     widget.onRefresh();
   }
 
-  void _confirmDelete(Goal goal) {
+  Future<void> _confirmDelete(Goal goal) async {
+    final impact = await GoalsRepository.instance.getDeletionImpact(goal.id);
+    if (!mounted) return;
+
+    final subInfo = impact.subGoalCount > 0 ? '\n• ${toPersianDigits(impact.subGoalCount)} زیرهدف' : '';
+    final stepInfo = impact.stepCount > 0 ? '\n• ${toPersianDigits(impact.stepCount)} گام (شامل ${toPersianDigits(impact.completedStepCount)} گام انجام‌شده)' : '';
+    final routineInfo = impact.linkedRoutineCount > 0 ? '\n• ${toPersianDigits(impact.linkedRoutineCount)} اتصال به روتین' : '';
+    final reminderInfo = impact.scheduledReminderCount > 0 ? '\n• ${toPersianDigits(impact.scheduledReminderCount)} یادآور فعال (حذف هشدارها)' : '';
+
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('حذف هدف؟', style: TextStyle(fontFamily: 'Vazirmatn')),
-        content: Text('آیا از حذف هدف "${goal.title}" و تمام برنامه‌ها و زیرمجموعه‌های آن مطمئن هستید؟', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14.5)),
+        title: const Text('حذف کامل هدف', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
+        content: Text(
+          'آیا از حذف هدف «${goal.title}» مطمئن هستید؟ موارد زیر برای همیشه حذف خواهند شد:$subInfo$stepInfo$routineInfo$reminderInfo',
+          style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('انصراف', style: TextStyle(fontFamily: 'Vazirmatn')),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () {
               Navigator.pop(ctx);
               widget.onDeleteGoal(goal.id);
             },
-            child: Text('حذف', style: TextStyle(fontFamily: 'Vazirmatn', color: context.colors.warning)),
+            child: const Text('حذف کامل', style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white)),
           ),
         ],
       ),
     );
   }
 }
+

@@ -58,8 +58,37 @@ class GoalsEngineOutput {
 }
 
 class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
+  GoalsEngineOutput? _cachedOutput;
+  String? _cacheKey;
+
+  String _buildCacheKey(GoalsEngineInput input) {
+    final todayStr = input.today.toIso8601String().substring(0, 10);
+    final goalsHash = input.goals.fold<int>(0, (acc, g) => acc ^ g.id.hashCode ^ g.updatedAt.hashCode ^ g.status.hashCode);
+    final stepsCount = input.stepsByGoal.values.fold<int>(0, (acc, list) => acc + list.length);
+    return '$todayStr|${input.goals.length}|$stepsCount|${input.horizonDays}|$goalsHash';
+  }
+
+  @override
+  void invalidate() {
+    _cachedOutput = null;
+    _cacheKey = null;
+  }
+
+  @override
+  bool canRun(GoalsEngineInput input) {
+    return _cachedOutput == null || _buildCacheKey(input) != _cacheKey;
+  }
+
+  @override
+  List<Type> dependencies() => [];
+
   @override
   Future<GoalsEngineOutput> calculate(GoalsEngineInput input) async {
+    final currentKey = _buildCacheKey(input);
+    if (_cachedOutput != null && _cacheKey == currentKey) {
+      return _cachedOutput!;
+    }
+
     final cleanToday = DateTime(input.today.year, input.today.month, input.today.day);
     final todayStr = _formatDateIso(cleanToday);
     final endStr = _formatDateIso(cleanToday.add(Duration(days: input.horizonDays)));
@@ -181,24 +210,30 @@ class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
     timeline.sort((a, b) => a.dateIso.compareTo(b.dateIso));
 
     // 5. linkedRoutineStatus
+    // Pre-group completions by routineId for O(1) lookups (T17 optimization)
+    final byRoutineDates = <String, List<String>>{};
+    for (final c in input.routineCompletions) {
+      final rId = c['routineId'] as String?;
+      final rType = c['resultType'] as String?;
+      final dateStr = c['completionDate'] as String?;
+      if (rId != null && dateStr != null && !['SNOOZED', 'CANNOT_NOW', 'SKIPPED'].contains(rType)) {
+        byRoutineDates.putIfAbsent(rId, () => []).add(dateStr);
+      }
+    }
+
     final routineStatusMap = <String, LinkedRoutineStatus>{};
     for (final entry in input.stepsByGoal.entries) {
+      // T19 Guard: only compute linked routine status for ACTIVE goals
+      if (!activeGoalIds.contains(entry.key)) continue;
+
       for (final step in entry.value) {
         final routineId = step.linkedRoutineId;
         if (routineId != null && routineId.isNotEmpty) {
-          final completions = input.routineCompletions
-              .where((c) =>
-                  c['routineId'] == routineId &&
-                  c['resultType'] != 'SNOOZED' &&
-                  c['resultType'] != 'CANNOT_NOW' &&
-                  c['resultType'] != 'SKIPPED')
-              .toList();
-
-          final dates = completions.map((c) => c['completionDate'] as String).toList();
+          final dates = byRoutineDates[routineId] ?? [];
           final streak = _calculateStreak(dates, cleanToday);
 
           routineStatusMap[step.id] = LinkedRoutineStatus(
-            doneCount: completions.length,
+            doneCount: dates.length,
             streak: streak,
           );
         }
@@ -208,7 +243,7 @@ class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
     final activeGoalsCount = activeGoals.length;
     final completedGoalsCount = input.goals.where((g) => g.status == 'COMPLETED').length;
 
-    return GoalsEngineOutput(
+    final output = GoalsEngineOutput(
       goalProgress: progressMap,
       todaySteps: todayS,
       upcomingTimeline: timeline,
@@ -217,16 +252,11 @@ class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
       activeGoalsCount: activeGoalsCount,
       completedGoalsCount: completedGoalsCount,
     );
+
+    _cachedOutput = output;
+    _cacheKey = currentKey;
+    return output;
   }
-
-  @override
-  void invalidate() {}
-
-  @override
-  bool canRun(GoalsEngineInput input) => true;
-
-  @override
-  List<Type> dependencies() => [];
 
   static String _formatDateIso(DateTime dt) {
     final y = dt.year.toString().padLeft(4, '0');
@@ -257,3 +287,4 @@ class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
     return streak;
   }
 }
+

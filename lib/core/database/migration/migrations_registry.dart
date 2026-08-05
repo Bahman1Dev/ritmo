@@ -3157,3 +3157,125 @@ class MigrationV63 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV64 extends Migration {
+  @override
+  int get version => 64;
+
+  @override
+  Future<void> up(Database db) async {
+    // M1: goal_steps columns
+    final stepCols = [
+      'ALTER TABLE goal_steps ADD COLUMN completedAt INTEGER;',
+      "ALTER TABLE goal_steps ADD COLUMN completionRule TEXT DEFAULT 'MANUAL';",
+      'ALTER TABLE goal_steps ADD COLUMN ruleConfig TEXT;',
+      'ALTER TABLE goal_steps ADD COLUMN dependsOnStepId TEXT;',
+      'ALTER TABLE goal_steps ADD COLUMN reminderEnabled INTEGER DEFAULT 0;',
+      'ALTER TABLE goal_steps ADD COLUMN reminderTime TEXT;',
+      'ALTER TABLE goal_steps ADD COLUMN estimatedMinutes INTEGER;',
+      'ALTER TABLE goal_steps ADD COLUMN notes TEXT;',
+    ];
+    for (final sql in stepCols) {
+      try { await db.execute(sql); } catch (_) {}
+    }
+
+    try {
+      await db.execute('''
+        UPDATE goal_steps
+           SET completedAt = COALESCE(
+                 CASE WHEN scheduledDate IS NOT NULL AND scheduledDate != ''
+                      THEN CAST(strftime('%s', scheduledDate) AS INTEGER) * 1000 END,
+                 createdAt)
+         WHERE isCompleted = 1 AND completedAt IS NULL;
+      ''');
+    } catch (_) {}
+
+    try {
+      await db.execute("UPDATE goal_steps SET completionRule = 'MANUAL' WHERE completionRule IS NULL;");
+    } catch (_) {}
+
+    // M2: goals columns
+    final goalCols = [
+      'ALTER TABLE goals ADD COLUMN completedAt INTEGER;',
+      'ALTER TABLE goals ADD COLUMN completionSource TEXT;',
+      'ALTER TABLE goals ADD COLUMN lastActivityAt INTEGER;',
+      'ALTER TABLE goals ADD COLUMN weight REAL DEFAULT 1.0;',
+      'ALTER TABLE goals ADD COLUMN whyItMatters TEXT;',
+      'ALTER TABLE goals ADD COLUMN pastFailure TEXT;',
+      'ALTER TABLE goals ADD COLUMN selfPromise TEXT;',
+      'ALTER TABLE goals ADD COLUMN metricUnit TEXT;',
+      'ALTER TABLE goals ADD COLUMN metricTarget REAL;',
+      'ALTER TABLE goals ADD COLUMN metricStart REAL;',
+      'ALTER TABLE goals ADD COLUMN pausedAt INTEGER;',
+      'ALTER TABLE goals ADD COLUMN abandonedAt INTEGER;',
+      'ALTER TABLE goals ADD COLUMN abandonReason TEXT;',
+      'ALTER TABLE goals ADD COLUMN iconKey TEXT;',
+      'ALTER TABLE goals ADD COLUMN isPrivate INTEGER DEFAULT 0;',
+    ];
+    for (final sql in goalCols) {
+      try { await db.execute(sql); } catch (_) {}
+    }
+
+    try {
+      await db.execute("UPDATE goals SET completionSource = 'MANUAL' WHERE status = 'COMPLETED' AND completionSource IS NULL;");
+    } catch (_) {}
+
+    // M3: Orphan cleanup, direct self-loops, and indexes
+    try {
+      await db.execute('DELETE FROM goal_steps WHERE goalId NOT IN (SELECT id FROM goals);');
+    } catch (_) {}
+
+    try {
+      await db.execute("UPDATE goals SET parentGoalId = NULL WHERE parentGoalId IS NOT NULL AND parentGoalId != '' AND parentGoalId NOT IN (SELECT id FROM goals);");
+    } catch (_) {}
+
+    try {
+      await db.execute('UPDATE goals SET parentGoalId = NULL WHERE parentGoalId = id;');
+    } catch (_) {}
+
+    final indexes = [
+      'CREATE INDEX IF NOT EXISTS idx_goal_steps_goalId ON goal_steps(goalId);',
+      'CREATE INDEX IF NOT EXISTS idx_goal_steps_scheduled ON goal_steps(scheduledDate);',
+      'CREATE INDEX IF NOT EXISTS idx_goal_steps_routine ON goal_steps(linkedRoutineId);',
+      'CREATE INDEX IF NOT EXISTS idx_goals_parent ON goals(parentGoalId);',
+      'CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);',
+      'CREATE INDEX IF NOT EXISTS idx_rc_routine_date ON routine_completions(routineId, completionDate);',
+    ];
+    for (final sql in indexes) {
+      try { await db.execute(sql); } catch (_) {}
+    }
+
+    // M4: New tables goal_checkins and goal_reviews
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS goal_checkins (
+          id TEXT PRIMARY KEY,
+          goalId TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+          dateIso TEXT NOT NULL,
+          kind TEXT NOT NULL,
+          value REAL,
+          note TEXT,
+          createdAt INTEGER NOT NULL
+        );
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_goal_checkins_goal_date ON goal_checkins(goalId, dateIso);');
+    } catch (_) {}
+
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS goal_reviews (
+          id TEXT PRIMARY KEY,
+          weekStartIso TEXT NOT NULL UNIQUE,
+          completedStepCount INTEGER NOT NULL DEFAULT 0,
+          rescheduledStepCount INTEGER NOT NULL DEFAULT 0,
+          answers TEXT,
+          createdAt INTEGER NOT NULL
+        );
+      ''');
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
+

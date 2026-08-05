@@ -735,5 +735,11 @@ class AlarmSchedulerService {
     // Sync state
     await SnapshotSyncService.syncAll();
   }
+
+  static Future<void> cancel(String id) async {
+    try {
+      await sl<AlarmPlatform>().cancelAlarm(id);
+    } catch (_) {}
+  }
 }
 

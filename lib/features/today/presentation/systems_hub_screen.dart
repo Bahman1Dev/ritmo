@@ -345,14 +345,15 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
           children: [
             GestureDetector(
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProfileScreen(
-                      onLogout: widget.onLogout,
-                      themeRepository: widget.themeRepository,
-                      localeRepository: widget.localeRepository,
-                    ),
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  barrierColor: Colors.black.withValues(alpha: 0.4),
+                  builder: (context) => ProfileScreen(
+                    onLogout: widget.onLogout,
+                    themeRepository: widget.themeRepository,
+                    localeRepository: widget.localeRepository,
                   ),
                 ).then((_) {
                   if (mounted) _loadAllData();

@@ -22,7 +22,9 @@ import 'package:ritmo/core/services/foreground_notification_updater.dart';
 import 'package:ritmo/core/services/premium_service.dart';
 import 'package:ritmo/core/services/secure_key_store.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/theme/ritmo_palette.dart';
 import 'package:ritmo/core/theme/theme_repository.dart';
+import 'package:ritmo/features/profile/presentation/theme_settings_screen.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
 import 'package:ritmo/features/assistant/presentation/day_plan_template_management_screen.dart';
@@ -291,10 +293,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       snap: true,
       snapSizes: const [0.65, 1.0],
       builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.transparent,
-          ),
+        return Material(
+          color: Colors.transparent,
           child: ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
             child: RitmoTheme.glassCardLight(
@@ -666,40 +666,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildLogoutButton(BuildContext context) {
     final colors = context.colors;
     final logoutColor = colors.medicalRed;
-    return InkWell(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        _showLogoutConfirmation();
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: logoutColor,
-                shape: BoxShape.circle,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          _showLogoutConfirmation();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: logoutColor,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.arrow_right,
+                  color: Colors.white,
+                  size: 16,
+                ),
               ),
-              child: const Icon(
-                CupertinoIcons.arrow_right,
-                color: Colors.white,
-                size: 16,
+              const SizedBox(width: 14),
+              Text(
+                'خروج از حساب کاربری',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: logoutColor,
+                  fontFamily: 'Vazirmatn',
+                ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Text(
-              'خروج از حساب کاربری',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: logoutColor,
-                fontFamily: 'Vazirmatn',
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -928,22 +931,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSheetGenderChip(String value, String label, String activeVal, ValueChanged<String> onTap) {
     final isSelected = activeVal == value;
-    return InkWell(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap(value);
-      },
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xff5B8AF5).withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? const Color(0xff5B8AF5) : Colors.white.withValues(alpha: 0.08),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap(value);
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xff5B8AF5).withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? const Color(0xff5B8AF5) : Colors.white.withValues(alpha: 0.08),
+            ),
           ),
+          child: Text(label, style: const TextStyle(fontSize: 12, fontFamily: 'Vazirmatn')),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 12, fontFamily: 'Vazirmatn')),
       ),
     );
   }
@@ -2193,62 +2199,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showAppearanceSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          final colors = context.colors;
-          final currentMode = widget.themeRepository.themeModeNotifier.value;
-
-          return _buildFrostedBottomSheet(
-            title: 'تنظیمات ظاهر (تم)',
-            children: [
-              _buildSheetOption(
-                icon: CupertinoIcons.moon_stars_fill,
-                color: const Color(0xff9B89FF),
-                title: 'تم تاریک پریمیوم',
-                isSelected: currentMode == ThemeMode.dark,
-                onTap: () async {
-                  await _updateThemeMode(ThemeMode.dark);
-                  setSheetState(() {});
-                },
-              ),
-              _buildSheetOption(
-                icon: CupertinoIcons.sun_max_fill,
-                color: const Color(0xffF5B95B),
-                title: 'تم روشن',
-                isSelected: currentMode == ThemeMode.light,
-                onTap: () async {
-                  await _updateThemeMode(ThemeMode.light);
-                  setSheetState(() {});
-                },
-              ),
-              _buildSheetOption(
-                icon: CupertinoIcons.device_phone_portrait,
-                color: const Color(0xff5B8AF5),
-                title: 'هماهنگ با سیستم',
-                isSelected: currentMode == ThemeMode.system,
-                onTap: () async {
-                  await _updateThemeMode(ThemeMode.system);
-                  setSheetState(() {});
-                },
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () => Navigator.pop(context),
-                child: const Text('تایید و بستن', style: TextStyle(fontFamily: 'Vazirmatn')),
-              ),
-            ],
-          );
-        }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ThemeSettingsScreen(
+          themeRepository: widget.themeRepository,
+        ),
       ),
-    );
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   String _formatExpiryDate(int ms) {
@@ -3823,49 +3783,52 @@ class SettingsRow extends StatelessWidget {
     final secondaryTextColor = isDark ? Colors.white.withValues(alpha: 0.4) : const Color(0xff5C6170);
     final iconColorToUse = isDark ? Colors.white.withValues(alpha: 0.75) : const Color(0xff5C6170);
 
-    return InkWell(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            // Icon directly with no background container
-            Icon(icon, size: 22, color: iconColorToUse),
-            const SizedBox(width: 14),
-            // Title
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: primaryTextColor,
-                  fontFamily: 'Vazirmatn',
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              // Icon directly with no background container
+              Icon(icon, size: 22, color: iconColorToUse),
+              const SizedBox(width: 14),
+              // Title
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: primaryTextColor,
+                    fontFamily: 'Vazirmatn',
+                  ),
                 ),
               ),
-            ),
-            // Optional Value (like version info, toggles, status, etc.)
-            if (value != null) ...[
-              Text(
-                value!,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: secondaryTextColor,
-                  fontFamily: 'Vazirmatn',
+              // Optional Value (like version info, toggles, status, etc.)
+              if (value != null) ...[
+                Text(
+                  value!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: secondaryTextColor,
+                    fontFamily: 'Vazirmatn',
+                  ),
                 ),
+                const SizedBox(width: 8),
+              ],
+              // Chevron Pointing Left (RTL)
+              Icon(
+                CupertinoIcons.chevron_left,
+                size: 14,
+                color: secondaryTextColor,
               ),
-              const SizedBox(width: 8),
             ],
-            // Chevron Pointing Left (RTL)
-            Icon(
-              CupertinoIcons.chevron_left,
-              size: 14,
-              color: secondaryTextColor,
-            ),
-          ],
+          ),
         ),
       ),
     );

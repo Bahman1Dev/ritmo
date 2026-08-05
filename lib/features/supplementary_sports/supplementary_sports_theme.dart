@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 
+/// لایه نگاشت تم تم‌های متفرقه ورزش تکمیلی به توکن‌های مرکزی Ritmo
 class SupplementarySportsTheme {
   static const Color bgLight = Color(0xFFFAFAF8);
   static const Color bgDark = Color(0xFF121212);
@@ -42,27 +44,15 @@ class SupplementarySportsTheme {
   static const Color dangerLight = Color(0xFFC0392B);
   static const Color dangerDark = Color(0xFFE06C5C);
 
-  // Dynamic getters based on brightness
-  static Color getBackgroundColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? bgDark : bgLight;
-
-  static Color getSurfaceColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? surfaceDark : surfaceLight;
-
-  static Color getTextPrimary(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? textPrimaryDark : textPrimaryLight;
-
-  static Color getTextSecondary(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? textSecondaryDark : textSecondaryLight;
-
-  static Color getSuccessColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? successDark : successLight;
-
-  static Color getWarningColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? warningDark : warningLight;
-
-  static Color getDangerColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? dangerDark : dangerLight;
+  // Dynamic getters mapped to Ritmo central tokens
+  static Color getBackgroundColor(BuildContext context) => context.colors.background;
+  static Color getSurfaceColor(BuildContext context) => context.colors.surface;
+  static Color getTextPrimary(BuildContext context) => context.colors.textPrimary;
+  static Color getTextSecondary(BuildContext context) => context.colors.textSecondary;
+  static Color getSuccessColor(BuildContext context) => context.colors.success;
+  static Color getWarningColor(BuildContext context) => context.colors.warning;
+  static Color getDangerColor(BuildContext context) => context.colors.error;
+  static Color getSportsAccent(BuildContext context) => context.modules.sports;
 
   // --- Typography ---
   static const String fontFamily = 'Vazirmatn';
@@ -70,47 +60,47 @@ class SupplementarySportsTheme {
   static const TextStyle h1 = TextStyle(
     fontFamily: fontFamily,
     fontSize: 24,
-    fontWeight: FontWeight.w500, // Medium
+    fontWeight: FontWeight.w500,
   );
 
   static const TextStyle h2 = TextStyle(
     fontFamily: fontFamily,
     fontSize: 18,
-    fontWeight: FontWeight.w500, // Medium
+    fontWeight: FontWeight.w500,
   );
 
   static const TextStyle body = TextStyle(
     fontFamily: fontFamily,
     fontSize: 16,
-    fontWeight: FontWeight.w400, // Regular
+    fontWeight: FontWeight.w400,
   );
 
   static const TextStyle caption = TextStyle(
     fontFamily: fontFamily,
     fontSize: 13,
-    fontWeight: FontWeight.w400, // Regular
+    fontWeight: FontWeight.w400,
   );
 
   static const TextStyle buttonLabel = TextStyle(
     fontFamily: fontFamily,
     fontSize: 16,
-    fontWeight: FontWeight.w500, // Medium
+    fontWeight: FontWeight.w500,
   );
 
   // --- Spacing Scale ---
-  static const double spacing4 = 4;
-  static const double spacing8 = 8;
-  static const double spacing12 = 12;
-  static const double spacing16 = 16;
-  static const double spacing24 = 24;
-  static const double spacing32 = 32;
-  static const double spacing48 = 48;
+  static const double spacing4 = RitmoSpacing.xs;
+  static const double spacing8 = RitmoSpacing.sm;
+  static const double spacing12 = RitmoSpacing.md;
+  static const double spacing16 = RitmoSpacing.lg;
+  static const double spacing24 = RitmoSpacing.xl;
+  static const double spacing32 = RitmoSpacing.xxl;
+  static const double spacing48 = RitmoSpacing.xxxl;
 
   // --- Corner Radius ---
-  static const double radiusButton = 12;
-  static const double radiusField = 12;
-  static const double radiusCard = 16;
-  static const double radiusBottomSheet = 20;
+  static const double radiusButton = RitmoRadius.field;
+  static const double radiusField = RitmoRadius.field;
+  static const double radiusCard = RitmoRadius.card;
+  static const double radiusBottomSheet = RitmoRadius.sheet;
 
   static const BorderRadius borderRadiusButton = BorderRadius.all(Radius.circular(radiusButton));
   static const BorderRadius borderRadiusField = BorderRadius.all(Radius.circular(radiusField));
@@ -120,25 +110,16 @@ class SupplementarySportsTheme {
     topRight: Radius.circular(radiusBottomSheet),
   );
 
-  // --- Touch Target Size ---
   static const double minimumTouchTarget = 48;
 
-  // --- Premium UI Helpers ---
   static BoxDecoration glassyCardDecoration(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
+    final isDark = context.isDark;
     return BoxDecoration(
-      color: isDark ? const Color(0xFF1E1E1E).withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.85),
+      color: colors.surface,
       borderRadius: borderRadiusCard,
-      border: Border.all(
-        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: isDark ? Colors.black.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.04),
-          blurRadius: 16,
-          offset: const Offset(0, 8),
-        ),
-      ],
+      border: Border.all(color: colors.border),
+      boxShadow: isDark ? RitmoElevation.none : RitmoElevation.cardLight,
     );
   }
 
@@ -146,21 +127,20 @@ class SupplementarySportsTheme {
     final nameLower = workoutName.toLowerCase();
     if (nameLower.contains('recovery') || nameLower.contains('yoga') || nameLower.contains('stretch') || nameLower.contains('کشش') || nameLower.contains('یوگا') || nameLower.contains('ریکاوری')) {
       return const LinearGradient(
-        colors: [Color(0xFF10B981), Color(0xFF047857)], // Teal green recovery
+        colors: [Color(0xFF10B981), Color(0xFF047857)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );
     }
     if (nameLower.contains('cardio') || nameLower.contains('run') || nameLower.contains('hiit') || nameLower.contains('هوازی') || nameLower.contains('دویدن') || nameLower.contains('سرعتی')) {
       return const LinearGradient(
-        colors: [Color(0xFFEC4899), Color(0xFFBE185D)], // Pink cardio
+        colors: [Color(0xFFEC4899), Color(0xFFBE185D)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );
     }
-    // Strength / weight lifting / default
     return const LinearGradient(
-      colors: [Color(0xFFF59E0B), Color(0xFFD97706)], // Energetic amber/orange
+      colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     );

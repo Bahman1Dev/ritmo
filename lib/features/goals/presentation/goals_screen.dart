@@ -6,6 +6,7 @@ import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/widgets/ritmo_module_app_bar.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
 import 'package:ritmo/features/courses/models/course_models.dart';
+import 'package:ritmo/features/goals/logic/goals_controller.dart';
 import 'package:ritmo/features/goals/logic/goals_repository.dart';
 import 'package:ritmo/features/goals/models/goal_models.dart';
 import 'package:ritmo/features/goals/presentation/widgets/ai_goals_assistant_sheet.dart';
@@ -25,97 +26,84 @@ class GoalsScreen extends StatefulWidget {
 
 class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true;
-  bool _showTreeView = false; // Toggle tree view vs card list
-
-  List<Goal> _goals = [];
-  Map<String, List<GoalStep>> _stepsByGoal = {};
-  List<Map<String, dynamic>> _routines = [];
-  List<Course> _courses = [];
-  List<Map<String, dynamic>> _completions = [];
-
-  GoalsEngineOutput? _engineOutput;
+  late GoalsController _controller;
 
   @override
   void initState() {
     super.initState();
+    _controller = GoalsController();
+    _controller.init();
+    _controller.addListener(_onControllerChanged);
+
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      setState(() {});
+      if (_tabController.indexIsChanging) {
+        _controller.setTabIndex(_tabController.index);
+      }
     });
-    _loadData();
+  }
+
+  void _onControllerChanged() {
+    if (mounted) {
+      if (_tabController.index != _controller.selectedTabIndex) {
+        _tabController.animateTo(_controller.selectedTabIndex);
+      }
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _handleToggleStep(GoalStep step, String goalId) async {
+    await GoalsRepository.instance.toggleStep(step.id, step.isCompleted, goalId);
 
-    try {
-      final repo = GoalsRepository.instance;
-      final goals = await repo.getGoals();
-      final stepsMap = await repo.getGoalSteps();
-      final routines = await repo.getRoutines();
-      final completions = await repo.getRoutineCompletions();
+    // T3 Check if goal became auto-completed
+    final goals = await GoalsRepository.instance.getGoals();
+    final target = goals.firstWhere((g) => g.id == goalId, orElse: () => Goal(id: '', title: '', goalType: GoalLevel.daily, createdAt: 0, updatedAt: 0));
 
-      final courses = await repo.getCourses();
-      final courseSessions = await repo.getCourseSessions();
-      final konkurSubjects = await repo.getKonkurSubjects();
-      final konkurTopics = await repo.getKonkurTopics();
-      final konkurPlanItems = await repo.getKonkurPlanItems();
-
-      // Run GoalsEngine
-      final engine = GoalsEngine();
-      final input = GoalsEngineInput(
-        goals: goals,
-        stepsByGoal: stepsMap,
-        courses: courses,
-        courseSessions: courseSessions,
-        konkurSubjects: konkurSubjects,
-        konkurTopics: konkurTopics,
-        konkurPlanItems: konkurPlanItems,
-        routineCompletions: completions,
-        today: DateTime.now(),
+    if (target.id.isNotEmpty && target.status == 'COMPLETED' && !step.isCompleted && mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'هدف «${target.title}» به صورت کامل تکمیل شد! 🎉',
+            style: const TextStyle(fontFamily: 'Vazirmatn'),
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'بازگردانی (Undo)',
+            textColor: Colors.white,
+            onPressed: () async {
+              await GoalsRepository.instance.toggleStep(step.id, true, goalId);
+            },
+          ),
+        ),
       );
-
-      final output = await engine.calculate(input);
-
-      setState(() {
-        _goals = goals;
-        _stepsByGoal = stepsMap;
-        _routines = routines;
-        _courses = courses;
-        _completions = completions;
-
-        _engineOutput = output;
-        _isLoading = false;
-      });
-    } catch (e) {
-      debugPrint('Error loading goals engine data: $e');
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
   void _showCreateGoalSheet({Goal? editGoal, Map<String, dynamic>? templateData}) {
-    final activeGoals = _goals.where((g) => g.status == 'ACTIVE').toList();
+    final readyState = _controller.state is GoalsReady ? _controller.state as GoalsReady : null;
+    final activeGoals = readyState?.goals.where((g) => g.status == 'ACTIVE').toList() ?? [];
+    final routines = readyState?.routines ?? [];
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => CreateGoalSheet(
         activeGoals: activeGoals,
-        routines: _routines,
+        routines: routines,
         goalToEdit: editGoal,
         templateData: templateData,
-        onSaved: _loadData,
+        onSaved: () => _controller.reload(force: true),
       ),
     );
   }
@@ -126,12 +114,12 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => AiGoalsAssistantSheet(
-        onSaved: _loadData,
+        onSaved: () => _controller.reload(force: true),
       ),
     );
   }
 
-  void _showArchiveSheet(List<Goal> completedGoals) {
+  void _showArchiveSheet(List<Goal> completedGoals, Map<String, List<GoalStep>> stepsByGoal) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -167,15 +155,13 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                   Expanded(
                     child: GoalsArchiveSection(
                       completedGoals: completedGoals,
-                      stepsByGoal: _stepsByGoal,
-                      onRefresh: _loadData,
+                      stepsByGoal: stepsByGoal,
+                      onRefresh: () => _controller.reload(force: true),
                       onRestoreGoal: (goalId) async {
                         await GoalsRepository.instance.updateGoalStatus(goalId, 'ACTIVE');
-                        await _loadData();
                       },
                       onDeleteGoal: (goalId) async {
                         await GoalsRepository.instance.deleteGoal(goalId);
-                        await _loadData();
                       },
                     ),
                   ),
@@ -188,14 +174,15 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     );
   }
 
-  int _calculateMomentum(Goal goal) {
+
+  int _calculateMomentum(Goal goal, Map<String, List<GoalStep>> stepsByGoal) {
     var count = 0;
     final now = DateTime.now();
     final todayOnly = DateTime(now.year, now.month, now.day);
     final sevenDaysAgo = todayOnly.subtract(const Duration(days: 7));
 
     // Get steps of this goal
-    final steps = _stepsByGoal[goal.id] ?? [];
+    final steps = stepsByGoal[goal.id] ?? [];
     for (final step in steps) {
       // 1. Toggled steps in last 7 days
       if (step.isCompleted && step.scheduledDate != null) {
@@ -206,27 +193,11 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
           }
         } catch (_) {}
       }
-
-      // 2. Linked routines completions in last 7 days
-      if (step.linkedRoutineId != null) {
-        for (final comp in _completions) {
-          final rId = comp['routineId'] as String?;
-          final dateStr = comp['completionDate'] as String?;
-          if (rId == step.linkedRoutineId && dateStr != null) {
-            try {
-              final dt = DateTime.parse(dateStr);
-              if (dt.isAfter(sevenDaysAgo) && dt.isBefore(now)) {
-                count++;
-              }
-            } catch (_) {}
-          }
-        }
-      }
     }
     return count;
   }
 
-  Goal? _findPolarisGoal(List<Goal> activeGoals) {
+  Goal? _findPolarisGoal(List<Goal> activeGoals, Map<String, List<GoalStep>> stepsByGoal) {
     if (activeGoals.isEmpty) return null;
     
     Goal? best;
@@ -238,7 +209,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
       if (days >= 0 && days < 30) {
         score += (30 - days) * 100;
       }
-      final momentum = _calculateMomentum(goal);
+      final momentum = _calculateMomentum(goal, stepsByGoal);
       score += momentum * 50;
       score += goal.updatedAt ~/ 1000000;
       
@@ -255,8 +226,17 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     final colors = context.colors;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    final activeGoals = _goals.where((g) => g.status == 'ACTIVE').toList();
-    final completedGoals = _goals.where((g) => g.status == 'COMPLETED').toList();
+    final viewState = _controller.state;
+    final isLoading = viewState is GoalsLoading;
+    final readyState = viewState is GoalsReady ? viewState : null;
+
+    final goals = readyState?.goals ?? [];
+    final activeGoals = goals.where((g) => g.status == 'ACTIVE').toList();
+    final completedGoals = goals.where((g) => g.status == 'COMPLETED').toList();
+    final stepsByGoal = readyState?.stepsByGoal ?? {};
+    final routines = readyState?.routines ?? [];
+    final courses = readyState?.courses ?? [];
+    final engineOutput = readyState?.engineOutput;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -291,18 +271,16 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
               icon: Icon(Icons.more_vert, color: colors.textPrimary),
               onSelected: (val) {
                 if (val == 'archive') {
-                  _showArchiveSheet(completedGoals);
+                  _showArchiveSheet(completedGoals, stepsByGoal);
                 } else if (val == 'toggle_view') {
-                  setState(() {
-                    _showTreeView = !_showTreeView;
-                  });
+                  _controller.toggleViewMode(!_controller.showTreeView);
                 }
               },
               itemBuilder: (context) => [
                 PopupMenuItem(
                   value: 'toggle_view',
                   child: Text(
-                    _showTreeView ? 'نمای کارت نتیجه‌محور' : 'نمای درختی اهداف',
+                    _controller.showTreeView ? 'نمای کارت نتیجه‌محور' : 'نمای درختی اهداف',
                     style: const TextStyle(fontFamily: 'Vazirmatn'),
                   ),
                 ),
@@ -323,9 +301,9 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
             // Polaris Hero (Dynamic active goal vs empty templates)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: _isLoading
+              child: isLoading
                   ? const RitmoSkeletonCard()
-                  : _buildHeroSection(activeGoals, colors, isDarkMode),
+                  : _buildHeroSection(activeGoals, stepsByGoal, engineOutput, colors, isDarkMode),
             ),
 
             // Custom Segmented switcher (اهداف / نقشه راه)
@@ -394,7 +372,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
 
             // Skeletons / Tab views
             Expanded(
-              child: _isLoading
+              child: isLoading
                   ? const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
                       child: RitmoSkeletonList(itemCount: 3),
@@ -403,39 +381,31 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                       controller: _tabController,
                       children: [
                         // Tab 1: Goals Card List or Tree View
-                        if (_showTreeView) GoalsTreeSection(
+                        if (_controller.showTreeView) GoalsTreeSection(
                                 goals: activeGoals,
-                                stepsByGoal: _stepsByGoal,
-                                progressMap: _engineOutput?.goalProgress ?? {},
-                                routineStatusMap: _engineOutput?.linkedRoutineStatus ?? {},
-                                routines: _routines,
-                                onRefresh: _loadData,
-                                onToggleStep: (step, goalId) async {
-                                  await GoalsRepository.instance.toggleStep(step.id, step.isCompleted, goalId);
-                                  await _loadData();
-                                },
+                                stepsByGoal: stepsByGoal,
+                                progressMap: engineOutput?.goalProgress ?? {},
+                                routineStatusMap: engineOutput?.linkedRoutineStatus ?? {},
+                                routines: routines,
+                                onRefresh: () => _controller.reload(force: true),
+                                onToggleStep: (step, goalId) => _handleToggleStep(step, goalId),
                                 onDeleteGoal: (goalId) async {
                                   await GoalsRepository.instance.deleteGoal(goalId);
-                                  await _loadData();
                                 },
                                 onEditGoal: (goal) {
                                   _showCreateGoalSheet(editGoal: goal);
                                 },
                               ) else GoalsCardListSection(
-                                goals: _goals,
-                                stepsByGoal: _stepsByGoal,
-                                progressMap: _engineOutput?.goalProgress ?? {},
-                                routineStatusMap: _engineOutput?.linkedRoutineStatus ?? {},
-                                routines: _routines,
-                                courses: _courses,
-                                onRefresh: _loadData,
-                                onToggleStep: (step, goalId) async {
-                                  await GoalsRepository.instance.toggleStep(step.id, step.isCompleted, goalId);
-                                  await _loadData();
-                                },
+                                goals: goals,
+                                stepsByGoal: stepsByGoal,
+                                progressMap: engineOutput?.goalProgress ?? {},
+                                routineStatusMap: engineOutput?.linkedRoutineStatus ?? {},
+                                routines: routines,
+                                courses: courses,
+                                onRefresh: () => _controller.reload(force: true),
+                                onToggleStep: (step, goalId) => _handleToggleStep(step, goalId),
                                 onDeleteGoal: (goalId) async {
                                   await GoalsRepository.instance.deleteGoal(goalId);
-                                  await _loadData();
                                 },
                                 onEditGoal: (goal) {
                                   _showCreateGoalSheet(editGoal: goal);
@@ -444,14 +414,11 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
 
                         // Tab 2: Timeline (Roadmap)
                         GoalsTimelineSection(
-                          upcomingTimeline: _engineOutput?.upcomingTimeline ?? [],
-                          overdueSteps: _engineOutput?.overdueSteps ?? [],
-                          goals: _goals,
-                          onRefresh: _loadData,
-                          onToggleStep: (step, goalId) async {
-                            await GoalsRepository.instance.toggleStep(step.id, step.isCompleted, goalId);
-                            await _loadData();
-                          },
+                          upcomingTimeline: engineOutput?.upcomingTimeline ?? [],
+                          overdueSteps: engineOutput?.overdueSteps ?? [],
+                          goals: goals,
+                          onRefresh: () => _controller.reload(force: true),
+                          onToggleStep: (step, goalId) => _handleToggleStep(step, goalId),
                         ),
                       ],
                     ),
@@ -462,14 +429,15 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildHeroSection(List<Goal> activeGoals, RitmoColors colors, bool isDarkMode) {
-    final polarisGoal = _findPolarisGoal(activeGoals);
+  Widget _buildHeroSection(List<Goal> activeGoals, Map<String, List<GoalStep>> stepsByGoal, GoalsEngineOutput? engineOutput, RitmoColors colors, bool isDarkMode) {
+    final polarisGoal = _findPolarisGoal(activeGoals, stepsByGoal);
 
     if (polarisGoal != null) {
       // 1. Polaris Goal Card
-      final progress = _engineOutput?.goalProgress[polarisGoal.id] ?? 0.0;
+      final progress = engineOutput?.goalProgress[polarisGoal.id] ?? 0.0;
       final percent = (progress * 100).toInt();
-      final momentum = _calculateMomentum(polarisGoal);
+
+      final momentum = _calculateMomentum(polarisGoal, stepsByGoal);
 
       var deadlineSummary = 'بدون مهلت تعیین‌شده';
       if (polarisGoal.targetDate != null && polarisGoal.targetDate!.isNotEmpty) {

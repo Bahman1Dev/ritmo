@@ -8,6 +8,7 @@ import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/localization/locale_repository.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/theme/theme_repository.dart';
+import 'package:ritmo/core/widgets/ritmo/ritmo_glass_surface.dart';
 import 'package:ritmo/features/assistant/presentation/assistant_screen.dart';
 import 'package:ritmo/features/calendar/presentation/calendar_screen.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
@@ -16,7 +17,6 @@ import 'package:ritmo/features/today/presentation/now_dashboard_screen.dart';
 import 'package:ritmo/features/today/presentation/systems_hub_screen.dart';
 
 class HomeNavigationShell extends StatefulWidget {
-
   const HomeNavigationShell({
     super.key,
     required this.onLogout,
@@ -140,7 +140,7 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
               child: const SizedBox.expand(),
             ),
           ),
-          
+
           // Current Screen View
           Positioned.fill(
             child: SafeArea(
@@ -148,35 +148,34 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
               child: NotificationListener<ScrollNotification>(
                 onNotification: (notification) {
                   if (notification is ScrollUpdateNotification) {
-                    final metrics = notification.metrics;
-                    if (metrics.axis == Axis.vertical) {
-                      final current = metrics.pixels;
-                      final delta = current - _lastScrollOffset;
+                    final currentOffset = notification.metrics.pixels;
+                    final delta = currentOffset - _lastScrollOffset;
 
-                      if (metrics.pixels <= 0) {
-                        if (!_isNavBarVisible) {
-                          setState(() => _isNavBarVisible = true);
-                        }
-                      } else if (delta > 8 && _isNavBarVisible) {
-                        setState(() => _isNavBarVisible = false);
-                      } else if (delta < -8 && !_isNavBarVisible) {
-                        setState(() => _isNavBarVisible = true);
-                      }
-                      _lastScrollOffset = current;
+                    if (delta > 10 && _isNavBarVisible && currentOffset > 50) {
+                      setState(() {
+                        _isNavBarVisible = false;
+                      });
+                    } else if (delta < -10 && !_isNavBarVisible) {
+                      setState(() {
+                        _isNavBarVisible = true;
+                      });
                     }
+
+                    _lastScrollOffset = currentOffset;
                   }
                   return false;
                 },
                 child: IndexedStack(
                   index: _currentIndex,
-                  children: List.generate(5, (index) => _screens[index] ?? const SizedBox.shrink()),
+                  children: List.generate(5, (index) {
+                    return _screens[index] ?? const SizedBox.shrink();
+                  }),
                 ),
               ),
             ),
           ),
 
-          // Redesigned Glassmorphic Premium Floating Dock (Centered & Compact)
-          // Hide when the keyboard is open or when scrolling down
+          // Bottom Navigation Bar
           if (MediaQuery.of(context).viewInsets.bottom == 0)
             Positioned(
               left: 0,
@@ -207,50 +206,32 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
   }
 
   Widget _buildCustomBottomBar() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    return RitmoTheme.glassCardLight(
+    final colors = context.colors;
+
+    return RitmoGlassSurface(
       blurSigma: 24,
-      color: isDarkMode
-          ? const Color(0xff12141C).withValues(alpha: 0.75)
-          : Colors.white.withValues(alpha: 0.8),
-      border: Border.all(
-        color: isDarkMode
-            ? Colors.white.withValues(alpha: 0.12)
-            : Colors.white.withValues(alpha: 0.6),
-        width: 1.2,
-      ),
-      shadows: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: isDarkMode ? 0.35 : 0.08),
-          blurRadius: 24,
-          offset: const Offset(0, 8),
-          spreadRadius: -2,
-        ),
-      ],
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-        child: Directionality(
-          textDirection: TextDirection.rtl, // RTL tab layout
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              // 1. Calendar (Rightmost)
-              _buildNavItem(4, CupertinoIcons.calendar_circle_fill, CupertinoIcons.calendar, 'تقویم'),
-              
-              // 2. Assistant
-              _buildNavItem(3, CupertinoIcons.sparkles, CupertinoIcons.sparkles, 'دستیار'),
-              
-              // 3. Dynamic Center Home/Plus Button
-              _buildDynamicCenterButton(),
-              
-              // 4. Systems (Swapped)
-              _buildNavItem(0, CupertinoIcons.square_grid_2x2_fill, CupertinoIcons.square_grid_2x2, 'سیستم‌ها'),
-              
-              // 5. Reports / Insights (Swapped to Leftmost)
-              _buildNavItem(1, CupertinoIcons.lightbulb_fill, CupertinoIcons.lightbulb, 'بینش‌ها'),
-            ],
-          ),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      borderRadius: BorderRadius.circular(RitmoRadius.sheet),
+      child: Directionality(
+        textDirection: TextDirection.rtl, // RTL tab layout
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            // 1. Calendar (Rightmost)
+            _buildNavItem(4, CupertinoIcons.calendar_circle_fill, CupertinoIcons.calendar, 'تقویم'),
+
+            // 2. Assistant
+            _buildNavItem(3, CupertinoIcons.sparkles, CupertinoIcons.sparkles, 'دستیار'),
+
+            // 3. Dynamic Center Home/Plus Button
+            _buildDynamicCenterButton(),
+
+            // 4. Systems (Swapped)
+            _buildNavItem(0, CupertinoIcons.square_grid_2x2_fill, CupertinoIcons.square_grid_2x2, 'سیستم‌ها'),
+
+            // 5. Reports / Insights (Swapped to Leftmost)
+            _buildNavItem(1, CupertinoIcons.lightbulb_fill, CupertinoIcons.lightbulb, 'بینش‌ها'),
+          ],
         ),
       ),
     );
@@ -258,13 +239,14 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
 
   Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label) {
     final isSelected = _currentIndex == index;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    final activeColor = isDarkMode ? const Color(0xff5B8AF5) : const Color(0xff3B6FE0);
-    final inactiveColor = isDarkMode ? const Color(0xff8E95A5) : const Color(0xff6C7281);
+    final colors = context.colors;
+
+    final activeColor = colors.primary;
+    final inactiveColor = colors.textSecondary;
 
     return GestureDetector(
       onTap: () {
+        RitmoHapticsPolicy.selection();
         setState(() {
           _currentIndex = index;
           _screens[index] ??= _buildScreen(index);
@@ -290,7 +272,6 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
                 fontSize: 9,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected ? activeColor : inactiveColor,
-                fontFamily: 'Vazirmatn',
               ),
             ),
           ],
@@ -301,9 +282,11 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
 
   Widget _buildDynamicCenterButton() {
     final isHomeActive = _currentIndex == 2;
-    
+    final colors = context.colors;
+
     return GestureDetector(
       onTap: () {
+        RitmoHapticsPolicy.tap();
         if (isHomeActive) {
           // Trigger quick add screen when already home
           Navigator.push(
@@ -331,17 +314,14 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
         width: 46,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xff5B8AF5),
-              Color(0xff9B89FF),
-            ],
+            colors: colors.brandGradient,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xff5B8AF5).withValues(alpha: 0.3),
+              color: colors.primary.withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -372,9 +352,4 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
       ),
     );
   }
-
 }
-
-
-
-

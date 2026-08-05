@@ -168,7 +168,7 @@ class AssistantActionRegistry {
             isScrollControlled: true,
             builder: (context) => CreateGoalSheet(
               activeGoals: activeGoals,
-              routines: routines,
+              routines: routines.map((r) => RoutineRef.fromMap(r)).toList(),
               goalToEdit: tempGoal,
               onSaved: () {
                 Navigator.pop(context);
@@ -620,7 +620,7 @@ class AssistantActionRegistry {
             isScrollControlled: true,
             builder: (context) => CreateGoalSheet(
               activeGoals: activeGoals,
-              routines: routinesListForGoals,
+              routines: routinesListForGoals.map((r) => RoutineRef.fromMap(r)).toList(),
               goalToEdit: updatedGoal,
               onSaved: () async {
                 Navigator.pop(context);

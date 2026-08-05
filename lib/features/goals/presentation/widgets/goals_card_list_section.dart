@@ -39,8 +39,8 @@ class GoalsCardListSection extends StatelessWidget {
   /// Map of linked routine status entries by goal ID.
   final Map<String, LinkedRoutineStatus> routineStatusMap;
 
-  /// List of routine maps.
-  final List<Map<String, dynamic>> routines;
+  /// List of routine refs.
+  final List<RoutineRef> routines;
 
   /// List of linked courses.
   final List<Course> courses;
@@ -357,7 +357,7 @@ class GoalDetailsSheet extends StatefulWidget {
   final Map<String, double> progressMap;
 
   /// List of routines.
-  final List<Map<String, dynamic>> routines;
+  final List<RoutineRef> routines;
 
   /// List of courses.
   final List<Course> courses;
@@ -418,7 +418,7 @@ class _GoalDetailsSheetState extends State<GoalDetailsSheet> {
         .map((s) => s.linkedRoutineId!)
         .toSet();
     final connectedRoutines = widget.routines
-        .where((r) => linkedRoutineIds.contains(r['id']))
+        .where((r) => linkedRoutineIds.contains(r.id))
         .toList();
     final connectedCourses = widget.courses
         .where((c) => c.linkedGoalId == _currentGoal.id)
@@ -848,7 +848,7 @@ class _GoalDetailsSheetState extends State<GoalDetailsSheet> {
     );
   }
 
-  Widget _buildRoutineTile(Map<String, dynamic> routine, RitmoColors colors) {
+  Widget _buildRoutineTile(RoutineRef routine, RitmoColors colors) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
@@ -860,7 +860,7 @@ class _GoalDetailsSheetState extends State<GoalDetailsSheet> {
         dense: true,
         leading: Icon(CupertinoIcons.repeat, size: 16, color: colors.primary),
         title: Text(
-          routine['title'] as String? ?? '',
+          routine.title,
           style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: colors.textPrimary, fontWeight: FontWeight.w600),
         ),
         subtitle: Text(

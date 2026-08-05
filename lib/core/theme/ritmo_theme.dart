@@ -1,27 +1,47 @@
+// سیستم تم مرکزی Ritmo — تنها منبع حقیقت طراحی بصری اپ
+// شامل توکن‌های فاصله، رادیوس، تایپوگرافی، تم دینامیک و اکستنشن‌های دسترسی
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:ritmo/core/theme/ritmo_behavior.dart';
+import 'package:ritmo/core/theme/ritmo_colors.dart';
+import 'package:ritmo/core/theme/ritmo_module_colors.dart';
+import 'package:ritmo/core/theme/ritmo_palette.dart';
 
-/// توکن‌های فاصله‌گذاری — مضارب ۴/۸ (سند طراحی §۲)
+export 'package:ritmo/core/theme/ritmo_behavior.dart';
+export 'package:ritmo/core/theme/ritmo_colors.dart';
+export 'package:ritmo/core/theme/ritmo_module_colors.dart';
+export 'package:ritmo/core/theme/ritmo_palette.dart';
+
+/// توکن‌های فاصله‌گذاری — فقط ۷ مقدار مجاز (سند طراحی §۳.۲)
 abstract final class RitmoSpacing {
   static const double xs = 4;
   static const double sm = 8;
   static const double md = 12;
-  static const double lg = 16;
-  static const double xl = 24;
+  static const double lg = 16; // فاصلهٔ استاندارد لبهٔ صفحه
+  static const double xl = 24; // فاصلهٔ بین بخش‌های صفحه
   static const double xxl = 32;
+  static const double xxxl = 48; // فضای تنفس Hero و Empty state
 
-  /// فاصله‌ی عمودی استاندارد بین کارت‌های داشبورد
   static const double section = 16;
 }
 
-/// توکن‌های رادیوس — چیپ ۱۲ · کارت ۱۶/۲۰ · شیت ۲۴ (سند طراحی §۲)
+/// توکن‌های رادیوس — سند طراحی §۳.۳
 abstract final class RitmoRadius {
-  static const double chip = 12;
-  static const double card = 16;
-  static const double cardLarge = 20;
-  static const double sheet = 24;
+  static const double field = 14; // TextField و دکمه
+  static const double card = 16; // کارت معمولی
+  static const double hero = 20; // کارت Hero
+  static const double sheet = 28; // BottomSheet — فقط دو گوشهٔ بالا
+  static const double iconButton = 12;
+  static const double pill = 999; // چیپ و برچسب
+  static const double badge = 8; // نشان عددی کوچک
 
-  /// گوشه‌ی پیوسته‌ی سبک اپل (squircle) برای کارت‌های کلیدی — Liquid Glass §۱۰
+  // Backward compatibility aliases
+  static const double chip = iconButton;
+  static const double cardLarge = hero;
+
+  /// گوشه‌ی پیوسته‌ی سبک اپل (squircle) برای کارت‌های کلیدی
   static ShapeBorder squircle(double radius, {BorderSide side = BorderSide.none}) {
     return ContinuousRectangleBorder(
       borderRadius: BorderRadius.circular(radius * 2.35),
@@ -30,24 +50,39 @@ abstract final class RitmoRadius {
   }
 }
 
-/// توکن‌های حرکت — گذار ۲۰۰ms، فنری ملایم، احترام به Reduced Motion (a11y)
+/// توکن‌های حرکت — سند طراحی §۳.۷
 abstract final class RitmoMotion {
-  static const Duration fast = Duration(milliseconds: 120);
-  static const Duration normal = Duration(milliseconds: 200);
-  static const Duration slow = Duration(milliseconds: 350);
-  static const Curve spring = Curves.easeOutBack;
-  static const Curve standard = Curves.easeOutCubic;
+  static const Duration press = Duration(milliseconds: 120);
+  static const Duration state = Duration(milliseconds: 200);
+  static const Duration sheet = Duration(milliseconds: 320);
+  static const Duration themeSwap = Duration(milliseconds: 200);
+  static const Curve enter = Curves.easeOutCubic;
+  static const Curve exit = Curves.easeInCubic;
+  static const double pressScale = 0.97;
 
-  /// آیا کاربر کاهش حرکت را فعال کرده؟ (تنظیم سیستم)
+  // Backward compatibility aliases
+  static const Duration fast = press;
+  static const Duration normal = state;
+  static const Duration slow = sheet;
+  static const Curve spring = Curves.easeOutBack;
+  static const Curve standard = enter;
+
   static bool reduceMotion(BuildContext context) =>
       MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
-  /// مدت مؤثر با احترام به Reduced Motion
-  static Duration effective(BuildContext context, [Duration base = normal]) =>
+  static Duration effective(BuildContext context, [Duration base = state]) =>
       reduceMotion(context) ? Duration.zero : base;
 }
 
-/// استایل‌های متنی استاندارد — Vazirmatn (عنوان بزرگ ۲۸ · عنوان کارت ۱۸ · بدنه ۱۵ · فرعی ۱۳ · هیرو ۴۴)
+/// هپتیک — یک قرارداد واحد (سند طراحی §۳.۸)
+abstract final class RitmoHapticsPolicy {
+  static void selection() => HapticFeedback.selectionClick();
+  static void tap() => HapticFeedback.lightImpact();
+  static void success() => HapticFeedback.mediumImpact();
+  static void warning() => HapticFeedback.heavyImpact();
+  static void error() => HapticFeedback.vibrate();
+}
+
 abstract final class RitmoTextStyles {
   static TextStyle heroNumber(Color color) => TextStyle(
         fontSize: 44,
@@ -84,331 +119,258 @@ abstract final class RitmoTextStyles {
       );
 }
 
-@immutable
-class RitmoColors extends ThemeExtension<RitmoColors> {
-
-  const RitmoColors({
-    required this.bg,
-    required this.card,
-    required this.textPrimary,
-    required this.textSecondary,
-    required this.primary,
-    required this.success,
-    required this.warning,
-    required this.medicalRed,
-    required this.border,
-    required this.energyGradient,
-    required this.goldAccent,
-    required this.goldGradient,
-    required this.cardTitle,
-    required this.cardSubtitle,
-    required this.cardBorder,
-    required this.inputBackground,
-    required this.glassBorder,
-    required this.sectionTitle,
-    required this.warningText,
-    required this.successText,
-    required this.cardFill,
-    required this.sheetBackground,
-    required this.iconSecondary,
-    required this.shadowColor,
-  });
-  final Color bg;
-  final Color card;
-  final Color textPrimary;
-  final Color textSecondary;
-  final Color primary;
-  final Color success;
-  final Color warning;
-  final Color medicalRed;
-  final Color border;
-  final List<Color> energyGradient;
-  final Color goldAccent;
-  final List<Color> goldGradient;
-  
-  // Theme Tokens
-  final Color cardTitle;
-  final Color cardSubtitle;
-  final Color cardBorder;
-  final Color inputBackground;
-  final Color glassBorder;
-  final Color sectionTitle;
-  final Color warningText;
-  final Color successText;
-  final Color cardFill;
-  final Color sheetBackground;
-  final Color iconSecondary;
-  final Color shadowColor;
-
-  Color get onSurface => textPrimary;
-  Color get onSurfaceVariant => textSecondary;
-  Color get surfaceVariant => cardFill;
-  Color get outlineVariant => border;
-  Color get secondary => primary;
-  Color get surface => card;
-  Color get background => bg;
-  Color get onBackground => textPrimary;
-
-  @override
-  RitmoColors copyWith({
-    Color? bg,
-    Color? card,
-    Color? textPrimary,
-    Color? textSecondary,
-    Color? primary,
-    Color? success,
-    Color? warning,
-    Color? medicalRed,
-    Color? border,
-    List<Color>? energyGradient,
-    Color? goldAccent,
-    List<Color>? goldGradient,
-    Color? cardTitle,
-    Color? cardSubtitle,
-    Color? cardBorder,
-    Color? inputBackground,
-    Color? glassBorder,
-    Color? sectionTitle,
-    Color? warningText,
-    Color? successText,
-    Color? cardFill,
-    Color? sheetBackground,
-    Color? iconSecondary,
-    Color? shadowColor,
-  }) {
-    return RitmoColors(
-      bg: bg ?? this.bg,
-      card: card ?? this.card,
-      textPrimary: textPrimary ?? this.textPrimary,
-      textSecondary: textSecondary ?? this.textSecondary,
-      primary: primary ?? this.primary,
-      success: success ?? this.success,
-      warning: warning ?? this.warning,
-      medicalRed: medicalRed ?? this.medicalRed,
-      border: border ?? this.border,
-      energyGradient: energyGradient ?? this.energyGradient,
-      goldAccent: goldAccent ?? this.goldAccent,
-      goldGradient: goldGradient ?? this.goldGradient,
-      cardTitle: cardTitle ?? this.cardTitle,
-      cardSubtitle: cardSubtitle ?? this.cardSubtitle,
-      cardBorder: cardBorder ?? this.cardBorder,
-      inputBackground: inputBackground ?? this.inputBackground,
-      glassBorder: glassBorder ?? this.glassBorder,
-      sectionTitle: sectionTitle ?? this.sectionTitle,
-      warningText: warningText ?? this.warningText,
-      successText: successText ?? this.successText,
-      cardFill: cardFill ?? this.cardFill,
-      sheetBackground: sheetBackground ?? this.sheetBackground,
-      iconSecondary: iconSecondary ?? this.iconSecondary,
-      shadowColor: shadowColor ?? this.shadowColor,
+/// تایپوگرافی — دقیقاً هشت سبک با Vazirmatn (سند طراحی §۳.۴)
+abstract final class RitmoTypography {
+  static TextTheme textTheme(RitmoColors colors) {
+    return TextTheme(
+      displayLarge: TextStyle(
+        fontSize: 32,
+        fontWeight: FontWeight.w700,
+        color: colors.textPrimary,
+        height: 1.3,
+        fontFamily: 'Vazirmatn',
+      ),
+      headlineMedium: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+        color: colors.textPrimary,
+        height: 1.4,
+        fontFamily: 'Vazirmatn',
+      ),
+      titleLarge: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: colors.textPrimary,
+        height: 1.5,
+        fontFamily: 'Vazirmatn',
+      ),
+      titleMedium: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+        color: colors.textPrimary,
+        height: 1.5,
+        fontFamily: 'Vazirmatn',
+      ),
+      bodyLarge: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+        color: colors.textPrimary,
+        height: 1.7,
+        fontFamily: 'Vazirmatn',
+      ),
+      bodyMedium: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
+        color: colors.textSecondary,
+        height: 1.7,
+        fontFamily: 'Vazirmatn',
+      ),
+      labelLarge: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: colors.textPrimary,
+        height: 1.4,
+        fontFamily: 'Vazirmatn',
+      ),
+      labelSmall: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        color: colors.textSecondary,
+        height: 1.4,
+        fontFamily: 'Vazirmatn',
+      ),
     );
   }
+}
 
-  @override
-  RitmoColors lerp(ThemeExtension<RitmoColors>? other, double t) {
-    if (other is! RitmoColors) return this;
-    return RitmoColors(
-      bg: Color.lerp(bg, other.bg, t)!,
-      card: Color.lerp(card, other.card, t)!,
-      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
-      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
-      primary: Color.lerp(primary, other.primary, t)!,
-      success: Color.lerp(success, other.success, t)!,
-      warning: Color.lerp(warning, other.warning, t)!,
-      medicalRed: Color.lerp(medicalRed, other.medicalRed, t)!,
-      border: Color.lerp(border, other.border, t)!,
-      energyGradient: t < 0.5 ? energyGradient : other.energyGradient,
-      goldAccent: Color.lerp(goldAccent, other.goldAccent, t)!,
-      goldGradient: t < 0.5 ? goldGradient : other.goldGradient,
-      cardTitle: Color.lerp(cardTitle, other.cardTitle, t)!,
-      cardSubtitle: Color.lerp(cardSubtitle, other.cardSubtitle, t)!,
-      cardBorder: Color.lerp(cardBorder, other.cardBorder, t)!,
-      inputBackground: Color.lerp(inputBackground, other.inputBackground, t)!,
-      glassBorder: Color.lerp(glassBorder, other.glassBorder, t)!,
-      sectionTitle: Color.lerp(sectionTitle, other.sectionTitle, t)!,
-      warningText: Color.lerp(warningText, other.warningText, t)!,
-      successText: Color.lerp(successText, other.successText, t)!,
-      cardFill: Color.lerp(cardFill, other.cardFill, t)!,
-      sheetBackground: Color.lerp(sheetBackground, other.sheetBackground, t)!,
-      iconSecondary: Color.lerp(iconSecondary, other.iconSecondary, t)!,
-      shadowColor: Color.lerp(shadowColor, other.shadowColor, t)!,
-    );
-  }
-
-  // Light Theme Instance
-  static const light = RitmoColors(
-    bg: Color(0xffF2F3F8),
-    card: Color(0xffFFFFFF),
-    textPrimary: Color(0xff0F172A),
-    textSecondary: Color(0xff475569),
-    primary: Color(0xff6366F1),
-    success: Color(0xff10B981),
-    warning: Color(0xffF59E0B),
-    medicalRed: Color(0xffEF4444),
-    border: Color(0x0f000000),
-    energyGradient: [
-      Color(0xff5B8AF5),
-      Color(0xff9B89FF),
-    ],
-    goldAccent: Color(0xffD4A843),
-    goldGradient: [
-      Color(0xffE5BA5A),
-      Color(0xffD4A843),
-    ],
-    cardTitle: Color(0xff0F172A),
-    cardSubtitle: Color(0xff475569),
-    cardBorder: Color(0x0f000000),
-    inputBackground: Color(0xffF8FAFC),
-    glassBorder: Color(0x0f000000),
-    sectionTitle: Color(0xff0F172A),
-    warningText: Color(0xffEA580C),
-    successText: Color(0xff16A34A),
-    cardFill: Color(0x08000000),
-    sheetBackground: Color(0xffFFFFFF),
-    iconSecondary: Color(0xff475569),
-    shadowColor: Color(0x0a000000),
-  );
-
-  // Dark Theme Instance
-  static const dark = RitmoColors(
-    bg: Color(0xff08090C),
-    card: Color(0xff111319),
-    textPrimary: Color(0xffECEEF3),
-    textSecondary: Color(0xff9AA0AE),
-    primary: Color(0xff5B8AF5),
-    success: Color(0xff34D399),
-    warning: Color(0xffF5B95B),
-    medicalRed: Color(0xffE5736B),
-    border: Color(0xff1C1E24),
-    energyGradient: [
-      Color(0xff6B9EFF),
-      Color(0xff9B89FF),
-    ],
-    goldAccent: Color(0xffE5BA5A),
-    goldGradient: [
-      Color(0xffF5B95B),
-      Color(0xffE5BA5A),
-    ],
-    cardTitle: Color(0xffFFFFFF),
-    cardSubtitle: Color(0xffECEEF3),
-    cardBorder: Color(0xff1C1E24),
-    inputBackground: Color(0x0affffff),
-    glassBorder: Color(0x14ffffff),
-    sectionTitle: Color(0xffFFFFFF),
-    warningText: Color(0xffF5B95B),
-    successText: Color(0xff34D399),
-    cardFill: Color(0x0affffff),
-    sheetBackground: Color(0xff0E1015),
-    iconSecondary: Color(0xffECEEF3),
-    shadowColor: Color(0x66000000),
-  );
+/// کلاس توکن‌های سایه و خط دور کارت (سند طراحی §۳.۶)
+abstract final class RitmoElevation {
+  static const List<BoxShadow> cardLight = [
+    BoxShadow(color: Color(0x0F000000), blurRadius: 12, offset: Offset(0, 2)),
+  ];
+  static const List<BoxShadow> elevatedLight = [
+    BoxShadow(color: Color(0x14000000), blurRadius: 24, offset: Offset(0, 6)),
+  ];
+  static const List<BoxShadow> none = <BoxShadow>[];
+  static const double borderWidthDark = 1.0;
 }
 
 class RitmoTheme {
-  static const Color primaryBg = Color(0xFF0F172A);
-  static const Color accent = Color(0xFF38BDF8);
+  @Deprecated('از RitmoTheme.build استفاده کن')
+  static ThemeData get darkTheme => build(
+        palette: RitmoPalette.jadeNoir,
+        brightness: Brightness.dark,
+      );
 
-  static ThemeData get darkTheme {
+  @Deprecated('از RitmoTheme.build استفاده کن')
+  static ThemeData get lightTheme => build(
+        palette: RitmoPalette.jadeNoir,
+        brightness: Brightness.light,
+      );
+
+  static ThemeData build({
+    required RitmoPalette palette,
+    required Brightness brightness,
+    bool reduceTransparency = false,
+    bool trueBlack = false,
+  }) {
+    var colors = palette.forBrightness(brightness);
+    if (trueBlack && brightness == Brightness.dark) {
+      colors = colors.copyWith(
+        background: const Color(0xFF000000),
+        systemNavBar: const Color(0xFF000000),
+      );
+    }
+
+    final isDark = brightness == Brightness.dark;
+
     return ThemeData(
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: RitmoColors.dark.bg,
-      cardColor: RitmoColors.dark.card,
-      primaryColor: RitmoColors.dark.primary,
       useMaterial3: true,
+      brightness: brightness,
       fontFamily: 'Vazirmatn',
-      textTheme: TextTheme(
-        headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: RitmoColors.dark.textPrimary),
-        headlineMedium: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: RitmoColors.dark.textPrimary),
-        bodyLarge: TextStyle(fontSize: 15, color: RitmoColors.dark.textPrimary),
-        bodyMedium: TextStyle(fontSize: 13, color: RitmoColors.dark.textSecondary),
-      ),
-      colorScheme: ColorScheme.dark(
-        primary: RitmoColors.dark.primary,
-        surface: RitmoColors.dark.card,
-        error: RitmoColors.dark.medicalRed,
-        onPrimary: Colors.white,
-        onSurface: RitmoColors.dark.textPrimary,
-      ),
-      cardTheme: CardThemeData(
-        color: RitmoColors.dark.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xff2C3147)),
-        ),
-        elevation: 0,
-      ),
-      extensions: const [
-        RitmoColors.dark,
+      scaffoldBackgroundColor: colors.background,
+      colorScheme: _schemeFrom(colors, brightness),
+      textTheme: RitmoTypography.textTheme(colors),
+      extensions: <ThemeExtension<dynamic>>[
+        colors,
+        RitmoBehavior(reduceTransparency: reduceTransparency),
       ],
+      cardTheme: CardThemeData(
+        color: colors.surface,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(RitmoRadius.card),
+          side: isDark
+              ? BorderSide(color: colors.border, width: RitmoElevation.borderWidthDark)
+              : BorderSide.none,
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: colors.surfaceSunken,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(RitmoRadius.field),
+          borderSide: BorderSide(color: colors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(RitmoRadius.field),
+          borderSide: BorderSide(color: colors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(RitmoRadius.field),
+          borderSide: BorderSide(color: colors.primary, width: 1.5),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(RitmoRadius.field),
+          borderSide: BorderSide(color: colors.disabled.withValues(alpha: 0.3)),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      dividerTheme: DividerThemeData(
+        color: colors.divider,
+        space: 1,
+        thickness: 1,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: colors.surfaceSunken,
+        disabledColor: colors.disabled,
+        selectedColor: colors.primaryContainer,
+        secondarySelectedColor: colors.primary,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        labelStyle: TextStyle(color: colors.textPrimary, fontSize: 13, fontFamily: 'Vazirmatn'),
+        secondaryLabelStyle: TextStyle(color: colors.onPrimary, fontSize: 13, fontFamily: 'Vazirmatn'),
+        brightness: brightness,
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colors.surfaceElevated,
+        modalBackgroundColor: colors.surfaceElevated,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(RitmoRadius.sheet)),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: colors.surfaceElevated,
+        contentTextStyle: TextStyle(color: colors.textPrimary, fontFamily: 'Vazirmatn'),
+        actionTextColor: colors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(RitmoRadius.field),
+        ),
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: colors.primary,
+        unselectedLabelColor: colors.textSecondary,
+        indicatorColor: colors.primary,
+        labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontFamily: 'Vazirmatn'),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontFamily: 'Vazirmatn'),
+      ),
+      iconTheme: IconThemeData(
+        color: colors.textPrimary,
+        size: 24,
+      ),
     );
   }
 
-  static ThemeData get lightTheme {
-    return ThemeData(
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: RitmoColors.light.bg,
-      cardColor: RitmoColors.light.card,
-      primaryColor: RitmoColors.light.primary,
-      useMaterial3: true,
-      fontFamily: 'Vazirmatn',
-      textTheme: TextTheme(
-        headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: RitmoColors.light.textPrimary),
-        headlineMedium: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: RitmoColors.light.textPrimary),
-        bodyLarge: TextStyle(fontSize: 15, color: RitmoColors.light.textPrimary),
-        bodyMedium: TextStyle(fontSize: 13, color: RitmoColors.light.textSecondary),
-      ),
-      colorScheme: ColorScheme.light(
-        primary: RitmoColors.light.primary,
-        surface: RitmoColors.light.card,
-        error: RitmoColors.light.medicalRed,
-        onSurface: RitmoColors.light.textPrimary,
-      ),
-      cardTheme: CardThemeData(
-        color: RitmoColors.light.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0x0f000000)),
-        ),
-        elevation: 0,
-      ),
-      extensions: const [
-        RitmoColors.light,
-      ],
+  static ColorScheme _schemeFrom(RitmoColors colors, Brightness brightness) {
+    if (brightness == Brightness.dark) {
+      return ColorScheme.dark(
+        primary: colors.primary,
+        onPrimary: colors.onPrimary,
+        primaryContainer: colors.primaryContainer,
+        secondary: colors.accent,
+        onSecondary: colors.textOnColor,
+        secondaryContainer: colors.accentContainer,
+        surface: colors.surface,
+        onSurface: colors.textPrimary,
+        surfaceContainerHighest: colors.surfaceSunken,
+        error: colors.error,
+        onError: colors.textOnColor,
+        outline: colors.border,
+        outlineVariant: colors.divider,
+      );
+    }
+    return ColorScheme.light(
+      primary: colors.primary,
+      onPrimary: colors.onPrimary,
+      primaryContainer: colors.primaryContainer,
+      secondary: colors.accent,
+      onSecondary: colors.textOnColor,
+      secondaryContainer: colors.accentContainer,
+      surface: colors.surface,
+      onSurface: colors.textPrimary,
+      surfaceContainerHighest: colors.surfaceSunken,
+      error: colors.error,
+      onError: colors.textOnColor,
+      outline: colors.border,
+      outlineVariant: colors.divider,
     );
   }
 
-  /// گرادیان پس‌زمینه‌ی زمان‌محور: رنگ‌مایه با ساعت روز به‌آرامی تغییر می‌کند
-  /// (سحر/روز/غروب/شب) — بدون انیمیشن دائمی، فقط انتخاب پالت هنگام build.
+  /// گرادیان پس‌زمینه زمان‌محور: از توکن پالت فعال تغذیه می‌کند
   static List<Color> timeAwareGradient(Brightness brightness, {DateTime? now}) {
     final hour = (now ?? DateTime.now()).hour;
     final isDark = brightness == Brightness.dark;
 
     if (isDark) {
       if (hour >= 5 && hour < 9) {
-        // سحرگاه: شفق قطبی تیره با تن مایل به آبی-سبز ملایم (Teal slate)
         return const [Color(0xff060C0E), Color(0xff101D21)];
       } else if (hour >= 9 && hour < 17) {
-        // روز: گرافیتی مدرن و فضای عمیق خنثی (Deep Graphite)
         return const [Color(0xff0B0C10), Color(0xff161A22)];
       } else if (hour >= 17 && hour < 21) {
-        // غروب: سرمه‌ای-خاکستری ملایم و تیره (Twilight Slate Blue)
         return const [Color(0xff080B12), Color(0xff121824)];
       }
-      // شب: مشکی مخملی عمیق با هاله بسیار ملایم کیهانی (Velvet Cosmic Indigo)
       return const [Color(0xff040407), Color(0xff0D0C15)];
     }
 
     if (hour >= 5 && hour < 9) {
-      // سحرگاه: سفید سحری ملایم
       return const [Color(0xffF1F4FA), Color(0xffF8F6FC)];
     } else if (hour >= 9 && hour < 17) {
-      // روز: سفید و خنثی با هاله گرم
       return const [Color(0xffF4F6FB), Color(0xffFAF8F5)];
     } else if (hour >= 17 && hour < 21) {
-      // غروب: سفید صورتی ملایم
       return const [Color(0xffF6F4FA), Color(0xffFCF6F2)];
     }
-    // شب: سفید خاکستری آرام
     return const [Color(0xffF0F2F9), Color(0xffF6F5FA)];
   }
 
@@ -471,28 +433,27 @@ class RitmoTheme {
     final colors = context.colors;
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(color: colors.textSecondary, fontSize: 13),
+      labelStyle: TextStyle(color: colors.textSecondary, fontSize: 13, fontFamily: 'Vazirmatn'),
       prefixIcon: Icon(icon, color: colors.primary, size: 20),
       filled: true,
-      fillColor: colors.card,
+      fillColor: colors.surfaceSunken,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(RitmoRadius.field),
         borderSide: BorderSide(color: colors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(RitmoRadius.field),
         borderSide: BorderSide(color: colors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: colors.primary),
+        borderRadius: BorderRadius.circular(RitmoRadius.field),
+        borderSide: BorderSide(color: colors.primary, width: 1.5),
       ),
     );
   }
 }
 
 class RitmoGlassCard extends StatelessWidget {
-
   const RitmoGlassCard({
     super.key,
     required this.child,
@@ -501,6 +462,7 @@ class RitmoGlassCard extends StatelessWidget {
     this.borderRadius,
     this.border,
   });
+
   final Widget child;
   final double blurSigma;
   final Color? color;
@@ -513,18 +475,19 @@ class RitmoGlassCard extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return ClipRRect(
-      borderRadius: borderRadius ?? BorderRadius.circular(16),
+      borderRadius: borderRadius ?? BorderRadius.circular(RitmoRadius.card),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
         child: Container(
           decoration: BoxDecoration(
-            color: color ?? colors.card.withValues(alpha: 0.4),
-            borderRadius: borderRadius ?? BorderRadius.circular(16),
-            border: border ?? Border.all(
-              color: isDarkMode
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.white.withValues(alpha: 0.45),
-            ),
+            color: color ?? colors.glassTint,
+            borderRadius: borderRadius ?? BorderRadius.circular(RitmoRadius.card),
+            border: border ??
+                Border.all(
+                  color: isDarkMode
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.white.withValues(alpha: 0.45),
+                ),
           ),
           child: child,
         ),
@@ -534,7 +497,6 @@ class RitmoGlassCard extends StatelessWidget {
 }
 
 class RitmoGlassCardLight extends StatelessWidget {
-
   const RitmoGlassCardLight({
     super.key,
     required this.child,
@@ -544,6 +506,7 @@ class RitmoGlassCardLight extends StatelessWidget {
     this.border,
     this.shadows,
   });
+
   final Widget child;
   final double blurSigma;
   final double borderRadius;
@@ -554,17 +517,13 @@ class RitmoGlassCardLight extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: shadows ?? [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDarkMode ? 0.04 : 0.02),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: shadows ??
+            (isDarkMode ? RitmoElevation.none : RitmoElevation.cardLight),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
@@ -572,14 +531,15 @@ class RitmoGlassCardLight extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
           child: Container(
             decoration: BoxDecoration(
-              color: color ?? (isDarkMode ? Colors.black.withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.65)),
+              color: color ?? colors.glassTint,
               borderRadius: BorderRadius.circular(borderRadius),
-              border: border ?? Border.all(
-                color: isDarkMode
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.white.withValues(alpha: 0.4),
-                width: 1.5,
-              ),
+              border: border ??
+                  Border.all(
+                    color: isDarkMode
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.white.withValues(alpha: 0.4),
+                    width: 1.5,
+                  ),
             ),
             child: child,
           ),
@@ -590,8 +550,10 @@ class RitmoGlassCardLight extends StatelessWidget {
 }
 
 extension RitmoThemeExtension on BuildContext {
-  RitmoColors get colors {
-    final isDark = Theme.of(this).brightness == Brightness.dark;
-    return Theme.of(this).extension<RitmoColors>() ?? (isDark ? RitmoColors.dark : RitmoColors.light);
-  }
+  RitmoColors get colors => Theme.of(this).extension<RitmoColors>()!;
+  RitmoModuleColors get modules => colors.modules;
+  RitmoBehavior get behavior =>
+      Theme.of(this).extension<RitmoBehavior>() ?? const RitmoBehavior(reduceTransparency: false);
+  bool get isDark => Theme.of(this).brightness == Brightness.dark;
+  TextTheme get t => Theme.of(this).textTheme;
 }

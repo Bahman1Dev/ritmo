@@ -280,7 +280,7 @@ ${_domainContext.isNotEmpty ? 'اطلاعات پر پرونده کاربر:\n$_d
             ),
             child: Row(
               children: [
-                Icon(CupertinoIcons.sparkles, color: RitmoTheme.primaryColor),
+                Icon(CupertinoIcons.sparkles, color: context.colors.primary),
                 const SizedBox(width: 10),
                 Text(
                   widget.persona.displayName,

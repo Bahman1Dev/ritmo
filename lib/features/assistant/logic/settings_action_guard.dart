@@ -60,6 +60,11 @@ const Map<String, SettingSchema> kAiSettingsAllowlist = {
     allowed: ['dark', 'light', 'system'],
     humanLabel: 'پوسته اپلیکیشن',
   ),
+  'theme_palette': SettingSchema(
+    type: 'enum',
+    allowed: ['jade_noir', 'copper_dusk', 'rosewood', 'olive_sand', 'graphite_champagne'],
+    humanLabel: 'پالت رنگی',
+  ),
   'max_defer_count': SettingSchema(
     type: 'int',
     min: 0,

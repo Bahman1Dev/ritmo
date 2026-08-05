@@ -57,7 +57,6 @@ class AiSubGoalInput {
 }
 
 class CreateGoalSheet extends StatefulWidget { // For pre-filling templates
-
   const CreateGoalSheet({
     super.key,
     required this.activeGoals,
@@ -67,7 +66,7 @@ class CreateGoalSheet extends StatefulWidget { // For pre-filling templates
     this.templateData,
   });
   final List<Goal> activeGoals;
-  final List<Map<String, dynamic>> routines;
+  final List<RoutineRef> routines;
   final VoidCallback onSaved;
   final Goal? goalToEdit; // If editing an existing goal
   final Map<String, dynamic>? templateData;
@@ -93,6 +92,25 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
 
   // Wizard state
   int _currentStep = 0; // 0: چی؟ (What), 1: کی؟ (When), 2: چطور؟ (How)
+
+  List<Goal> get _eligibleParents {
+    final activeOnly = widget.activeGoals.where((g) => g.status != 'ABANDONED').toList();
+    final editing = widget.goalToEdit;
+    if (editing == null) return activeOnly;
+
+    final banned = <String>{editing.id};
+    final queue = [editing.id];
+    while (queue.isNotEmpty) {
+      final curr = queue.removeAt(0);
+      for (final g in activeOnly) {
+        if (g.parentGoalId == curr && !banned.contains(g.id)) {
+          banned.add(g.id);
+          queue.add(g.id);
+        }
+      }
+    }
+    return activeOnly.where((g) => !banned.contains(g.id)).toList();
+  }
 
   @override
   void initState() {
@@ -230,11 +248,11 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
               final routineType = st['suggestedRoutineType']?.toString().toLowerCase();
               if (routineType != null && routineType != 'null') {
                 final match = widget.routines.firstWhere(
-                  (r) => (r['category'] as String? ?? '').toLowerCase() == routineType,
-                  orElse: () => <String, dynamic>{},
+                  (r) => r.title.toLowerCase().contains(routineType),
+                  orElse: () => RoutineRef(id: '', title: ''),
                 );
-                if (match.isNotEmpty) {
-                  linkedRoutineId = match['id'] as String;
+                if (match.id.isNotEmpty) {
+                  linkedRoutineId = match.id;
                 }
               }
 
@@ -265,11 +283,11 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
           final routineType = st['suggestedRoutineType']?.toString().toLowerCase();
           if (routineType != null && routineType != 'null') {
             final match = widget.routines.firstWhere(
-              (r) => (r['category'] as String? ?? '').toLowerCase() == routineType,
-              orElse: () => <String, dynamic>{},
+              (r) => r.title.toLowerCase().contains(routineType),
+              orElse: () => RoutineRef(id: '', title: ''),
             );
-            if (match.isNotEmpty) {
-              linkedRoutineId = match['id'] as String;
+            if (match.id.isNotEmpty) {
+              linkedRoutineId = match.id;
             }
           }
 
@@ -364,38 +382,27 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
         }
       }
 
-      final database = await DatabaseHelper.instance.database;
       if (widget.goalToEdit != null) {
-        // Editing: update title, description, parentGoalId, goalType, targetDate
-        await database.update(
-          'goals',
-          {
-            'title': _titleController.text.trim(),
-            'description': _descController.text.trim().isNotEmpty ? _descController.text.trim() : null,
-            'parentGoalId': _selectedParentGoalId,
-            'goalType': _selectedGoalType,
-            'targetDate': targetDateStr,
-            'isPrivate': _isPrivate ? 1 : 0,
-            'updatedAt': DateTime.now().millisecondsSinceEpoch,
-          },
-          where: 'id = ?',
-          whereArgs: [widget.goalToEdit!.id],
+        final updated = widget.goalToEdit!.copyWith(
+          title: _titleController.text.trim(),
+          description: _descController.text.trim().isNotEmpty ? _descController.text.trim() : null,
+          parentGoalId: _selectedParentGoalId,
+          goalType: GoalLevel.fromString(_selectedGoalType),
+          targetDate: targetDateStr,
+          isPrivate: _isPrivate ? 1 : 0,
         );
+        await GoalsRepository.instance.updateGoal(updated);
       } else {
-        // Saving new goal
+        // Saving new goal with isPrivate directly
         await GoalsRepository.instance.saveGoal(
           title: _titleController.text.trim(),
           description: _descController.text.trim().isNotEmpty ? _descController.text.trim() : null,
           goalType: _selectedGoalType,
           parentGoalId: _selectedParentGoalId,
           targetDate: targetDateStr,
+          isPrivate: _isPrivate,
           steps: steps,
           subGoals: subGoals,
-        );
-        // Update privacy field for newly created goal
-        await database.rawUpdate(
-          'UPDATE goals SET isPrivate = ? WHERE id = (SELECT id FROM goals ORDER BY createdAt DESC LIMIT 1)',
-          [if (_isPrivate) 1 else 0],
         );
       }
 
@@ -406,6 +413,17 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
       }
     } catch (e) {
       debugPrint('Error saving goal: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e is GoalCycleException ? e.toString() : 'خطا در ذخیره هدف: $e',
+              style: const TextStyle(fontFamily: 'Vazirmatn'),
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     } finally {
       setState(() {
         _isLoading = false;
