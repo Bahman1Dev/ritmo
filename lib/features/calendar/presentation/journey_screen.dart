@@ -17,6 +17,7 @@ import 'package:ritmo/features/calendar/presentation/utils/calendar_motion.dart'
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/calendar_search_delegate.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/domain_selection_sheet.dart';
+import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_month_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_scale_switcher.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_smart_panel.dart';
@@ -573,8 +574,8 @@ class _JourneyScreenState extends State<JourneyScreen> {
                             }
                           },
                           onSlotTap: (slotMinutes) {
-                            final timeStr = TimelineSnappingHelper.minutesToTimeString(slotMinutes);
-                            DomainSelectionSheet.show(context, slotMinutes, timeStr);
+                            final prefilledTime = TimeOfDay(hour: slotMinutes ~/ 60, minute: slotMinutes % 60);
+                            UniversalPlannerSheet.show(context: context, prefilledTime: prefilledTime);
                           },
                           onScheduleUntimed: (item, startMinutes, durMinutes) async {
                             await _controller.scheduleItem(item, startMinutes, durMinutes);

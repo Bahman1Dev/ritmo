@@ -724,11 +724,13 @@ class AIGateway {
     required String goalTitle,
     required String goalDescription,
     required String goalType,
+    List<String>? userRoutines,
   }) async {
     final prompt = AIPromptEngine.buildGoalBreakdownPrompt(
       goalTitle: goalTitle,
       goalDescription: goalDescription,
       goalType: goalType,
+      userRoutines: userRoutines,
     );
 
     final outcome = await _postChat(

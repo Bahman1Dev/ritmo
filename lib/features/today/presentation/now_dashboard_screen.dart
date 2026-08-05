@@ -638,13 +638,12 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
       }
 
       final colors = context.colors;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(msg),
-          backgroundColor: (resultType == 'CANNOT_NOW' || resultType == 'SNOOZED' || resultType == 'SKIPPED')
-              ? colors.warning
-              : colors.success,
-        ),
+      final isWarning = (resultType == 'CANNOT_NOW' || resultType == 'SNOOZED' || resultType == 'SKIPPED');
+      RitmoToast.show(
+        context,
+        msg,
+        icon: isWarning ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+        iconColor: isWarning ? colors.warning : colors.success,
       );
     }
 
@@ -1178,21 +1177,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
 
   void _showToast(String msg) {
     if (!mounted) return;
-    final colors = context.colors;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          msg,
-          style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
-          textAlign: TextAlign.right,
-          textDirection: TextDirection.rtl,
-        ),
-        backgroundColor: colors.card,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    RitmoToast.show(context, msg);
   }
 
 

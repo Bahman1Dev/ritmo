@@ -38,6 +38,7 @@ import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/time/ritmo_clock.dart';
 
 import 'package:ritmo/core/observability/privacy_error_sink.dart';
+import 'package:ritmo/core/observability/ritmo_friendly_error_pane.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -92,76 +93,7 @@ void main() async {
   }
 
   ErrorWidget.builder = (details) {
-    if (kDebugMode) {
-      return Material(
-        color: const Color(0xff121212),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Error details:',
-                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-                const SizedBox(height: 8),
-                SelectableText(
-                  details.exception.toString(),
-                  style: const TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 14),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Stack Trace:',
-                  style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                SelectableText(
-                  details.stack.toString(),
-                  style: const TextStyle(color: Colors.grey, fontFamily: 'monospace', fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Material(
-      color: const Color(0xff12111E),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Color(0xffF43F5E), size: 48),
-              const SizedBox(height: 16),
-              const Text(
-                'مشکلی در پردازش این بخش پیش آمد',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Vazirmatn',
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'اطلاعات شما کاملاً محفوظ است. لطفاً برنامه را مجدداً بارگذاری کنید.',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 13,
-                  fontFamily: 'Vazirmatn',
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return RitmoFriendlyErrorPane(details: details);
   };
 
   // 1. Initialize service locator

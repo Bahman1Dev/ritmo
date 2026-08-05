@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/models/inbox_item.dart';
 import 'package:ritmo/core/services/central_inbox_service.dart';
+import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/assistant/presentation/assistant_screen.dart';
 import 'package:ritmo/features/calendar/presentation/calendar_screen.dart';
 import 'package:ritmo/features/today/presentation/insights_screen.dart';
@@ -18,25 +19,26 @@ class InboxNavigator {
     // 2. Resolve destination module/action
     switch (item.linkModule) {
       case 'routines':
-        unawaited(Navigator.push(
+      case 'calendar':
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const CalendarScreen()),
-        ));
-
-      case 'insights':
-        unawaited(Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const InsightsScreen()),
-        ));
+        );
 
       case 'assistant':
-        unawaited(Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const AssistantScreen()),
-        ));
+        );
 
-      case 'home':
-        if (item.linkAction == 'open_checkin') {
+      case 'insights':
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const InsightsScreen()),
+        );
+
+      case 'today':
+        if (item.linkAction == 'open_morning') {
           unawaited(showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
@@ -59,27 +61,13 @@ class InboxNavigator {
             ),
           ));
         } else {
-          // Fallback: pop current screen or show snackbar
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'بازگشت به نبض زندگی',
-                style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
-              ),
-            ),
-          );
+          // Fallback: pop current screen or show toast
+          RitmoToast.show(context, 'بازگشت به نبض زندگی');
         }
 
       default:
         // Default fallback if linkModule is not recognized
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${item.title} بررسی شد.',
-              style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
-            ),
-          ),
-        );
+        RitmoToast.show(context, 'پیام علامت‌گذاری شد');
     }
   }
 }

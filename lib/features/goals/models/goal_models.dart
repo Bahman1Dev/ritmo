@@ -28,8 +28,8 @@ enum GoalLevel {
       case 'WEEKLY':
         return GoalLevel.weekly;
       case 'DAILY':
+        return GoalLevel.daily;
       default:
-        assert(false, 'GOALS: unknown GoalLevel "$value"');
         debugPrint('GOALS_WARN unknown GoalLevel "$value" -> daily');
         return GoalLevel.daily;
     }

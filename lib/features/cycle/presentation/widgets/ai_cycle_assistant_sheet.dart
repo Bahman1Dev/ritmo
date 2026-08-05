@@ -14,6 +14,7 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/cycle_engine.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/markdown_parser.dart';
+import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/assistant/logic/assistant_action_registry.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -932,20 +933,7 @@ ${_shareData ? 'اطلاعات چرخه کاربر برای شخصی‌سازی 
   }
 
   void _showTopToast(String message, IconData icon, Color iconColor, {VoidCallback? onUndo}) {
-    final overlayState = Overlay.of(context);
-    late OverlayEntry overlayEntry;
-    overlayEntry = OverlayEntry(
-      builder: (context) => _TopToastWidget(
-        message: message,
-        icon: icon,
-        iconColor: iconColor,
-        onDismiss: () {
-          overlayEntry.remove();
-        },
-        onUndo: onUndo,
-      ),
-    );
-    overlayState.insert(overlayEntry);
+    RitmoToast.show(context, message, icon: icon, iconColor: iconColor, onUndo: onUndo);
   }
 
   void _scrollToBottom() {
@@ -1556,114 +1544,6 @@ class _TypingIndicatorState extends State<_TypingIndicator> with SingleTickerPro
           },
         );
       }),
-    );
-  }
-}
-
-class _TopToastWidget extends StatefulWidget {
-
-  const _TopToastWidget({
-    required this.message,
-    required this.icon,
-    required this.iconColor,
-    required this.onDismiss,
-    this.onUndo,
-  });
-  final String message;
-  final IconData icon;
-  final Color iconColor;
-  final VoidCallback onDismiss;
-  final VoidCallback? onUndo;
-
-  @override
-  State<_TopToastWidget> createState() => _TopToastWidgetState();
-}
-
-class _TopToastWidgetState extends State<_TopToastWidget> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<Offset> _offsetAnimation;
-  Timer? _dismissTimer;
-  int _secondsLeft = 5;
-  Timer? _countdownTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _offsetAnimation = Tween<Offset>(begin: const Offset(0, -1.2), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-    _controller.forward();
-    final ms = widget.onUndo != null ? 5200 : 2200;
-    _dismissTimer = Timer(Duration(milliseconds: ms), () {
-      if (mounted) _controller.reverse().then((_) => widget.onDismiss());
-    });
-    if (widget.onUndo != null) {
-      _secondsLeft = 5;
-      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-        if (mounted) { setState(() { _secondsLeft--; }); if (_secondsLeft <= 0) t.cancel(); } else { t.cancel(); }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _dismissTimer?.cancel();
-    _countdownTimer?.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _handleUndo() {
-    _dismissTimer?.cancel();
-    _countdownTimer?.cancel();
-    widget.onUndo!();
-    _controller.reverse().then((_) => widget.onDismiss());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Positioned(
-      top: 64, left: 0, right: 0,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SlideTransition(
-          position: _offsetAnimation,
-          child: Material(
-            color: Colors.transparent,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xff1E2235).withValues(alpha: 0.65) : Colors.white.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06)),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04), blurRadius: 12, offset: const Offset(0, 3))],
-                  ),
-                  child: Directionality(
-                    textDirection: TextDirection.rtl,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(widget.icon, color: widget.iconColor, size: 16),
-                        const SizedBox(width: 6),
-                        Text(widget.message, style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11.5, fontWeight: FontWeight.w600, color: colors.textPrimary)),
-                        if (widget.onUndo != null) ...[const SizedBox(width: 10), Container(width: 1, height: 16, color: colors.textSecondary.withValues(alpha: 0.25)), const SizedBox(width: 10),
-                          GestureDetector(onTap: _handleUndo, child: Text('لغو ($_secondsLeft)', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xff60A5FA)))),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

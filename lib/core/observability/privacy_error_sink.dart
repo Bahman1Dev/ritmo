@@ -35,6 +35,20 @@ class PrivacyErrorSink implements LogSink {
     }
   }
 
+  @override
+  void write(
+    LogLevel level,
+    String message, {
+    Object? error,
+    StackTrace? stack,
+    Map<String, Object?>? context,
+  }) {
+    if (level == LogLevel.error) {
+      final scope = context?['scope']?.toString() ?? 'App';
+      unawaited(logError(scope, message, error, stack));
+    }
+  }
+
   Future<void> logError(String scope, String message, [Object? error, StackTrace? st]) async {
     final exceptionType = error != null ? error.runtimeType.toString() : 'UnknownException';
     final cleanMessage = sanitize(message);

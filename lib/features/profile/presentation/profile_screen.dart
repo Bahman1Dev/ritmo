@@ -26,6 +26,7 @@ import 'package:ritmo/core/theme/ritmo_palette.dart';
 import 'package:ritmo/core/theme/theme_repository.dart';
 import 'package:ritmo/features/profile/presentation/theme_settings_screen.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
+import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
 import 'package:ritmo/features/assistant/presentation/day_plan_template_management_screen.dart';
 import 'package:ritmo/features/cycle/presentation/cycle_screen.dart';

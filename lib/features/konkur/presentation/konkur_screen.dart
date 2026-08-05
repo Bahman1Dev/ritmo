@@ -7,6 +7,7 @@ import 'package:ritmo/core/domain/models/energy_context.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
 import 'package:ritmo/core/utils/ritmo_date_picker.dart';
+import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/core/ux/ritmo_directional_icon.dart';
 import 'package:ritmo/core/ux/ritmo_empty_state.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
@@ -241,12 +242,7 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
 
     if (carried.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ظرفیت امروز پر است', style: TextStyle(fontFamily: 'Vazirmatn')),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        RitmoToast.show(context, 'ظرفیت امروز پر است', icon: Icons.warning_amber_rounded, iconColor: context.colors.warning);
       }
       return;
     }
@@ -260,12 +256,7 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${toPersianDigits(carried.length.toString())} آیتم با موفقیت به امروز منتقل شدند', style: const TextStyle(fontFamily: 'Vazirmatn')),
-          backgroundColor: const Color(0xFF10B981),
-        ),
-      );
+      RitmoToast.show(context, '${toPersianDigits(carried.length.toString())} آیتم با موفقیت به امروز منتقل شدند', icon: Icons.check_circle_outline, iconColor: context.colors.success);
       setState(() {
         _carryOverItems = [];
       });

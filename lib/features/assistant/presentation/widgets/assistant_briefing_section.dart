@@ -36,10 +36,10 @@ class AssistantBriefingSection extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xff06B6D4).withValues(alpha: 0.08),
+                  color: colors.primary.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(CupertinoIcons.sparkles, color: Color(0xff06B6D4), size: 48),
+                child: Icon(CupertinoIcons.sparkles, color: colors.primary, size: 48),
               ),
               const SizedBox(height: 16),
               Text(
@@ -94,15 +94,15 @@ class AssistantBriefingSection extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: const Color(0xff06B6D4).withValues(alpha: 0.25),
+                  color: colors.primary.withValues(alpha: 0.25),
                   width: 1.5,
                 ),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xff06B6D4).withValues(alpha: 0.12),
-                    const Color(0xff8B5CF6).withValues(alpha: 0.08),
+                    colors.primary.withValues(alpha: 0.12),
+                    colors.primary.withValues(alpha: 0.08),
                   ],
                 ),
               ),
@@ -133,7 +133,7 @@ class AssistantBriefingSection extends StatelessWidget {
                                 label: 'روتین‌های امروز',
                                 value: '${briefing.stats['todayCompletions'] ?? 0} از ${briefing.stats['totalRoutines'] ?? 0}',
                                 icon: CupertinoIcons.repeat,
-                                color: const Color(0xff10B981),
+                                color: colors.success,
                                 colors: colors,
                               ),
                             ),
@@ -143,7 +143,7 @@ class AssistantBriefingSection extends StatelessWidget {
                                 label: 'اهداف معوقه',
                                 value: '${briefing.stats['overdueGoalsCount'] ?? 0} هدف',
                                 icon: CupertinoIcons.flag_fill,
-                                color: const Color(0xffF59E0B),
+                                color: colors.warning,
                                 colors: colors,
                               ),
                             ),
@@ -271,7 +271,7 @@ class AssistantBriefingSection extends StatelessWidget {
   Widget _buildActionCard(BuildContext context, NextAction item, RitmoColors colors) {
     // Determine category based on type
     var categoryName = 'عمومی';
-    var themeColor = const Color(0xff06B6D4); // Default Cyan
+    var themeColor = colors.primary; // Default Primary
     var categoryIcon = CupertinoIcons.sparkles;
 
     final type = item.action?.type;
@@ -283,41 +283,41 @@ class AssistantBriefingSection extends StatelessWidget {
         case AssistantActionType.editRoutine:
         case AssistantActionType.deleteRoutine:
           categoryName = 'روتین';
-          themeColor = const Color(0xff10B981); // Emerald
+          themeColor = colors.success; // Emerald
           categoryIcon = CupertinoIcons.repeat;
         case AssistantActionType.createGoal:
         case AssistantActionType.editGoal:
         case AssistantActionType.completeGoalStep:
           categoryName = 'هدف';
-          themeColor = const Color(0xffF59E0B); // Amber
+          themeColor = colors.warning; // Amber
           categoryIcon = CupertinoIcons.flag_fill;
         case AssistantActionType.logSleep:
           categoryName = 'خواب';
-          themeColor = const Color(0xff8B5CF6); // Purple
+          themeColor = colors.primary; // Purple / Primary
           categoryIcon = CupertinoIcons.moon_stars_fill;
         case AssistantActionType.logEnergyMood:
           categoryName = 'انرژی و حال';
-          themeColor = const Color(0xffEC4899); // Pink
+          themeColor = colors.primary; // Pink / Primary
           categoryIcon = CupertinoIcons.bolt_horizontal_fill;
         case AssistantActionType.addKonkurItem:
           categoryName = 'کنکور';
-          themeColor = const Color(0xff3B82F6); // Blue
+          themeColor = colors.primary; // Blue / Primary
           categoryIcon = CupertinoIcons.book_fill;
         case AssistantActionType.createCourse:
           categoryName = 'درس';
-          themeColor = const Color(0xffEF4444); // Red
+          themeColor = colors.medicalRed; // Red
           categoryIcon = CupertinoIcons.play_rectangle_fill;
         case AssistantActionType.createWorshipItem:
           categoryName = 'عبادت';
-          themeColor = const Color(0xff14B8A6); // Teal
+          themeColor = colors.goldAccent; // Gold / Teal
           categoryIcon = CupertinoIcons.moon_fill;
         case AssistantActionType.logReflection:
           categoryName = 'بازتاب';
-          themeColor = const Color(0xff84CC16); // Lime
+          themeColor = colors.success; // Lime / Success
           categoryIcon = CupertinoIcons.text_quote;
         default:
           categoryName = 'سیستم';
-          themeColor = const Color(0xff06B6D4); // Cyan
+          themeColor = colors.primary; // Cyan / Primary
           categoryIcon = CupertinoIcons.sparkles;
       }
     }

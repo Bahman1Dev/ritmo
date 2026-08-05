@@ -354,7 +354,7 @@ class _AllPlansScreenState extends State<AllPlansScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'همه برنامه‌ها',
+                  'مخزن روتین‌ها',
                   style: TextStyle(
                     fontFamily: 'Vazirmatn',
                     fontSize: 20,

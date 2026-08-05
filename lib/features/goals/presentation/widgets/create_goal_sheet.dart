@@ -82,9 +82,15 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
   String? _selectedParentGoalId;
   DateTime? _targetDate;
 
-  final List<GoalStepInput> _stepInputs = [];
+  List<GoalStepInput> _stepInputs = [];
   List<AiSubGoalInput> _aiSubGoals = [];
   List<GoalStepInput> _aiDirectSteps = [];
+
+  // AI Smart Breakdown Refinement & Strategy State
+  String? _aiSmartTitle;
+  String? _aiSmartDesc;
+  List<String> _aiRisks = [];
+  String? _aiContingencyPlan;
 
   bool _isBreakingDown = false;
   bool _isLoading = false;
@@ -224,16 +230,43 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
       return;
     }
 
+    final stepsNotifier = ValueNotifier<int>(0);
+
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _AiBreakdownProgressSheet(stepsNotifier: stepsNotifier),
+    );
+
     setState(() {
       _isBreakingDown = true;
     });
 
     try {
-      final breakdown = await AIGateway.instance.breakDownGoal(
+      stepsNotifier.value = 0; // Stage 1: Analyzing title
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      stepsNotifier.value = 1; // Stage 2: Extracting sub-goals
+      final userRoutinesList = widget.routines.map((r) => r.title).where((t) => t.isNotEmpty).toList();
+
+      final breakdownFuture = AIGateway.instance.breakDownGoal(
         goalTitle: title,
         goalDescription: _descController.text.trim(),
         goalType: _selectedGoalType,
+        userRoutines: userRoutinesList,
       );
+
+      final breakdown = await breakdownFuture;
+
+      stepsNotifier.value = 2; // Stage 3: Matching active routines & Habit Stacking
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      final smartTitle = breakdown['smartTitle'] as String?;
+      final smartDesc = breakdown['smartDescription'] as String?;
+      final potentialRisks = breakdown['potentialRisks'] is List ? List<String>.from(breakdown['potentialRisks']) : <String>[];
+      final contingencyPlan = breakdown['contingencyPlan'] as String?;
 
       final parsedSubGoals = <AiSubGoalInput>[];
       if (breakdown['subGoals'] != null && breakdown['subGoals'] is List) {
@@ -243,7 +276,7 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
             for (final st in sg['steps']) {
               final offsetDays = st['offsetDays'] as int? ?? 0;
               final scheduledDate = DateTime.now().add(Duration(days: offsetDays));
-              
+
               String? linkedRoutineId;
               final routineType = st['suggestedRoutineType']?.toString().toLowerCase();
               if (routineType != null && routineType != 'null') {
@@ -299,21 +332,36 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
         }
       }
 
+      stepsNotifier.value = 3; // Stage 4: Finalizing
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Dismiss progress dialog
+      }
+
       setState(() {
+        _aiSmartTitle = smartTitle;
+        _aiSmartDesc = smartDesc;
+        _aiRisks = potentialRisks;
+        _aiContingencyPlan = contingencyPlan;
         _aiSubGoals = parsedSubGoals;
         _aiDirectSteps = parsedDirectSteps;
-        // Swap manual steps with AI steps for easy edit
         if (_aiDirectSteps.isNotEmpty) {
           _stepInputs.clear();
           _stepInputs.addAll(_aiDirectSteps);
         }
       });
     } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
       debugPrint('Error breaking down goal: $e');
     } finally {
-      setState(() {
-        _isBreakingDown = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isBreakingDown = false;
+        });
+      }
     }
   }
 
@@ -1011,6 +1059,9 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
         ),
         const SizedBox(height: 12),
 
+        // AI Strategy & Risk Analysis Card (Pre-Mortem)
+        _buildAiRiskStrategyCard(colors),
+
         // Steps Builder
         ListView.builder(
           shrinkWrap: true,
@@ -1040,6 +1091,137 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildAiRiskStrategyCard(RitmoColors colors) {
+    if (_aiSmartTitle == null && _aiRisks.isEmpty && _aiContingencyPlan == null) {
+      return const SizedBox.shrink();
+    }
+
+    final isDark = context.isDark;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.08 : 0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(CupertinoIcons.shield_fill, color: Color(0xFFF59E0B), size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'تحلیل استراتژیک و رفع موانع AI (Pre-Mortem)',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Vazirmatn',
+                  color: colors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          if (_aiSmartTitle != null && _aiSmartTitle != _titleController.text) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'عنوان پیشنهادی SMART: «$_aiSmartTitle»',
+                      style: TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: colors.primary,
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        _titleController.text = _aiSmartTitle!;
+                        if (_aiSmartDesc != null && _aiSmartDesc!.isNotEmpty) {
+                          _descController.text = _aiSmartDesc!;
+                        }
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colors.primary,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'اعمال',
+                        style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (_aiRisks.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'موانع محتمل و خطرات مسیر:',
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn', color: colors.textSecondary),
+            ),
+            const SizedBox(height: 6),
+            ..._aiRisks.map((risk) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, size: 14, color: Color(0xFFEF4444)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          risk,
+                          style: TextStyle(fontSize: 11.5, fontFamily: 'Vazirmatn', color: colors.textPrimary),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+          if (_aiContingencyPlan != null && _aiContingencyPlan!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colors.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: colors.success.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.lightbulb_fill, size: 16, color: colors.success),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'راهکار پشتیبان: $_aiContingencyPlan',
+                      style: TextStyle(fontSize: 11.5, fontFamily: 'Vazirmatn', color: colors.textPrimary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -1207,6 +1389,149 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AiBreakdownProgressSheet extends StatelessWidget {
+  const _AiBreakdownProgressSheet({required this.stepsNotifier});
+  final ValueNotifier<int> stepsNotifier;
+
+  static const _stageTitles = [
+    '🔍 تحلیل عنوان، نوع و افق زمانی هدف...',
+    '🧠 استخراج اهداف خرد و استراتژی اجرایی...',
+    '🔗 تطبیق گام‌ها با روتین‌های فعال شما...',
+    '✨ ساختاردهی و افزودن گام‌ها به فرم...',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = context.isDark;
+
+    return ValueListenableBuilder<int>(
+      valueListenable: stepsNotifier,
+      builder: (context, currentStepIndex, _) {
+        return Material(
+          color: Colors.transparent,
+          child: Container(
+            margin: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E2235) : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                )
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(CupertinoIcons.wand_stars, color: Color(0xFFF59E0B), size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'هوش مصنوعی در حال تحلیل هدف...',
+                            style: TextStyle(
+                              fontFamily: 'Vazirmatn',
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'مراحل شکستن و برنامه‌ریزی هوشمند',
+                            style: TextStyle(
+                              fontFamily: 'Vazirmatn',
+                              fontSize: 12,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Divider(height: 1, color: colors.border),
+                const SizedBox(height: 16),
+                ...List.generate(_stageTitles.length, (idx) {
+                  final isDone = idx < currentStepIndex;
+                  final isCurrent = idx == currentStepIndex;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDone
+                                ? colors.success
+                                : (isCurrent ? colors.primary : colors.surfaceElevated),
+                            border: Border.all(
+                              color: isDone
+                                  ? colors.success
+                                  : (isCurrent ? colors.primary : colors.border),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: isDone
+                              ? const Icon(Icons.check, size: 14, color: Colors.white)
+                              : (isCurrent
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(4),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : null),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _stageTitles[idx],
+                            style: TextStyle(
+                              fontFamily: 'Vazirmatn',
+                              fontSize: 13,
+                              fontWeight: isCurrent || isDone ? FontWeight.bold : FontWeight.normal,
+                              color: isDone
+                                  ? colors.textPrimary
+                                  : (isCurrent ? colors.primary : colors.textSecondary),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

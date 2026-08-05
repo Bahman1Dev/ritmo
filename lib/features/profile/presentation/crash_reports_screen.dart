@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ritmo/core/observability/privacy_error_sink.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/core/ux/ritmo_pressable.dart';
 
 class CrashReportsScreen extends StatefulWidget {
@@ -104,11 +105,9 @@ class _CrashReportsScreenState extends State<CrashReportsScreen> {
                                   actions: [
                                     TextButton(
                                       onPressed: () {
-                                        Clipboard.setData(ClipboardData(text: text));
-                                        Navigator.pop(ctx);
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('گزارش در حافظه کپی شد')),
-                                        );
+                                         Clipboard.setData(ClipboardData(text: text));
+                                         Navigator.pop(ctx);
+                                         RitmoToast.show(context, 'گزارش در حافظه کپی شد');
                                       },
                                       child: const Text('کپی متن'),
                                     ),

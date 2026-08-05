@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:ritmo/core/services/backup_passcode_manager.dart';
 import 'package:ritmo/core/services/google_drive_backup_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/core/ux/ritmo_directional_icon.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 import 'package:ritmo/core/widgets/restart_widget.dart';
@@ -476,23 +477,11 @@ class _BackupScreenState extends State<BackupScreen> {
     if (!mounted) return;
     if (isError) {
       RitmoHaptics.warning();
+      RitmoToast.show(context, msg, icon: Icons.error_outline, iconColor: context.colors.medicalRed);
     } else {
       RitmoHaptics.success();
+      RitmoToast.show(context, msg, icon: Icons.check_circle_outline, iconColor: context.colors.success);
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          msg,
-          style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, color: Colors.white),
-          textAlign: TextAlign.right,
-          textDirection: TextDirection.rtl,
-        ),
-        backgroundColor: isError ? Colors.redAccent : Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   String _formatSize(int bytes) {

@@ -17,7 +17,7 @@ class AssistantActionPreviewSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = isDark ? const Color(0xffD4A843) : const Color(0xff06B6D4);
+    final primaryColor = isDark ? colors.goldAccent : colors.primary;
 
     // Build key-value list of payload for user review
     final payloadWidgets = <Widget>[];
@@ -47,12 +47,12 @@ class AssistantActionPreviewSheet extends StatelessWidget {
 
     final containerDecoration = isDark
         ? BoxDecoration(
-            color: const Color(0xff0C0C0C),
+            color: colors.sheetBackground,
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: const Color(0xffD4A843).withValues(alpha: 0.35), width: 1.5),
+            border: Border.all(color: colors.goldAccent.withValues(alpha: 0.35), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xffD4A843).withValues(alpha: 0.08),
+                color: colors.goldAccent.withValues(alpha: 0.08),
                 blurRadius: 24,
                 spreadRadius: 2,
               )
@@ -62,9 +62,9 @@ class AssistantActionPreviewSheet extends StatelessWidget {
 
     final detailCardDecoration = isDark
         ? BoxDecoration(
-            color: const Color(0xff141414),
+            color: colors.card,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xffD4A843).withValues(alpha: 0.15)),
+            border: Border.all(color: colors.goldAccent.withValues(alpha: 0.15)),
           )
         : null;
 
@@ -81,7 +81,7 @@ class AssistantActionPreviewSheet extends StatelessWidget {
               width: 40,
               height: 5,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xffD4A843).withValues(alpha: 0.3) : colors.textSecondary.withValues(alpha: 0.2),
+                color: isDark ? colors.goldAccent.withValues(alpha: 0.3) : colors.textSecondary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -204,7 +204,7 @@ class AssistantActionPreviewSheet extends StatelessWidget {
                     style: TextButton.styleFrom(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(color: isDark ? const Color(0xffD4A843).withValues(alpha: 0.35) : colors.border),
+                        side: BorderSide(color: isDark ? colors.goldAccent.withValues(alpha: 0.35) : colors.border),
                       ),
                     ),
                     child: Text(
