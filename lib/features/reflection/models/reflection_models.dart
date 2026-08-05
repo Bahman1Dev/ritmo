@@ -38,6 +38,8 @@ class ReflectionEntry {
   final int isPrivate;
   final int createdAt;
 
+  String? get goodThing => wins ?? gratitude ?? reflectionText;
+
   Map<String, dynamic> toMap() {
     return {
       'id': date,

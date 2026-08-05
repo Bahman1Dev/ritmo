@@ -4,6 +4,10 @@ import 'package:sqflite/sqflite.dart';
 
 import 'package:ritmo/core/logging/ritmo_logger.dart';
 
+import 'package:ritmo/core/database/migration/migrations/migration_v66_worship_seed.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v67_worship_schema.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v68_worship_backfill.dart';
+
 class MigrationRunner {
   static final List<Migration> _migrations = [
     MigrationV2(),
@@ -69,6 +73,10 @@ class MigrationRunner {
     MigrationV62(), // T3(p045): deduplicate routine_completions for non-interval routines
     MigrationV63(), // Fix active_timers schema alignment & legacy NOT NULL constraint compatibility
     MigrationV64(), // Prompt 046 goals schema migration M1-M4
+    MigrationV65(), // Prompt 049 wellbeing daily table and performance indexes
+    MigrationV66(), // Prompt 048 M1: Move seeding into migration
+    MigrationV67(), // Prompt 048 M2: Additive schema for worship
+    MigrationV68(), // Prompt 048 M3: Backfill completions
   ];
 
   static Future<void> run(Database db, int oldVersion, int newVersion) async {

@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/localization/locale_repository.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/theme/theme_repository.dart';
+import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/core/widgets/ritmo/ritmo_glass_surface.dart';
 import 'package:ritmo/features/assistant/presentation/assistant_screen.dart';
 import 'package:ritmo/features/calendar/presentation/calendar_screen.dart';
@@ -35,6 +37,7 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
   int _currentIndex = 2; // Default starting tab: Home Dashboard (index 2)
   final List<Widget?> _screens = List.filled(5, null);
   StreamSubscription<RitmoEvent>? _eventSubscription;
+  DateTime? _lastBackPressTime;
 
   @override
   void initState() {
@@ -129,78 +132,107 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: Stack(
-        children: [
-          // Background Gradient (Theme-Aware)
-          Positioned.fill(
-            child: RitmoTheme.buildBackgroundContainer(
-              context: context,
-              child: const SizedBox.expand(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+
+        // If user is on a tab other than Home Dashboard (index 2), switch to Home first
+        if (_currentIndex != 2) {
+          setState(() {
+            _currentIndex = 2;
+            _screens[2] ??= _buildScreen(2);
+          });
+          return;
+        }
+
+        final now = DateTime.now();
+        if (_lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          RitmoToast.show(
+            context,
+            'برای خروج، دوباره دکمه برگشت را بزنید',
+            icon: Icons.exit_to_app_rounded,
+            iconColor: const Color(0xffF59E0B),
+          );
+        } else {
+          await SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: Stack(
+          children: [
+            // Background Gradient (Theme-Aware)
+            Positioned.fill(
+              child: RitmoTheme.buildBackgroundContainer(
+                context: context,
+                child: const SizedBox.expand(),
+              ),
             ),
-          ),
 
-          // Current Screen View
-          Positioned.fill(
-            child: SafeArea(
-              bottom: false,
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (notification) {
-                  if (notification is ScrollUpdateNotification) {
-                    final currentOffset = notification.metrics.pixels;
-                    final delta = currentOffset - _lastScrollOffset;
+            // Current Screen View
+            Positioned.fill(
+              child: SafeArea(
+                bottom: false,
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    if (notification is ScrollUpdateNotification) {
+                      final currentOffset = notification.metrics.pixels;
+                      final delta = currentOffset - _lastScrollOffset;
 
-                    if (delta > 10 && _isNavBarVisible && currentOffset > 50) {
-                      setState(() {
-                        _isNavBarVisible = false;
-                      });
-                    } else if (delta < -10 && !_isNavBarVisible) {
-                      setState(() {
-                        _isNavBarVisible = true;
-                      });
+                      if (delta > 10 && _isNavBarVisible && currentOffset > 50) {
+                        setState(() {
+                          _isNavBarVisible = false;
+                        });
+                      } else if (delta < -10 && !_isNavBarVisible) {
+                        setState(() {
+                          _isNavBarVisible = true;
+                        });
+                      }
+
+                      _lastScrollOffset = currentOffset;
                     }
-
-                    _lastScrollOffset = currentOffset;
-                  }
-                  return false;
-                },
-                child: IndexedStack(
-                  index: _currentIndex,
-                  children: List.generate(5, (index) {
-                    return _screens[index] ?? const SizedBox.shrink();
-                  }),
+                    return false;
+                  },
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: List.generate(5, (index) {
+                      return _screens[index] ?? const SizedBox.shrink();
+                    }),
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // Bottom Navigation Bar
-          if (MediaQuery.of(context).viewInsets.bottom == 0)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 16 + MediaQuery.of(context).padding.bottom,
-              child: AnimatedSlide(
-                offset: _isNavBarVisible ? Offset.zero : const Offset(0, 2),
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeInOut,
-                child: AnimatedOpacity(
-                  opacity: _isNavBarVisible ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 180),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 380),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _buildCustomBottomBar(),
+            // Bottom Navigation Bar
+            if (MediaQuery.of(context).viewInsets.bottom == 0)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 16 + MediaQuery.of(context).padding.bottom,
+                child: AnimatedSlide(
+                  offset: _isNavBarVisible ? Offset.zero : const Offset(0, 2),
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeInOut,
+                  child: AnimatedOpacity(
+                    opacity: _isNavBarVisible ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 180),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 380),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _buildCustomBottomBar(),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

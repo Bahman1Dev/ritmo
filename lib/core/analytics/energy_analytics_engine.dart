@@ -33,19 +33,46 @@ class EnergyAnalyticsEngineInput {
 }
 
 class EnergyAnalyticsOutput {
-
   EnergyAnalyticsOutput({
     this.peakPerformanceWindow,
     this.mostProductiveWeekday,
     this.mostFatiguedWindow,
     this.currentDynamicEnergy = 0.0,
     this.currentDynamicEnergyExplanations = const [],
+    this.sampleCount = 0,
+    this.avgLevel,
+    this.isAiDerived = false,
   });
   final String? peakPerformanceWindow;
   final String? mostProductiveWeekday;
   final String? mostFatiguedWindow;
   final double currentDynamicEnergy;
   final List<String> currentDynamicEnergyExplanations;
+  final int sampleCount;
+  final double? avgLevel;
+  final bool isAiDerived;
+
+  EnergyAnalyticsOutput copyWith({
+    String? peakPerformanceWindow,
+    String? mostProductiveWeekday,
+    String? mostFatiguedWindow,
+    double? currentDynamicEnergy,
+    List<String>? currentDynamicEnergyExplanations,
+    int? sampleCount,
+    double? avgLevel,
+    bool? isAiDerived,
+  }) {
+    return EnergyAnalyticsOutput(
+      peakPerformanceWindow: peakPerformanceWindow ?? this.peakPerformanceWindow,
+      mostProductiveWeekday: mostProductiveWeekday ?? this.mostProductiveWeekday,
+      mostFatiguedWindow: mostFatiguedWindow ?? this.mostFatiguedWindow,
+      currentDynamicEnergy: currentDynamicEnergy ?? this.currentDynamicEnergy,
+      currentDynamicEnergyExplanations: currentDynamicEnergyExplanations ?? this.currentDynamicEnergyExplanations,
+      sampleCount: sampleCount ?? this.sampleCount,
+      avgLevel: avgLevel ?? this.avgLevel,
+      isAiDerived: isAiDerived ?? this.isAiDerived,
+    );
+  }
 }
 
 class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, EnergyAnalyticsOutput> {
@@ -106,12 +133,32 @@ class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, 
       explanations: explanations,
     );
 
+    final sampleCount = input.energyLogs.length;
+    double? avgLevel;
+    if (sampleCount > 0) {
+      double total = 0;
+      for (final l in input.energyLogs) {
+        final lvl = (l['energyLevel'] as String? ?? 'MEDIUM').toUpperCase();
+        if (lvl == 'HIGH') {
+          total += 3.0;
+        } else if (lvl == 'LOW') {
+          total += 1.0;
+        } else {
+          total += 2.0;
+        }
+      }
+      avgLevel = total / sampleCount;
+    }
+
     return EnergyAnalyticsOutput(
       peakPerformanceWindow: peak,
       mostProductiveWeekday: productive,
       mostFatiguedWindow: fatigued,
       currentDynamicEnergy: currentEnergy,
       currentDynamicEnergyExplanations: explanations,
+      sampleCount: sampleCount,
+      avgLevel: avgLevel,
+      isAiDerived: false,
     );
   }
 
@@ -124,10 +171,9 @@ class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, 
   @override
   List<Type> dependencies() => [];
 
-  /// Converts UTC epoch milliseconds to Iran Standard Time (UTC+3:30).
+  /// Converts epoch milliseconds to local DateTime.
   static DateTime toIranLocal(int epochMillis) {
-    final utc = DateTime.fromMillisecondsSinceEpoch(epochMillis, isUtc: true);
-    return utc.add(const Duration(hours: 3, minutes: 30));
+    return DateTime.fromMillisecondsSinceEpoch(epochMillis).toLocal();
   }
 
   /// Calculates the 3-hour peak performance window.
@@ -146,7 +192,7 @@ class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, 
 
     for (var h = 0; h < 24; h++) {
       final hEnergyLogs = energyLogs.where((log) {
-        final local = toIranLocal(log['loggedAt'] as int);
+        final local = DateTime.fromMillisecondsSinceEpoch(log['loggedAt'] as int);
         return local.hour == h;
       }).toList();
 
@@ -169,7 +215,7 @@ class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, 
       }
 
       final hCompletions = routineCompletions.where((comp) {
-        final local = toIranLocal(comp['completionTime'] as int);
+        final local = DateTime.fromMillisecondsSinceEpoch(comp['completionTime'] as int);
         return local.hour == h;
       }).toList();
 
@@ -220,7 +266,7 @@ class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, 
     final weekdayDates = { for (final k in Iterable.generate(7, (i) => i + 1)) k : <String>{} };
 
     for (final comp in routineCompletions) {
-      final local = toIranLocal(comp['completionTime'] as int);
+      final local = DateTime.fromMillisecondsSinceEpoch(comp['completionTime'] as int);
       final date = comp['completionDate'] as String;
       weekdayDates[local.weekday]?.add(date);
     }
@@ -235,7 +281,7 @@ class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, 
 
     for (var w = 1; w <= 7; w++) {
       final wCompletions = routineCompletions.where((comp) {
-        final local = toIranLocal(comp['completionTime'] as int);
+        final local = DateTime.fromMillisecondsSinceEpoch(comp['completionTime'] as int);
         return local.weekday == w;
       }).toList();
 
@@ -291,12 +337,12 @@ class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, 
 
     for (var h = 0; h < 24; h++) {
       final lowEnergyCount = energyLogs.where((log) {
-        final local = toIranLocal(log['loggedAt'] as int);
+        final local = DateTime.fromMillisecondsSinceEpoch(log['loggedAt'] as int);
         return local.hour == h && (log['energyLevel'] as String).toLowerCase() == 'low';
       }).length;
 
       final missedRoutinesCount = routineCompletions.where((comp) {
-        final local = toIranLocal(comp['completionTime'] as int);
+        final local = DateTime.fromMillisecondsSinceEpoch(comp['completionTime'] as int);
         final type = comp['resultType'] as String? ?? 'FULL';
         return local.hour == h && type == 'CANNOT_NOW';
       }).length;

@@ -10,6 +10,8 @@ import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/cycle_engine.dart';
+import 'package:ritmo/core/theme/theme_repository.dart';
+import 'package:ritmo/core/util/ritmo_number.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/ux/ritmo_empty_state.dart';
@@ -328,13 +330,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
   }
 
   String _toPersianDigits(String input) {
-    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-    var result = input;
-    for (var i = 0; i < english.length; i++) {
-      result = result.replaceAll(english[i], persian[i]);
-    }
-    return result;
+    return RitmoNumber.fa(input);
   }
 
   String _formatJalaliDate(DateTime dt) {

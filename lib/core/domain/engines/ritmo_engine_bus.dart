@@ -122,7 +122,8 @@ class RitmoEngineBus {
   final EngineCacheStore cacheStore = EngineCacheStore();
   final EngineDiagnostics diagnostics = EngineDiagnostics();
 
-  Future<Output> execute<Input, Output>(Type engineType, Input input) async {
+  Future<Output> execute<Input, Output>(dynamic engineOrType, Input input) async {
+    final Type engineType = engineOrType is Type ? engineOrType : (engineOrType as CachedEngine).runtimeType;
     final engine = registry.get<Input, Output>(engineType);
 
     // Check if cache is valid

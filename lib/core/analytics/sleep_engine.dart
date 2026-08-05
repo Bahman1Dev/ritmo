@@ -1,9 +1,11 @@
-import 'dart:math';
+import 'dart:math' as math;
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
+import 'package:ritmo/core/util/ritmo_date.dart';
+import 'package:ritmo/core/util/ritmo_number.dart';
+import 'package:ritmo/core/util/safe_map.dart';
 import 'package:ritmo/features/sleep/models/sleep_models.dart';
 
 class SleepEngineInput {
-
   SleepEngineInput({
     required this.sleepLogs,
     required this.target,
@@ -21,16 +23,16 @@ class SleepEngineInput {
 }
 
 class SleepEngineOutput {
-
   SleepEngineOutput({
     this.lastNight,
     required this.avgDurationMinutes,
     required this.avgQuality,
     required this.sleepDebtMinutes,
-    required this.consistencyScore,
+    required this.sleepBalanceHours,
+    this.consistencyScore,
     required this.durationTrend,
     required this.qualityTrend,
-    required this.bestBedtimeWindow,
+    this.bestBedtimeWindow,
     this.sleepEnergyCorrelation,
     this.sleepMoodCorrelation,
     required this.correlationInsight,
@@ -39,28 +41,34 @@ class SleepEngineOutput {
   final double avgDurationMinutes;
   final double avgQuality;
   final int sleepDebtMinutes;
-  final int consistencyScore; // 0..100
+  final double sleepBalanceHours; // T-3.2 / P-7
+  final double? consistencyScore; // T-1.4: 0..100 or null
   final List<double> durationTrend;
   final List<double> qualityTrend;
-  final String bestBedtimeWindow;
+  final String? bestBedtimeWindow; // T-1.7: String? or null
   final double? sleepEnergyCorrelation; // -1..1
   final double? sleepMoodCorrelation;   // -1..1
   final String correlationInsight;
 }
 
 class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
+  static const int minLogsForConsistency = 5;
+  static const int minPointsForCorrelation = 30;
+  static const int minSamplesPerBedtimeWindow = 4;
+  static const double halfLifeDays = 7.0;
+
   @override
   Future<SleepEngineOutput> calculate(SleepEngineInput input) async {
-    final cleanToday = DateTime(input.today.year, input.today.month, input.today.day);
-    final todayStr = _formatDateIso(cleanToday);
-    final yesterdayStr = _formatDateIso(cleanToday.subtract(const Duration(days: 1)));
+    final cleanToday = RitmoDate.startOfDay(input.today);
+    final todayStr = RitmoDate.dayKey(cleanToday);
+    final yesterdayStr = RitmoDate.dayKey(cleanToday.subtract(const Duration(days: 1)));
 
     // 1. lastNight
     final lastNightLog = input.sleepLogs.where((log) => log.date == yesterdayStr).firstOrNull;
 
     // Filter logs in horizonDays
     final horizonStart = cleanToday.subtract(Duration(days: input.horizonDays));
-    final horizonStartStr = _formatDateIso(horizonStart);
+    final horizonStartStr = RitmoDate.dayKey(horizonStart);
     final activeLogs = input.sleepLogs
         .where((log) => log.date.compareTo(horizonStartStr) >= 0 && log.date.compareTo(todayStr) < 0)
         .toList();
@@ -78,22 +86,27 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
     final avgDuration = activeLogs.isNotEmpty ? totalDuration / activeLogs.length : 0.0;
     final avgQual = activeLogs.isNotEmpty ? totalQuality / activeLogs.length : 0.0;
 
-    // 3. sleepDebtMinutes
+    // 3. sleepDebtMinutes & sleepBalanceHours (T-3.2)
     var debt = 0;
     for (final log in activeLogs) {
       if (log.durationMinutes < input.target.durationMinutes) {
         debt += input.target.durationMinutes - log.durationMinutes;
       }
     }
+    final balance = calculateSleepBalanceHours(
+      logs: activeLogs,
+      targetHours: input.target.durationMinutes / 60.0,
+      now: input.today,
+    );
 
-    // 4. consistencyScore
+    // 4. consistencyScore (T-1.4)
     final consistency = _calculateConsistency(activeLogs, input.target);
 
     // 5. Trends
     final durationTrendList = activeLogs.map((log) => log.durationMinutes.toDouble()).toList();
     final qualityTrendList = activeLogs.map((log) => log.quality.score.toDouble()).toList();
 
-    // 6. Correlation Sleep vs Next Day Energy/Mood
+    // 6. Correlation Sleep vs Next Day Energy/Mood (T-1.5, T-1.6, T-1.7)
     final correlationData = _calculateCorrelation(activeLogs, input.energyLogs, input.moodLogs);
 
     return SleepEngineOutput(
@@ -101,6 +114,7 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
       avgDurationMinutes: avgDuration,
       avgQuality: avgQual,
       sleepDebtMinutes: debt,
+      sleepBalanceHours: balance,
       consistencyScore: consistency,
       durationTrend: durationTrendList,
       qualityTrend: qualityTrendList,
@@ -120,17 +134,32 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
   @override
   List<Type> dependencies() => [];
 
-  static String _formatDateIso(DateTime dt) {
-    final y = dt.year.toString().padLeft(4, '0');
-    final m = dt.month.toString().padLeft(2, '0');
-    final d = dt.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
+  /// T-3.2 / P-7: Exponential decay sleep balance calculation.
+  static double calculateSleepBalanceHours({
+    required List<SleepLog> logs,
+    required double targetHours,
+    required DateTime now,
+  }) {
+    double balance = 0;
+    for (final log in logs) {
+      final logDate = RitmoDate.tryParseDayKey(log.date);
+      if (logDate == null) continue;
+      final ageDays = RitmoDate.startOfDay(now)
+          .difference(RitmoDate.startOfDay(logDate))
+          .inDays
+          .toDouble();
+      if (ageDays < 0) continue;
+      final decay = math.pow(0.5, ageDays / halfLifeDays).toDouble();
+      final delta = log.durationHours - targetHours; // negative = deficit, positive = surplus
+      balance += delta * decay;
+    }
+    return balance;
   }
 
-  int _calculateConsistency(List<SleepLog> logs, SleepTarget target) {
-    if (logs.length < 2) return 100;
+  /// T-1.4: Consistency score requires at least 5 logs.
+  double? _calculateConsistency(List<SleepLog> logs, SleepTarget target) {
+    if (logs.length < minLogsForConsistency) return null;
 
-    // Standard deviation of bedtime and wake time deviations
     final bedtimeDevs = <double>[];
     final wakeDevs = <double>[];
 
@@ -145,13 +174,11 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
         final actualBtMin = bt.hour * 60 + bt.minute;
         final actualWtMin = wt.hour * 60 + wt.minute;
 
-        // Bedtime diff
         var btDiff = actualBtMin - targetBedtimeMin;
         if (btDiff > 720) btDiff -= 1440;
         if (btDiff < -720) btDiff += 1440;
         bedtimeDevs.add(btDiff.toDouble());
 
-        // Wake diff
         var wtDiff = actualWtMin - targetWakeMin;
         if (wtDiff > 720) wtDiff -= 1440;
         if (wtDiff < -720) wtDiff += 1440;
@@ -159,21 +186,21 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
       }
     }
 
-    if (bedtimeDevs.isEmpty || wakeDevs.isEmpty) return 100;
+    if (bedtimeDevs.isEmpty || wakeDevs.isEmpty) return null;
 
     final sdBedtime = _calculateStdDev(bedtimeDevs);
     final sdWake = _calculateStdDev(wakeDevs);
 
-    // Consistency score starts at 100, drops by 0.5 points for every minute of combined SD
     final totalSD = (sdBedtime + sdWake) / 2;
-    final score = 100 - (totalSD * 0.5).round();
-    return score.clamp(0, 100);
+    final score = 100.0 - (totalSD * 0.5);
+    return score.clamp(0.0, 100.0);
   }
 
   double _calculateStdDev(List<double> values) {
+    if (values.isEmpty) return 0.0;
     final mean = values.reduce((a, b) => a + b) / values.length;
-    final variance = values.map((x) => pow(x - mean, 2)).reduce((a, b) => a + b) / values.length;
-    return sqrt(variance);
+    final variance = values.map((x) => math.pow(x - mean, 2)).reduce((a, b) => a + b) / values.length;
+    return math.sqrt(variance);
   }
 
   _CorrelationResult _calculateCorrelation(
@@ -183,10 +210,10 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
   ) {
     final energyByDate = <String, List<double>>{};
     for (final el in energyLogs) {
-      final loggedAt = el['loggedAt'] as int?;
+      final loggedAt = el.readInt('loggedAt');
       if (loggedAt != null) {
-        final date = DateTime.fromMillisecondsSinceEpoch(loggedAt).toIso8601String().substring(0, 10);
-        final level = el['energyLevel'] as String? ?? 'MEDIUM';
+        final date = RitmoDate.dayKeyFromMillis(loggedAt);
+        final level = el.readString('energyLevel') ?? 'MEDIUM';
         var val = 2.0;
         if (level == 'HIGH') val = 3.0;
         if (level == 'LOW') val = 1.0;
@@ -196,24 +223,28 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
 
     final moodByDate = <String, List<double>>{};
     for (final ml in moodLogs) {
-      final loggedAt = ml['loggedAt'] as int?;
+      final loggedAt = ml.readInt('loggedAt');
       if (loggedAt != null) {
-        final date = DateTime.fromMillisecondsSinceEpoch(loggedAt).toIso8601String().substring(0, 10);
-        final valence = (ml['valence'] as num?)?.toDouble() ?? 3.0;
+        final date = RitmoDate.dayKeyFromMillis(loggedAt);
+        final valence = ml.readDouble('valence') ?? 3.0;
         moodByDate.putIfAbsent(date, () => []).add(valence);
       }
     }
 
-    final sleepQualities = <double>[];
-    final nextDayEnergies = <double>[];
-    final nextDayMoods = <double>[];
+    // T-1.6: Paired entries without baseline placeholders
+    final pairedQuality = <double>[];
+    final pairedEnergy = <double>[];
 
-    // Group actual bedtimes by 30-min windows for best bedtime calculation
+    final pairedQualityMood = <double>[];
+    final pairedMood = <double>[];
+
     final dayRatingsByBedtimeWindow = <String, List<double>>{};
 
     for (final log in logs) {
-      final nextDay = DateTime.parse(log.date).add(const Duration(days: 1));
-      final nextDayStr = _formatDateIso(nextDay);
+      final logDate = RitmoDate.tryParseDayKey(log.date);
+      if (logDate == null) continue;
+      final nextDay = RitmoDate.startOfDay(logDate).add(const Duration(days: 1));
+      final nextDayStr = RitmoDate.dayKey(nextDay);
 
       final nextDayEnergyList = energyByDate[nextDayStr];
       final nextDayMoodList = moodByDate[nextDayStr];
@@ -221,43 +252,31 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
       double? avgEnergy;
       if (nextDayEnergyList != null && nextDayEnergyList.isNotEmpty) {
         avgEnergy = nextDayEnergyList.reduce((a, b) => a + b) / nextDayEnergyList.length;
+        pairedQuality.add(log.quality.score.toDouble());
+        pairedEnergy.add(avgEnergy);
       }
 
       double? avgMood;
       if (nextDayMoodList != null && nextDayMoodList.isNotEmpty) {
         avgMood = nextDayMoodList.reduce((a, b) => a + b) / nextDayMoodList.length;
-      }
-
-      if (avgEnergy != null) {
-        sleepQualities.add(log.quality.score.toDouble());
-        nextDayEnergies.add(avgEnergy);
-      }
-      if (avgMood != null) {
-        // If not already added
-        if (avgEnergy == null) {
-          sleepQualities.add(log.quality.score.toDouble());
-          nextDayEnergies.add(2); // baseline placeholder for Pearson sync length
-        }
-        nextDayMoods.add(avgMood);
-      } else if (avgEnergy != null) {
-        nextDayMoods.add(3); // baseline
+        pairedQualityMood.add(log.quality.score.toDouble());
+        pairedMood.add(avgMood);
       }
 
       // Group for best bedtime window
       if (log.bedtimeAt != null && (avgEnergy != null || avgMood != null)) {
         final bt = DateTime.fromMillisecondsSinceEpoch(log.bedtimeAt!);
         final minOfDay = bt.hour * 60 + bt.minute;
-        
-        // Find 30-min slot
+
         final slotStartMin = (minOfDay ~/ 30) * 30;
         final h = slotStartMin ~/ 60;
         final m = slotStartMin % 60;
         final nextH = (slotStartMin + 30) ~/ 60;
         final nextM = (slotStartMin + 30) % 60;
-        
+
         final windowKey = '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')} - '
             '${(nextH % 24).toString().padLeft(2, '0')}:${nextM.toString().padLeft(2, '0')}';
-            
+
         final dayRating = (avgEnergy ?? 2.0) + (avgMood ?? 3.0);
         dayRatingsByBedtimeWindow.putIfAbsent(windowKey, () => []).add(dayRating);
       }
@@ -266,31 +285,36 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
     double? energyCorr;
     double? moodCorr;
 
-    if (sleepQualities.length >= 3 && nextDayEnergies.length >= 3) {
-      energyCorr = _calculatePearson(sleepQualities, nextDayEnergies);
+    // T-1.5: Requires at least 30 data points
+    if (pairedQuality.length >= minPointsForCorrelation && pairedEnergy.length >= minPointsForCorrelation) {
+      energyCorr = _calculatePearson(pairedQuality, pairedEnergy);
     }
-    if (sleepQualities.length >= 3 && nextDayMoods.length >= 3) {
-      moodCorr = _calculatePearson(sleepQualities, nextDayMoods);
+    if (pairedQualityMood.length >= minPointsForCorrelation && pairedMood.length >= minPointsForCorrelation) {
+      moodCorr = _calculatePearson(pairedQualityMood, pairedMood);
     }
 
-    var bestWindow = 'نامشخص';
-    var highestRating = -999.0;
+    // T-1.7: Best bedtime window requires min 4 samples, no magic -999.0
+    String? bestWindow;
+    double? bestRating;
     for (final entry in dayRatingsByBedtimeWindow.entries) {
+      if (entry.value.length < minSamplesPerBedtimeWindow) continue;
       final avgRating = entry.value.reduce((a, b) => a + b) / entry.value.length;
-      if (avgRating > highestRating) {
-        highestRating = avgRating;
+      if (bestRating == null || avgRating > bestRating) {
+        bestRating = avgRating;
         bestWindow = entry.key;
       }
     }
 
+    // T-1.5: Non-deterministic hypothetical phrasing with n
     var insight = 'در حال یادگیری الگوی خواب شما 🌙';
+    final n = math.max(pairedQuality.length, pairedQualityMood.length);
     if (energyCorr != null && moodCorr != null) {
       if (energyCorr > 0.3 && moodCorr > 0.3) {
-        insight = 'خواب باکیفیت‌تر دیشب با انرژی و روحیه بالاتر در روز بعد ارتباط مستقیم دارد.';
+        insight = 'به نظر می‌رسد شب‌هایی که بهتر خوابیده‌ای، روز بعدش انرژی و روحیه بیشتری ثبت کرده‌ای. (بر پایهٔ ${RitmoNumber.faInt(n)} شب)';
       } else if (energyCorr < -0.3) {
-        insight = 'رابطه معکوس غیرمعمولی مشاهده شده؛ شاید در روزهای پرفشار خواب بیشتری داری.';
+        insight = 'این الگو دیده شده که در روزهای پرفشار خواب بیشتری داشته‌ای. (بر پایهٔ ${RitmoNumber.faInt(n)} شب)';
       } else {
-        insight = 'روند خوابت منظم است، همبستگی مستقیمی با نوسانات روزانه ندارد.';
+        insight = 'روند خوابت منظم است و همراه بوده با نوسانات طبیعی روزانه. (بر پایهٔ ${RitmoNumber.faInt(n)} شب)';
       }
     }
 
@@ -302,7 +326,12 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
     );
   }
 
-  double _calculatePearson(List<double> x, List<double> y) {
+  double? _calculatePearson(List<double> x, List<double> y) {
+    if (x.length != y.length) {
+      throw ArgumentError('Pearson requires equal-length series');
+    }
+    if (x.length < 2) return null;
+
     final n = x.length;
     double sumX = 0;
     double sumY = 0;
@@ -325,21 +354,20 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
       denY += dy * dy;
     }
 
-    if (denX == 0 || denY == 0) return 0;
-    return num / sqrt(denX * denY);
+    if (denX == 0 || denY == 0) return null;
+    return num / math.sqrt(denX * denY);
   }
 }
 
 class _CorrelationResult {
-
   _CorrelationResult({
     this.energyCorr,
     this.moodCorr,
-    required this.bestWindow,
+    this.bestWindow,
     required this.insight,
   });
   final double? energyCorr;
   final double? moodCorr;
-  final String bestWindow;
+  final String? bestWindow;
   final String insight;
 }

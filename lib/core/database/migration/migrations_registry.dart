@@ -3278,4 +3278,39 @@ class MigrationV64 extends Migration {
   Future<void> down(Database db) async {}
 }
 
+class MigrationV65 extends Migration {
+  @override
+  int get version => 65;
+
+  @override
+  Future<void> up(Database db) async {
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS wellbeing_daily (
+          date TEXT PRIMARY KEY,
+          indexValue REAL,
+          confidence REAL NOT NULL DEFAULT 0,
+          sleepScore REAL,
+          energyScore REAL,
+          moodScore REAL,
+          reflectionScore REAL,
+          contributionsJson TEXT,
+          computedAt INTEGER NOT NULL
+        );
+      ''');
+
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_energy_logs_loggedAt ON energy_logs(loggedAt);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_mood_logs_loggedAt ON mood_logs(loggedAt);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_routine_completions_time ON routine_completions(completionTime);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_bedtime_diagnostics_date ON bedtime_diagnostics(date);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_daily_rhythm_date ON daily_rhythm(date);');
+    } catch (e) {
+      debugPrint('[MigrationV65] Error during migration V65: $e');
+    }
+  }
+
+  @override
+  Future<void> down(Database db) async {}
+}
+
 

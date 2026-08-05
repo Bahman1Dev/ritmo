@@ -1,10 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:ritmo/features/worship/logic/prayer_timeline.dart';
-import 'package:shamsi_date/shamsi_date.dart';
 import 'package:sqflite/sqflite.dart';
+
+import 'package:ritmo/features/worship/logic/hijri_calendar.dart';
 
 // Helper to convert English digits to Persian digits
 String toPersianDigits(String input) {
@@ -68,14 +66,7 @@ class HijriDate {
     };
   }
 
-  static String _dateKey(DateTime date) {
-    final y = date.year;
-    final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2, '0');
-    return 'hijri_date_${y}_${m}_$d';
-  }
-
-  static Future<HijriDate?> getOrFetch(DateTime date, Database db) async {
+  static Future<HijriDate> getOrFetch(DateTime date, Database db) async {
     // 0. Load offset from db settings
     var offset = 0;
     try {
@@ -90,209 +81,8 @@ class HijriDate {
       }
     } catch (_) {}
 
-    final adjustedDate = offset != 0 ? date.add(Duration(days: offset)) : date;
-    final key = _dateKey(adjustedDate);
-
-    // 1. Check local cache
-    final settings = await db.query(
-      'app_settings',
-      where: 'key = ?',
-      whereArgs: [key],
-      limit: 1,
-    );
-    if (settings.isNotEmpty) {
-      try {
-        final val = settings.first['value']! as String;
-        final decoded = json.decode(val) as Map<String, dynamic>;
-        return HijriDate.fromMap(decoded);
-      } catch (e) {
-        debugPrint('Error decoding cached Hijri date: $e');
-      }
-    }
-
-    // 2. Check failure cooldown to prevent network spamming on timeouts
-    final failKey = 'hijri_fail_$key';
-    final failSettings = await db.query(
-      'app_settings',
-      where: 'key = ?',
-      whereArgs: [failKey],
-      limit: 1,
-    );
-    if (failSettings.isNotEmpty) {
-      try {
-        final lastAttempt = int.parse(failSettings.first['value']! as String);
-        final nowMs = DateTime.now().millisecondsSinceEpoch;
-        if (nowMs - lastAttempt < 60 * 60 * 1000) { // 1 hour cooldown
-          return null;
-        }
-      } catch (_) {}
-    }
-
-    // 3. Try Iranian/Shia Calendar API (PNLdev) first
-    try {
-      final shamsi = Jalali.fromDateTime(adjustedDate);
-      final url = Uri.parse('https://pnldev.com/api/calender?year=${shamsi.year}&month=${shamsi.month}&day=${shamsi.day}');
-      final response = await http.get(url).timeout(const Duration(seconds: 4));
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body) as Map<String, dynamic>;
-        if (decoded['status'] == true && decoded['result'] != null) {
-          final moonData = decoded['result']['moon'] as Map<String, dynamic>;
-          final hDay = moonData['day'] as int;
-          final hMonthNumber = moonData['month'] as int;
-          final hYear = moonData['year'] as int;
-          final hMonthName = hijriMonthsFa[hMonthNumber] ?? '';
-
-          final faDay = toPersianDigits(hDay.toString());
-          final faMonth = hMonthName;
-          final faYear = toPersianDigits(hYear.toString());
-          final formatted = '$faDay $faMonth $faYear';
-
-          final hijriObj = HijriDate(
-            day: hDay,
-            month: hMonthNumber,
-            year: hYear,
-            monthName: hMonthName,
-            formatted: formatted,
-          );
-
-          final nowMs = DateTime.now().millisecondsSinceEpoch;
-          await db.insert(
-            'app_settings',
-            {
-              'key': key,
-              'value': json.encode(hijriObj.toMap()),
-              'updatedAt': nowMs,
-            },
-            conflictAlgorithm: ConflictAlgorithm.replace,
-          );
-
-          await db.delete('app_settings', where: 'key = ?', whereArgs: [failKey]);
-          return hijriObj;
-        }
-      }
-    } catch (e) {
-      debugPrint('Error fetching Hijri date from PNLdev API: $e. Trying fallback...');
-    }
-
-    // 4. Fallback to Aladhan API
-    try {
-      final dayStr = adjustedDate.day.toString().padLeft(2, '0');
-      final monthStr = adjustedDate.month.toString().padLeft(2, '0');
-      final yearStr = adjustedDate.year.toString();
-      final url = Uri.parse('https://api.aladhan.com/v1/gToH?date=$dayStr-$monthStr-$yearStr');
-      
-      final response = await http.get(url).timeout(const Duration(seconds: 4));
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body) as Map<String, dynamic>;
-        if (decoded['code'] == 200 && decoded['data'] != null) {
-          final hijriData = decoded['data']['hijri'] as Map<String, dynamic>;
-          final hDay = int.parse(hijriData['day'] as String);
-          final hMonthNumber = hijriData['month']['number'] as int;
-          final hYear = int.parse(hijriData['year'] as String);
-          final hMonthName = hijriMonthsFa[hMonthNumber] ?? (hijriData['month']['en'] as String);
-
-          final faDay = toPersianDigits(hDay.toString());
-          final faMonth = hijriMonthsFa[hMonthNumber] ?? '';
-          final faYear = toPersianDigits(hYear.toString());
-          final formatted = '$faDay $faMonth $faYear';
-
-          final hijriObj = HijriDate(
-            day: hDay,
-            month: hMonthNumber,
-            year: hYear,
-            monthName: hMonthName,
-            formatted: formatted,
-          );
-
-          final nowMs = DateTime.now().millisecondsSinceEpoch;
-          await db.insert(
-            'app_settings',
-            {
-              'key': key,
-              'value': json.encode(hijriObj.toMap()),
-              'updatedAt': nowMs,
-            },
-            conflictAlgorithm: ConflictAlgorithm.replace,
-          );
-
-          await db.delete('app_settings', where: 'key = ?', whereArgs: [failKey]);
-          return hijriObj;
-        }
-      }
-    } catch (e) {
-      debugPrint('Error fetching Hijri date from fallback network: $e. Using offline fallback...');
-    }
-
-    // 5. Offline Tabular Islamic Calendar Fallback (Kuwaiti Algorithm)
-    try {
-      final localHijri = _gregorianToHijri(adjustedDate);
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
-      await db.insert(
-        'app_settings',
-        {
-          'key': key,
-          'value': json.encode(localHijri.toMap()),
-          'updatedAt': nowMs,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      await db.delete('app_settings', where: 'key = ?', whereArgs: [failKey]);
-      return localHijri;
-    } catch (e) {
-      debugPrint('Error calculating offline Hijri date: $e');
-    }
-    return null;
-  }
-
-  static HijriDate _gregorianToHijri(DateTime date) {
-    final day = date.day;
-    final month = date.month;
-    final year = date.year;
-    
-    var m = month;
-    var y = year;
-    if (m < 3) {
-      y -= 1;
-      m += 12;
-    }
-    
-    final a = y ~/ 100;
-    var b = 2 - a + (a ~/ 4);
-    if (y < 1583) b = 0;
-    if (y == 1582) {
-      if (m > 10) b = -10;
-      if (m == 10) {
-        b = 0;
-        if (day > 4) b = -10;
-      }
-    }
-    
-    final jd = (365.25 * (y + 4716)).floor() + (30.6001 * (m + 1)).floor() + day + b - 1524;
-    
-    var l = jd - 1948440 + 10632;
-    final n = (l - 1) ~/ 10631;
-    l = l - 10631 * n + 354;
-    
-    final j = ((10985 - l) ~/ 5316) * ((50 * l) ~/ 17719) + (l ~/ 5670) * ((43 * l) ~/ 15238);
-    l = l - ((30 - j) ~/ 15) * ((17719 * j) ~/ 50) - (j ~/ 16) * ((15238 * j) ~/ 43) + 29;
-    
-    final hMonth = (24 * l) ~/ 709;
-    final hDay = l - (709 * hMonth) ~/ 24;
-    final hYear = 30 * n + j - 30;
-    
-    final hMonthName = hijriMonthsFa[hMonth] ?? '';
-    final faDay = toPersianDigits(hDay.toString());
-    final faMonth = hMonthName;
-    final faYear = toPersianDigits(hYear.toString());
-    final formatted = '$faDay $faMonth $faYear';
-    
-    return HijriDate(
-      day: hDay,
-      month: hMonth,
-      year: hYear,
-      monthName: hMonthName,
-      formatted: formatted,
-    );
+    // Offline Instant Calculation (W-6)
+    return HijriCalendarCalculator.hijriFromGregorian(date, offsetDays: offset);
   }
 }
 
@@ -616,6 +406,9 @@ class WorshipSeason {
     required this.isActive,
     required this.priorityWeight,
     required this.createdAt,
+    this.recurrence,
+    this.dayList,
+    this.hijriMonth,
   });
 
   factory WorshipSeason.fromMap(Map<String, dynamic> map) {
@@ -630,6 +423,9 @@ class WorshipSeason {
       isActive: ((map['isActive'] ?? map['is_active']) as int? ?? 1) == 1,
       priorityWeight: ((map['priority_weight'] ?? map['priorityWeight'] ?? 1.0) as num).toDouble(),
       createdAt: map['createdAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
+      recurrence: map['recurrence'] as String?,
+      dayList: map['dayList'] as String?,
+      hijriMonth: map['hijriMonth'] as int?,
     );
   }
   final String id;
@@ -642,6 +438,16 @@ class WorshipSeason {
   final bool isActive;
   final double priorityWeight;
   final int createdAt;
+
+  /// W-7: recurrence type — RANGE_HIJRI | RANGE_SOLAR | DAYS_OF_EVERY_HIJRI_MONTH
+  ///                        | DAYS_OF_HIJRI_MONTH | NIGHTS_OF_HIJRI_MONTH
+  final String? recurrence;
+
+  /// W-7: JSON array of Hijri day numbers, e.g. '[13,14,15]'
+  final String? dayList;
+
+  /// W-7: Hijri month number (1-12) for DAYS_OF_HIJRI_MONTH / NIGHTS_OF_HIJRI_MONTH
+  final int? hijriMonth;
 
   bool isActiveNow([HijriDate? todayHijri]) {
     if (!isActive) return false;

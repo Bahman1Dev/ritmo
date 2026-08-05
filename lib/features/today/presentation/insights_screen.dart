@@ -239,11 +239,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
         final balanceOut = await bus.execute<LifeBalanceEngineInput, LifeBalanceEngineOutput>(
           LifeBalanceEngine,
           LifeBalanceEngineInput(
+            now: DateTime.now(),
             routines: routines,
             routineCompletions: completions,
           ),
         );
-        _lifeBalanceScore = balanceOut.score;
+        _lifeBalanceScore = balanceOut.score ?? 0;
         _categoryDistribution = balanceOut.distribution;
 
         // Run Milestones via Engine Bus

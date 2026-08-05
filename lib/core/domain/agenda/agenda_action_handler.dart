@@ -8,6 +8,7 @@ import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/domain/models/duration_bounds.dart';
 import 'package:ritmo/features/worship/logic/prayer_timeline.dart';
 import 'package:ritmo/features/worship/logic/worship_completion_repository.dart';
+import 'package:ritmo/features/worship/logic/worship_engine.dart';
 import 'package:ritmo/features/worship/logic/worship_repository.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:sqflite/sqflite.dart';
@@ -51,12 +52,12 @@ class AgendaActionHandler {
       return;
     }
 
+    final date = DateTime.tryParse(dateStr) ?? DateTime.now();
     for (final id in ids) {
       if (isDone) {
-        await WorshipCompletionRepository.instance.logDone(
+        await WorshipEngine.instance.logDone(
           practiceId: id,
-          dateStr: dateStr,
-          practiceType: 'PRAYER',
+          date: date,
         );
       } else {
         final recordId = 'wc_${id}_$dateStr';
@@ -162,76 +163,16 @@ class AgendaActionHandler {
     required bool addToQada,
     required String dateStr,
   }) async {
-    final db = await DatabaseHelper.instance.database;
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final date = DateTime.tryParse(dateStr) ?? DateTime.now();
 
-    await db.transaction((txn) async {
-      for (final practiceMap in practices) {
-        final id = practiceMap['id'] as String;
-        final subType = practiceMap['subType'] as String? ?? 'PRAYER';
-        final title = practiceMap['title'] as String? ?? '';
-        final practiceType = practiceMap['practiceType'] as String? ?? 'PRAYER';
-
-        // 1. Update practice status to skipped (-1)
-        await txn.update(
-          'worship_practices',
-          {
-            'dailyDone': -1,
-            'dailyDoneDate': dateStr,
-            'updatedAt': nowMs,
-          },
-          where: 'id = ?',
-          whereArgs: [id],
-        );
-
-        // 2. Add to Qada debts if requested
-        if (addToQada) {
-          final debtId = 'debt_${subType}_$nowMs';
-          final debtType = practiceType == 'FASTING' ? 'FAST' : 'PRAYER';
-          final debtTitle = practiceType == 'FASTING' ? 'روزه قضا' : title;
-
-          final existingDebt = await txn.query(
-            'worship_debts',
-            where: 'debtType = ? AND title = ? AND isArchived = 0',
-            whereArgs: [debtType, debtTitle],
-            limit: 1,
-          );
-
-          if (existingDebt.isNotEmpty) {
-            final existingId = existingDebt.first['id']! as String;
-            final currentTotal = existingDebt.first['totalCount'] as int? ?? 0;
-            final currentRemaining = existingDebt.first['remainingCount'] as int? ?? 0;
-
-            await txn.update(
-              'worship_debts',
-              {
-                'totalCount': currentTotal + 1,
-                'remainingCount': currentRemaining + 1,
-                'updatedAt': nowMs,
-              },
-              where: 'id = ?',
-              whereArgs: [existingId],
-            );
-          } else {
-            await txn.insert(
-              'worship_debts',
-              {
-                'id': debtId,
-                'debtType': debtType,
-                'title': debtTitle,
-                'totalCount': 1,
-                'remainingCount': 1,
-                'dailyTarget': 1,
-                'autoCreated': 1,
-                'isArchived': 0,
-                'createdAt': nowMs,
-                'updatedAt': nowMs,
-              },
-            );
-          }
-        }
-      }
-    });
+    for (final practiceMap in practices) {
+      final id = practiceMap['id'] as String;
+      await WorshipEngine.instance.logSkip(
+        practiceId: id,
+        date: date,
+        addToQada: addToQada,
+      );
+    }
 
     _invalidateAndNotify(dateStr, 'WorshipUpdated', {'date': dateStr});
   }

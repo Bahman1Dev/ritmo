@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/core/utils/ritmo_toast.dart';
+import 'package:ritmo/core/ux/ritmo_haptics.dart';
 import 'package:ritmo/features/supplementary_sports/data/models/ss_user_profile_model.dart';
 import 'package:ritmo/features/supplementary_sports/data/repositories/ss_plan_generator.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_home_dashboard_screen.dart';
@@ -19,8 +23,9 @@ class SSOnboardingFlow extends StatefulWidget {
 class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
   int _currentStep = 1;
   final int _totalSteps = 8;
+  late final PageController _pageController;
 
-  // Selected Values (Gender is automatically read from main app settings)
+  // Selected Values
   String _selectedGender = 'MALE';
   double _heightCm = 175;
   double _weightKg = 70;
@@ -34,14 +39,22 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
   int _selectedMinutes = 45;
 
   bool _isGeneratingPlan = false;
+  int _generationStage = 0; // 0 to 4
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: 0);
     _loadStateFromPreferences();
   }
 
-  // --- State Persistence ---
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // --- State Persistence & Gender Sync ---
   Future<void> _loadStateFromPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -124,6 +137,10 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
             }
           }
         });
+
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(_currentStep - 1);
+        }
       }
     } catch (e) {
       debugPrint('Error loading state from preferences: $e');
@@ -182,10 +199,16 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
   }
 
   void _nextStep() {
+    RitmoHaptics.selection();
     if (_currentStep < _totalSteps) {
       setState(() {
         _currentStep++;
       });
+      _pageController.animateToPage(
+        _currentStep - 1,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOutCubic,
+      );
       _saveStateToPreferences();
     } else {
       _finishOnboarding();
@@ -193,10 +216,16 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
   }
 
   void _prevStep() {
+    RitmoHaptics.selection();
     if (_currentStep > 1) {
       setState(() {
         _currentStep--;
       });
+      _pageController.animateToPage(
+        _currentStep - 1,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOutCubic,
+      );
       _saveStateToPreferences();
     } else {
       Navigator.pop(context);
@@ -205,8 +234,10 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
 
   // --- Plan & Profile Generation ---
   Future<void> _finishOnboarding() async {
+    RitmoHaptics.confirm();
     setState(() {
       _isGeneratingPlan = true;
+      _generationStage = 1;
     });
 
     try {
@@ -239,11 +270,31 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      // Generate plans for all 4 weeks
+      // Also sync gender with main app user_settings
+      try {
+        await db.insert(
+          'app_settings',
+          {'key': 'user_gender', 'value': _selectedGender},
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      } catch (_) {}
+
+      // Interactive 4-week generation with stage updates
+      setState(() => _generationStage = 1);
       await SSPlanGenerator.generateWeeklyAndMonthlyPlan(db, profile, week: 1);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      setState(() => _generationStage = 2);
       await SSPlanGenerator.generateWeeklyAndMonthlyPlan(db, profile, week: 2);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      setState(() => _generationStage = 3);
       await SSPlanGenerator.generateWeeklyAndMonthlyPlan(db, profile, week: 3);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      setState(() => _generationStage = 4);
       await SSPlanGenerator.generateWeeklyAndMonthlyPlan(db, profile, week: 4);
+      await Future<void>.delayed(const Duration(milliseconds: 400));
 
       await _clearOnboardingPreferences();
 
@@ -255,6 +306,9 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
       }
     } catch (e) {
       debugPrint('Error finishing onboarding flow: $e');
+      if (mounted) {
+        RitmoToast.show(context, 'خطا در ساخت برنامه: $e', icon: Icons.error_outline);
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -289,42 +343,19 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     if (_isGeneratingPlan) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.background,
         body: Directionality(
           textDirection: TextDirection.rtl,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SSLottiePlayer.start(size: 220),
-                const SizedBox(height: 8),
-                SSLottiePlayer.loading(size: 56),
-                const SizedBox(height: 20),
-                const Text(
-                  'در حال ساخت برنامه تمرینی اختصاصی شما...',
-                  textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    fontFamily: 'Vazirmatn',
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF133B26),
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'این فرآیند چند ثانیه طول می‌کشد',
-                  textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    fontFamily: 'Vazirmatn',
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-              ],
+          child: SafeArea(
+            child: Center(
+              child: _AiPlanBuildingProgressView(
+                currentStage: _generationStage,
+                colors: colors,
+              ),
             ),
           ),
         ),
@@ -332,20 +363,20 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: colors.textPrimary),
           onPressed: _prevStep,
           tooltip: 'بازگشت',
         ),
         title: Text(
           toPersianDigits('مرحله $_currentStep از $_totalSteps'),
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Vazirmatn',
-            color: Colors.black,
+            color: colors.textPrimary,
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
@@ -363,23 +394,30 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: _currentStep / _totalSteps,
-                    backgroundColor: const Color(0xFFE8F5E9),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2D6A4F)),
-                    minHeight: 4,
+                    backgroundColor: colors.card,
+                    valueColor: AlwaysStoppedAnimation<Color>(colors.primary),
+                    minHeight: 5,
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  child: _buildStepContent(_currentStep),
+                child: PageView.builder(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _totalSteps,
+                  itemBuilder: (context, index) {
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      child: _buildStepContent(index + 1),
+                    );
+                  },
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: PrimaryButton(
-                  label: _currentStep == _totalSteps ? 'شروع برنامه' : 'ادامه',
+                  label: _currentStep == _totalSteps ? 'شروع برنامه اختصاصی ✨' : 'ادامه',
                   onPressed: _isStepValid() ? _nextStep : null,
                 ),
               ),
@@ -392,121 +430,147 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
 
   bool _isStepValid() {
     switch (_currentStep) {
+      case 1:
+        return true;
       case 2:
         return _selectedGoal != null;
       case 3:
         return _selectedLevel != null;
+      case 4:
+        return true;
       case 5:
         return _selectedFocusAreas.isNotEmpty;
       case 6:
         return _selectedEquipment.isNotEmpty;
       case 7:
         return _selectedLimitations.isNotEmpty;
+      case 8:
+        return true;
       default:
         return true;
     }
   }
 
-  // --- Step 1: BMI Calculator ---
+  // --- Step 1: Physical Specs & BMI Spectrum ---
   Widget _buildStep2Bmi() {
+    final colors = context.colors;
     final bmi = _weightKg / ((_heightCm / 100) * (_heightCm / 100));
     var category = 'وزن نرمال';
-    var categoryColor = const Color(0xFF2D6A4F);
+    var categoryColor = colors.success;
     if (bmi < 18.5) {
       category = 'کمبود وزن';
-      categoryColor = Colors.blue;
+      categoryColor = colors.primary;
     } else if (bmi >= 25 && bmi < 30) {
       category = 'اضافه وزن';
-      categoryColor = Colors.orange;
+      categoryColor = colors.warning;
     } else if (bmi >= 30) {
       category = 'چاقی';
-      categoryColor = Colors.red;
+      categoryColor = colors.medicalRed;
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'مشخصات فیزیکی',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF133B26)),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: colors.textPrimary),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'قد و وزن به ما کمک می‌کنه شاخص توده بدنی (BMI) و کالری مصرفی رو دقیق‌تر حساب کنیم.',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: Colors.grey),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: colors.textSecondary),
         ),
         const SizedBox(height: 24),
+        
+        // BMI Gauge & Card
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: const Color(0xFFF4F9F5),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE8F5E9)),
+            color: colors.card,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: colors.border),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            textDirection: TextDirection.rtl,
+          child: Column(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 textDirection: TextDirection.rtl,
                 children: [
-                  const Text('شاخص توده بدنی (BMI)', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 4),
-                  Text(
-                    toPersianDigits(bmi.toStringAsFixed(1)),
-                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 24, fontWeight: FontWeight.bold, color: categoryColor),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    textDirection: TextDirection.rtl,
+                    children: [
+                      Text('شاخص توده بدنی (BMI)', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.textSecondary)),
+                      const SizedBox(height: 4),
+                      Text(
+                        toPersianDigits(bmi.toStringAsFixed(1)),
+                        style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 28, fontWeight: FontWeight.bold, color: categoryColor),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: categoryColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: categoryColor.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      category,
+                      style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold, color: categoryColor),
+                    ),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: categoryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  category,
-                  style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold, color: categoryColor),
-                ),
-              ),
+              const SizedBox(height: 18),
+              // Interactive Spectrum Gauge
+              _BmiSpectrumGauge(bmi: bmi, colors: colors),
             ],
           ),
         ),
         const SizedBox(height: 24),
-        Text('قد: ${toPersianDigits(_heightCm.toInt().toString())} سانتی‌متر', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold)),
+        Text('قد: ${toPersianDigits(_heightCm.toInt().toString())} سانتی‌متر', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold, color: colors.textPrimary)),
         Slider(
           value: _heightCm,
           min: 130,
           max: 220,
           divisions: 90,
-          activeColor: const Color(0xFF2D6A4F),
-          onChanged: (val) => setState(() => _heightCm = val),
+          activeColor: colors.primary,
+          onChanged: (val) {
+            RitmoHaptics.selection();
+            setState(() => _heightCm = val);
+          },
         ),
         const SizedBox(height: 16),
-        Text('وزن: ${toPersianDigits(_weightKg.toInt().toString())} کیلوگرم', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold)),
+        Text('وزن: ${toPersianDigits(_weightKg.toInt().toString())} کیلوگرم', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold, color: colors.textPrimary)),
         Slider(
           value: _weightKg,
           min: 40,
           max: 160,
           divisions: 120,
-          activeColor: const Color(0xFF2D6A4F),
-          onChanged: (val) => setState(() => _weightKg = val),
+          activeColor: colors.primary,
+          onChanged: (val) {
+            RitmoHaptics.selection();
+            setState(() => _weightKg = val);
+          },
         ),
         const SizedBox(height: 16),
-        const Text('جنسیت:', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold)),
+        Text('جنسیت:', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold, color: colors.textPrimary)),
         const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: () => setState(() => _selectedGender = 'FEMALE'),
+                onTap: () {
+                  RitmoHaptics.selection();
+                  setState(() => _selectedGender = 'FEMALE');
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
-                    color: _selectedGender == 'FEMALE' ? const Color(0xFF2D6A4F) : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _selectedGender == 'FEMALE' ? const Color(0xFF2D6A4F) : Colors.grey.shade300),
+                    color: _selectedGender == 'FEMALE' ? colors.primary : colors.card,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: _selectedGender == 'FEMALE' ? colors.primary : colors.border),
                   ),
                   child: Center(
                     child: Text(
@@ -514,7 +578,7 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
                       style: TextStyle(
                         fontFamily: 'Vazirmatn',
                         fontWeight: FontWeight.bold,
-                        color: _selectedGender == 'FEMALE' ? Colors.white : Colors.black87,
+                        color: _selectedGender == 'FEMALE' ? Colors.white : colors.textPrimary,
                       ),
                     ),
                   ),
@@ -524,13 +588,16 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
             const SizedBox(width: 12),
             Expanded(
               child: GestureDetector(
-                onTap: () => setState(() => _selectedGender = 'MALE'),
+                onTap: () {
+                  RitmoHaptics.selection();
+                  setState(() => _selectedGender = 'MALE');
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
-                    color: _selectedGender == 'MALE' ? const Color(0xFF2D6A4F) : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _selectedGender == 'MALE' ? const Color(0xFF2D6A4F) : Colors.grey.shade300),
+                    color: _selectedGender == 'MALE' ? colors.primary : colors.card,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: _selectedGender == 'MALE' ? colors.primary : colors.border),
                   ),
                   child: Center(
                     child: Text(
@@ -538,7 +605,7 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
                       style: TextStyle(
                         fontFamily: 'Vazirmatn',
                         fontWeight: FontWeight.bold,
-                        color: _selectedGender == 'MALE' ? Colors.white : Colors.black87,
+                        color: _selectedGender == 'MALE' ? Colors.white : colors.textPrimary,
                       ),
                     ),
                   ),
@@ -553,17 +620,18 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
 
   // --- Step 2: Goal ---
   Widget _buildStep3Goal() {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'هدف اصلی ورزشی شما چیه؟',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF133B26)),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: colors.textPrimary),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'برنامه بر اساس هدف شما تنظیم می‌شه.',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: Colors.grey),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: colors.textSecondary),
         ),
         const SizedBox(height: 24),
         _buildChoiceItem(
@@ -571,24 +639,28 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
           icon: '🔥',
           isSelected: _selectedGoal == FitnessGoal.fatLoss,
           onTap: () => setState(() => _selectedGoal = FitnessGoal.fatLoss),
+          colors: colors,
         ),
         _buildChoiceItem(
           label: 'عضله‌سازی و افزایش حجم 💪',
           icon: '🏋️‍♂️',
           isSelected: _selectedGoal == FitnessGoal.muscleGain,
           onTap: () => setState(() => _selectedGoal = FitnessGoal.muscleGain),
+          colors: colors,
         ),
         _buildChoiceItem(
           label: 'بازسازی بدنی و تناسب اندام ⚖️',
           icon: '✨',
           isSelected: _selectedGoal == FitnessGoal.bodyRecomposition,
           onTap: () => setState(() => _selectedGoal = FitnessGoal.bodyRecomposition),
+          colors: colors,
         ),
         _buildChoiceItem(
           label: 'افزایش قدرت و سلامت عمومی 🏃‍♂️',
           icon: '❤️',
           isSelected: _selectedGoal == FitnessGoal.strength,
           onTap: () => setState(() => _selectedGoal = FitnessGoal.strength),
+          colors: colors,
         ),
       ],
     );
@@ -596,17 +668,18 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
 
   // --- Step 3: Experience ---
   Widget _buildStep4Experience() {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'سطح تجربه ورزشی شما چقدره؟',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF133B26)),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: colors.textPrimary),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'برای جلوگیری از آسیب‌دیدگی و پیشرفت مناسب.',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: Colors.grey),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: colors.textSecondary),
         ),
         const SizedBox(height: 24),
         _buildChoiceItem(
@@ -614,18 +687,21 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
           icon: '🌱',
           isSelected: _selectedLevel == ExperienceLevel.beginner,
           onTap: () => setState(() => _selectedLevel = ExperienceLevel.beginner),
+          colors: colors,
         ),
         _buildChoiceItem(
           label: 'متوسط (۶ ماه تا ۲ سال)',
           icon: '⚡',
           isSelected: _selectedLevel == ExperienceLevel.intermediate,
           onTap: () => setState(() => _selectedLevel = ExperienceLevel.intermediate),
+          colors: colors,
         ),
         _buildChoiceItem(
           label: 'پیشرفته (بیش از ۲ سال)',
           icon: '🏆',
           isSelected: _selectedLevel == ExperienceLevel.advanced,
           onTap: () => setState(() => _selectedLevel = ExperienceLevel.advanced),
+          colors: colors,
         ),
       ],
     );
@@ -633,17 +709,18 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
 
   // --- Step 4: Location ---
   Widget _buildStep5Location() {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'کجا تمرین می‌کنی؟',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF133B26)),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: colors.textPrimary),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'در حال حاضر تمرینات تخصصی ویژه محیط خانه فعال می‌باشند.',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: Colors.grey),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: colors.textSecondary),
         ),
         const SizedBox(height: 24),
         _buildChoiceItem(
@@ -651,6 +728,7 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
           icon: '🏡',
           isSelected: _selectedLocation == TrainingLocation.home,
           onTap: () => setState(() => _selectedLocation = TrainingLocation.home),
+          colors: colors,
         ),
         _buildChoiceItem(
           label: 'باشگاه (به‌زودی 🔒)',
@@ -658,6 +736,7 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
           isSelected: false,
           isDisabled: true,
           onTap: () {},
+          colors: colors,
         ),
         _buildChoiceItem(
           label: 'فضای باز / پارک (به‌زودی 🔒)',
@@ -665,6 +744,7 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
           isSelected: false,
           isDisabled: true,
           onTap: () {},
+          colors: colors,
         ),
       ],
     );
@@ -672,7 +752,9 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
 
   // --- Step 5: Focus Areas ---
   Widget _buildStep6FocusAreas() {
+    final colors = context.colors;
     void toggleArea(BodyArea area) {
+      RitmoHaptics.selection();
       setState(() {
         if (_selectedFocusAreas.contains(area)) {
           if (_selectedFocusAreas.length > 1) {
@@ -687,35 +769,39 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'کدام بخش‌های بدن برات مهم‌تره؟',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF133B26)),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: colors.textPrimary),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'می‌تونی چند گزینه رو انتخاب کنی.',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: Colors.grey),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: colors.textSecondary),
         ),
         const SizedBox(height: 24),
         _buildMultiChoiceItem(
           label: 'تمام بدن (Full Body)',
           isSelected: _selectedFocusAreas.contains(BodyArea.fullBody),
           onTap: () => toggleArea(BodyArea.fullBody),
+          colors: colors,
         ),
         _buildMultiChoiceItem(
           label: 'شکم و پهلو (Core)',
           isSelected: _selectedFocusAreas.contains(BodyArea.core),
           onTap: () => toggleArea(BodyArea.core),
+          colors: colors,
         ),
         _buildMultiChoiceItem(
           label: 'پاها و باسن (Lower Body)',
           isSelected: _selectedFocusAreas.contains(BodyArea.legs),
           onTap: () => toggleArea(BodyArea.legs),
+          colors: colors,
         ),
         _buildMultiChoiceItem(
           label: 'سینه و بازوها (Upper Body)',
           isSelected: _selectedFocusAreas.contains(BodyArea.chest),
           onTap: () => toggleArea(BodyArea.chest),
+          colors: colors,
         ),
       ],
     );
@@ -723,46 +809,52 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
 
   // --- Step 6: Equipment ---
   Widget _buildStep7Equipment() {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'چه تجهیزاتی در دسترس داری؟',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF133B26)),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: colors.textPrimary),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'در حال حاضر تمرینات بدون وسیله (وزن بدن) فعال می‌باشند.',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: Colors.grey),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: colors.textSecondary),
         ),
         const SizedBox(height: 24),
         _buildMultiChoiceItem(
           label: 'بدون وسیله (وزن بدن) 🧘‍♂️',
           isSelected: _selectedEquipment.contains(Equipment.bodyweightOnly),
           onTap: () {
+            RitmoHaptics.selection();
             setState(() {
               _selectedEquipment.clear();
               _selectedEquipment.add(Equipment.bodyweightOnly);
             });
           },
+          colors: colors,
         ),
         _buildMultiChoiceItem(
           label: 'دمبل (به‌زودی 🔒)',
           isSelected: false,
           isDisabled: true,
           onTap: () {},
+          colors: colors,
         ),
         _buildMultiChoiceItem(
           label: 'کش ورزشی (به‌زودی 🔒)',
           isSelected: false,
           isDisabled: true,
           onTap: () {},
+          colors: colors,
         ),
         _buildMultiChoiceItem(
           label: 'مت ورزشی (به‌زودی 🔒)',
           isSelected: false,
           isDisabled: true,
           onTap: () {},
+          colors: colors,
         ),
       ],
     );
@@ -770,7 +862,9 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
 
   // --- Step 7: Limitations ---
   Widget _buildStep8Limitations() {
+    final colors = context.colors;
     void toggleLimitation(Limitation lim) {
+      RitmoHaptics.selection();
       setState(() {
         if (lim == Limitation.none) {
           _selectedLimitations.clear();
@@ -792,87 +886,112 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'آسیب‌دیدگی یا محدودیت جسمی داری؟',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF133B26)),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: colors.textPrimary),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'حرکاتی که به این بخش‌ها فشار می‌ارن از برنامه‌ات حذف می‌شن.',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: Colors.grey),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: colors.textSecondary),
         ),
         const SizedBox(height: 24),
         _buildMultiChoiceItem(
           label: 'هیچ محدودیتی ندارم ✅',
           isSelected: _selectedLimitations.contains(Limitation.none),
           onTap: () => toggleLimitation(Limitation.none),
+          colors: colors,
         ),
         _buildMultiChoiceItem(
           label: 'درد زانو 🦵',
           isSelected: _selectedLimitations.contains(Limitation.kneeProblems),
           onTap: () => toggleLimitation(Limitation.kneeProblems),
+          colors: colors,
         ),
         _buildMultiChoiceItem(
           label: 'کمردرد 🦴',
           isSelected: _selectedLimitations.contains(Limitation.backProblems),
           onTap: () => toggleLimitation(Limitation.backProblems),
+          colors: colors,
         ),
         _buildMultiChoiceItem(
           label: 'درد مچ دست / مچ پا 🦴',
           isSelected: _selectedLimitations.contains(Limitation.wristProblems),
           onTap: () => toggleLimitation(Limitation.wristProblems),
+          colors: colors,
         ),
       ],
     );
   }
 
-  // --- Step 8: Days & Duration ---
+  // --- Step 8: Days, Duration & Persona Blueprint ---
   Widget _buildStep9DurationAndDays() {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'زمان‌بندی هفته‌گی شما',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF133B26)),
+        Text(
+          'زمان‌بندی هفتگی شما',
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 22, fontWeight: FontWeight.bold, color: colors.textPrimary),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'چند روز در هفته و چقدر زمان می‌تونی وقت بگذاری؟',
-          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: Colors.grey),
+          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: colors.textSecondary),
         ),
-        const SizedBox(height: 24),
-        Text('تعداد روزهای تمرین در هفته: ${toPersianDigits(_selectedDays.toString())} روز', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 20),
+        Text('تعداد روزهای تمرین در هفته: ${toPersianDigits(_selectedDays.toString())} روز', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold, color: colors.textPrimary)),
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [2, 3, 4, 5, 6].map((days) {
             final isSelected = _selectedDays == days;
             return ChoiceChip(
-              label: Text(toPersianDigits('$days روز'), style: TextStyle(fontFamily: 'Vazirmatn', color: isSelected ? Colors.white : Colors.black)),
+              label: Text(toPersianDigits('$days روز'), style: TextStyle(fontFamily: 'Vazirmatn', color: isSelected ? Colors.white : colors.textPrimary)),
               selected: isSelected,
-              selectedColor: const Color(0xFF2D6A4F),
+              selectedColor: colors.primary,
+              backgroundColor: colors.card,
               onSelected: (val) {
-                if (val) setState(() => _selectedDays = days);
+                if (val) {
+                  RitmoHaptics.selection();
+                  setState(() => _selectedDays = days);
+                }
               },
             );
           }).toList(),
         ),
-        const SizedBox(height: 32),
-        Text('مدت هر جلسه تمرین: ${toPersianDigits(_selectedMinutes.toString())} دقیقه', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 24),
+        Text('مدت هر جلسه تمرین: ${toPersianDigits(_selectedMinutes.toString())} دقیقه', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, fontWeight: FontWeight.bold, color: colors.textPrimary)),
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [30, 45, 60].map((mins) {
             final isSelected = _selectedMinutes == mins;
             return ChoiceChip(
-              label: Text(toPersianDigits('$mins دقیقه'), style: TextStyle(fontFamily: 'Vazirmatn', color: isSelected ? Colors.white : Colors.black)),
+              label: Text(toPersianDigits('$mins دقیقه'), style: TextStyle(fontFamily: 'Vazirmatn', color: isSelected ? Colors.white : colors.textPrimary)),
               selected: isSelected,
-              selectedColor: const Color(0xFF2D6A4F),
+              selectedColor: colors.primary,
+              backgroundColor: colors.card,
               onSelected: (val) {
-                if (val) setState(() => _selectedMinutes = mins);
+                if (val) {
+                  RitmoHaptics.selection();
+                  setState(() => _selectedMinutes = mins);
+                }
               },
             );
           }).toList(),
+        ),
+        const SizedBox(height: 28),
+
+        // Live Workout Persona Blueprint Card
+        _WorkoutPersonaCard(
+          gender: _selectedGender,
+          goal: _selectedGoal,
+          experience: _selectedLevel,
+          days: _selectedDays,
+          durationMins: _selectedMinutes,
+          limitationsCount: _selectedLimitations.contains(Limitation.none) ? 0 : _selectedLimitations.length,
+          colors: colors,
         ),
       ],
     );
@@ -883,22 +1002,28 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
     required String icon,
     required bool isSelected,
     required VoidCallback onTap,
+    required RitmoColors colors,
     bool isDisabled = false,
   }) {
     return GestureDetector(
-      onTap: isDisabled ? null : onTap,
+      onTap: isDisabled
+          ? null
+          : () {
+              RitmoHaptics.selection();
+              onTap();
+            },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isDisabled 
-              ? Colors.grey[100] 
-              : isSelected ? const Color(0xFFE8F5E9) : Colors.grey[50],
+          color: isDisabled
+              ? colors.card.withValues(alpha: 0.4)
+              : isSelected ? colors.primary.withValues(alpha: 0.12) : colors.card,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isDisabled
-                ? Colors.grey[300]!
-                : isSelected ? const Color(0xFF2D6A4F) : Colors.grey[300]!,
+                ? colors.border.withValues(alpha: 0.3)
+                : isSelected ? colors.primary : colors.border,
             width: isSelected && !isDisabled ? 2 : 1,
           ),
         ),
@@ -913,11 +1038,11 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
                 fontSize: 15,
                 fontWeight: isSelected && !isDisabled ? FontWeight.bold : FontWeight.normal,
                 color: isDisabled
-                    ? Colors.grey[400]
-                    : isSelected ? const Color(0xFF133B26) : Colors.black,
+                    ? colors.textSecondary.withValues(alpha: 0.5)
+                    : isSelected ? colors.primary : colors.textPrimary,
               ),
             ),
-            Text(icon, style: TextStyle(fontSize: 20, color: isDisabled ? Colors.grey[400] : null)),
+            Text(icon, style: TextStyle(fontSize: 20, color: isDisabled ? colors.textSecondary.withValues(alpha: 0.4) : null)),
           ],
         ),
       ),
@@ -928,6 +1053,7 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
+    required RitmoColors colors,
     bool isDisabled = false,
   }) {
     return GestureDetector(
@@ -936,14 +1062,14 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isDisabled 
-              ? Colors.grey[100] 
-              : isSelected ? const Color(0xFFE8F5E9) : Colors.grey[50],
+          color: isDisabled
+              ? colors.card.withValues(alpha: 0.4)
+              : isSelected ? colors.primary.withValues(alpha: 0.12) : colors.card,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isDisabled
-                ? Colors.grey[300]!
-                : isSelected ? const Color(0xFF2D6A4F) : Colors.grey[300]!,
+                ? colors.border.withValues(alpha: 0.3)
+                : isSelected ? colors.primary : colors.border,
             width: isSelected && !isDisabled ? 2 : 1,
           ),
         ),
@@ -958,18 +1084,326 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
                 fontSize: 15,
                 fontWeight: isSelected && !isDisabled ? FontWeight.bold : FontWeight.normal,
                 color: isDisabled
-                    ? Colors.grey[400]
-                    : isSelected ? const Color(0xFF133B26) : Colors.black,
+                    ? colors.textSecondary.withValues(alpha: 0.5)
+                    : isSelected ? colors.primary : colors.textPrimary,
               ),
             ),
             Icon(
               isSelected && !isDisabled ? Icons.check_box : Icons.check_box_outline_blank,
               color: isDisabled
-                  ? Colors.grey[300]
-                  : isSelected ? const Color(0xFF2D6A4F) : Colors.grey,
+                  ? colors.textSecondary.withValues(alpha: 0.3)
+                  : isSelected ? colors.primary : colors.textSecondary,
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// --- Interactive BMI Spectrum Gauge ---
+class _BmiSpectrumGauge extends StatelessWidget {
+  const _BmiSpectrumGauge({required this.bmi, required this.colors});
+  final double bmi;
+  final RitmoColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    // Clamp BMI between 15 and 35 for gauge positioning (0.0 to 1.0)
+    final clampedBmi = bmi.clamp(15.0, 35.0);
+    final percent = (clampedBmi - 15.0) / (35.0 - 15.0);
+
+    return Column(
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Gauge Bar Gradient
+            Container(
+              height: 12,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF3B82F6), // Underweight Blue
+                    Color(0xFF10B981), // Normal Green
+                    Color(0xFFF59E0B), // Overweight Amber
+                    Color(0xFFEF4444), // Obese Red
+                  ],
+                  stops: [0.0, 0.35, 0.70, 1.0],
+                ),
+              ),
+            ),
+            // Pin Indicator
+            Positioned(
+              right: null,
+              left: (MediaQuery.of(context).size.width - 92) * percent.clamp(0.02, 0.95),
+              top: -6,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: colors.card,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: colors.primary, width: 3),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 2))
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('کمبود', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: colors.textSecondary)),
+            Text('نرمال', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: colors.textSecondary)),
+            Text('اضافه وزن', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: colors.textSecondary)),
+            Text('چاقی', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: colors.textSecondary)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// --- Live Workout Persona Blueprint Card ---
+class _WorkoutPersonaCard extends StatelessWidget {
+  const _WorkoutPersonaCard({
+    required this.gender,
+    required this.goal,
+    required this.experience,
+    required this.days,
+    required this.durationMins,
+    required this.limitationsCount,
+    required this.colors,
+  });
+
+  final String gender;
+  final FitnessGoal? goal;
+  final ExperienceLevel? experience;
+  final int days;
+  final int durationMins;
+  final int limitationsCount;
+  final RitmoColors colors;
+
+  String _getGoalTitle() {
+    switch (goal) {
+      case FitnessGoal.fatLoss:
+        return 'چربی‌سوزی';
+      case FitnessGoal.muscleGain:
+        return 'عضله‌سازی';
+      case FitnessGoal.bodyRecomposition:
+        return 'تناسب اندام';
+      case FitnessGoal.strength:
+        return 'افزایش قدرت';
+      default:
+        return 'عمومی';
+    }
+  }
+
+  String _getExpTitle() {
+    switch (experience) {
+      case ExperienceLevel.beginner:
+        return 'مبتدی';
+      case ExperienceLevel.intermediate:
+        return 'متوسط';
+      case ExperienceLevel.advanced:
+        return 'پیشرفته';
+      default:
+        return 'مبتدی';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.3), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.badge_outlined, color: colors.primary, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                'شناسنامه ورزشی اختصاصی شما',
+                style: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildPersonaChip('هدف', _getGoalTitle(), colors),
+              _buildPersonaChip('سطح', _getExpTitle(), colors),
+              _buildPersonaChip('زمان', toPersianDigits('$days روز × $durationMins دقیقه'), colors),
+            ],
+          ),
+          if (limitationsCount > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: colors.warning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.shield_outlined, color: colors.warning, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    toPersianDigits('محافظت از $limitationsCount ناحیه حساس بدن فعال شد'),
+                    style: TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: colors.warning,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonaChip(String label, String value, RitmoColors colors) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: colors.textSecondary)),
+          const SizedBox(height: 2),
+          Text(value, style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold, color: colors.textPrimary)),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Interactive 4-Stage AI Construction Screen ---
+class _AiPlanBuildingProgressView extends StatelessWidget {
+  const _AiPlanBuildingProgressView({
+    required this.currentStage,
+    required this.colors,
+  });
+
+  final int currentStage;
+  final RitmoColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final stages = [
+      'تحلیل شاخص توده بدنی (BMI) و آناتومی...',
+      'اعمال محدودیت‌ها و محافظت از مفاصل...',
+      'تنظیم سیستم باردهی و الگوی روزها...',
+      'تولید ۴ هفته برنامه اختصاصی تمرین...',
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SSLottiePlayer.start(size: 180),
+          const SizedBox(height: 12),
+          SSLottiePlayer.loading(size: 48),
+          const SizedBox(height: 24),
+          Text(
+            'در حال طراحی هوشمند برنامه تمرینی...',
+            style: TextStyle(
+              fontFamily: 'Vazirmatn',
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // Stage Checklist
+          Column(
+            children: List.generate(4, (index) {
+              final stageNum = index + 1;
+              final isDone = currentStage > stageNum;
+              final isCurrent = currentStage == stageNum;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDone
+                            ? colors.success
+                            : isCurrent ? colors.primary : colors.card,
+                        border: Border.all(
+                          color: isDone
+                              ? colors.success
+                              : isCurrent ? colors.primary : colors.border,
+                        ),
+                      ),
+                      child: isDone
+                          ? const Icon(Icons.check, color: Colors.white, size: 16)
+                          : isCurrent
+                              ? Center(
+                                  child: SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  ),
+                                )
+                              : null,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        stages[index],
+                        style: TextStyle(
+                          fontFamily: 'Vazirmatn',
+                          fontSize: 13,
+                          fontWeight: isCurrent || isDone ? FontWeight.bold : FontWeight.normal,
+                          color: isDone
+                              ? colors.success
+                              : isCurrent ? colors.textPrimary : colors.textSecondary.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }

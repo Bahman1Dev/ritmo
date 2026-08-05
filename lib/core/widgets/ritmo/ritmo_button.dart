@@ -49,9 +49,10 @@ class RitmoPrimaryButton extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 14,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
             color: colors.onPrimary,
             fontFamily: 'Vazirmatn',
+            height: 1.3,
           ),
         ),
       ],
@@ -116,9 +117,10 @@ class RitmoSecondaryButton extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 14,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
             color: colors.primary,
             fontFamily: 'Vazirmatn',
+            height: 1.3,
           ),
         ),
       ],

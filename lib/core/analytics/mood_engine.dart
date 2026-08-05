@@ -58,6 +58,9 @@ class MoodEngineOutput {
 
   /// Textual insight derived from correlation score.
   final String correlationInsight;
+
+  int get sampleCount => moodTrend.length;
+  double? get avgScore => moodTrend.isNotEmpty ? moodTrend.reduce((a, b) => a + b) / moodTrend.length : null;
 }
 
 /// Analytics engine for mood trend and energy correlation.

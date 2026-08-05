@@ -104,6 +104,8 @@ class SleepLog {
   final SleepQuality quality;
   final int awakenings;
 
+  double get durationHours => durationMinutes / 60.0;
+
   int get durationFromTimes {
     if (bedtimeAt != null && wakeAt != null) {
       return (wakeAt! - bedtimeAt!) ~/ 60000;

@@ -3,8 +3,11 @@ import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/models/inbox_item.dart';
 import 'package:ritmo/core/domain/models/reminder_state.dart';
 import 'package:ritmo/core/services/central_inbox_service.dart';
+import 'package:ritmo/core/utils/cycle_consent_bridge.dart';
 import 'package:ritmo/core/utils/ritmo_date.dart';
+import 'package:ritmo/features/worship/logic/worship_engine.dart';
 import 'package:ritmo/features/worship/logic/worship_repository.dart';
+import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// EndOfDaySweep sweeps stale pending/snoozed occurrences past midnight and converts them to 'missed'.
@@ -92,11 +95,17 @@ class EndOfDaySweep {
 
   static Future<void> _sweepWorship(DatabaseExecutor txn, String yesterdayStr, String todayStr) async {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final suspended = await CycleConsentBridge.isWorshipSuspended();
+
+    // Load day context for yesterday
+    final yesterdayDate = DateTime.tryParse(yesterdayStr) ?? DateTime.now().subtract(const Duration(days: 1));
+    final dayCtx = await WorshipEngine.instance.dayContext(yesterdayDate);
 
     final uncompletedRows = await txn.rawQuery('''
-      SELECT p.id, p.practiceType, p.dailyTarget
+      SELECT p.*
       FROM worship_practices p
       WHERE p.isActive = 1
+      AND p.userDisabledAt IS NULL
       AND p.practiceType IN ('PRAYER', 'MUSTAHAB', 'FASTING')
       AND NOT EXISTS (
         SELECT 1 FROM worship_completions c
@@ -105,28 +114,55 @@ class EndOfDaySweep {
     ''', [yesterdayStr]);
 
     for (final row in uncompletedRows) {
-      final pid = row['id']! as String;
-      final pType = row['practiceType']! as String;
-      final target = row['dailyTarget'] as int?;
-      final recordId = 'wc_missed_${pid}_$yesterdayStr';
+      final practice = WorshipPractice.fromMap(row);
+      final recordId = 'wc_missed_${practice.id}_$yesterdayStr';
+
+      final resultType = WorshipEngine.resolveMissResult(
+        practice: practice,
+        ctx: dayCtx,
+        suspended: suspended,
+      );
+
+      final addQada = WorshipEngine.shouldAddQada(
+        practice: practice,
+        ctx: dayCtx,
+        suspended: suspended,
+      );
 
       try {
         await txn.insert(
           'worship_completions',
           {
             'id': recordId,
-            'practiceId': pid,
+            'practiceId': practice.id,
             'dateStr': yesterdayStr,
-            'practiceType': pType,
-            'resultType': 'MISSED',
+            'practiceType': practice.practiceType,
+            'resultType': resultType,
             'countDone': 0,
-            'countTarget': target,
+            'countTarget': practice.dailyTarget,
             'loggedAt': nowMs,
             'createdAt': nowMs,
           },
           conflictAlgorithm: ConflictAlgorithm.ignore,
         );
-      } catch (_) {}
+
+        if (addQada) {
+          final debtId = 'debt_${practice.practiceType}_${practice.id}';
+          final debtType = practice.practiceType == 'FASTING' ? 'FAST' : 'PRAYER';
+          final debtTitle = practice.practiceType == 'FASTING' ? 'روزه قضا' : practice.title;
+
+          await txn.rawInsert('''
+            INSERT INTO worship_debts (id, debtType, sourcePracticeId, title, totalCount, remainingCount, dailyTarget, autoCreated, isArchived, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, 1, 1, 1, 1, 0, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              totalCount = totalCount + 1,
+              remainingCount = remainingCount + 1,
+              updatedAt = excluded.updatedAt
+          ''', [debtId, debtType, practice.id, debtTitle, nowMs, nowMs]);
+        }
+      } catch (e) {
+        debugPrint('Worship sweep error for ${practice.id}: $e');
+      }
     }
 
     // Reset dailyDone for active practices

@@ -10,6 +10,7 @@ import 'package:ritmo/core/analytics/konkur_engine.dart';
 // Analytical engines
 import 'package:ritmo/core/analytics/life_balance_engine.dart';
 import 'package:ritmo/core/analytics/milestone_engine.dart';
+import 'package:ritmo/core/analytics/mood_engine.dart';
 import 'package:ritmo/core/analytics/reflection_engine.dart';
 import 'package:ritmo/core/analytics/sleep_engine.dart';
 import 'package:ritmo/core/behavior/behavioral_intelligence_orchestrator.dart';
@@ -64,6 +65,7 @@ class AppBootstrapper {
       ..register(KonkurEngine())
       ..register(GoalsEngine())
       ..register(SleepEngine())
+      ..register(MoodEngine())
       ..register(AssistantEngine())
       ..register(ReflectionEngine())
       ..register(HealthEngine())

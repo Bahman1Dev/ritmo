@@ -204,43 +204,47 @@ class OnboardingController extends ChangeNotifier {
       final alreadyCompleted = await OnboardingGate.isCompleted(db);
 
       if (!alreadyCompleted) {
-        // 1. Create starter routines with deterministic IDs to ensure idempotency
-        for (final t in selectedStarterRoutines) {
-          final rId = 'onboarding_routine_${t.id}';
-          final duration = DurationBounds.sanitize(t.durationMinutes);
+        // 1. Create starter routines with deterministic IDs to ensure idempotency (Best Effort)
+        try {
+          for (final t in selectedStarterRoutines) {
+            final rId = 'onboarding_routine_${t.id}';
+            final duration = DurationBounds.sanitize(t.durationMinutes);
 
-          final routineData = {
-            'id': rId,
-            'title': t.titleFa,
-            'category': t.category.name,
-            'routineType': 'timeBased',
-            'notificationLevel': 'normal',
-            'isEssential': 0,
-            'energyRule': 'none',
-            'priority': 1.0,
-            'targetDurationMinutes': duration,
-            'displayOrder': 1,
-            'description': 'اولین روتین ثبت‌شده در آنبوردینگ',
-            'createdAt': nowMs,
-            'updatedAt': nowMs,
-          };
+            final routineData = {
+              'id': rId,
+              'title': t.titleFa,
+              'category': t.category.name,
+              'routineType': 'timeBased',
+              'notificationLevel': 'normal',
+              'isEssential': 0,
+              'energyRule': 'none',
+              'priority': 1.0,
+              'targetDurationMinutes': duration,
+              'displayOrder': 1,
+              'description': 'اولین روتین ثبت‌شده در آنبوردینگ',
+              'createdAt': nowMs,
+              'updatedAt': nowMs,
+            };
 
-          final scheduleData = {
-            'id': 'sched_$rId',
-            'routineId': rId,
-            'scheduleType': 'DAILY',
-            'timeOfDay': t.defaultTime,
-            'daysOfWeek': '1,2,3,4,5,6,7',
-            'createdAt': nowMs,
-            'updatedAt': nowMs,
-          };
+            final scheduleData = {
+              'id': 'sched_$rId',
+              'routineId': rId,
+              'scheduleType': 'DAILY',
+              'timeOfDay': t.defaultTime,
+              'daysOfWeek': '1,2,3,4,5,6,7',
+              'createdAt': nowMs,
+              'updatedAt': nowMs,
+            };
 
-          final command = CreateRoutineCommand(
-            routineData: routineData,
-            scheduleData: scheduleData,
-          );
+            final command = CreateRoutineCommand(
+              routineData: routineData,
+              scheduleData: scheduleData,
+            );
 
-          await RitmoExecutionKernel.instance.execute(command);
+            await RitmoExecutionKernel.instance.execute(command);
+          }
+        } catch (routineErr, routineSt) {
+          RitmoLog.error('OnboardingController', 'Error creating starter routines', routineErr, routineSt);
         }
 
         // 2. Perform main onboarding completion transaction

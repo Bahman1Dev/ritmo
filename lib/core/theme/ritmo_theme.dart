@@ -97,6 +97,15 @@ abstract final class RitmoTextStyles {
         fontWeight: FontWeight.bold,
         color: color,
         fontFamily: 'Vazirmatn',
+        height: 1.3,
+      );
+
+  static TextStyle sectionHeadline(Color color) => TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+        color: color,
+        fontFamily: 'Vazirmatn',
+        height: 1.4,
       );
 
   static TextStyle cardTitle(Color color) => TextStyle(
@@ -104,22 +113,51 @@ abstract final class RitmoTextStyles {
         fontWeight: FontWeight.w700,
         color: color,
         fontFamily: 'Vazirmatn',
+        height: 1.4,
+      );
+
+  static TextStyle titleMedium(Color color) => TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: color,
+        fontFamily: 'Vazirmatn',
+        height: 1.5,
       );
 
   static TextStyle body(Color color) => TextStyle(
         fontSize: 15,
+        fontWeight: FontWeight.w400,
         color: color,
         fontFamily: 'Vazirmatn',
+        height: 1.6,
+      );
+
+  static TextStyle label(Color color) => TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: color,
+        fontFamily: 'Vazirmatn',
+        height: 1.3,
       );
 
   static TextStyle caption(Color color) => TextStyle(
         fontSize: 13,
+        fontWeight: FontWeight.w400,
         color: color,
         fontFamily: 'Vazirmatn',
+        height: 1.6,
+      );
+
+  static TextStyle badge(Color color) => TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        color: color,
+        fontFamily: 'Vazirmatn',
+        height: 1.3,
       );
 }
 
-/// تایپوگرافی — دقیقاً هشت سبک با Vazirmatn (سند طراحی §۳.۴)
+/// تایپوگرافی کامل و متناسب با Vazirmatn (سند طراحی §۳.۴)
 abstract final class RitmoTypography {
   static TextTheme textTheme(RitmoColors colors) {
     return TextTheme(
@@ -130,8 +168,36 @@ abstract final class RitmoTypography {
         height: 1.3,
         fontFamily: 'Vazirmatn',
       ),
+      displayMedium: TextStyle(
+        fontSize: 28,
+        fontWeight: FontWeight.w700,
+        color: colors.textPrimary,
+        height: 1.3,
+        fontFamily: 'Vazirmatn',
+      ),
+      displaySmall: TextStyle(
+        fontSize: 26,
+        fontWeight: FontWeight.w700,
+        color: colors.textPrimary,
+        height: 1.3,
+        fontFamily: 'Vazirmatn',
+      ),
+      headlineLarge: TextStyle(
+        fontSize: 26,
+        fontWeight: FontWeight.w700,
+        color: colors.textPrimary,
+        height: 1.4,
+        fontFamily: 'Vazirmatn',
+      ),
       headlineMedium: TextStyle(
         fontSize: 24,
+        fontWeight: FontWeight.w700,
+        color: colors.textPrimary,
+        height: 1.4,
+        fontFamily: 'Vazirmatn',
+      ),
+      headlineSmall: TextStyle(
+        fontSize: 20,
         fontWeight: FontWeight.w700,
         color: colors.textPrimary,
         height: 1.4,
@@ -141,42 +207,63 @@ abstract final class RitmoTypography {
         fontSize: 18,
         fontWeight: FontWeight.w700,
         color: colors.textPrimary,
-        height: 1.5,
+        height: 1.4,
         fontFamily: 'Vazirmatn',
       ),
       titleMedium: TextStyle(
         fontSize: 16,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         color: colors.textPrimary,
         height: 1.5,
+        fontFamily: 'Vazirmatn',
+      ),
+      titleSmall: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: colors.textPrimary,
+        height: 1.4,
         fontFamily: 'Vazirmatn',
       ),
       bodyLarge: TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w400,
         color: colors.textPrimary,
-        height: 1.7,
+        height: 1.6,
         fontFamily: 'Vazirmatn',
       ),
       bodyMedium: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w400,
         color: colors.textSecondary,
-        height: 1.7,
+        height: 1.6,
+        fontFamily: 'Vazirmatn',
+      ),
+      bodySmall: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+        color: colors.textTertiary,
+        height: 1.5,
         fontFamily: 'Vazirmatn',
       ),
       labelLarge: TextStyle(
         fontSize: 14,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         color: colors.textPrimary,
-        height: 1.4,
+        height: 1.3,
+        fontFamily: 'Vazirmatn',
+      ),
+      labelMedium: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        color: colors.textSecondary,
+        height: 1.3,
         fontFamily: 'Vazirmatn',
       ),
       labelSmall: TextStyle(
         fontSize: 11,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         color: colors.textSecondary,
-        height: 1.4,
+        height: 1.3,
         fontFamily: 'Vazirmatn',
       ),
     );

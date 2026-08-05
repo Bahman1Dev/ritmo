@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/ux/ritmo_haptics.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_onboarding_flow.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/primary_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +15,7 @@ class SSIntroScreen extends StatefulWidget {
 class _SSIntroScreenState extends State<SSIntroScreen> {
 
   Future<void> _finishIntro() async {
+    RitmoHaptics.confirm();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('ss_shown_intro_splash', true);
 
@@ -26,12 +29,13 @@ class _SSIntroScreenState extends State<SSIntroScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
-    final titleColor = isDark ? const Color(0xFFE8F5E9) : const Color(0xFF133B26);
-    final subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[700]!;
-    final waveColor = isDark ? const Color(0xFF1C221F) : const Color(0xFFF2F9F6);
+    final bgColor = colors.background;
+    final titleColor = colors.textPrimary;
+    final subtitleColor = colors.textSecondary;
+    final waveColor = colors.card;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -48,7 +52,7 @@ class _SSIntroScreenState extends State<SSIntroScreen> {
                   // Dumbbell Custom painted vector Logo
                   CustomPaint(
                     size: const Size(200, 100),
-                    painter: DumbbellLogoPainter(isDark: isDark),
+                    painter: DumbbellLogoPainter(accentColor: colors.primary, isDark: isDark),
                   ),
                   const SizedBox(height: 36),
 
@@ -112,18 +116,19 @@ class _SSIntroScreenState extends State<SSIntroScreen> {
 
 // --- Custom Painter to draw dumbbell brand logo exactly as image ---
 class DumbbellLogoPainter extends CustomPainter {
-  DumbbellLogoPainter({required this.isDark});
+  DumbbellLogoPainter({required this.accentColor, required this.isDark});
+  final Color accentColor;
   final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
 
     final lightGreenPaint = Paint()
-      ..color = isDark ? const Color(0xFF81C784) : const Color(0xFF4D9E6E) // light accent or dark accent
+      ..color = accentColor
       ..style = PaintingStyle.fill;
 
     final barPaint = Paint()
-      ..color = isDark ? const Color(0xFF81C784) : const Color(0xFF4D9E6E)
+      ..color = accentColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 6
       ..strokeCap = StrokeCap.round;

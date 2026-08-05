@@ -89,6 +89,24 @@ class RitmoColors extends ThemeExtension<RitmoColors> {
   Color get secondary => primary;
   Color get onBackground => textPrimary;
 
+  // ── Wellbeing Semantic Accent Tokens (T-0.4) ────────────────
+  Color get sleepAccent => const Color(0xff8B5CF6);
+  Color get energyAccent => const Color(0xffEC4899);
+  Color get reflectionAccent => const Color(0xff06B6D4);
+  Color get reflectionAccentAlt => const Color(0xff22D3EE);
+  Color get cautionAccent => warning;
+  Color get dangerAccent => error;
+
+  static Color glassSurface(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04);
+  }
+
+  static Color staticGlassBorder(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.10);
+  }
+
   @override
   RitmoColors copyWith({
     Color? background,
