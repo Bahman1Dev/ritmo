@@ -127,12 +127,17 @@ class TimelineItemCard extends StatelessWidget {
 
                     // Content layout by tier
                     Padding(
-                      padding: const EdgeInsets.only(right: 10.0, left: 6.0, top: 4.0, bottom: 4.0),
+                      padding: EdgeInsets.only(
+                        right: 10.0,
+                        left: 6.0,
+                        top: isHighlighted ? 2.0 : 3.0,
+                        bottom: isHighlighted ? 2.0 : 3.0,
+                      ),
                       child: isCompact
                           ? _buildCompactTier(context, colors, color, isDone)
                           : (isExpanded
                               ? _buildExpandedTier(context, colors, color, isDone, startMin, durMin)
-                              : _buildNormalTier(context, colors, color, isDone, startMin, durMin)),
+                              : _buildNormalTier(context, colors, color, isDone, startMin, durMin, height)),
                     ),
                   ],
                 ),
@@ -166,14 +171,16 @@ class TimelineItemCard extends StatelessWidget {
     );
   }
 
-  Widget _buildNormalTier(BuildContext context, RitmoColors colors, Color color, bool isDone, int startMin, int durMin) {
+  Widget _buildNormalTier(BuildContext context, RitmoColors colors, Color color, bool isDone, int startMin, int durMin, double height) {
     final item = layoutItem.item;
+    final showTime = item.isTimed && height >= 44.0;
     return Row(
       children: [
         Icon(domainIcon(item.domain), size: 14, color: color),
         const SizedBox(width: 6),
         Expanded(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -189,7 +196,7 @@ class TimelineItemCard extends StatelessWidget {
                   fontFamily: 'Vazirmatn',
                 ),
               ),
-              if (item.isTimed)
+              if (showTime)
                 RitmoTimeRange(
                   startMinutes: startMin,
                   endMinutes: startMin + durMin,
@@ -215,6 +222,7 @@ class TimelineItemCard extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -240,7 +248,7 @@ class TimelineItemCard extends StatelessWidget {
                     fontFamily: 'Vazirmatn',
                   ),
                 ),
-              const Spacer(),
+              const SizedBox(height: 2),
               if (item.isTimed)
                 RitmoTimeRange(
                   startMinutes: startMin,
