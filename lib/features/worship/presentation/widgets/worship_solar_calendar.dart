@@ -154,7 +154,7 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
                             Text(
                               '${_monthData.monthName} ${toPersianDigits(_monthData.year.toString())}',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 color: colors.textPrimary,
                                 fontFamily: 'Vazirmatn',
@@ -167,15 +167,15 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
                                 onTap: _goToToday,
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFC4953B).withValues(alpha: 0.12),
+                                    color: const Color(0xFFC4953B).withValues(alpha: 0.14),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: const Text(
                                     'امروز',
                                     style: TextStyle(
-                                      fontSize: 10,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFFC4953B),
                                       fontFamily: 'Vazirmatn',
@@ -185,11 +185,12 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
                               ),
                           ],
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Text(
                           '${_monthData.gregorianRangeText}  •  ${_monthData.hijriRangeText}',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
                             color: colors.textSecondary,
                             fontFamily: 'Vazirmatn',
                           ),
@@ -205,18 +206,18 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
                     children: [
                       IconButton(
                         onPressed: _goToNextMonth,
-                        icon: const Icon(CupertinoIcons.chevron_forward, size: 18),
+                        icon: const Icon(CupertinoIcons.chevron_forward, size: 20),
                         color: colors.textPrimary,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                         tooltip: 'ماه بعد',
                       ),
                       IconButton(
                         onPressed: _goToPrevMonth,
-                        icon: const Icon(CupertinoIcons.chevron_back, size: 18),
+                        icon: const Icon(CupertinoIcons.chevron_back, size: 20),
                         color: colors.textPrimary,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                         tooltip: 'ماه قبل',
                       ),
                     ],
@@ -241,7 +242,7 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
               ),
 
               const SizedBox(height: 10),
-              Divider(height: 1, color: colors.textPrimary.withValues(alpha: 0.06)),
+              Divider(height: 1, color: colors.textPrimary.withValues(alpha: 0.08)),
               const SizedBox(height: 10),
 
               // 7-Column Grid (35 or 42 Days)
@@ -256,7 +257,7 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
                     crossAxisCount: 7,
                     mainAxisSpacing: 6,
                     crossAxisSpacing: 6,
-                    childAspectRatio: 0.82,
+                    childAspectRatio: 0.86,
                   ),
                   itemBuilder: (context, index) {
                     final day = _monthData.days[index];
@@ -284,7 +285,7 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
             color: isFriday ? const Color(0xFFE53935) : colors.textTertiary,
             fontFamily: 'Vazirmatn',
@@ -326,7 +327,7 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
     // Secondary digits color
     Color subTextColor;
     if (isSelected) {
-      subTextColor = Colors.white.withValues(alpha: 0.8);
+      subTextColor = Colors.white.withValues(alpha: 0.85);
     } else if (!isCurrentMonth) {
       subTextColor = colors.textTertiary.withValues(alpha: 0.25);
     } else {
@@ -356,39 +357,41 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Primary Solar Day Number
+            // Primary Solar Day Number (Enlarged)
             Text(
               toPersianDigits(day.jalali.day.toString()),
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: (isToday || isSelected) ? FontWeight.bold : FontWeight.w500,
+                fontSize: 16,
+                fontWeight: (isToday || isSelected) ? FontWeight.bold : FontWeight.w600,
                 color: mainTextColor,
                 fontFamily: 'Vazirmatn',
               ),
             ),
 
-            const SizedBox(height: 1),
+            const SizedBox(height: 2),
 
-            // Secondary Digits: Gregorian & Hijri
+            // Secondary Digits: Gregorian & Hijri (Enlarged)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   day.dateTime.day.toString(),
                   style: TextStyle(
-                    fontSize: 8,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
                     color: subTextColor,
                     fontFamily: 'Roboto',
                   ),
                 ),
                 Text(
                   ' • ',
-                  style: TextStyle(fontSize: 7, color: subTextColor),
+                  style: TextStyle(fontSize: 8, color: subTextColor),
                 ),
                 Text(
                   toPersianDigits(day.hijri.day.toString()),
                   style: TextStyle(
-                    fontSize: 8,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
                     color: subTextColor,
                     fontFamily: 'Vazirmatn',
                   ),
@@ -417,9 +420,9 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
                       break;
                   }
                   return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 1),
-                    width: 4,
-                    height: 4,
+                    margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                    width: 5,
+                    height: 5,
                     decoration: BoxDecoration(
                       color: dotColor,
                       shape: BoxShape.circle,
@@ -428,7 +431,7 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
                 }).toList(),
               )
             else
-              const SizedBox(height: 4),
+              const SizedBox(height: 5),
           ],
         ),
       ),
