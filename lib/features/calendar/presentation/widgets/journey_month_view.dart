@@ -107,7 +107,7 @@ class JourneyMonthView extends StatelessWidget {
                       ? colors.primaryContainer
                       : (tintAlpha > 0
                           ? colors.primary.withValues(alpha: tintAlpha)
-                          : (isCurrentMonth ? colors.surface : colors.sunken));
+                          : (isCurrentMonth ? colors.surface : colors.surfaceSunken));
 
                   final dayNumStr = toPersianDigits(jDay.day.toString());
 

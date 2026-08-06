@@ -8,23 +8,23 @@ Color domainColor(BuildContext context, AgendaDomain domain) {
   final modules = context.modules;
   switch (domain) {
     case AgendaDomain.routine:
-      return modules.byModuleId('routines').primary;
+      return modules.byModuleId('routines');
     case AgendaDomain.prayer:
     case AgendaDomain.mustahab:
     case AgendaDomain.worshipDebt:
-      return modules.byModuleId('worship').primary;
+      return modules.byModuleId('worship');
     case AgendaDomain.course:
     case AgendaDomain.konkur:
-      return modules.byModuleId('study').primary;
+      return modules.byModuleId('study');
     case AgendaDomain.goalStep:
-      return modules.byModuleId('goals').primary;
+      return modules.byModuleId('goals');
     case AgendaDomain.cycle:
     case AgendaDomain.medicine:
-      return modules.byModuleId('health').primary;
+      return modules.byModuleId('health');
     case AgendaDomain.sport:
-      return modules.byModuleId('sports').primary;
+      return modules.byModuleId('sports');
     case AgendaDomain.event:
-      return modules.byModuleId('planner').primary;
+      return modules.byModuleId('planner');
   }
 }
 

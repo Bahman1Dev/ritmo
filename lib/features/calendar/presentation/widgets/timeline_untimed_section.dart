@@ -214,6 +214,8 @@ class TimelineUntimedSection extends StatelessWidget {
         return Colors.green;
       case AgendaDomain.medicine:
         return Colors.orange.shade800;
+      case AgendaDomain.event:
+        return Colors.blue;
     }
   }
 }

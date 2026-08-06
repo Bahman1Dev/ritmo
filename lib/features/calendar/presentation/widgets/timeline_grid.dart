@@ -585,7 +585,7 @@ class _TimelineGridState extends State<TimelineGrid> {
         height: height,
         child: IgnorePointer(
           child: Container(
-            color: colors.sunken.withValues(alpha: 0.55),
+            color: colors.surfaceSunken.withValues(alpha: 0.55),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Text(
               'پنجره خواب',

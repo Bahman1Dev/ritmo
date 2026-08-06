@@ -22,6 +22,9 @@ class TimelineItemCard extends StatelessWidget {
     this.displayHeightOverride,
     this.onTap,
     this.onToggleComplete,
+    this.onResizeStart,
+    this.onResizeUpdate,
+    this.onResizeEnd,
   });
 
   final TimelineLayoutItem layoutItem;
@@ -36,6 +39,9 @@ class TimelineItemCard extends StatelessWidget {
   final double? displayHeightOverride;
   final VoidCallback? onTap;
   final VoidCallback? onToggleComplete;
+  final GestureDragStartCallback? onResizeStart;
+  final GestureDragUpdateCallback? onResizeUpdate;
+  final GestureDragEndCallback? onResizeEnd;
 
   @override
   Widget build(BuildContext context) {

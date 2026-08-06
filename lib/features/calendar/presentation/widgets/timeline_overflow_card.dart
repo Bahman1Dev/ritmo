@@ -150,6 +150,8 @@ class TimelineOverflowCard extends StatelessWidget {
         return Icons.fitness_center_rounded;
       case AgendaDomain.medicine:
         return Icons.medication_rounded;
+      case AgendaDomain.event:
+        return Icons.event_rounded;
     }
   }
 
@@ -175,6 +177,8 @@ class TimelineOverflowCard extends StatelessWidget {
         return Colors.green;
       case AgendaDomain.medicine:
         return Colors.orange.shade800;
+      case AgendaDomain.event:
+        return Colors.blue;
     }
   }
 }
