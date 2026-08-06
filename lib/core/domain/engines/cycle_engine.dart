@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
+import 'package:ritmo/core/settings/settings_flags.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
 import 'package:ritmo/features/cycle/models/cycle_models.dart';
 import 'package:sqflite/sqflite.dart';
@@ -455,7 +456,10 @@ class CycleEngine implements CachedEngine<CycleEngineInput, CycleEngineOutput> {
   void invalidate() {}
 
   @override
-  bool canRun(CycleEngineInput input) => true;
+  bool canRun(CycleEngineInput input) {
+    final flags = SettingsFlags.fromMap(input.appSettings);
+    return flags.canShowCycle;
+  }
 
   @override
   List<Type> dependencies() => [];

@@ -57,6 +57,15 @@ class AssistantEngineOutput {
 class AssistantEngine implements CachedEngine<AssistantEngineInput, AssistantEngineOutput> {
   @override
   Future<AssistantEngineOutput> calculate(AssistantEngineInput input) async {
+    if (!input.isProactiveEnabled) {
+      return AssistantEngineOutput(
+        dailyBriefing: DailyBriefing(text: '', highlights: const [], stats: const {}),
+        nextActions: const [],
+        systemHighlights: const [],
+        dynamicSuggestions: const [],
+      );
+    }
+
     final cleanToday = DateTime(input.today.year, input.today.month, input.today.day);
     final todayStr = _formatDateIso(cleanToday);
     final yesterdayStr = _formatDateIso(cleanToday.subtract(const Duration(days: 1)));
