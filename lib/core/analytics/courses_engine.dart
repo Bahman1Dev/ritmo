@@ -62,7 +62,15 @@ class CoursesEngine implements CachedEngine<CoursesEngineInput, CoursesEngineOut
   @override
   String fingerprint(CoursesEngineInput input) {
     final dayStamp = _formatDate(input.today);
-    return '$dayStamp|${input.courses.length}|${input.sessions.length}';
+    var completedCount = 0;
+    var skippedCount = 0;
+    var maxUpdated = 0;
+    for (final s in input.sessions) {
+      if (s.isCompleted) completedCount++;
+      if (s.isSkipped) skippedCount++;
+      if (s.updatedAt > maxUpdated) maxUpdated = s.updatedAt;
+    }
+    return '$dayStamp|${input.courses.length}|${input.sessions.length}|$completedCount|$skippedCount|$maxUpdated|${input.currentEnergyLevel}';
   }
 
   @override
@@ -149,10 +157,15 @@ class CoursesEngine implements CachedEngine<CoursesEngineInput, CoursesEngineOut
       }
     }
 
+    final sessionsByCourse = <String, List<CourseSession>>{};
+    for (final s in input.sessions) {
+      (sessionsByCourse[s.courseId] ??= []).add(s);
+    }
+
     // D. behindSchedule from planningCourses
     final behindMap = <String, int>{};
     for (final course in planningCourses) {
-      final courseSessions = input.sessions.where((s) => s.courseId == course.id).toList();
+      final courseSessions = sessionsByCourse[course.id] ?? const [];
       final behindCount = CourseScheduler.daysBehind(sessions: courseSessions, today: input.today);
       behindMap[course.id] = behindCount;
     }
@@ -160,7 +173,7 @@ class CoursesEngine implements CachedEngine<CoursesEngineInput, CoursesEngineOut
     // E. todaySessions from planningCourses
     final todaySess = <CourseSession>[];
     for (final course in planningCourses) {
-      final courseSessions = input.sessions.where((s) => s.courseId == course.id).toList();
+      final courseSessions = sessionsByCourse[course.id] ?? const [];
       for (final session in courseSessions) {
         if (session.plannedDate == todayStr && !session.isCompleted && !session.isSkipped) {
           todaySess.add(session);
@@ -173,7 +186,7 @@ class CoursesEngine implements CachedEngine<CoursesEngineInput, CoursesEngineOut
     final paceMap = <String, int>{};
 
     for (final course in planningCourses) {
-      final courseSessions = input.sessions.where((s) => s.courseId == course.id).toList();
+      final courseSessions = sessionsByCourse[course.id] ?? const [];
       final pendingCount = courseSessions.where((s) => !s.isCompleted && !s.isSkipped).length;
 
       final est = CourseScheduler.estimatedEndDate(
@@ -210,7 +223,7 @@ class CoursesEngine implements CachedEngine<CoursesEngineInput, CoursesEngineOut
     final masteryMap = <String, double>{};
 
     for (final course in input.courses) {
-      final courseSessions = input.sessions.where((s) => s.courseId == course.id).toList();
+      final courseSessions = sessionsByCourse[course.id] ?? const [];
       final learnSessions = courseSessions.where((s) => s.activityKind != CourseActivityKind.review).toList();
       final completedLearnCount = learnSessions.where((s) => s.isCompleted).length;
       final totalLearnCount = learnSessions.isNotEmpty ? learnSessions.length : course.totalSessions;

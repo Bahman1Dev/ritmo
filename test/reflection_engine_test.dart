@@ -82,7 +82,7 @@ void main() {
       final output = await engine.calculate(input);
       expect(output.reflectionMoodCorrelation, isNotNull);
       expect(output.reflectionMoodCorrelation, greaterThan(0.9));
-      expect(output.correlationInsight, contains('رابطه مثبتی'));
+      expect(output.correlationInsight, contains('روحیه بالاتری'));
     });
 
     test('Pearson correlation - low data null check', () async {

@@ -93,8 +93,14 @@ class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
           ..write(i.routineCompletions.length);
       });
 
+  GoalsEngineOutput? _cachedOutput;
+  String? _cachedFingerprint;
+
   @override
-  void invalidate() {}
+  void invalidate() {
+    _cachedOutput = null;
+    _cachedFingerprint = null;
+  }
 
   @override
   bool canRun(GoalsEngineInput input) => input.horizonDays > 0;
@@ -104,6 +110,10 @@ class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
 
   @override
   Future<GoalsEngineOutput> calculate(GoalsEngineInput input) async {
+    final fpVal = fingerprint(input);
+    if (_cachedOutput != null && _cachedFingerprint == fpVal) {
+      return _cachedOutput!;
+    }
 
     final cleanToday = DateTime(input.today.year, input.today.month, input.today.day);
     final todayStr = _formatDateIso(cleanToday);
@@ -160,6 +170,7 @@ class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
               title: step.title,
               source: TimelineSource.goalStep,
               sourceId: step.id,
+              goalId: goal.id,
               isDone: step.isCompleted,
               subtitle: goal.title,
             ));
@@ -268,6 +279,8 @@ class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
       activeGoalsCount: activeGoalsCount,
       completedGoalsCount: completedGoalsCount,
     );
+    _cachedOutput = output;
+    _cachedFingerprint = fpVal;
     return output;
   }
 

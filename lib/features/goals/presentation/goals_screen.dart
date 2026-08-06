@@ -5,7 +5,6 @@ import 'package:ritmo/core/analytics/goals_engine.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/widgets/ritmo_module_app_bar.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
-import 'package:ritmo/features/courses/models/course_models.dart';
 import 'package:ritmo/features/goals/logic/goals_controller.dart';
 import 'package:ritmo/features/goals/logic/goals_repository.dart';
 import 'package:ritmo/features/goals/models/goal_models.dart';
@@ -177,21 +176,15 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
 
   int _calculateMomentum(Goal goal, Map<String, List<GoalStep>> stepsByGoal) {
     var count = 0;
-    final now = DateTime.now();
-    final todayOnly = DateTime(now.year, now.month, now.day);
-    final sevenDaysAgo = todayOnly.subtract(const Duration(days: 7));
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final sevenDaysAgoMs = nowMs - (7 * 24 * 60 * 60 * 1000);
 
-    // Get steps of this goal
     final steps = stepsByGoal[goal.id] ?? [];
     for (final step in steps) {
-      // 1. Toggled steps in last 7 days
-      if (step.isCompleted && step.scheduledDate != null) {
-        try {
-          final dt = DateTime.parse(step.scheduledDate!);
-          if (dt.isAfter(sevenDaysAgo) && dt.isBefore(now)) {
-            count++;
-          }
-        } catch (_) {}
+      if (step.isCompleted && step.completedAt != null) {
+        if (step.completedAt! >= sevenDaysAgoMs && step.completedAt! <= nowMs) {
+          count++;
+        }
       }
     }
     return count;
@@ -201,17 +194,17 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     if (activeGoals.isEmpty) return null;
     
     Goal? best;
-    var bestScore = -999999;
+    var bestScore = -999999.0;
     
     for (final goal in activeGoals) {
-      var score = 0;
+      var score = 0.0;
       final days = goal.daysUntilTarget;
       if (days >= 0 && days < 30) {
-        score += (30 - days) * 100;
+        score += ((30 - days) / 30.0) * 50.0;
       }
       final momentum = _calculateMomentum(goal, stepsByGoal);
-      score += momentum * 50;
-      score += goal.updatedAt ~/ 1000000;
+      score += (momentum.clamp(0, 10) / 10.0) * 30.0;
+      score += (goal.weight.clamp(0.1, 3.0) / 3.0) * 20.0;
       
       if (score > bestScore) {
         bestScore = score;
@@ -227,6 +220,59 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     final viewState = _controller.state;
+    if (viewState is GoalsFailed) {
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: colors.bg,
+          appBar: const RitmoModuleAppBar(
+            title: 'اهداف و دستاوردها',
+            subtitle: 'نقشه راه رشد و گام‌های عملی',
+          ),
+          body: Center(
+            child: Container(
+              margin: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: colors.card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colors.warning.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.warning_amber_rounded, size: 48, color: colors.warning),
+                  const SizedBox(height: 16),
+                  Text(
+                    'خطا در بارگذاری اهداف و برنامه‌ها',
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    viewState.error.toString(),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.textSecondary),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('تلاش مجدد', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
+                    onPressed: () => _controller.reload(force: true),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     final isLoading = viewState is GoalsLoading;
     final readyState = viewState is GoalsReady ? viewState : null;
 
@@ -419,6 +465,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                           goals: goals,
                           onRefresh: () => _controller.reload(force: true),
                           onToggleStep: (step, goalId) => _handleToggleStep(step, goalId),
+                          onEditGoal: (goal) => _showCreateGoalSheet(editGoal: goal),
                         ),
                       ],
                     ),

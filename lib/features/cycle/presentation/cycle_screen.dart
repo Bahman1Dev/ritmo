@@ -22,6 +22,7 @@ import 'package:ritmo/features/cycle/presentation/widgets/cycle_correlation_sect
 import 'package:ritmo/features/cycle/presentation/widgets/cycle_sos_section.dart';
 import 'package:ritmo/features/cycle/presentation/widgets/cycle_pregnancy_mode.dart';
 import 'package:ritmo/features/cycle/presentation/widgets/ai_cycle_assistant_sheet.dart';
+import 'package:ritmo/features/cycle/presentation/onboarding/cycle_onboarding_shell.dart';
 import 'package:ritmo/features/cycle/models/cycle_models.dart';
 import 'package:ritmo/features/cycle/logic/cycle_correlation.dart';
 import 'package:ritmo/core/utils/cycle_consent_bridge.dart';
@@ -318,6 +319,22 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
           _symptomStats = stats;
           _isLoading = false;
         });
+
+        if (_settings['cycle_onboarding_just_completed'] == 'true') {
+          await db.delete('app_settings', where: "key = 'cycle_onboarding_just_completed'");
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'راه‌اندازی چرخه بدن با موفقیت انجام شد. اطلاعات شما به‌صورت محرمانه ثبت گردید.',
+                  style: TextStyle(fontFamily: 'Vazirmatn'),
+                ),
+                backgroundColor: Color(0xff10B981),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
       debugPrint('Error loading cycle data: $e');
@@ -1058,7 +1075,27 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
                                 )
                               : _buildMainDashboard(colors, isDark))
                           : (_startSetup
-                              ? _buildOnboardingWizard(colors, isDark)
+                              ? CycleOnboardingShell(
+                                  onCompleted: () async {
+                                    setState(() {
+                                      _startSetup = false;
+                                    });
+                                    await _loadData();
+                                  },
+                                  onNavigateToPregnancy: () async {
+                                    final db = await DatabaseHelper.instance.database;
+                                    final nowMs = DateTime.now().millisecondsSinceEpoch;
+                                    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+                                    await db.insert('app_settings', {'key': 'cycle_pregnancy_mode', 'value': 'true', 'updatedAt': nowMs}, conflictAlgorithm: ConflictAlgorithm.replace);
+                                    await db.insert('app_settings', {'key': 'cycle_pregnancy_start_date', 'value': todayStr, 'updatedAt': nowMs}, conflictAlgorithm: ConflictAlgorithm.replace);
+                                    await db.insert('app_settings', {'key': 'cycle_setup_done', 'value': 'true', 'updatedAt': nowMs}, conflictAlgorithm: ConflictAlgorithm.replace);
+                                    await db.insert('app_settings', {'key': 'module_cycle_enabled', 'value': 'true', 'updatedAt': nowMs}, conflictAlgorithm: ConflictAlgorithm.replace);
+                                    setState(() {
+                                      _startSetup = false;
+                                    });
+                                    await _loadData();
+                                  },
+                                )
                               : RitmoEmptyState(
                                   icon: CupertinoIcons.heart_circle_fill,
                                   title: 'چرخه بدن فعال نشده است',
@@ -1077,289 +1114,7 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
     );
   }
 
-  Widget _buildOnboardingWizard(RitmoColors colors, bool isDark) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: RitmoTheme.glassCardLight(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: _onboardingStep == 1
-                ? _buildSetupStep1(colors)
-                : _onboardingStep == 2
-                    ? _buildSetupStep2(colors)
-                    : _buildSetupStep3(colors),
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildSetupStep1(RitmoColors colors) {
-    return Column(
-      key: const ValueKey(1),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Center(
-          child: Container(
-            height: 64,
-            width: 64,
-            decoration: BoxDecoration(
-              color: const Color(0xffF43F5E).withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(CupertinoIcons.heart_fill, color: Color(0xffF43F5E), size: 32),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: Text(
-            'به بخش چرخه بدن خوش آمدید',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'در این بخش خصوصی، اطلاعات بیولوژیک بدن شما بررسی شده و ریتم زندگی و روتین‌های روزانه‌تان به صورت هوشمند و کاملاً محرمانه با آن هماهنگ می‌شود.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, color: colors.textSecondary, fontFamily: 'Vazirmatn', height: 1.6),
-        ),
-        Divider(height: 32, color: colors.border),
-        Text(
-          'طول چرخه بدنی شما معمولاً چند روز است؟',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('میانگین فاصله شروع دو پریود:', style: TextStyle(fontSize: 14, color: colors.textSecondary, fontFamily: 'Vazirmatn')),
-            Text(_toPersianDigits('$_setupCycleLength روز'), style: const TextStyle(fontSize: 18, color: Color(0xffF43F5E), fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-          ],
-        ),
-        Slider(
-          value: _setupCycleLength.toDouble(),
-          min: 21,
-          max: 45,
-          divisions: 24,
-          activeColor: const Color(0xffF43F5E),
-          inactiveColor: colors.border,
-          onChanged: (v) => setState(() => _setupCycleLength = v.toInt()),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'طول مدت خونریزی چند روز است؟',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('طول خونریزی:', style: TextStyle(fontSize: 14, color: colors.textSecondary, fontFamily: 'Vazirmatn')),
-            Text(_toPersianDigits('$_setupPeriodDuration روز'), style: const TextStyle(fontSize: 18, color: Color(0xffF43F5E), fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-          ],
-        ),
-        Slider(
-          value: _setupPeriodDuration.toDouble(),
-          min: 3,
-          max: 10,
-          divisions: 7,
-          activeColor: const Color(0xffF43F5E),
-          inactiveColor: colors.border,
-          onChanged: (v) => setState(() => _setupPeriodDuration = v.toInt()),
-        ),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xffF43F5E),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-            onPressed: () => setState(() => _onboardingStep = 2),
-            child: const Text('مرحله بعد', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSetupStep2(RitmoColors colors) {
-    return Column(
-      key: const ValueKey(2),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'تاریخ شروع آخرین دوره شما',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'مشخص کردن تاریخ تقریبی یا دقیق آخرین قاعدگی، به موتور پردازشی ریتمو کمک می‌کند تا فاز کنونی بدن شما را محاسبه کند.',
-          style: TextStyle(fontSize: 14, color: colors.textSecondary, fontFamily: 'Vazirmatn', height: 1.5),
-        ),
-        const SizedBox(height: 20),
-        Container(
-          decoration: BoxDecoration(
-            color: colors.textSecondary.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.border),
-          ),
-          child: ListTile(
-            title: Text('آخرین شروع:', style: TextStyle(fontSize: 14, color: colors.textSecondary, fontFamily: 'Vazirmatn')),
-            subtitle: Text(
-              _formatJalaliDate(_setupLastStartDate),
-              style: const TextStyle(fontSize: 16, color: Color(0xffF43F5E), fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn'),
-            ),
-            trailing: const Icon(CupertinoIcons.calendar, color: Color(0xffF43F5E)),
-            onTap: () async {
-              final picked = await RitmoDatePicker.showJalali(
-                context: context,
-                initialDate: Jalali.fromDateTime(_setupLastStartDate),
-                firstDate: Jalali.fromDateTime(DateTime.now().subtract(const Duration(days: 45))),
-                lastDate: Jalali.fromDateTime(DateTime.now()),
-                builder: (context, child) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Theme(
-                        data: Theme.of(context).copyWith(
-                          colorScheme: Theme.of(context).brightness == Brightness.dark
-                              ? const ColorScheme.dark(
-                                  primary: Color(0xffF43F5E),
-                                  onPrimary: Colors.white,
-                                  surface: Colors.transparent,
-                                )
-                              : ColorScheme.light(
-                                  primary: const Color(0xffF43F5E),
-                                  onSurface: context.colors.textPrimary,
-                                ), dialogTheme: DialogThemeData(backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xff1A1625) : Colors.white),
-                        ),
-                        child: child!,
-                      ),
-                    ),
-                  );
-                },
-              );
-              if (picked != null) {
-                setState(() => _setupLastStartDate = picked.toDateTime());
-              }
-            },
-          ),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.textPrimary,
-                  side: BorderSide(color: colors.border),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: () => setState(() => _onboardingStep = 1),
-                child: const Text('بازگشت', style: TextStyle(fontFamily: 'Vazirmatn')),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xffF43F5E),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: () => setState(() => _onboardingStep = 3),
-                child: const Text('مرحله بعد', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSetupStep3(RitmoColors colors) {
-    return Column(
-      key: const ValueKey(3),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'اتصال‌های حریم خصوصی و رضایت',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'با رعایت کامل حریم خصوصی، هیچ استفاده بدون رضایتی از داده‌ها صورت نمی‌گیرد. اتصالات مورد نظر خود را برای هماهنگی ریتم فعال کنید (همه پیش‌فرض خاموش هستند).',
-          style: TextStyle(fontSize: 14, color: colors.textSecondary, fontFamily: 'Vazirmatn', height: 1.5),
-        ),
-        Divider(height: 24, color: colors.border),
-        _buildConsentSwitch(
-          title: 'هماهنگی با بخش عبادات',
-          subtitle: 'تعلیق هوشمند فرایض دینی در روزهای عادت ماهیانه و محاسبه بدهی‌های قضا.',
-          value: _setupWorship,
-          onChanged: (v) => setState(() => _setupWorship = v),
-        ),
-        const SizedBox(height: 12),
-        _buildConsentSwitch(
-          title: 'هماهنگی با انرژی و روتین‌ها',
-          subtitle: 'تعدیل خودکار زمان و سطح فشار روتین‌های روزانه شما بر اساس نوسانات انرژی بدنی.',
-          value: _setupEnergy,
-          onChanged: (v) => setState(() => _setupEnergy = v),
-        ),
-        const SizedBox(height: 12),
-        _buildConsentSwitch(
-          title: 'یادآوری‌های حریم خصوصی',
-          subtitle: 'ارسال اعلان‌های غیرمستقیم و لطیف برای پیگیری چرخه بدون درج کلمات افشاکننده.',
-          value: _setupReminders,
-          onChanged: (v) => setState(() => _setupReminders = v),
-        ),
-        const SizedBox(height: 12),
-        _buildConsentSwitch(
-          title: 'خلاصه وضعیت روی داشبورد اصلی',
-          subtitle: 'نمایش یک کارت وضعیت محرمانه روی داشبورد امروز در صورت ورود به حساب کاربری مجاز.',
-          value: _setupDashboard,
-          onChanged: (v) => setState(() => _setupDashboard = v),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.textPrimary,
-                  side: BorderSide(color: colors.border),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: () => setState(() => _onboardingStep = 2),
-                child: const Text('بازگشت', style: TextStyle(fontFamily: 'Vazirmatn')),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xffF43F5E),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: _saveOnboarding,
-                child: const Text('تکمیل راه‌اندازی', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   Widget _buildConsentSwitch({
     required String title,
@@ -3176,7 +2931,53 @@ class _CycleScreenContentState extends State<_CycleScreenContent> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          InkWell(
+            onTap: () {
+              Navigator.pop(context); // Close settings sheet
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => CycleOnboardingShell(
+                  isEditMode: true,
+                  onCompleted: () {
+                    Navigator.pop(context);
+                    _loadData();
+                  },
+                  onNavigateToPregnancy: () {
+                    Navigator.pop(context);
+                    _loadData();
+                  },
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(CupertinoIcons.slider_horizontal_3, color: Color(0xffF43F5E), size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'ویرایش و بازبینی راه‌اندازی چرخه',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
+                          fontFamily: 'Vazirmatn',
+                        ),
+                      ),
+                    ],
+                  ),
+                  Icon(CupertinoIcons.chevron_left, color: colors.textSecondary, size: 14),
+                ],
+              ),
+            ),
+          ),
+          Divider(height: 16, color: isDark ? Colors.white10 : colors.border),
           _buildToggleRow(
             title: 'قفل اثر انگشت / تشخیص چهره',
             value: hasBiometrics,

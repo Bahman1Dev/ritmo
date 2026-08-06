@@ -17,6 +17,7 @@ class GoalsTimelineSection extends StatelessWidget {
     required this.goals,
     required this.onRefresh,
     required this.onToggleStep,
+    this.onEditGoal,
     super.key,
   });
   /// List of upcoming timeline items.
@@ -33,6 +34,9 @@ class GoalsTimelineSection extends StatelessWidget {
 
   /// Callback when a step is toggled.
   final void Function(GoalStep step, String goalId) onToggleStep;
+
+  /// Callback when a goal is edited/opened.
+  final void Function(Goal goal)? onEditGoal;
 
   @override
   Widget build(BuildContext context) {
@@ -457,22 +461,16 @@ class GoalsTimelineSection extends StatelessWidget {
                     size: 18,
                   ),
                   onPressed: () {
+                    final targetGoalId = item.goalId ?? '';
                     final step = GoalStep(
                       id: item.sourceId,
-                      goalId: '',
+                      goalId: targetGoalId,
                       title: item.title,
                       isCompleted: item.isDone,
                       displayOrder: 0,
                       createdAt: 0,
                     );
-                    var goalId = '';
-                    for (final g in goals) {
-                      if (g.id == item.sourceId) {
-                        goalId = g.id;
-                        break;
-                      }
-                    }
-                    onToggleStep(step, goalId);
+                    onToggleStep(step, targetGoalId);
                   },
                 )
                 : Icon(
@@ -498,6 +496,15 @@ class GoalsTimelineSection extends StatelessWidget {
   void _handleItemTap(BuildContext context, TimelineItem item) {
     switch (item.source) {
       case TimelineSource.goalStep:
+        if (item.goalId != null && item.goalId!.isNotEmpty) {
+          final targetGoal = goals.firstWhere(
+            (g) => g.id == item.goalId,
+            orElse: () => Goal(id: '', title: '', goalType: GoalLevel.daily, createdAt: 0, updatedAt: 0),
+          );
+          if (targetGoal.id.isNotEmpty && onEditGoal != null) {
+            onEditGoal!(targetGoal);
+          }
+        }
         break;
       case TimelineSource.courseSession:
         Navigator.push<void>(

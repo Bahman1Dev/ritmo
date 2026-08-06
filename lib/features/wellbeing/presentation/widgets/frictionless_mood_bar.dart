@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/util/ritmo_date.dart';
-import 'package:ritmo/core/ux/ritmo_haptics.dart';
 import 'package:sqflite/sqflite.dart';
 
 class FrictionlessMoodBar extends StatefulWidget {

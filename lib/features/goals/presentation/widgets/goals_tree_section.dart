@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/analytics/goals_engine.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
@@ -60,12 +61,16 @@ class _GoalsTreeSectionState extends State<GoalsTreeSection> {
     }
 
     final visited = <String>{};
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: rootGoals.length,
-      itemBuilder: (context, index) {
-        return _buildGoalNode(rootGoals[index], colors, 0, visited);
-      },
+    return RefreshIndicator(
+      onRefresh: () async => widget.onRefresh(),
+      color: colors.primary,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        itemCount: rootGoals.length,
+        itemBuilder: (context, index) {
+          return _buildGoalNode(rootGoals[index], colors, 0, visited);
+        },
+      ),
     );
   }
 
@@ -414,9 +419,10 @@ class _GoalsTreeSectionState extends State<GoalsTreeSection> {
     final routineInfo = impact.linkedRoutineCount > 0 ? '\n• ${toPersianDigits(impact.linkedRoutineCount)} اتصال به روتین' : '';
     final reminderInfo = impact.scheduledReminderCount > 0 ? '\n• ${toPersianDigits(impact.scheduledReminderCount)} یادآور فعال (حذف هشدارها)' : '';
 
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
+    unawaited(
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
         title: const Text('حذف کامل هدف', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
         content: Text(
           'آیا از حذف هدف «${goal.title}» مطمئن هستید؟ موارد زیر برای همیشه حذف خواهند شد:$subInfo$stepInfo$routineInfo$reminderInfo',
@@ -437,7 +443,7 @@ class _GoalsTreeSectionState extends State<GoalsTreeSection> {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

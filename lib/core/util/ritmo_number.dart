@@ -31,4 +31,17 @@ class RitmoNumber {
         : rounded.toStringAsFixed(1).replaceAll('.', '٫');
     return '${fa(text)} ساعت';
   }
+
+  /// مثال: ۷٫۵ -> 7.5
+  static String toEn(Object? input) {
+    final s = input?.toString() ?? '';
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    var result = s;
+    for (var i = 0; i < 10; i++) {
+      result = result.replaceAll(persian[i], english[i]).replaceAll(arabic[i], english[i]);
+    }
+    return result;
+  }
 }

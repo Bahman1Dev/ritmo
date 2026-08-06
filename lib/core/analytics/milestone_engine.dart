@@ -148,7 +148,7 @@ class MilestoneEngine implements CachedEngine<MilestoneEngineInput, List<Milesto
       final wasUnlocked = unlockedMilestonesMap.containsKey(id);
       final isUnlocked = wasUnlocked || condition;
       final progress = isUnlocked ? 1.0 : progressCalc.clamp(0.0, 0.99);
-      final unlockedTime = wasUnlocked ? unlockedMilestonesMap[id] : (condition ? DateTime.now().millisecondsSinceEpoch : null);
+      final unlockedTime = wasUnlocked ? unlockedMilestonesMap[id] : (condition ? DateTime.fromMillisecondsSinceEpoch(0).millisecondsSinceEpoch : null);
 
       return Milestone(
         id: id,

@@ -82,13 +82,17 @@ class GoalsCardListSection extends StatelessWidget {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: activeRootGoals.length,
-      itemBuilder: (context, index) {
-        final goal = activeRootGoals[index];
-        return _buildGoalCard(context, goal, colors);
-      },
+    return RefreshIndicator(
+      onRefresh: () async => onRefresh(),
+      color: colors.primary,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        itemCount: activeRootGoals.length,
+        itemBuilder: (context, index) {
+          final goal = activeRootGoals[index];
+          return _buildGoalCard(context, goal, colors);
+        },
+      ),
     );
   }
 
@@ -829,16 +833,7 @@ class _GoalDetailsSheetState extends State<GoalDetailsSheet> {
           setState(() {
             final idx = widget.stepsByGoal[_currentGoal.id]!.indexOf(step);
             if (idx != -1) {
-              final updatedStep = GoalStep(
-                id: step.id,
-                goalId: step.goalId,
-                title: step.title,
-                isCompleted: val ?? false,
-                displayOrder: step.displayOrder,
-                createdAt: step.createdAt,
-                scheduledDate: step.scheduledDate,
-                linkedRoutineId: step.linkedRoutineId,
-              );
+              final updatedStep = step.copyWith(isCompleted: val ?? false);
               widget.stepsByGoal[_currentGoal.id]![idx] = updatedStep;
             }
           });

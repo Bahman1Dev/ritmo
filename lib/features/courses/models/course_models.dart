@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 enum CourseType { video, book, skill, custom }
 
 extension CourseTypeExtension on CourseType {
@@ -327,7 +329,17 @@ class Course {
     );
   }
 
-  Course clearCompletedAt() => copyWith(completedAtSet: true, completedAt: null);
+  String get statusLabel {
+    switch (status) {
+      case CourseStatus.completed:
+        return 'تکمیل‌شده';
+      case CourseStatus.paused:
+        return 'متوقف‌شده';
+      case CourseStatus.active:
+      default:
+        return 'در حال یادگیری';
+    }
+  }
 
   String get unitLabelResolved {
     if (courseType == CourseType.custom && unitLabel != null && unitLabel!.trim().isNotEmpty) {
@@ -376,6 +388,24 @@ class Course {
   }
 }
 
+extension SafeCourseColor on Course {
+  Color resolvedColor(Color fallback) {
+    if (colorHex == null || colorHex!.trim().isEmpty) return fallback;
+    try {
+      var hex = colorHex!.trim().replaceAll('#', '');
+      if (hex.startsWith('0x') || hex.startsWith('0X')) {
+        hex = hex.substring(2);
+      }
+      if (hex.length == 6) {
+        hex = 'FF$hex';
+      }
+      final val = int.tryParse(hex, radix: 16);
+      if (val != null) return Color(val);
+    } catch (_) {}
+    return fallback;
+  }
+}
+
 class CourseSession {
   CourseSession({
     required this.id,
@@ -401,6 +431,7 @@ class CourseSession {
     this.keyTakeaway,
     this.openQuestion,
     this.sourceSessionId,
+    this.skipReason,
     this.displayOrder = 0,
   });
 
@@ -429,6 +460,7 @@ class CourseSession {
       keyTakeaway: map['keyTakeaway'] as String?,
       openQuestion: map['openQuestion'] as String?,
       sourceSessionId: map['sourceSessionId'] as String?,
+      skipReason: map['skipReason'] as String?,
       displayOrder: map['displayOrder'] as int? ?? 0,
     );
   }
@@ -456,6 +488,7 @@ class CourseSession {
   final String? keyTakeaway;
   final String? openQuestion;
   final String? sourceSessionId;
+  final String? skipReason;
   final int displayOrder;
 
   bool get isCompleted => completionStatus == SessionStatus.completed;
@@ -506,6 +539,8 @@ class CourseSession {
     bool openQuestionSet = false,
     String? sourceSessionId,
     bool sourceSessionIdSet = false,
+    String? skipReason,
+    bool skipReasonSet = false,
     int? displayOrder,
   }) {
     return CourseSession(
@@ -532,6 +567,7 @@ class CourseSession {
       keyTakeaway: keyTakeawaySet ? keyTakeaway : (keyTakeaway ?? this.keyTakeaway),
       openQuestion: openQuestionSet ? openQuestion : (openQuestion ?? this.openQuestion),
       sourceSessionId: sourceSessionIdSet ? sourceSessionId : (sourceSessionId ?? this.sourceSessionId),
+      skipReason: skipReasonSet ? skipReason : (skipReason ?? this.skipReason),
       displayOrder: displayOrder ?? this.displayOrder,
     );
   }
@@ -563,6 +599,7 @@ class CourseSession {
       'keyTakeaway': keyTakeaway,
       'openQuestion': openQuestion,
       'sourceSessionId': sourceSessionId,
+      'skipReason': skipReason,
       'displayOrder': displayOrder,
     };
   }

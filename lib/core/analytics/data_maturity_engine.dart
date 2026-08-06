@@ -49,10 +49,10 @@ class DataMaturityEngine implements CachedEngine<DataMaturityEngineInput, DataMa
     required int completionCount,
     required int energyLogsCount,
   }) {
-    if (daysOfData < 14) {
+    if (daysOfData < 7 || completionCount < 5) {
       return DataMaturity.notEnoughData;
     }
-    if (daysOfData < 30) {
+    if (daysOfData < 30 || completionCount < 20) {
       return DataMaturity.partialData;
     }
     return DataMaturity.fullData;

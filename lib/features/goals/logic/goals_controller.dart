@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/analytics/goals_engine.dart';
-import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
-import 'package:ritmo/core/time/ritmo_clock.dart';
 import 'package:ritmo/features/courses/models/course_models.dart';
 import 'package:ritmo/features/goals/logic/goals_repository.dart';
 import 'package:ritmo/features/goals/models/goal_models.dart';
@@ -75,6 +74,20 @@ class GoalsController extends ChangeNotifier {
   }
 
   void _handleEvent(RitmoEvent event) {
+    if (event.type == 'RoutineCompleted') {
+      final payload = event.payload;
+      final rId = payload['routineId'] as String?;
+      final dateStr = payload['date'] as String? ?? payload['completionDate'] as String? ?? DateTime.now().toIso8601String().substring(0, 10);
+      final resType = payload['resultType'] as String? ?? 'DONE';
+      if (rId != null && rId.isNotEmpty) {
+        unawaited(GoalsRepository.instance.onRoutineCompleted(
+          routineId: rId,
+          dateIso: dateStr,
+          resultType: resType,
+        ));
+      }
+    }
+
     switch (event.type) {
       case 'GoalChanged':
       case 'GoalStepToggled':
@@ -154,17 +167,23 @@ class GoalsController extends ChangeNotifier {
 
     try {
       final repo = GoalsRepository.instance;
+      final db = await DatabaseHelper.instance.database;
+      final settingsRows = await db.query('app_settings');
+      final settings = {for (final row in settingsRows) row['key']! as String: row['value']! as String};
 
-      // Wave 1: Parallel loading of non-dependent resources (T20)
+      final coursesEnabled = (settings['module_courses_enabled'] ?? 'true') == 'true';
+      final konkurEnabled = (settings['module_konkur_enabled'] ?? 'true') == 'true';
+
+      // Wave 1: Parallel loading of gated non-dependent resources (T20 / Fixes ه-10)
       final results = await Future.wait([
         repo.getGoals(),
         repo.getGoalSteps(),
         repo.getRoutines(),
-        repo.getCourses(),
-        repo.getCourseSessions(),
-        repo.getKonkurSubjects(),
-        repo.getKonkurTopics(),
-        repo.getKonkurPlanItems(),
+        coursesEnabled ? repo.getCourses() : Future.value(<Course>[]),
+        coursesEnabled ? repo.getCourseSessions() : Future.value(<CourseSession>[]),
+        konkurEnabled ? repo.getKonkurSubjects() : Future.value(<KonkurSubject>[]),
+        konkurEnabled ? repo.getKonkurTopics() : Future.value(<KonkurTopic>[]),
+        konkurEnabled ? repo.getKonkurPlanItems() : Future.value(<KonkurPlanItem>[]),
       ]);
 
       final goals = results[0] as List<Goal>;

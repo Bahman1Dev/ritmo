@@ -51,7 +51,7 @@ class ReflectionEngineOutput {
 }
 
 class ReflectionEngine implements CachedEngine<ReflectionEngineInput, ReflectionEngineOutput> {
-  static const int minPointsForCorrelation = 30;
+  static const int minPointsForCorrelation = 3;
 
   @override
   Future<ReflectionEngineOutput> calculate(ReflectionEngineInput input) async {

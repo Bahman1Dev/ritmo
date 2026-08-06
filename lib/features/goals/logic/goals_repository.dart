@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
@@ -670,7 +671,7 @@ class GoalsRepository {
     return count;
   }
 
-  /// F1: Bridge for routine completions to auto-complete ROUTINE_STREAK steps
+  /// F1: Bridge for routine completions to auto-complete ROUTINE_STREAK steps (Fixes ه-03)
   Future<void> onRoutineCompleted({
     required String routineId,
     required String dateIso,
@@ -693,20 +694,38 @@ class GoalsRepository {
 
     if (matchingSteps.isEmpty) return;
 
+    final completions = await db.query(
+      'routine_completions',
+      where: 'routineId = ?',
+      whereArgs: [routineId],
+    );
+    final completionCount = completions.length;
+
     await db.transaction((txn) async {
       for (final row in matchingSteps) {
         final stepId = row['id'] as String;
         final goalId = row['goalId'] as String;
+        final ruleConfigRaw = row['ruleConfig'] as String?;
 
-        await txn.update(
-          'goal_steps',
-          {'isCompleted': 1, 'completedAt': nowMs},
-          where: 'id = ?',
-          whereArgs: [stepId],
-        );
+        var targetCount = 1;
+        if (ruleConfigRaw != null && ruleConfigRaw.isNotEmpty) {
+          try {
+            final parsed = jsonDecode(ruleConfigRaw) as Map<String, dynamic>;
+            targetCount = (parsed['target'] as num?)?.toInt() ?? 1;
+          } catch (_) {}
+        }
 
-        await _isTreeComplete(txn, goalId);
-        await _recomputeProgressUpwards(txn, goalId);
+        if (completionCount >= targetCount) {
+          await txn.update(
+            'goal_steps',
+            {'isCompleted': 1, 'completedAt': nowMs},
+            where: 'id = ?',
+            whereArgs: [stepId],
+          );
+
+          await _isTreeComplete(txn, goalId);
+          await _recomputeProgressUpwards(txn, goalId);
+        }
       }
     });
 
@@ -714,6 +733,50 @@ class GoalsRepository {
       type: 'GoalChanged',
       timestamp: DateTime.now(),
       payload: {'routineId': routineId},
+    ));
+  }
+
+  /// Add metric/manual checkin for a goal (Fixes ه-06 & ط10)
+  Future<void> addCheckin({
+    required String goalId,
+    required double value,
+    String? note,
+    String kind = 'METRIC',
+  }) async {
+    final db = await DatabaseHelper.instance.database;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final dateIso = DateTime.now().toIso8601String().substring(0, 10);
+    final checkinId = RitmoIdFactory.goalStep();
+
+    await db.transaction((txn) async {
+      await txn.insert('goal_checkins', {
+        'id': checkinId,
+        'goalId': goalId,
+        'dateIso': dateIso,
+        'kind': kind,
+        'value': value,
+        'note': note,
+        'createdAt': nowMs,
+      });
+
+      await txn.update(
+        'goals',
+        {
+          'progressCache': value,
+          'lastActivityAt': nowMs,
+          'updatedAt': nowMs,
+        },
+        where: 'id = ?',
+        whereArgs: [goalId],
+      );
+
+      await _recomputeProgressUpwards(txn, goalId);
+    });
+
+    RitmoEventBus().fire(RitmoEvent(
+      type: 'GoalChanged',
+      timestamp: DateTime.now(),
+      payload: {'goalId': goalId},
     ));
   }
 }

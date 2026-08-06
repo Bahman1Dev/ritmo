@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/features/goals/logic/goals_repository.dart';
 import 'package:ritmo/features/goals/models/goal_models.dart';
 import 'package:ritmo/features/goals/presentation/widgets/goals_formatters.dart';
 import 'package:shamsi_date/shamsi_date.dart';
@@ -51,10 +53,11 @@ class GoalsArchiveSection extends StatelessWidget {
           final steps = stepsByGoal[goal.id] ?? [];
           final completedStepsCount = steps.where((s) => s.isCompleted).length;
 
-          // Format shamsi completion date
+          // Format shamsi completion date (Fixes ه-11)
           var compDateStr = '';
           try {
-            final dt = DateTime.fromMillisecondsSinceEpoch(goal.updatedAt);
+            final compMs = goal.completedAt ?? goal.updatedAt;
+            final dt = DateTime.fromMillisecondsSinceEpoch(compMs);
             final jalali = Jalali.fromDateTime(dt);
             compDateStr = '${toPersianDigits(jalali.day)} ${jalali.formatter.mN} ${toPersianDigits(jalali.year)}';
           } catch (_) {}
@@ -104,7 +107,7 @@ class GoalsArchiveSection extends StatelessWidget {
                   ),
                   IconButton(
                     icon: Icon(Icons.delete_outline, color: colors.warning, size: 18),
-                    tooltip: 'حذف دائمی',
+                    tooltip: 'حذف یا رهاسازی',
                     onPressed: () => _confirmDelete(context, goal, colors),
                   ),
                 ],
@@ -116,26 +119,65 @@ class GoalsArchiveSection extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, Goal goal, RitmoColors colors) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('حذف دائمی؟', style: TextStyle(fontFamily: 'Vazirmatn')),
-        content: Text('آیا از حذف دائمی هدف "${goal.title}" مطمئن هستید؟ این عمل غیر قابل بازگشت است.', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 14.5)),
+  void _confirmDelete(BuildContext context, Goal goal, RitmoColors colors) async {
+    final impact = await GoalsRepository.instance.getDeletionImpact(goal.id);
+
+    if (!context.mounted) return;
+
+    unawaited(
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('تأیید حذف یا رهاسازی «${goal.title}»', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('این عملیات بر موارد زیر تأثیر می‌گذارد:', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.warning.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.warning.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('• زیراهداف: ${toPersianDigits(impact.subGoalCount)} عدد', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12.5)),
+                  Text('• گام‌های مرتبط: ${toPersianDigits(impact.stepCount)} عدد (${toPersianDigits(impact.completedStepCount)} گام انجام شده)', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12.5)),
+                  Text('• یادآورهای فعال: ${toPersianDigits(impact.scheduledReminderCount)} عدد', style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12.5)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text('می‌توانید به جای حذف کامل، هدف را «رهاسازی» کنید تا آمار آن حفظ شود.', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: Colors.grey)),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('انصراف', style: TextStyle(fontFamily: 'Vazirmatn')),
           ),
           TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await GoalsRepository.instance.updateGoalStatus(goal.id, 'ABANDONED', abandonReason: 'کاربر هدف را رها کرد');
+              onRefresh();
+            },
+            child: const Text('رهاسازی (حفظ آمار)', style: TextStyle(fontFamily: 'Vazirmatn', color: Color(0xFFF59E0B))),
+          ),
+          TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               onDeleteGoal(goal.id);
             },
-            child: Text('حذف دائمی', style: TextStyle(fontFamily: 'Vazirmatn', color: colors.warning)),
+            child: Text('حذف کامل', style: TextStyle(fontFamily: 'Vazirmatn', color: colors.warning, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
-    );
+    ));
   }
 }

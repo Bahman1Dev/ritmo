@@ -10,6 +10,7 @@ import 'package:ritmo/features/worship/logic/hijri_calendar.dart';
 import 'package:ritmo/features/worship/logic/prayer_timeline.dart';
 import 'package:ritmo/features/worship/logic/prayer_times.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
+import 'package:ritmo/core/services/prayer_time_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 export 'package:ritmo/features/worship/logic/prayer_times.dart';
@@ -309,7 +310,20 @@ class WorshipEngine {
   Future<void> _purgeStalePrayerTimesCache(DatabaseExecutor db) async {
     if (_cachePurged) return;
     try {
-      await db.delete('prayer_times_cache');
+      // Self-heal legacy default ihtiyat_minutes == '10' -> update to '0'
+      final legacySetting = await db.query(
+        'app_settings',
+        where: "key = 'ihtiyat_minutes' AND value = '10'",
+        limit: 1,
+      );
+      if (legacySetting.isNotEmpty) {
+        await db.update(
+          'app_settings',
+          {'value': '0', 'updatedAt': DateTime.now().millisecondsSinceEpoch},
+          where: "key = 'ihtiyat_minutes'",
+        );
+        await db.delete('prayer_times_cache');
+      }
       _cachePurged = true;
     } catch (_) {}
   }
@@ -320,7 +334,6 @@ class WorshipEngine {
     final settings = await _loadSettings(db);
     final cityId = settings['prayer_city_id'] as String? ?? '';
     final method = settings['prayer_calculation_method'] as String? ?? 'TEHRAN_GEOPHYSICS';
-    final ihtiyat = int.tryParse(settings['ihtiyat_minutes']?.toString() ?? '') ?? 10;
     final hijriOffset = int.tryParse(settings['hijri_offset']?.toString() ?? '') ?? 0;
 
     // Try ISO columns first (W-5), fall back to HH:mm
@@ -355,13 +368,13 @@ class WorshipEngine {
           isha: isha,
           midnightShari: midnight,
           calculationMethod: method,
-          ihtiyatMinutes: ihtiyat,
+          ihtiyatMinutes: 0,
         );
       }
     }
 
     // Self-heal: compute and cache (W-12)
-    return _computeAndCache(db, date, cityId, method, ihtiyat, hijriOffset);
+    return _computeAndCache(db, date, cityId, method, hijriOffset);
   }
 
   Future<PrayerTimes> _computeAndCache(
@@ -369,7 +382,6 @@ class WorshipEngine {
     DateTime date,
     String cityId,
     String method,
-    int ihtiyat,
     int hijriOffset,
   ) async {
     double lat = 35.6892, lon = 51.3890;
@@ -386,14 +398,14 @@ class WorshipEngine {
       }
     }
 
-    final times = _calcTimes(date, lat, lon, method, ihtiyat);
+    final times = _calcTimes(date, lat, lon, method);
     final fallback = isFallback;
 
     final cacheData = {
       'date': _ds(date),
       'cityId': cityId,
       'calculationMethod': method,
-      'ihtiyatMinutes': ihtiyat,
+      'ihtiyatMinutes': 0,
       'fajr': times.fajrText,
       'sunrise': times.sunriseText,
       'dhuhr': times.dhuhrText,
@@ -427,7 +439,7 @@ class WorshipEngine {
       isha: times.isha,
       midnightShari: times.midnightShari,
       calculationMethod: method,
-      ihtiyatMinutes: ihtiyat,
+      ihtiyatMinutes: 0,
       isFallbackLocation: fallback,
     );
   }
@@ -478,7 +490,6 @@ class WorshipEngine {
     final settings = await _loadSettings(db);
     final cityId = settings['prayer_city_id'] as String? ?? '';
     final method = settings['prayer_calculation_method'] as String? ?? 'TEHRAN_GEOPHYSICS';
-    final ihtiyat = int.tryParse(settings['ihtiyat_minutes']?.toString() ?? '') ?? 10;
 
     double lat = 35.6892, lon = 51.3890;
     if (cityId.isNotEmpty) {
@@ -494,12 +505,12 @@ class WorshipEngine {
     await db.transaction((txn) async {
       for (var i = 0; i < days; i++) {
         final d = now.add(Duration(days: i));
-        final times = _calcTimes(d, lLat, lLon, method, ihtiyat);
+        final times = _calcTimes(d, lLat, lLon, method);
         await _insertPrayerTimesCache(txn, {
           'date': _ds(d),
           'cityId': cityId,
           'calculationMethod': method,
-          'ihtiyatMinutes': ihtiyat,
+          'ihtiyatMinutes': 0,
           'fajr': times.fajrText,
           'sunrise': times.sunriseText,
           'dhuhr': times.dhuhrText,
@@ -1190,84 +1201,27 @@ class WorshipEngine {
 
   // ── Prayer time computation (offline trig — W-5) ─────────────────────────
 
-  PrayerTimes _calcTimes(DateTime date, double lat, double lon, String method, int ihtiyat) {
-    // Fajr/Isha angles by calculation method
-    double fa, ia;
-    switch (method) {
-      case 'ISNA':
-        fa = 15.0; ia = 15.0;
-      case 'MWL':
-        fa = 18.0; ia = 17.0;
-      case 'EGYPT':
-        fa = 19.5; ia = 17.5;
-      case 'TEHRAN_GEOPHYSICS':
-      default:
-        fa = 17.7; ia = 14.0;
-    }
+  PrayerTimes _calcTimes(DateTime date, double lat, double lon, String method) {
+    final map = PrayerTimeProvider.instance.computePrayerTimesLocally(
+      latitude: lat,
+      longitude: lon,
+      calcMethodStr: method,
+      date: date,
+    );
 
-    final jd = _jd(date);
-    final sol = _solar(jd);
-    final decl = sol.$1;
-    final eot = sol.$2;
-    final tzOffsetHours = date.timeZoneOffset.inMinutes / 60.0;
-    final transit = 12.0 - eot / 60.0 - lon / 15.0 + tzOffsetHours;
-
-    double? angTime(double angle, bool morning) {
-      final cosH = (_sind(-angle) - _sind(decl) * _sind(lat)) /
-          (_cosd(decl) * _cosd(lat));
-      if (cosH.abs() > 1) return null;
-      final h = math.acos(cosH) * _r2d / 15.0;
-      return transit + (morning ? -h : h);
-    }
-
-    double asrTime(int shadow) {
-      final x = shadow + math.tan((lat - decl).abs() * _d2r);
-      final cosH = (math.cos(math.atan(1 / x)) - _sind(decl) * _sind(lat)) /
-          (_cosd(decl) * _cosd(lat));
-      if (cosH.abs() > 1) return transit;
-      return transit + math.acos(cosH) * _r2d / 15.0;
-    }
-
-    final fajrH = angTime(fa, true) ?? (transit - 1.5);
-    final sunriseH = angTime(0.833, true) ?? (transit - 1.0);
-    final dhuhrH = transit;
-    final asrH = asrTime(1);
-    final sunsetH = angTime(0.833, false) ?? (transit + 1.0);
-    final maghribH = (method == 'TEHRAN_GEOPHYSICS' || method == 'JAFARI')
-        ? (angTime(4.5, false) ?? (sunsetH + 0.3))
-        : sunsetH;
-    final ishaH = angTime(ia, false) ?? (sunsetH + 1.0);
-
-    // Next-day fajr for correct shari midnight (W-5)
-    final nextDay = date.add(const Duration(days: 1));
-    final jd2 = _jd(nextDay);
-    final sol2 = _solar(jd2);
-    final decl2 = sol2.$1, eot2 = sol2.$2;
-    final transit2 = 12.0 - eot2 / 60.0 - lon / 15.0 + tzOffsetHours;
-    final cosHNext = (_sind(-fa) - _sind(decl2) * _sind(lat)) /
-        (_cosd(decl2) * _cosd(lat));
-    final nextFajrH = cosHNext.abs() <= 1
-        ? transit2 - math.acos(cosHNext) * _r2d / 15.0
-        : transit2 - 1.5;
-
-    // Shari midnight = midpoint between SUNSET (غروب آفتاب) and next-day FAJR (اذان صبح) (Tehran Geophysics & Shia Fiqh standard)
-    final nightLen = (nextFajrH + 24.0) - sunsetH;
-    final midH = sunsetH + nightLen / 2.0;
-
-    final ihtMin = ihtiyat / 60.0;
     return PrayerTimes(
       date: _ds(date),
       cityId: '',
-      fajr: _hrs(fajrH + ihtMin, date),
-      sunrise: _hrs(sunriseH - ihtMin, date),
-      dhuhr: _hrs(dhuhrH + ihtMin, date),
-      asr: _hrs(asrH + ihtMin, date),
-      maghrib: _hrs(maghribH + ihtMin, date),
-      sunset: _hrs(sunsetH, date),
-      isha: _hrs(ishaH + ihtMin, date),
-      midnightShari: _hrsCross(midH, date),
+      fajr: _isoOrTime(null, map['fajr'], date) ?? date,
+      sunrise: _isoOrTime(null, map['sunrise'], date) ?? date,
+      dhuhr: _isoOrTime(null, map['dhuhr'], date) ?? date,
+      asr: _isoOrTime(null, map['asr'], date) ?? date,
+      maghrib: _isoOrTime(null, map['maghrib'], date) ?? date,
+      sunset: _isoOrTime(null, map['sunset'], date) ?? date,
+      isha: _isoOrTime(null, map['isha'], date) ?? date,
+      midnightShari: _isoOrTime(null, map['midnightShari'], date) ?? date,
       calculationMethod: method,
-      ihtiyatMinutes: ihtiyat,
+      ihtiyatMinutes: 0,
     );
   }
 

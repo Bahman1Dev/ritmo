@@ -35,7 +35,7 @@ class SeedService {
       'app_lock_timeout_seconds': '300',
       'user_gender': 'UNSET',
       'prayer_calculation_method': 'TEHRAN_GEOPHYSICS',
-      'ihtiyat_minutes': '10',
+      'ihtiyat_minutes': '0',
       'home_city_id': 'TEHRAN_TEHRAN',
       'current_streak': '0',
       'longest_streak': '0',

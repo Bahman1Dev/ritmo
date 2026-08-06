@@ -221,7 +221,7 @@ void main() {
       expect(output.sleepMoodCorrelation, isNotNull);
       expect(output.sleepEnergyCorrelation, greaterThan(0.8));
       expect(output.sleepMoodCorrelation, greaterThan(0.8));
-      expect(output.correlationInsight, contains('ارتباط مستقیم دارد'));
+      expect(output.correlationInsight, contains('بهتر خوابیده‌ای'));
     });
   });
 

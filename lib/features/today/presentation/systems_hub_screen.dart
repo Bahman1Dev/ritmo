@@ -572,7 +572,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
           iconColor: const Color(0xff10B981),
           title: 'ورزش و حرکت',
           description: 'برنامه تمرین هوشمند و بودجهٔ حرکت هفتگی',
-          status: _supplementarySportsEnabled ? ModuleStatus.active : ModuleStatus.inactive,
+          status: (_sportsEnabled || _supplementarySportsEnabled) ? ModuleStatus.active : ModuleStatus.inactive,
           illustrationAsset: 'assets/images/sports_card_top.png',
           onTap: () => _handleSupplementarySportsTap(colors),
           colors: colors,
@@ -1035,7 +1035,8 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
 
 
   Future<void> _handleSupplementarySportsTap(RitmoColors colors) async {
-    if (_supplementarySportsEnabled) {
+    final isSportsActive = _sportsEnabled || _supplementarySportsEnabled;
+    if (isSportsActive) {
       final db = await DatabaseHelper.instance.database;
       final profileResult = await db.query('ss_user_profile', where: 'id = ?', whereArgs: ['default']);
       final hasCompletedOnboarding = profileResult.isNotEmpty && 
@@ -1055,12 +1056,14 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
       }
     } else {
       _showActivationSheet(
-        title: 'فعالسازی ورزش تکمیلی',
-        description: 'با فعالسازی این سیستم، میتوانید برنامه تمرین هوشمند بر اساس سطح و اهداف خود دریافت کنید، حرکات را با بازخورد کیفی ثبت کنید و روند تداوم خود را دنبال کنید.',
+        title: 'فعال‌سازی سیستم ورزش و حرکت',
+        description: 'با فعال‌سازی این سیستم، می‌توانید برنامه تمرین هوشمند بر اساس سطح و اهداف خود دریافت کنید، حرکات را با بازخورد کیفی ثبت کنید و روند تداوم خود را دنبال کنید.',
         icon: Icons.fitness_center,
-        iconColor: const Color(0xff22C55E),
-        settingKey: 'module_supplementary_sports_enabled',
+        iconColor: const Color(0xff10B981),
+        settingKey: 'module_sports_enabled',
         onActivated: () async {
+          await ModuleManagementService.instance.setModuleEnabled('module_sports_enabled', true);
+          await ModuleManagementService.instance.setModuleEnabled('module_supplementary_sports_enabled', true);
           final db = await DatabaseHelper.instance.database;
           final profileResult = await db.query('ss_user_profile', where: 'id = ?', whereArgs: ['default']);
           final hasCompletedOnboarding = profileResult.isNotEmpty && 
@@ -1279,7 +1282,12 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
       if (confirm != true) return;
     }
 
-    await ModuleManagementService.instance.setModuleEnabled(key, value);
+    if (key == 'module_sports_enabled' || key == 'module_supplementary_sports_enabled') {
+      await ModuleManagementService.instance.setModuleEnabled('module_sports_enabled', value);
+      await ModuleManagementService.instance.setModuleEnabled('module_supplementary_sports_enabled', value);
+    } else {
+      await ModuleManagementService.instance.setModuleEnabled(key, value);
+    }
     await _loadAllData();
   }
 
@@ -1310,7 +1318,12 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
     );
 
     if (confirm == true) {
-      await ModuleManagementService.instance.resetModuleData(key);
+      if (key == 'module_sports_enabled' || key == 'module_supplementary_sports_enabled') {
+        await ModuleManagementService.instance.resetModuleData('module_sports_enabled');
+        await ModuleManagementService.instance.resetModuleData('module_supplementary_sports_enabled');
+      } else {
+        await ModuleManagementService.instance.resetModuleData(key);
+      }
       await _loadAllData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1481,13 +1494,16 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                 onReset: () => _confirmAndResetModule('module_medicine_enabled', 'دارو و سلامت'),
               ),
               _buildSwitchOption(
-                title: 'ورزش 🏃',
-                value: _sportsEnabled,
+                title: 'ورزش و حرکت 🏃',
+                value: _sportsEnabled || _supplementarySportsEnabled,
                 onChanged: (val) async {
                   await _toggleModule('module_sports_enabled', val);
-                  setSheetState(() => _sportsEnabled = val);
+                  setSheetState(() {
+                    _sportsEnabled = val;
+                    _supplementarySportsEnabled = val;
+                  });
                 },
-                onReset: () => _confirmAndResetModule('module_sports_enabled', 'ورزش'),
+                onReset: () => _confirmAndResetModule('module_sports_enabled', 'ورزش و حرکت'),
               ),
               if (_isFemale)
                 _buildSwitchOption(

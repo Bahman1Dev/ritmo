@@ -512,7 +512,7 @@ class DashboardController {
     }
 
     // ورزش — جلسات و دقایق این هفته از workout_logs
-    if (s['module_sports_enabled'] == 'true') {
+    if (s['module_sports_enabled'] == 'true' || s['module_supplementary_sports_enabled'] == 'true') {
       final weekAgo = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
       final rows = await db.query('workout_logs', where: 'loggedAt >= ?', whereArgs: [weekAgo]);
       final sessions = rows.length;
@@ -770,11 +770,14 @@ class DashboardController {
       final dashboardConsent = settingsMap['cycle_consent_dashboard'] == 'true';
       final setupDone = settingsMap['cycle_setup_done'] == 'true';
       if (isFemale && cycleEnabled && dashboardConsent && setupDone) {
-        cycleEngineOutput = await CycleEngine().calculate(CycleEngineInput(
-          db: db,
-          appSettings: settingsMap,
-          now: now,
-        ));
+        cycleEngineOutput = await RitmoEngineBus.instance.execute<CycleEngineInput, CycleEngineOutput>(
+          CycleEngine,
+          CycleEngineInput(
+            db: db,
+            appSettings: settingsMap,
+            now: now,
+          ),
+        );
       } else {
         cycleEngineOutput = null;
       }

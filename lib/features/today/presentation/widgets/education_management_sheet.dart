@@ -217,9 +217,9 @@ class _EducationManagementSheetState extends State<EducationManagementSheet> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent, size: 16),
-                    onPressed: () => _deleteCourse(courseId),
+                  Text(
+                    '${toPersianDigits(completedCount)} از ${toPersianDigits(total)} جلسه',
+                    style: TextStyle(fontSize: 11, color: colors.textSecondary, fontFamily: 'Vazirmatn'),
                   ),
                 ],
               ),

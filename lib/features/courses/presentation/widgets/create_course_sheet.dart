@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/util/ritmo_number.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/courses/logic/course_validation.dart';
 import 'package:ritmo/features/courses/logic/courses_repository.dart';
@@ -125,15 +125,12 @@ class _CreateCourseSheetState extends State<CreateCourseSheet> {
 
   Future<void> _loadActiveGoals() async {
     try {
-      final db = await DatabaseHelper.instance.database;
-      final goals = await db.query(
-        'goals',
-        where: 'status = ?',
-        whereArgs: ['ACTIVE'],
-      );
-      setState(() {
-        _activeGoals = goals;
-      });
+      final goals = await CoursesRepository.instance.getActiveGoalsList();
+      if (mounted) {
+        setState(() {
+          _activeGoals = goals;
+        });
+      }
     } catch (e) {
       debugPrint('Error loading active goals: $e');
     }
@@ -199,8 +196,16 @@ class _CreateCourseSheetState extends State<CreateCourseSheet> {
     if (!_formKey.currentState!.validate()) return;
 
     final title = _titleController.text.trim();
-    final totalSessions = int.tryParse(_totalSessionsController.text) ?? 10;
-    final duration = int.tryParse(_durationController.text) ?? 45;
+    final rawTotalStr = RitmoNumber.toEn(_totalSessionsController.text.trim());
+    final totalSessions = int.tryParse(rawTotalStr) ?? 1;
+    if (totalSessions < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعداد کل جلسات باید حداقل ۱ جلسه باشد.')),
+      );
+      return;
+    }
+    final rawDurationStr = RitmoNumber.toEn(_durationController.text.trim());
+    final duration = (int.tryParse(rawDurationStr) ?? 45).clamp(5, 480);
     final unitLabel = _unitLabelController.text.trim().isEmpty ? null : _unitLabelController.text.trim();
     final provider = _providerController.text.trim().isEmpty ? null : _providerController.text.trim();
 

@@ -66,6 +66,7 @@ class CourseTables {
           keyTakeaway TEXT,
           openQuestion TEXT,
           sourceSessionId TEXT,
+          skipReason TEXT,
           displayOrder INTEGER NOT NULL DEFAULT 0,
           FOREIGN KEY(courseId) REFERENCES courses(id) ON DELETE CASCADE
       );

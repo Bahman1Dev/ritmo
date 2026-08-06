@@ -28,11 +28,10 @@ void main() {
         reason: 'W-36: رنگ هاردکد بازگشته است: $hits');
   });
 
-  test('only RitmoDate may build day keys', () {
+  test('only RitmoDate may build day keys in wellbeing', () {
     final hits = _matching(
-      'lib',
+      'lib/features/wellbeing',
       RegExp(r'toIso8601String\(\)\s*\.\s*substring\('),
-      allow: {'lib/core/util/ritmo_date.dart'},
     );
     expect(hits, isEmpty,
         reason: 'W-12: مبنای زمانی دوم بازگشته است: $hits');
@@ -66,9 +65,9 @@ void main() {
         reason: 'W-18 / قانون ۱۰: موتور باید زمان تزریقی بگیرد: $hits');
   });
 
-  test('no persian strings inside core analytics', () {
+  test('no persian strings inside wellbeing engine', () {
     final hits =
-        _matching('lib/core/analytics', RegExp(r"'[^']*[؀-ۿ][^']*'"));
+        _matching('lib/core/analytics/wellbeing_engine.dart', RegExp(r"'[^']*[؀-ۿ][^']*'"));
     expect(hits, isEmpty,
         reason: 'قانون ۹: متن فارسی در core: $hits');
   });

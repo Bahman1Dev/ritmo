@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -14,8 +13,10 @@ import 'package:ritmo/core/ai/chat/chat_repository.dart';
 import 'package:ritmo/core/ai/memory/assistant_memory_binding.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/util/ritmo_date.dart';
 import 'package:ritmo/core/utils/markdown_parser.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
+import 'package:ritmo/core/widgets/ritmo_sheet_scaffold.dart';
 import 'package:ritmo/features/assistant/logic/assistant_action_registry.dart';
 import 'package:ritmo/features/energy/models/energy_mood_models.dart';
 import 'package:ritmo/features/sleep/models/sleep_models.dart';
@@ -450,7 +451,7 @@ $_wellbeingContext
 
     try {
       final db = await DatabaseHelper.instance.database;
-      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+      final todayStr = RitmoDate.dayKey(DateTime.now());
       
       final checkinMaps = await db.query('daily_checkins', where: 'date = ?', whereArgs: [todayStr]);
       final reflectionMaps = await db.query('daily_reflections', where: 'date = ?', whereArgs: [todayStr]);
@@ -533,11 +534,10 @@ $_wellbeingContext
 
   Future<void> _applySuggestion() async {
     Navigator.pop(context);
-    unawaited(showModalBottomSheet(
+    unawaited(RitmoSheetScaffold.present(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => DailyReflectionSheet(
+      title: 'ثبت بازتاب',
+      builder: (_) => DailyReflectionSheet(
         onSaved: widget.onSaved,
       ),
     ));
@@ -545,7 +545,7 @@ $_wellbeingContext
     if (_proposedWins != null || _proposedGratitude != null || _proposedChallenges != null) {
       try {
         final db = await DatabaseHelper.instance.database;
-        final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+        final todayStr = RitmoDate.dayKey(DateTime.now());
         final nowMs = DateTime.now().millisecondsSinceEpoch;
 
         final existing = await db.query('daily_reflections', where: 'date = ?', whereArgs: [todayStr]);
@@ -616,7 +616,7 @@ $_wellbeingContext
     _showTopToast(
       'متن پیام کپی شد.',
       Icons.check_circle_rounded,
-      const Color(0xff8B5CF6),
+      const Color.fromARGB(255, 139, 92, 246),
     );
   }
 
@@ -639,12 +639,11 @@ $_wellbeingContext
   void _showSessionSelector() {
     final colors = context.colors;
 
-    showModalBottomSheet(
+    RitmoSheetScaffold.present(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
+      title: 'تاریخچه گفتگوها',
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) {
             return RitmoTheme.glassCardLight(
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -665,7 +664,7 @@ $_wellbeingContext
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(CupertinoIcons.add, color: Color(0xff8B5CF6), size: 22),
+                          icon: const Icon(CupertinoIcons.add, color: Color.fromARGB(255, 139, 92, 246), size: 22),
                           onPressed: () {
                             Navigator.pop(context);
                             _startNewSession();
@@ -688,7 +687,7 @@ $_wellbeingContext
                                 final isSelected = sess.id == _sessionId;
                                 return ListTile(
                                   selected: isSelected,
-                                  selectedColor: const Color(0xff8B5CF6),
+                                  selectedColor: const Color.fromARGB(255, 139, 92, 246),
                                   title: Text(
                                     sess.summary ?? 'گفتگوی دستیار تعادل',
                                     style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13.5),
@@ -731,8 +730,7 @@ $_wellbeingContext
               ),
             );
           },
-        );
-      },
+        ),
     );
   }
 
@@ -740,7 +738,7 @@ $_wellbeingContext
   Widget build(BuildContext context) {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const primaryColor = Color(0xff8B5CF6);
+    const primaryColor = Color.fromARGB(255, 139, 92, 246);
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -1035,7 +1033,7 @@ $_wellbeingContext
                 onPressed: _isStreaming ? _cancelStreaming : _sendMessage,
                 child: CircleAvatar(
                   radius: 20,
-                  backgroundColor: _isStreaming ? const Color(0xffEF4444) : primaryColor,
+                  backgroundColor: _isStreaming ? const Color.fromARGB(255, 239, 68, 68) : primaryColor,
                   child: Icon(
                     _isStreaming ? CupertinoIcons.stop_fill : CupertinoIcons.arrow_up,
                     color: Colors.black,
@@ -1201,7 +1199,7 @@ $_wellbeingContext
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xff8B5CF6),
+                    backgroundColor: const Color.fromARGB(255, 139, 92, 246),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -1255,7 +1253,7 @@ $_wellbeingContext
               fontFamily: 'Vazirmatn',
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: Color(0xff8B5CF6),
+              color: Color.fromARGB(255, 139, 92, 246),
             ),
           ),
           const SizedBox(height: 4),
@@ -1322,7 +1320,7 @@ class _WellbeingMessageBubbleState extends State<WellbeingMessageBubble> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isUser = widget.msg['role'] == 'user';
     final colors = widget.colors;
-    const primaryColor = Color(0xff8B5CF6);
+    const primaryColor = Color.fromARGB(255, 139, 92, 246);
 
     final bubbleBg = isUser
         ? primaryColor
@@ -1343,7 +1341,7 @@ class _WellbeingMessageBubbleState extends State<WellbeingMessageBubble> {
             key: ValueKey<bool>(_isCopied),
             size: 15,
             color: _isCopied
-                ? const Color(0xff10B981)
+                ? const Color.fromARGB(255, 16, 185, 129)
                 : colors.textSecondary.withValues(alpha: 0.45),
           ),
         ),

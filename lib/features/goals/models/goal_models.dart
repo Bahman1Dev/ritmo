@@ -397,6 +397,7 @@ class TimelineItem {
     required this.title,
     required this.source,
     required this.sourceId,
+    this.goalId,
     required this.isDone,
     this.subtitle,
   });
@@ -404,6 +405,7 @@ class TimelineItem {
   final String title;
   final TimelineSource source;
   final String sourceId;
+  final String? goalId;
   final bool isDone;
   final String? subtitle;
 }

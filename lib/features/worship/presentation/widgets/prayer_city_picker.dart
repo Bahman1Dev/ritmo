@@ -62,7 +62,7 @@ class _PrayerCityPickerState extends State<PrayerCityPicker> {
       };
 
       _selectedMethod = settings['prayer_calculation_method'] ?? 'TEHRAN_GEOPHYSICS';
-      _ihtiyatMinutes = int.tryParse(settings['ihtiyat_minutes'] ?? '10') ?? 10;
+      _ihtiyatMinutes = int.tryParse(settings['ihtiyat_minutes'] ?? '0') ?? 0;
       _currentCityId = settings['prayer_city_id'] ?? 'TEHRAN_TEHRAN';
       _showAsrIsha = settings['show_asr_isha_prayers'] == 'true';
       _hijriOffset = int.tryParse(settings['hijri_offset'] ?? '0') ?? 0;
@@ -155,7 +155,8 @@ class _PrayerCityPickerState extends State<PrayerCityPicker> {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      // Invalidate engine cache so new city persists instantly across restarts
+      // Invalidate engine cache and purge SQLite cache so new city persists instantly
+      await db.delete('prayer_times_cache');
       WorshipEngine.instance.invalidate();
 
       // 3. Re-cache prayer times
@@ -190,16 +191,6 @@ class _PrayerCityPickerState extends State<PrayerCityPicker> {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      // 2. Update ihtiyat minutes
-      await db.insert(
-        'app_settings',
-        {
-          'key': 'ihtiyat_minutes',
-          'value': _ihtiyatMinutes.toString(),
-          'updatedAt': nowMs,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
 
       // Update show_asr_isha_prayers setting
       await db.insert(
@@ -222,6 +213,9 @@ class _PrayerCityPickerState extends State<PrayerCityPicker> {
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
+
+      await db.delete('prayer_times_cache');
+      WorshipEngine.instance.invalidate();
 
       // 3. Re-cache prayer times for current city for 40 days
       await PrayerTimeProvider.instance.cacheRange(
@@ -524,53 +518,47 @@ class _PrayerCityPickerState extends State<PrayerCityPicker> {
           }),
           const SizedBox(height: 20),
 
-          // Ihtiyat Slider Section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'دقایق احتیاط (حاشیه ایمنی)',
-                style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                  fontFamily: 'Vazirmatn',
-                ),
-              ),
-              Text(
-                toPersianDigits('$_ihtiyatMinutes دقیقه'),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xffD4A843),
-                  fontFamily: 'Vazirmatn',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: const Color(0xffD4A843),
-              inactiveTrackColor: Colors.white12,
-              thumbColor: const Color(0xffD4A843),
-              overlayColor: const Color(0xffD4A843).withValues(alpha: 0.2),
-              valueIndicatorColor: const Color(0xffD4A843),
-              valueIndicatorTextStyle: TextStyle(fontFamily: 'Vazirmatn', color: colors.textPrimary),
-            ),
-            child: Slider(
-              value: _ihtiyatMinutes.toDouble(),
-              max: 30,
-              divisions: 30,
-              label: toPersianDigits('$_ihtiyatMinutes'),
-              onChanged: (val) {
-                setState(() {
-                  _ihtiyatMinutes = val.toInt();
-                });
-              },
-            ),
-          ),
           const SizedBox(height: 16),
+
+          // Online API Refresh Button
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xffD4A843),
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            ),
+            icon: const Icon(CupertinoIcons.cloud_download, size: 20),
+            label: const Text(
+              'به‌روزرسانی آنلاین اوقات شرعی از API',
+              style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn', fontSize: 14),
+            ),
+            onPressed: () async {
+              unawaited(HapticFeedback.mediumImpact());
+              try {
+                final db = await DatabaseHelper.instance.database;
+                await db.delete('prayer_times_cache');
+                WorshipEngine.instance.invalidate();
+
+                await PrayerTimeProvider.instance.cacheRange(
+                  cityId: _currentCityId,
+                  from: DateTime.now(),
+                  days: 30,
+                  forceOnline: true,
+                );
+
+                widget.onChanged();
+                if (mounted) {
+                  RitmoSnackbar.success(context, 'اوقات شرعی از API آنلاین به‌روزرسانی شد 🕌');
+                }
+              } catch (e) {
+                if (mounted) {
+                  RitmoSnackbar.error(context, 'بروزرسانی از API ناموفق بود؛ محاسبه آفلاین فعال است.');
+                }
+              }
+            },
+          ),
+          const SizedBox(height: 20),
 
           // Show Asr and Isha Switch Row
           Row(

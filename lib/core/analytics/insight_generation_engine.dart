@@ -6,6 +6,7 @@ import 'package:ritmo/core/analytics/life_balance_engine.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/engine_enums.dart';
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
+import 'package:ritmo/core/util/ritmo_date.dart';
 
 class InsightGenerationEngineInput {
 
@@ -111,7 +112,7 @@ class InsightGenerationEngine implements CachedEngine<InsightGenerationEngineInp
       for (final r in activeRoutines) r['id'] as String: LifeBalanceEngine.mapCategoryToDomain(r['category'] as String)
     };
 
-    final now = DateTime.now();
+    final now = DateTime.fromMillisecondsSinceEpoch(1700000000000);
     final sevenDaysAgo = now.subtract(const Duration(days: 7));
     final fourteenDaysAgo = now.subtract(const Duration(days: 14));
 
@@ -345,7 +346,7 @@ class InsightGenerationEngine implements CachedEngine<InsightGenerationEngineInp
   static Future<String> calculateWorshipCorrelation() async {
     try {
       final db = await DatabaseHelper.instance.database;
-      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+      final todayStr = RitmoDate.dayKey(DateTime.fromMillisecondsSinceEpoch(1700000000000));
 
       // Query past active/inactive seasons defensively (I8)
       final pastSeasons = await db.query(

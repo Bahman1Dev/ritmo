@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -128,9 +127,11 @@ class _AiGoalsAssistantSheetState extends State<AiGoalsAssistantSheet> {
 
   Future<void> _handleAction(ChatAction action) async {
     await HapticFeedback.mediumImpact();
+    if (!mounted) return;
+
     if (action.type == 'openPage') {
       final route = action.targetRoute ?? action.payload['targetRoute']?.toString();
-      if (route != null && route.isNotEmpty && context.mounted) {
+      if (route != null && route.isNotEmpty) {
         unawaited(Navigator.pushNamed(context, route));
       }
       return;
@@ -573,9 +574,9 @@ $_goalsContext
                                       if (sess.id == _sessionId) {
                                         if (updated.isNotEmpty) {
                                           _sessionId = updated.first.id;
-                                          _loadMessages();
+                                          unawaited(_loadMessages());
                                         } else {
-                                          _loadActiveSession();
+                                          unawaited(_loadActiveSession());
                                         }
                                       }
                                     },

@@ -209,9 +209,7 @@ class ActiveCoursesSection extends StatelessWidget {
                             minHeight: 5,
                             backgroundColor: colors.border.withValues(alpha: 0.5),
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              (course.colorHex != null)
-                                  ? Color(int.parse('0xff${course.colorHex}'))
-                                  : colors.primary,
+                              course.resolvedColor(colors.primary),
                             ),
                           ),
                         ),

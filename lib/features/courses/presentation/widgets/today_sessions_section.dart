@@ -165,9 +165,7 @@ class TodaySessionsSection extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: (course.colorHex != null)
-                                    ? Color(int.parse('0xff${course.colorHex}')).withValues(alpha: 0.12)
-                                    : const Color(0xff3B82F6).withValues(alpha: 0.12),
+                                color: course.resolvedColor(const Color(0xff3B82F6)).withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                               ),
                               child: Text(

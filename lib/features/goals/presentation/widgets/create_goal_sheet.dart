@@ -82,7 +82,7 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
   String? _selectedParentGoalId;
   DateTime? _targetDate;
 
-  List<GoalStepInput> _stepInputs = [];
+  final List<GoalStepInput> _stepInputs = [];
   List<AiSubGoalInput> _aiSubGoals = [];
   List<GoalStepInput> _aiDirectSteps = [];
 
@@ -99,24 +99,7 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
   // Wizard state
   int _currentStep = 0; // 0: چی؟ (What), 1: کی؟ (When), 2: چطور؟ (How)
 
-  List<Goal> get _eligibleParents {
-    final activeOnly = widget.activeGoals.where((g) => g.status != 'ABANDONED').toList();
-    final editing = widget.goalToEdit;
-    if (editing == null) return activeOnly;
 
-    final banned = <String>{editing.id};
-    final queue = [editing.id];
-    while (queue.isNotEmpty) {
-      final curr = queue.removeAt(0);
-      for (final g in activeOnly) {
-        if (g.parentGoalId == curr && !banned.contains(g.id)) {
-          banned.add(g.id);
-          queue.add(g.id);
-        }
-      }
-    }
-    return activeOnly.where((g) => !banned.contains(g.id)).toList();
-  }
 
   @override
   void initState() {
@@ -232,12 +215,14 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
 
     final stepsNotifier = ValueNotifier<int>(0);
 
-    showModalBottomSheet(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _AiBreakdownProgressSheet(stepsNotifier: stepsNotifier),
+    unawaited(
+      showModalBottomSheet(
+        context: context,
+        isDismissible: false,
+        enableDrag: false,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => _AiBreakdownProgressSheet(stepsNotifier: stepsNotifier),
+      ),
     );
 
     setState(() {

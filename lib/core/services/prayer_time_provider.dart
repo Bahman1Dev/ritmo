@@ -1,5 +1,6 @@
 import 'package:adhan/adhan.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/services/online_prayer_time_service.dart';
 import 'package:sqflite/sqflite.dart';
 
 class PrayerTimeProvider {
@@ -9,8 +10,10 @@ class PrayerTimeProvider {
   Future<Map<String, String>> getPrayerTimesForDate({
     required String cityId,
     required DateTime date,
+    bool forceOnline = false,
   }) async {
     final db = await DatabaseHelper.instance.database;
+    final dateStr = date.toIso8601String().substring(0, 10);
 
     // 1. Fetch city coordinates
     final cityResult = await db.query(
@@ -28,28 +31,70 @@ class PrayerTimeProvider {
       longitude = cityResult.first['longitude']! as double;
     }
 
-    // 2. Fetch ihtiyatMinutes and calculationMethod from settings
     final settingsResult = await db.query('app_settings');
     final settings = {
       for (final row in settingsResult) row['key']! as String: row['value']! as String
     };
 
-    final ihtiyatMinutes = int.tryParse(settings['ihtiyat_minutes'] ?? '10') ?? 10;
     final calcMethodStr = settings['prayer_calculation_method'] ?? 'TEHRAN_GEOPHYSICS';
 
-    return computePrayerTimes(
+    // 2. Try online API first (if forced or not in SQLite cache)
+    if (forceOnline) {
+      final onlineTimes = await OnlinePrayerTimeService.instance.fetchPrayerTimesFromApi(
+        latitude: latitude,
+        longitude: longitude,
+        date: date,
+      );
+      if (onlineTimes != null) {
+        return onlineTimes;
+      }
+    }
+
+    // 3. Check SQLite cache
+    final cacheRows = await db.query(
+      'prayer_times_cache',
+      where: 'date = ? AND cityId = ?',
+      whereArgs: [dateStr, cityId],
+      limit: 1,
+    );
+
+    if (cacheRows.isNotEmpty) {
+      final row = cacheRows.first;
+      return {
+        'fajr': row['fajr'] as String,
+        'sunrise': row['sunrise'] as String,
+        'dhuhr': row['dhuhr'] as String,
+        'asr': row['asr'] as String,
+        'maghrib': row['maghrib'] as String,
+        'isha': row['isha'] as String,
+        'midnightShari': row['midnightShari'] as String,
+        'sunset': row['sunset'] as String? ?? row['maghrib'] as String,
+      };
+    }
+
+    // 4. Try online API fetch before local calculation
+    final onlineTimes = await OnlinePrayerTimeService.instance.fetchPrayerTimesFromApi(
       latitude: latitude,
       longitude: longitude,
-      ihtiyatMinutes: ihtiyatMinutes,
+      date: date,
+    );
+
+    if (onlineTimes != null) {
+      return onlineTimes;
+    }
+
+    // 5. Offline Fallback: compute astronomical prayer times locally via package:adhan
+    return computePrayerTimesLocally(
+      latitude: latitude,
+      longitude: longitude,
       calcMethodStr: calcMethodStr,
       date: date,
     );
   }
 
-  Map<String, String> computePrayerTimes({
+  Map<String, String> computePrayerTimesLocally({
     required double latitude,
     required double longitude,
-    required int ihtiyatMinutes,
     required String calcMethodStr,
     required DateTime date,
   }) {
@@ -64,33 +109,29 @@ class PrayerTimeProvider {
 
     final params = method.getParameters();
 
-    // 3. Compute today's prayer times
     final todayComponents = DateComponents(date.year, date.month, date.day);
     final todayTimes = PrayerTimes(Coordinates(latitude, longitude), todayComponents, params);
 
-    // 4. Compute tomorrow's prayer times (for Shari Midnight)
     final tomorrow = date.add(const Duration(days: 1));
     final tomorrowComponents = DateComponents(tomorrow.year, tomorrow.month, tomorrow.day);
     final tomorrowTimes = PrayerTimes(Coordinates(latitude, longitude), tomorrowComponents, params);
 
-    // Apply ihtiyat (safety offset) to prayer times
-    final fajr = todayTimes.fajr.add(Duration(minutes: ihtiyatMinutes));
-    final sunrise = todayTimes.sunrise; // Sunrise is astronomical, ihtiyat is not applied
-    final dhuhr = todayTimes.dhuhr.add(Duration(minutes: ihtiyatMinutes));
-    final asr = todayTimes.asr.add(Duration(minutes: ihtiyatMinutes));
-    final maghrib = todayTimes.maghrib.add(Duration(minutes: ihtiyatMinutes));
-    final isha = todayTimes.isha.add(Duration(minutes: ihtiyatMinutes));
+    final fajr = todayTimes.fajr;
+    final sunrise = todayTimes.sunrise;
+    final dhuhr = todayTimes.dhuhr;
+    final asr = todayTimes.asr;
+    final maghrib = todayTimes.maghrib;
+    final isha = todayTimes.isha;
 
-    final tomorrowFajr = tomorrowTimes.fajr.add(Duration(minutes: ihtiyatMinutes));
+    final tomorrowFajr = tomorrowTimes.fajr;
 
-    // Midnight Shari is the midpoint between Maghrib and tomorrow's Fajr
-    final midnightDuration = tomorrowFajr.difference(maghrib);
-    final midnightShari = maghrib.add(midnightDuration ~/ 2);
-
-    // Astronomical sunset (using MWL method where Maghrib is sunset)
     final sunniParams = CalculationMethod.muslim_world_league.getParameters();
     final sunniTimes = PrayerTimes(Coordinates(latitude, longitude), todayComponents, sunniParams);
     final sunset = sunniTimes.maghrib;
+
+    // Midnight Shari is midpoint between Sunset and tomorrow's Fajr
+    final midnightDuration = tomorrowFajr.difference(sunset);
+    final midnightShari = sunset.add(midnightDuration ~/ 2);
 
     return {
       'fajr': _formatTime(fajr),
@@ -107,22 +148,19 @@ class PrayerTimeProvider {
   Future<void> cachePrayerTimes({
     required String cityId,
     required DateTime date,
+    bool forceOnline = false,
   }) async {
     final db = await DatabaseHelper.instance.database;
     final dateStr = date.toIso8601String().substring(0, 10);
 
-    // Fetch times
-    final times = await getPrayerTimesForDate(cityId: cityId, date: date);
+    final times = await getPrayerTimesForDate(cityId: cityId, date: date, forceOnline: forceOnline);
 
-    // Get settings
     final settingsResult = await db.query('app_settings');
     final settings = {
       for (final row in settingsResult) row['key']! as String: row['value']! as String
     };
-    final ihtiyatMinutes = int.tryParse(settings['ihtiyat_minutes'] ?? '10') ?? 10;
     final calcMethodStr = settings['prayer_calculation_method'] ?? 'TEHRAN_GEOPHYSICS';
 
-    // Insert or update cache
     await db.insert(
       'prayer_times_cache',
       {
@@ -137,28 +175,81 @@ class PrayerTimeProvider {
         'midnightShari': times['midnightShari'],
         'sunset': times['sunset'],
         'calculationMethod': calcMethodStr,
-        'ihtiyatMinutes': ihtiyatMinutes,
+        'ihtiyatMinutes': 0,
         'computedAt': DateTime.now().millisecondsSinceEpoch,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
-  /// Cache prayer times for a range of [days] starting from [from].
-  /// Also purges cache entries older than 90 days.
   Future<int> cacheRange({
     required String cityId,
     required DateTime from,
     required int days,
+    bool forceOnline = false,
   }) async {
     final db = await DatabaseHelper.instance.database;
-    int cachedCount = 0;
+
+    // 1. Fetch city coordinates ONCE
+    final cityResult = await db.query(
+      'iran_cities',
+      where: 'id = ?',
+      whereArgs: [cityId],
+      limit: 1,
+    );
+
+    var latitude = 35.6892;
+    var longitude = 51.3890;
+
+    if (cityResult.isNotEmpty) {
+      latitude = cityResult.first['latitude']! as double;
+      longitude = cityResult.first['longitude']! as double;
+    }
+
+    // 2. Fetch app_settings ONCE
+    final settingsResult = await db.query('app_settings');
+    final settings = {
+      for (final row in settingsResult) row['key']! as String: row['value']! as String
+    };
+
+    final calcMethodStr = settings['prayer_calculation_method'] ?? 'TEHRAN_GEOPHYSICS';
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    // 3. Batch insert using db.batch() for blazing fast atomic I/O
+    final batch = db.batch();
 
     for (int i = 0; i < days; i++) {
       final date = from.add(Duration(days: i));
-      await cachePrayerTimes(cityId: cityId, date: date);
-      cachedCount++;
+      final dateStr = date.toIso8601String().substring(0, 10);
+      final times = computePrayerTimesLocally(
+        latitude: latitude,
+        longitude: longitude,
+        calcMethodStr: calcMethodStr,
+        date: date,
+      );
+
+      batch.insert(
+        'prayer_times_cache',
+        {
+          'date': dateStr,
+          'cityId': cityId,
+          'fajr': times['fajr'],
+          'sunrise': times['sunrise'],
+          'dhuhr': times['dhuhr'],
+          'asr': times['asr'],
+          'maghrib': times['maghrib'],
+          'isha': times['isha'],
+          'midnightShari': times['midnightShari'],
+          'sunset': times['sunset'],
+          'calculationMethod': calcMethodStr,
+          'ihtiyatMinutes': 0,
+          'computedAt': nowMs,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     }
+
+    await batch.commit(noResult: true);
 
     final thresholdDate = from.subtract(const Duration(days: 90)).toIso8601String().substring(0, 10);
     try {
@@ -169,7 +260,7 @@ class PrayerTimeProvider {
       );
     } catch (_) {}
 
-    return cachedCount;
+    return days;
   }
 
   String _formatTime(DateTime time) {

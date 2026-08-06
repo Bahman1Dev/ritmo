@@ -287,7 +287,7 @@ class DayAgendaService {
       longitude = cityResult.first['longitude']! as double;
     }
 
-    final ihtiyatMinutes = int.tryParse(settingsMap['ihtiyat_minutes'] ?? '10') ?? 10;
+    final ihtiyatMinutes = int.tryParse(settingsMap['ihtiyat_minutes'] ?? '0') ?? 0;
     final calcMethodStr = settingsMap['prayer_calculation_method'] ?? 'TEHRAN_GEOPHYSICS';
 
     // Preload goal steps for the range
@@ -1298,10 +1298,9 @@ class _AgendaContext {
     final cached = _prayerCache[key];
     if (cached != null) return cached;
     try {
-      final times = PrayerTimeProvider.instance.computePrayerTimes(
+      final times = PrayerTimeProvider.instance.computePrayerTimesLocally(
         latitude: latitude,
         longitude: longitude,
-        ihtiyatMinutes: ihtiyatMinutes,
         calcMethodStr: calcMethodStr,
         date: date,
       );

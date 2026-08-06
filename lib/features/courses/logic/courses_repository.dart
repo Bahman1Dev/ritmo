@@ -15,15 +15,16 @@ class CoursesRepository {
 
   Future<Database> get _database async => DatabaseHelper.instance.database;
 
-  void _fireEvent(String reason, {String? courseId, String? sessionId}) {
+  void _fireEvent(String reason, {String? courseId, String? sessionId, bool allSkipped = false}) {
     final now = DateTime.now();
     RitmoEventBus().fire(RitmoEvent(
       type: 'CoursesChanged',
       timestamp: now,
       payload: {
-        if (courseId != null) 'courseId': courseId,
-        if (sessionId != null) 'sessionId': sessionId,
+        ?courseId: courseId,
+        ?sessionId: sessionId,
         'reason': reason,
+        'allSkipped': allSkipped,
       },
     ));
 
@@ -32,8 +33,9 @@ class CoursesRepository {
         type: 'CourseSessionCompleted',
         timestamp: now,
         payload: {
-          if (sessionId != null) 'sessionId': sessionId,
-          if (courseId != null) 'courseId': courseId,
+          ?sessionId: sessionId,
+          ?courseId: courseId,
+          'allSkipped': allSkipped,
         },
       ));
     }
@@ -128,7 +130,7 @@ class CoursesRepository {
     return getSessionsForDateRange(dateStr, dateStr);
   }
 
-  /// Save course (C5.1): routes to createCourse if isNew==true, or updateCourse if isNew==false
+  /// Save course: routes to createCourse if isNew==true, or updateCourse if isNew==false
   Future<void> saveCourse(Course course, {required bool isNew}) async {
     if (isNew) {
       await createCourse(course);
@@ -178,7 +180,7 @@ class CoursesRepository {
         await txn.insert(
           'course_sessions',
           session.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.replace,
+          conflictAlgorithm: ConflictAlgorithm.abort,
         );
       }
 
@@ -189,16 +191,17 @@ class CoursesRepository {
     _fireEvent('CREATE', courseId: course.id);
   }
 
-  /// Create a course with pre-defined draft sessions (C14 AI Syllabus import)
+  /// Create a course with pre-defined draft sessions (AI Syllabus import) - Fixes D-6 SOT totalSessions
   Future<void> createCourseWithSessions(Course course, List<CourseSession> draftSessions) async {
-    CourseValidator.validateCourse(course);
+    final syncedCourse = course.copyWith(totalSessions: draftSessions.length);
+    CourseValidator.validateCourse(syncedCourse);
     final db = await _database;
     final now = DateTime.now();
 
     await db.transaction((txn) async {
       await txn.insert(
         'courses',
-        course.toMap(),
+        syncedCourse.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
@@ -206,8 +209,8 @@ class CoursesRepository {
       final sessionDates = CourseScheduler.distributeSessions(
         pendingCount: pendingCount,
         from: now,
-        weeklyTarget: course.weeklyTargetSessions,
-        preferredDays: course.preferredDays,
+        weeklyTarget: syncedCourse.weeklyTargetSessions,
+        preferredDays: syncedCourse.preferredDays,
       );
 
       for (var i = 0; i < draftSessions.length; i++) {
@@ -218,8 +221,8 @@ class CoursesRepository {
         }
 
         final session = draft.copyWith(
-          id: draft.id.isEmpty ? 'sess_${now.millisecondsSinceEpoch}_${course.id.hashCode}_$i' : draft.id,
-          courseId: course.id,
+          id: draft.id.isEmpty ? 'sess_${now.millisecondsSinceEpoch}_${syncedCourse.id.hashCode}_$i' : draft.id,
+          courseId: syncedCourse.id,
           sessionNumber: i + 1,
           displayOrder: i + 1,
           plannedDate: plannedDateStr,
@@ -230,18 +233,18 @@ class CoursesRepository {
         await txn.insert(
           'course_sessions',
           session.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.replace,
+          conflictAlgorithm: ConflictAlgorithm.abort,
         );
       }
 
-      await _rebuildRemindersForCourse(txn, course);
+      await _rebuildRemindersForCourse(txn, syncedCourse);
     });
 
     await syncCourseAlarms();
-    _fireEvent('CREATE', courseId: course.id);
+    _fireEvent('CREATE', courseId: syncedCourse.id);
   }
 
-  /// Update / edit course details (C5.1) with transactional session count adjustment and rescheduling
+  /// Update / edit course details with transactional session count adjustment and rescheduling (Fixes Root 1 & D-5)
   Future<void> updateCourse(Course updatedCourse) async {
     CourseValidator.validateCourse(updatedCourse);
     final db = await _database;
@@ -266,6 +269,8 @@ class CoursesRepository {
         existingCourse.preferredTime != updatedCourse.preferredTime ||
         existingCourse.reminderEnabled != updatedCourse.reminderEnabled;
 
+    final alarmsToCancel = <String>[];
+
     await db.transaction((txn) async {
       // 1. Adjust session count if totalSessions changed
       if (updatedCourse.totalSessions > existingCourse.totalSessions) {
@@ -286,24 +291,35 @@ class CoursesRepository {
           await txn.insert(
             'course_sessions',
             newSession.toMap(),
-            conflictAlgorithm: ConflictAlgorithm.replace,
+            conflictAlgorithm: ConflictAlgorithm.abort,
           );
         }
       } else if (updatedCourse.totalSessions < existingCourse.totalSessions) {
         final countToRemove = existingCourse.totalSessions - updatedCourse.totalSessions;
         final pendingFromEnd = existingSessions.reversed.where((s) => !s.isCompleted && !s.isSkipped).take(countToRemove).toList();
         for (final s in pendingFromEnd) {
+          final rems = await txn.query('pending_reminders', where: 'courseSessionId = ?', whereArgs: [s.id]);
+          for (final r in rems) {
+            if (r['id'] != null) alarmsToCancel.add(r['id']! as String);
+          }
           await txn.delete('pending_reminders', where: 'courseSessionId = ?', whereArgs: [s.id]);
           await txn.delete('course_sessions', where: 'id = ?', whereArgs: [s.id]);
         }
       }
 
-      // 2. Update course row
+      // 2. Count actual remaining sessions in DB and sync totalSessions (SOT)
+      final remainingCountRes = await txn.rawQuery(
+        'SELECT COUNT(*) as cnt FROM course_sessions WHERE courseId = ?',
+        [updatedCourse.id],
+      );
+      final actualTotal = remainingCountRes.isNotEmpty ? (remainingCountRes.first['cnt'] as int? ?? updatedCourse.totalSessions) : updatedCourse.totalSessions;
+      final syncedCourse = updatedCourse.copyWith(totalSessions: actualTotal);
+
       await txn.update(
         'courses',
-        updatedCourse.toMap(),
+        syncedCourse.toMap(),
         where: 'id = ?',
-        whereArgs: [updatedCourse.id],
+        whereArgs: [syncedCourse.id],
       );
 
       // 3. Reschedule pending sessions if needed
@@ -311,7 +327,7 @@ class CoursesRepository {
         final currentSessionsMaps = await txn.query(
           'course_sessions',
           where: 'courseId = ?',
-          whereArgs: [updatedCourse.id],
+          whereArgs: [syncedCourse.id],
           orderBy: 'displayOrder ASC, sessionNumber ASC',
         );
         final currentSessions = currentSessionsMaps.map(CourseSession.fromMap).toList();
@@ -326,8 +342,8 @@ class CoursesRepository {
           final newDates = CourseScheduler.distributeSessions(
             pendingCount: pendingToSchedule.length,
             from: now,
-            weeklyTarget: updatedCourse.weeklyTargetSessions,
-            preferredDays: updatedCourse.preferredDays,
+            weeklyTarget: syncedCourse.weeklyTargetSessions,
+            preferredDays: syncedCourse.preferredDays,
             occupiedWeeklyCounts: occupiedMap,
           );
 
@@ -351,14 +367,19 @@ class CoursesRepository {
       }
 
       // 4. Rebuild reminders for course
-      await _rebuildRemindersForCourse(txn, updatedCourse);
+      final rebuildAlarms = await _rebuildRemindersForCourse(txn, syncedCourse);
+      alarmsToCancel.addAll(rebuildAlarms);
     });
+
+    for (final id in alarmsToCancel) {
+      await sl<AlarmPlatform>().cancelAlarm(id);
+    }
 
     await syncCourseAlarms();
     _fireEvent('UPDATE', courseId: updatedCourse.id);
   }
 
-  /// Complete a specific course session (C5.2)
+  /// Complete a specific course session (Fixes D-1 Partial Update & D-2 Alarm Cleanup & D-25 Linked Goal)
   Future<void> completeSession({
     required String sessionId,
     required int actualDurationMinutes,
@@ -372,6 +393,7 @@ class CoursesRepository {
     final now = DateTime.now();
     String? courseId;
     final alarmsToCancel = <String>[];
+    var allSkipped = false;
 
     await db.transaction((txn) async {
       final sessionMaps = await txn.query('course_sessions', where: 'id = ?', whereArgs: [sessionId]);
@@ -379,19 +401,22 @@ class CoursesRepository {
       final session = CourseSession.fromMap(sessionMaps.first);
       courseId = session.courseId;
 
+      // Partial update: preserve existing note if note parameter is null (Fixes D-1)
+      final updates = <String, dynamic>{
+        'completionStatus': SessionStatus.completed.dbValue,
+        'actualDurationMinutes': actualDurationMinutes,
+        'completedAt': now.millisecondsSinceEpoch,
+        'updatedAt': now.millisecondsSinceEpoch,
+      };
+      if (note != null) updates['note'] = note;
+      if (understandingScore != null) updates['understandingScore'] = understandingScore;
+      if (needsReview) updates['needsReview'] = 1;
+      if (keyTakeaway != null) updates['keyTakeaway'] = keyTakeaway;
+      if (openQuestion != null) updates['openQuestion'] = openQuestion;
+
       await txn.update(
         'course_sessions',
-        {
-          'completionStatus': SessionStatus.completed.dbValue,
-          'actualDurationMinutes': actualDurationMinutes,
-          'note': note,
-          'completedAt': now.millisecondsSinceEpoch,
-          'updatedAt': now.millisecondsSinceEpoch,
-          'understandingScore': understandingScore,
-          'needsReview': needsReview ? 1 : 0,
-          'keyTakeaway': keyTakeaway,
-          'openQuestion': openQuestion,
-        },
+        updates,
         where: 'id = ?',
         whereArgs: [sessionId],
       );
@@ -402,6 +427,7 @@ class CoursesRepository {
       }
       await txn.delete('pending_reminders', where: 'courseSessionId = ?', whereArgs: [sessionId]);
 
+      // Check remaining pending sessions
       final remainingPending = await txn.query(
         'course_sessions',
         where: 'courseId = ? AND completionStatus = ?',
@@ -409,6 +435,10 @@ class CoursesRepository {
       );
 
       if (remainingPending.isEmpty) {
+        final allSessions = await txn.query('course_sessions', where: 'courseId = ?', whereArgs: [courseId]);
+        final completedCount = allSessions.where((s) => s['completionStatus'] == SessionStatus.completed.dbValue).length;
+        allSkipped = completedCount == 0;
+
         await txn.update(
           'courses',
           {
@@ -421,10 +451,24 @@ class CoursesRepository {
         );
       }
 
+      // D-25: One-way linked goal progress update
       final courseMaps = await txn.query('courses', where: 'id = ?', whereArgs: [courseId]);
       if (courseMaps.isNotEmpty) {
         final course = Course.fromMap(courseMaps.first);
-        await _rebuildRemindersForCourse(txn, course);
+        if (course.linkedGoalId != null) {
+          final totalSess = course.totalSessions;
+          final allSess = await txn.query('course_sessions', where: 'courseId = ?', whereArgs: [courseId]);
+          final doneSess = allSess.where((s) => s['completionStatus'] == SessionStatus.completed.dbValue).length;
+          final ratio = totalSess > 0 ? (doneSess / totalSess) : 0.0;
+          await txn.update(
+            'goals',
+            {'progressCache': ratio, 'updatedAt': now.millisecondsSinceEpoch},
+            where: 'id = ?',
+            whereArgs: [course.linkedGoalId],
+          );
+        }
+        final rebuildAlarms = await _rebuildRemindersForCourse(txn, course);
+        alarmsToCancel.addAll(rebuildAlarms);
       }
     });
 
@@ -433,10 +477,10 @@ class CoursesRepository {
     }
 
     await syncCourseAlarms();
-    _fireEvent('COMPLETE', courseId: courseId, sessionId: sessionId);
+    _fireEvent('COMPLETE', courseId: courseId, sessionId: sessionId, allSkipped: allSkipped);
   }
 
-  /// Uncomplete a session (C5.3)
+  /// Uncomplete a session (Fixes D-12 State Resets)
   Future<void> uncompleteSession(String sessionId) async {
     final db = await _database;
     final now = DateTime.now();
@@ -459,20 +503,22 @@ class CoursesRepository {
         whereArgs: [sessionId],
       );
 
-      await txn.update(
-        'courses',
-        {
-          'status': CourseStatus.active,
-          'completedAt': null,
-          'updatedAt': now.millisecondsSinceEpoch,
-        },
-        where: 'id = ?',
-        whereArgs: [courseId],
-      );
-
       final courseMaps = await txn.query('courses', where: 'id = ?', whereArgs: [courseId]);
       if (courseMaps.isNotEmpty) {
         final course = Course.fromMap(courseMaps.first);
+        // Only set status back to ACTIVE if course was COMPLETED! (Fixes D-12)
+        if (course.status == CourseStatus.completed && !course.isArchived) {
+          await txn.update(
+            'courses',
+            {
+              'status': CourseStatus.active,
+              'completedAt': null,
+              'updatedAt': now.millisecondsSinceEpoch,
+            },
+            where: 'id = ?',
+            whereArgs: [courseId],
+          );
+        }
         await _rebuildRemindersForCourse(txn, course);
       }
     });
@@ -481,12 +527,13 @@ class CoursesRepository {
     _fireEvent('UNCOMPLETE', courseId: courseId, sessionId: sessionId);
   }
 
-  /// Skip a session (C5.3)
+  /// Skip a session (Fixes D-1 Note Overwrite, D-27 completedAt for skipped sessions, D-13 honest completion)
   Future<void> skipSession(String sessionId, {String? reason}) async {
     final db = await _database;
     final now = DateTime.now();
     String? courseId;
     final alarmsToCancel = <String>[];
+    var allSkipped = false;
 
     await db.transaction((txn) async {
       final sessionMaps = await txn.query('course_sessions', where: 'id = ?', whereArgs: [sessionId]);
@@ -494,12 +541,13 @@ class CoursesRepository {
       final session = CourseSession.fromMap(sessionMaps.first);
       courseId = session.courseId;
 
+      // Store skip reason in skipReason column without overwriting user note (Fixes D-1 & D-27)
       await txn.update(
         'course_sessions',
         {
           'completionStatus': SessionStatus.skipped.dbValue,
-          'note': reason,
-          'completedAt': now.millisecondsSinceEpoch,
+          'skipReason': reason,
+          'completedAt': null, // Do NOT populate completedAt for skipped sessions! (Fixes D-27)
           'updatedAt': now.millisecondsSinceEpoch,
         },
         where: 'id = ?',
@@ -519,6 +567,10 @@ class CoursesRepository {
       );
 
       if (remainingPending.isEmpty) {
+        final allSessions = await txn.query('course_sessions', where: 'courseId = ?', whereArgs: [courseId]);
+        final completedCount = allSessions.where((s) => s['completionStatus'] == SessionStatus.completed.dbValue).length;
+        allSkipped = completedCount == 0;
+
         await txn.update(
           'courses',
           {
@@ -534,7 +586,8 @@ class CoursesRepository {
       final courseMaps = await txn.query('courses', where: 'id = ?', whereArgs: [courseId]);
       if (courseMaps.isNotEmpty) {
         final course = Course.fromMap(courseMaps.first);
-        await _rebuildRemindersForCourse(txn, course);
+        final rebuildAlarms = await _rebuildRemindersForCourse(txn, course);
+        alarmsToCancel.addAll(rebuildAlarms);
       }
     });
 
@@ -543,25 +596,31 @@ class CoursesRepository {
     }
 
     await syncCourseAlarms();
-    _fireEvent('SKIP', courseId: courseId, sessionId: sessionId);
+    _fireEvent('SKIP', courseId: courseId, sessionId: sessionId, allSkipped: allSkipped);
   }
 
-  /// Reorder sessions within a course (C5.3)
+  /// Reorder sessions within a course & keep titles synchronized (Fixes D-17)
   Future<void> reorderSessions(String courseId, List<String> orderedSessionIds) async {
     final db = await _database;
     final now = DateTime.now().millisecondsSinceEpoch;
 
     await db.transaction((txn) async {
+      final courseMaps = await txn.query('courses', where: 'id = ?', whereArgs: [courseId]);
+      final unitLabel = courseMaps.isNotEmpty ? Course.fromMap(courseMaps.first).unitLabelResolved : 'جلسه';
+
       for (var i = 0; i < orderedSessionIds.length; i++) {
+        final sId = orderedSessionIds[i];
+        final newNum = i + 1;
         await txn.update(
           'course_sessions',
           {
-            'displayOrder': i + 1,
-            'sessionNumber': i + 1,
+            'displayOrder': newNum,
+            'sessionNumber': newNum,
+            'sessionTitle': '$unitLabel $newNum',
             'updatedAt': now,
           },
           where: 'id = ? AND courseId = ?',
-          whereArgs: [orderedSessionIds[i], courseId],
+          whereArgs: [sId, courseId],
         );
       }
     });
@@ -574,6 +633,7 @@ class CoursesRepository {
     final db = await _database;
     final now = DateTime.now();
     String? courseId;
+    final alarmsToCancel = <String>[];
 
     await db.transaction((txn) async {
       await txn.update(
@@ -594,16 +654,21 @@ class CoursesRepository {
         final courseMaps = await txn.query('courses', where: 'id = ?', whereArgs: [courseId]);
         if (courseMaps.isNotEmpty) {
           final course = Course.fromMap(courseMaps.first);
-          await _rebuildRemindersForCourse(txn, course);
+          final rebuildAlarms = await _rebuildRemindersForCourse(txn, course);
+          alarmsToCancel.addAll(rebuildAlarms);
         }
       }
     });
+
+    for (final id in alarmsToCancel) {
+      await sl<AlarmPlatform>().cancelAlarm(id);
+    }
 
     await syncCourseAlarms();
     _fireEvent('RESCHEDULE', courseId: courseId, sessionId: sessionId);
   }
 
-  /// Helper to delete a course (C5.4)
+  /// Helper to delete a course (Fixes D-25 Linked Goal reference cleanup)
   Future<void> deleteCourse(String courseId) async {
     final db = await _database;
     final alarmsToCancel = <String>[];
@@ -633,12 +698,17 @@ class CoursesRepository {
     _fireEvent('DELETE', courseId: courseId);
   }
 
-  /// Helper to pause, resume, or complete a course (C5.4)
+  /// Helper to pause, resume, or complete a course (Fixes D-15 auto-reschedule on resume)
   Future<void> updateCourseStatus(String courseId, String status) async {
     final db = await _database;
     final now = DateTime.now().millisecondsSinceEpoch;
+    final alarmsToCancel = <String>[];
 
     await db.transaction((txn) async {
+      final courseMaps = await txn.query('courses', where: 'id = ?', whereArgs: [courseId]);
+      if (courseMaps.isEmpty) return;
+      final course = Course.fromMap(courseMaps.first);
+
       await txn.update(
         'courses',
         {
@@ -649,19 +719,64 @@ class CoursesRepository {
         whereArgs: [courseId],
       );
 
-      final courseMaps = await txn.query('courses', where: 'id = ?', whereArgs: [courseId]);
-      if (courseMaps.isNotEmpty) {
-        final course = Course.fromMap(courseMaps.first);
-        await _rebuildRemindersForCourse(txn, course);
+      // D-15: Auto-reschedule pending sessions starting from today when resuming a course!
+      if (status == CourseStatus.active) {
+        final pendingMaps = await txn.query(
+          'course_sessions',
+          where: 'courseId = ? AND completionStatus = ?',
+          whereArgs: [courseId, SessionStatus.pending.dbValue],
+          orderBy: 'displayOrder ASC, sessionNumber ASC',
+        );
+        final pendingSessions = pendingMaps.map(CourseSession.fromMap).toList();
+        if (pendingSessions.isNotEmpty) {
+          final newDates = CourseScheduler.distributeSessions(
+            pendingCount: pendingSessions.length,
+            from: DateTime.now(),
+            weeklyTarget: course.weeklyTargetSessions,
+            preferredDays: course.preferredDays,
+          );
+          for (var i = 0; i < pendingSessions.length; i++) {
+            String? newDateStr;
+            if (i < newDates.length) {
+              newDateStr = _formatDate(newDates[i]);
+            }
+            await txn.update(
+              'course_sessions',
+              {'plannedDate': newDateStr, 'updatedAt': now},
+              where: 'id = ?',
+              whereArgs: [pendingSessions[i].id],
+            );
+          }
+        }
       }
+
+      final rebuildAlarms = await _rebuildRemindersForCourse(txn, course.copyWith(status: status));
+      alarmsToCancel.addAll(rebuildAlarms);
     });
+
+    for (final id in alarmsToCancel) {
+      await sl<AlarmPlatform>().cancelAlarm(id);
+    }
 
     await syncCourseAlarms();
     _fireEvent('STATUS', courseId: courseId);
   }
 
-  /// Unified private method to rebuild reminders for a course (C5.4)
-  Future<void> _rebuildRemindersForCourse(Transaction txn, Course course) async {
+  /// Unified method to rebuild reminders for a course, gathering alarm IDs to cancel before delete (Fixes Root 2 & D-2)
+  Future<List<String>> _rebuildRemindersForCourse(Transaction txn, Course course) async {
+    final alarmsToCancel = <String>[];
+
+    final existingRems = await txn.rawQuery('''
+      SELECT id FROM pending_reminders 
+      WHERE courseSessionId IN (SELECT id FROM course_sessions WHERE courseId = ?)
+    ''', [course.id]);
+
+    for (final row in existingRems) {
+      if (row['id'] != null) {
+        alarmsToCancel.add(row['id']! as String);
+      }
+    }
+
     await txn.rawDelete('''
       DELETE FROM pending_reminders 
       WHERE courseSessionId IN (SELECT id FROM course_sessions WHERE courseId = ?)
@@ -672,7 +787,7 @@ class CoursesRepository {
         course.isArchived ||
         !course.reminderEnabled ||
         course.preferredTime == null) {
-      return;
+      return alarmsToCancel;
     }
 
     final sessionMaps = await txn.query(
@@ -721,6 +836,54 @@ class CoursesRepository {
         );
       }
     }
+
+    return alarmsToCancel;
+  }
+
+  /// Remove raw SQL from UI: fetch linked goal title safely
+  Future<String?> getLinkedGoalTitle(String goalId) async {
+    final db = await _database;
+    final maps = await db.query('goals', columns: ['title'], where: 'id = ?', whereArgs: [goalId], limit: 1);
+    if (maps.isNotEmpty) return maps.first['title'] as String?;
+    return null;
+  }
+
+  /// Remove raw SQL from UI: fetch active goals list safely
+  Future<List<Map<String, dynamic>>> getActiveGoalsList() async {
+    final db = await _database;
+    return await db.query('goals', columns: ['id', 'title'], where: "status = 'ACTIVE' AND isPrivate = 0");
+  }
+
+  /// Remove raw SQL from UI: fetch current energy level safely
+  Future<String> getCurrentEnergyLevel() async {
+    final db = await _database;
+    final logs = await db.query('energy_logs', orderBy: 'loggedAt DESC', limit: 1);
+    if (logs.isNotEmpty) {
+      final lvl = logs.first['level'] as String?;
+      if (lvl != null && lvl.isNotEmpty) {
+        return lvl.toUpperCase();
+      }
+    }
+    final settings = await db.query('app_settings', where: "key = 'default_energy_level'");
+    if (settings.isNotEmpty) {
+      return (settings.first['value'] as String? ?? 'MEDIUM').toUpperCase();
+    }
+    return 'MEDIUM';
+  }
+
+  /// Remove raw SQL from UI: fetch course settings safely
+  Future<Map<String, String>> getCourseSettings() async {
+    final db = await _database;
+    final maps = await db.query('app_settings', where: "key LIKE 'module_courses_%' OR key = 'default_energy_level'");
+    final result = <String, String>{};
+    for (final row in maps) {
+      final k = row['key'] as String?;
+      final v = row['value'] as String?;
+      if (k != null && v != null) {
+        result[k] = v;
+      }
+    }
+    return result;
   }
 
   String _formatDate(DateTime dt) {

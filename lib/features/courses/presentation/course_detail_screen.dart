@@ -1,9 +1,9 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
-import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/ritmo_date_picker.dart';
 import 'package:ritmo/core/ux/ritmo_directional_icon.dart';
@@ -11,6 +11,7 @@ import 'package:ritmo/features/courses/logic/courses_repository.dart';
 import 'package:ritmo/features/courses/models/course_models.dart';
 import 'package:ritmo/features/courses/presentation/widgets/course_formatters.dart';
 import 'package:ritmo/features/courses/presentation/widgets/create_course_sheet.dart';
+import 'package:ritmo/features/courses/presentation/widgets/segmented_visual_journey_track.dart';
 import 'package:ritmo/features/courses/presentation/widgets/study_timer_sheet.dart';
 
 class CourseDetailScreen extends StatefulWidget {
@@ -31,7 +32,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   bool _isLoading = true;
 
   Map<String, dynamic>? _linkedGoal;
-  double _linkedGoalProgress = 0;
+  final double _linkedGoalProgress = 0;
 
   @override
   void initState() {
@@ -46,8 +47,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     });
 
     try {
-      final db = await DatabaseHelper.instance.database;
-
       // 1. Fetch latest course details
       final updated = await CoursesRepository.instance.getCourseById(_course.id);
       if (updated != null) {
@@ -57,18 +56,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       // 2. Fetch sessions
       _sessions = await CoursesRepository.instance.getSessionsForCourse(_course.id);
 
-      // 3. Fetch linked goal if exists
+      // 3. Fetch linked goal title if exists
       if (_course.linkedGoalId != null) {
-        final goals = await db.query('goals', where: 'id = ?', whereArgs: [_course.linkedGoalId], limit: 1);
-        if (goals.isNotEmpty) {
-          _linkedGoal = goals.first;
-          final steps = await db.query('goal_steps', where: 'goalId = ?', whereArgs: [_course.linkedGoalId]);
-          if (steps.isNotEmpty) {
-            final completed = steps.where((s) => s['isCompleted'] == 1).length;
-            _linkedGoalProgress = completed / steps.length;
-          } else {
-            _linkedGoalProgress = 0.0;
-          }
+        final goalTitle = await CoursesRepository.instance.getLinkedGoalTitle(_course.linkedGoalId!);
+        if (goalTitle != null) {
+          _linkedGoal = {'title': goalTitle};
         } else {
           _linkedGoal = null;
         }
@@ -101,15 +93,17 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   }
 
   Future<void> _editCourse() async {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => CreateCourseSheet(
-        editingCourse: _course,
-        onCourseCreated: _loadCourseData,
-      ),
-    ).then((_) => _loadCourseData());
+    unawaited(
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (context) => CreateCourseSheet(
+          editingCourse: _course,
+          onCourseCreated: _loadCourseData,
+        ),
+      ).then((_) => _loadCourseData()),
+    );
   }
 
   Future<void> _deleteCourse() async {
@@ -386,12 +380,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                           minHeight: 6,
                           backgroundColor: colors.border.withValues(alpha: 0.5),
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            (_course.colorHex != null)
-                                ? Color(int.parse('0xff${_course.colorHex}'))
-                                : colors.primary,
+                            _course.resolvedColor(colors.primary),
                           ),
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      SegmentedVisualJourneyTrack(sessions: _sessions),
                     ],
                   ),
                 ),

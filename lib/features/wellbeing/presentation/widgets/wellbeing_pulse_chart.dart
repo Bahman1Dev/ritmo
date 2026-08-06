@@ -24,9 +24,11 @@ class WellbeingPulseChart extends StatelessWidget {
   const WellbeingPulseChart({
     super.key,
     required this.days,
+    this.onDayTap,
   });
 
   final List<WellbeingPulseDayData> days;
+  final ValueChanged<WellbeingPulseDayData>? onDayTap;
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +105,13 @@ class WellbeingPulseChart extends StatelessWidget {
         : (d.moodScore != null ? ((d.moodScore! - 1.0) / 4.0).clamp(0.0, 1.0) : null);
 
     return GestureDetector(
-      onTap: () => _showDayDetailDialog(context, d),
+      onTap: () {
+        if (onDayTap != null) {
+          onDayTap!(d);
+        } else {
+          _showDayDetailDialog(context, d);
+        }
+      },
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: width,

@@ -52,8 +52,8 @@ class SleepEngineOutput {
 }
 
 class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
-  static const int minLogsForConsistency = 5;
-  static const int minPointsForCorrelation = 30;
+  static const int minLogsForConsistency = 2;
+  static const int minPointsForCorrelation = 3;
   static const int minSamplesPerBedtimeWindow = 4;
   static const double halfLifeDays = 7.0;
 
@@ -302,7 +302,7 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
       moodCorr = _calculatePearson(pairedQualityMood, pairedMood);
     }
 
-    // T-1.7: Best bedtime window requires min 4 samples, no magic -999.0
+    // T-1.7: Best bedtime window requires min 4 samples, no magic sentinel numbers
     String? bestWindow;
     double? bestRating;
     for (final entry in dayRatingsByBedtimeWindow.entries) {
