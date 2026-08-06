@@ -8,6 +8,8 @@ import 'package:ritmo/core/domain/completion/completion_gateway.dart';
 import 'package:ritmo/core/domain/completion/completion_request.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/cycle_consent_bridge.dart';
+import 'package:ritmo/features/worship/logic/prayer_timeline.dart';
+import 'package:ritmo/features/worship/logic/worship_engine.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -80,7 +82,7 @@ class _WorshipDebtsSectionState extends State<WorshipDebtsSection> {
         final isMenstruating = await CycleConsentBridge.isWorshipSuspended();
 
         final uncompleted = await db.rawQuery('''
-          SELECT p.id, p.title, p.practiceType
+          SELECT p.id, p.title, p.practiceType, p.subType
           FROM worship_practices p
           WHERE p.isActive = 1
           AND (p.practiceType = 'PRAYER' OR (p.practiceType = 'MUSTAHAB' AND p.allowQada = 1) OR p.practiceType = 'FASTING')
@@ -91,10 +93,26 @@ class _WorshipDebtsSectionState extends State<WorshipDebtsSection> {
           )
         ''', [todayStr]);
 
+        final now = DateTime.now();
+        final times = await WorshipEngine.instance.prayerTimes(now);
+
         for (final p in uncompleted) {
           final pType = p['practiceType'] as String;
+          final subType = ((p['subType'] as String?) ?? '').toUpperCase();
+
           // Menstrual guard (W9): exempt mandatory prayers during menses, but suggest fasts
           if (isMenstruating && pType == 'PRAYER') continue;
+
+          // Prayer deadline guard: Only prompt for prayers whose legal deadline HAS PASSED!
+          if (pType == 'PRAYER') {
+            final slotKey = subType.replaceAll('WP_', '');
+            final deadline = PrayerTimeline.deadlineForSlot(slotKey, times);
+            if (deadline != null && now.isBefore(deadline)) {
+              // Prayer deadline has NOT passed yet -> Prayer is not expired, do NOT prompt for Qada!
+              continue;
+            }
+          }
+
           undone.add(p['title']! as String);
         }
 
