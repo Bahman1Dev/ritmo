@@ -10,6 +10,7 @@ import 'package:ritmo/core/widgets/ritmo_module_app_bar.dart';
 import 'package:ritmo/features/worship/logic/hijri_calendar.dart';
 import 'package:ritmo/features/worship/logic/worship_engine.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
+import 'package:ritmo/features/worship/presentation/widgets/fullscreen_tasbih_sheet.dart';
 import 'package:ritmo/features/worship/presentation/widgets/lunar_month_grid.dart';
 import 'package:ritmo/features/worship/presentation/widgets/mustahab_section.dart';
 import 'package:ritmo/features/worship/presentation/widgets/night_prayer_card.dart';
@@ -20,6 +21,8 @@ import 'package:ritmo/features/worship/presentation/widgets/qibla_compass_sheet.
 import 'package:ritmo/features/worship/presentation/widgets/quran_dhikr_section.dart';
 import 'package:ritmo/features/worship/presentation/widgets/worship_debts_section.dart';
 import 'package:ritmo/features/worship/presentation/widgets/worship_seasons_section.dart';
+import 'package:ritmo/features/worship/presentation/widgets/worship_solar_calendar.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 
 class WorshipScreen extends StatefulWidget {
   const WorshipScreen({super.key});
@@ -222,10 +225,12 @@ class _WorshipScreenState extends State<WorshipScreen> {
                   const SizedBox(height: 12),
 
                   // 3. PREMIUM SOLAR WORSHIP CALENDAR & REACTIVE DETAIL PANEL
-                  LunarMonthGrid(
-                    currentHijri: _worshipDay!.hijri,
-                    isRamadan: _worshipDay!.seasons.any((s) => s.id == 'ws_ramadan'),
+                  WorshipSolarCalendar(
+                    initialJalali: Jalali.now(),
                     qamariNightText: _getQamariNightText(),
+                    onOpenTasbih: () {
+                      FullscreenTasbihSheet.present(context);
+                    },
                   ),
                   const SizedBox(height: 16),
                 ],

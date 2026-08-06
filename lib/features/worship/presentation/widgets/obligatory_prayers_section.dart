@@ -157,7 +157,11 @@ class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
         setState(() {
           _optimisticState.remove(groupKey);
         });
-        RitmoToast.show(context, 'خطا در ثبت وضعیت نماز.');
+        final msg = e.toString().replaceAll('Exception: ', '').trim();
+        RitmoToast.show(
+          context,
+          msg.isNotEmpty ? msg : 'خطا در ثبت وضعیت نماز.',
+        );
       }
     }
   }

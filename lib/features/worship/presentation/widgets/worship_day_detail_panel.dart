@@ -393,3 +393,75 @@ class WorshipDayDetailPanel extends StatelessWidget {
     );
   }
 }
+
+/// شیت جزئیات کامل روز انتخاب‌شده از تقویم
+class WorshipDayDetailSheet extends StatelessWidget {
+  const WorshipDayDetailSheet({
+    super.key,
+    required this.selectedDay,
+    this.qamariNightText,
+    this.onOpenTasbih,
+  });
+
+  final WorshipCalendarDay selectedDay;
+  final String? qamariNightText;
+  final VoidCallback? onOpenTasbih;
+
+  static Future<void> present(
+    BuildContext context, {
+    required WorshipCalendarDay selectedDay,
+    String? qamariNightText,
+    VoidCallback? onOpenTasbih,
+  }) {
+    return showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => WorshipDayDetailSheet(
+        selectedDay: selectedDay,
+        qamariNightText: qamariNightText,
+        onOpenTasbih: onOpenTasbih,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: BoxDecoration(
+        color: colors.surfaceElevated,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          // Drag handle
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: colors.textSecondary.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: WorshipDayDetailPanel(
+                selectedDay: selectedDay,
+                qamariNightText: qamariNightText,
+                onOpenTasbih: onOpenTasbih,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

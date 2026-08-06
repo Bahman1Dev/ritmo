@@ -22,6 +22,24 @@ class FullscreenTasbihSheet extends StatefulWidget {
   final int targetCount;
   final bool isFatimaTasbih;
 
+  static Future<void> present(
+    BuildContext context, {
+    String initialDhikrTitle = 'تسبیحات حضرت زهرا (س)',
+    int targetCount = 100,
+    bool isFatimaTasbih = true,
+  }) {
+    return Navigator.push(
+      context,
+      CupertinoPageRoute(
+        builder: (_) => FullscreenTasbihSheet(
+          initialDhikrTitle: initialDhikrTitle,
+          targetCount: targetCount,
+          isFatimaTasbih: isFatimaTasbih,
+        ),
+      ),
+    );
+  }
+
   @override
   State<FullscreenTasbihSheet> createState() => _FullscreenTasbihSheetState();
 }
