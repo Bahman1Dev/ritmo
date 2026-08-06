@@ -9,6 +9,7 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/features/supplementary_sports/data/models/ss_exercise_model.dart';
 import 'package:ritmo/features/supplementary_sports/data/models/ss_user_profile_model.dart';
 import 'package:ritmo/features/supplementary_sports/data/repositories/ss_audio_cue_player.dart';
+import 'package:ritmo/features/supplementary_sports/domain/ss_session_settings.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_workout_session_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
@@ -505,7 +506,7 @@ class SSWorkoutNotifier extends Notifier<SSWorkoutState> {
           optionalNote: current.optionalNote,
         );
         state = state.copyWith(exercises: updatedExercises);
-        _saveSessionToPreferences();
+        unawaited(_saveSessionToPreferences());
         
         // Start preparation for the swapped exercise
         _startPreparing();
@@ -614,7 +615,9 @@ class SSWorkoutNotifier extends Notifier<SSWorkoutState> {
         ORDER BY c.orderIndex ASC
       ''', [state.planId]);
 
+      final sessionSettings = await SSSessionSettings.load();
       final restOverride = prefs.getInt('ss_tired_rest_override');
+      final effectiveDefaultRest = restOverride ?? sessionSettings.defaultRestSeconds;
 
       // Fetch the last logged sets for all exercises in this plan to use as default values
       final exerciseIds = crossRefs.map((row) => row['exerciseId'].toString()).toList();
@@ -647,7 +650,7 @@ class SSWorkoutNotifier extends Notifier<SSWorkoutState> {
               weight: setWeight,
               reps: setReps,
               rir: 2,
-              restSeconds: restOverride ?? 90,
+              restSeconds: effectiveDefaultRest,
               status: idx == 0 ? SetStatus.current : SetStatus.pending,
             );
           },

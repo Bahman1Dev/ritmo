@@ -299,9 +299,11 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
       await _clearOnboardingPreferences();
 
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const SSHomeDashboardScreen()),
+        unawaited(
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const SSHomeDashboardScreen()),
+          ),
         );
       }
     } catch (e) {

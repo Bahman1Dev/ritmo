@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
@@ -1227,55 +1226,7 @@ class WorshipEngine {
 
   // ── Trig helpers ──────────────────────────────────────────────────────────
 
-  static const double _d2r = math.pi / 180.0;
-  static const double _r2d = 180.0 / math.pi;
 
-  static double _sind(double d) => math.sin(d * _d2r);
-  static double _cosd(double d) => math.cos(d * _d2r);
-
-  /// Julian Day Number (noon)
-  double _jd(DateTime d) {
-    var y = d.year, m = d.month;
-    final day = d.day + 0.5;
-    if (m <= 2) { y--; m += 12; }
-    final a = (y / 100).floor();
-    final b = 2 - a + (a / 4).floor();
-    return (365.25 * (y + 4716)).floor() +
-        (30.6001 * (m + 1)).floor() +
-        day + b - 1524.5;
-  }
-
-  /// Returns (declination, equation-of-time) in degrees / minutes
-  (double, double) _solar(double jd) {
-    final d = jd - 2451545.0;
-    final g = (357.529 + 0.98560028 * d) % 360;
-    final q = (280.459 + 0.98564736 * d) % 360;
-    final L = (q + 1.915 * _sind(g) + 0.020 * _sind(2 * g)) % 360;
-    final e = 23.439 - 0.00000036 * d;
-    final sinL = math.sin(L * _d2r);
-    final decl = math.asin(math.sin(e * _d2r) * sinL) * _r2d;
-    final ra = math.atan2(math.cos(e * _d2r) * sinL, math.cos(L * _d2r)) * _r2d / 15.0;
-    final eot = q / 15.0 - (ra % 24);
-    return (decl, eot);
-  }
-
-  DateTime _hrs(double hrs, DateTime base) {
-    final totalMin = (hrs * 60).round();
-    final h = totalMin ~/ 60, m = totalMin % 60;
-    if (h >= 24) return DateTime(base.year, base.month, base.day + 1, h - 24, m);
-    if (h < 0) return DateTime(base.year, base.month, base.day, 0, 0);
-    return DateTime(base.year, base.month, base.day, h, m);
-  }
-
-  DateTime _hrsCross(double hrs, DateTime base) {
-    final totalMin = (hrs * 60).round();
-    final h = totalMin ~/ 60, m = totalMin % 60;
-    if (h >= 24) {
-      final next = base.add(const Duration(days: 1));
-      return DateTime(next.year, next.month, next.day, h - 24, m);
-    }
-    return DateTime(base.year, base.month, base.day, h < 0 ? 0 : h, m < 0 ? 0 : m);
-  }
 
   DateTime? _isoOrTime(String? iso, String? hhMm, DateTime base) {
     if (iso != null && iso.isNotEmpty) return DateTime.tryParse(iso);

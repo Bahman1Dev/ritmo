@@ -299,7 +299,7 @@ class OnboardingController extends ChangeNotifier {
             );
           }
 
-          await OnboardingGate.markCompleted(txn, version: OnboardingGate.currentVersion);
+          await OnboardingGate.markCompleted(txn, version: OnboardingGate.currentVersion, userName: userName);
         });
       }
 

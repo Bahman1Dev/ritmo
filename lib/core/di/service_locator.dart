@@ -1,6 +1,7 @@
 // lib/core/di/service_locator.dart
 
 import 'package:get_it/get_it.dart';
+import 'package:ritmo/core/backend/auth_service.dart';
 import 'package:ritmo/core/analytics/assistant_engine.dart';
 import 'package:ritmo/core/analytics/energy_analytics_engine.dart';
 import 'package:ritmo/core/analytics/goals_engine.dart';
@@ -105,5 +106,9 @@ class AppBootstrapper {
     sl.registerSingleton<AlarmPlatform>(const MethodChannelAlarmPlatform());
     sl.registerSingleton<NotificationPlatform>(const MethodChannelNotificationPlatform());
     sl.registerSingleton<BackupPlatform>(GoogleDriveBackupService.instance);
+
+    // 7. Register Backend Auth Services
+    sl.registerSingleton<AuthService>(AuthService.instance);
+    await AuthService.instance.init();
   }
 }

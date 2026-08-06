@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -223,7 +222,9 @@ class _SSAiCoachSheetState extends State<SSAiCoachSheet> {
 
   Future<void> _handleAction(ChatAction action) async {
     await HapticFeedback.mediumImpact();
-    if (action.type == 'openPage' && action.targetRoute != null && context.mounted) {
+    if (!mounted) return;
+
+    if (action.type == 'openPage' && action.targetRoute != null) {
       unawaited(Navigator.pushNamed(context, action.targetRoute!));
       return;
     }
@@ -693,9 +694,9 @@ $_sportsContext
                                       if (sess.id == _sessionId) {
                                         if (updated.isNotEmpty) {
                                           _sessionId = updated.first.id;
-                                          _loadMessages();
+                                          unawaited(_loadMessages());
                                         } else {
-                                          _loadActiveSession();
+                                          unawaited(_loadActiveSession());
                                         }
                                       }
                                     },

@@ -1,5 +1,6 @@
 // lib/features/sports/movement/presentation/movement_custom_kind_sheet.dart
 
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -82,7 +83,7 @@ class _MovementCustomKindSheetState extends State<MovementCustomKindSheet> {
       }
     }
 
-    _doSave();
+    await _doSave();
   }
 
   Future<void> _doSave() async {
@@ -112,7 +113,7 @@ class _MovementCustomKindSheetState extends State<MovementCustomKindSheet> {
 
     try {
       final created = await MovementRepository.instance.createCustomKind(customKind);
-      HapticFeedback.mediumImpact();
+      unawaited(HapticFeedback.mediumImpact());
       if (mounted) Navigator.of(context).pop(created);
     } catch (e) {
       if (mounted) {

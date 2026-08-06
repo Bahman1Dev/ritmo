@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -159,8 +160,8 @@ class _SSHomeDashboardScreenState extends State<SSHomeDashboardScreen> {
                 label: 'حرکت',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                activeIcon: Icon(Icons.person_rounded),
+                icon: Icon(Icons.bar_chart_outlined),
+                activeIcon: Icon(Icons.bar_chart_rounded),
                 label: 'پیشرفت',
               ),
             ],
@@ -459,6 +460,7 @@ class _SSHomeDashboardTabContentState extends State<SSHomeDashboardTabContent> {
   int? _nextDayOfWeek;
   String _username = 'بهمن';
   String? _userGender;
+  String? _unfinishedActivePlanId;
 
   // Biometric Scores (Calculated Dynamically from SQLite Data)
   int _energyScore = 82;
@@ -773,6 +775,14 @@ class _SSHomeDashboardTabContentState extends State<SSHomeDashboardTabContent> {
 
       final prefs = await SharedPreferences.getInstance();
       final currentWeek = prefs.getInt('ss_active_week') ?? 1;
+
+      final activeSessionId = prefs.getString('ss_active_session_id');
+      final activePlanId = prefs.getString('ss_active_plan_id');
+      if (activeSessionId != null && activeSessionId.isNotEmpty && activePlanId != null) {
+        _unfinishedActivePlanId = activePlanId;
+      } else {
+        _unfinishedActivePlanId = null;
+      }
 
       // Calculate Biometric Scores Dynamically
       final completedCount = _weekCompleted.where((c) => c).length;
@@ -1109,6 +1119,119 @@ class _SSHomeDashboardTabContentState extends State<SSHomeDashboardTabContent> {
     }
   }
 
+  Widget _buildUnfinishedSessionBanner() {
+    if (_unfinishedActivePlanId == null) return const SizedBox.shrink();
+    final planId = _unfinishedActivePlanId!;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Icon(
+                Icons.play_circle_fill_rounded,
+                color: Color(0xFFF59E0B),
+                size: 26,
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'جلسه تمرینی ناتمام دارید 🏋️‍♂️',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'یک تمرین از قبل ذخیره شده در حال اجراست. می‌توانید آن را ادامه دهید یا انصراف دهید.',
+            style: TextStyle(
+              fontFamily: 'Vazirmatn',
+              fontSize: 12,
+              color: Colors.white70,
+              height: 1.4,
+            ),
+            textDirection: TextDirection.rtl,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SSWorkoutSessionScreen(
+                          planId: planId,
+                          dayName: 'تمرین ناتمام',
+                        ),
+                      ),
+                    ).then((_) {
+                      if (mounted) _loadDashboardData();
+                    });
+                  },
+                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                  label: const Text('ادامه تمرین', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton(
+                onPressed: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove('ss_active_session_id');
+                  await prefs.remove('ss_active_plan_id');
+                  await prefs.remove('ss_active_session_exercises');
+                  await prefs.remove('ss_active_session_index');
+                  await prefs.remove('ss_active_session_started_at');
+                  await prefs.remove('ss_active_session_status');
+                  await prefs.remove('ss_active_session_target_timestamp');
+                  await prefs.remove('ss_active_session_elapsed');
+                  await prefs.remove('ss_active_session_paused');
+                  if (mounted) {
+                    setState(() {
+                      _unfinishedActivePlanId = null;
+                    });
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFEF4444),
+                  side: const BorderSide(color: Color(0xFFEF4444)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('انصراف', style: TextStyle(fontFamily: 'Vazirmatn')),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDashboardContent({required Widget child}) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -1118,6 +1241,9 @@ class _SSHomeDashboardTabContentState extends State<SSHomeDashboardTabContent> {
         children: [
           _buildTopHeader(),
           const SizedBox(height: 16),
+          if (_unfinishedActivePlanId != null) ...[
+            _buildUnfinishedSessionBanner(),
+          ],
           child,
           const SizedBox(height: 32),
         ],
@@ -2222,9 +2348,11 @@ class _SSHomeDashboardTabContentState extends State<SSHomeDashboardTabContent> {
       await prefs.remove('ss_active_week');
 
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const SSOnboardingFlow()),
+        unawaited(
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const SSOnboardingFlow()),
+          ),
         );
       }
     } catch (e) {

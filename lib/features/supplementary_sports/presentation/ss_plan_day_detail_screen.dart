@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -368,7 +369,7 @@ class _SSPlanDayDetailScreenState extends State<SSPlanDayDetailScreen> {
       }
 
       if (mounted) {
-        showModalBottomSheet(
+        unawaited(showModalBottomSheet(
           context: context,
           backgroundColor: Colors.transparent,
           builder: (context) {
@@ -396,7 +397,7 @@ class _SSPlanDayDetailScreenState extends State<SSPlanDayDetailScreen> {
               ),
             );
           },
-        );
+        ));
       }
     } catch (e) {
       debugPrint('Error swapping exercise: $e');
@@ -437,7 +438,7 @@ class _SSPlanDayDetailScreenState extends State<SSPlanDayDetailScreen> {
       final results = await db.query('ss_exercise');
 
       if (mounted) {
-        showModalBottomSheet(
+        unawaited(showModalBottomSheet(
           context: context,
           backgroundColor: Colors.transparent,
           isScrollControlled: true,
@@ -475,7 +476,7 @@ class _SSPlanDayDetailScreenState extends State<SSPlanDayDetailScreen> {
               ),
             );
           },
-        );
+        ));
       }
     } catch (e) {
       debugPrint('Error loading exercises: $e');

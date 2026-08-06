@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:ritmo/core/backend/appwrite_crash_service.dart';
 import 'package:ritmo/core/logging/ritmo_logger.dart';
 
 /// Allowlist-based privacy error sink that records technical crash metadata
@@ -62,6 +63,16 @@ class PrivacyErrorSink implements LogSink {
       errorStr: cleanError,
       stStr: cleanStack,
     );
+
+    // Asynchronously send sanitized crash report to Appwrite Cloud
+    unawaited(
+      AppwriteCrashService.instance.submitSanitizedCrashReport(
+        scope: scope,
+        exceptionType: exceptionType,
+        sanitizedMessage: cleanMessage,
+        sanitizedStack: cleanStack,
+      ),
+    );
   }
 
   static Future<void> _writeCrashReport({
@@ -87,7 +98,13 @@ class PrivacyErrorSink implements LogSink {
           .toList();
 
       if (files.length >= maxCrashReportFiles) {
-        files.sort((a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()));
+        files.sort((a, b) {
+          try {
+            return a.lastModifiedSync().compareTo(b.lastModifiedSync());
+          } catch (_) {
+            return 0;
+          }
+        });
         final toDeleteCount = files.length - maxCrashReportFiles + 1;
         for (var i = 0; i < toDeleteCount; i++) {
           try {

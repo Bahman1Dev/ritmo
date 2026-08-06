@@ -21,7 +21,7 @@ class _SSCantTodaySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = SupplementarySportsTheme.dark;
+    const theme = SupplementarySportsTheme.dark;
 
     final reasons = [
       {'code': 'NO_TIME', 'title': 'وقت نداشتم ⏳', 'subtitle': 'اشکالی نداره، فردا جبران می‌کنیم.'},
@@ -81,7 +81,7 @@ class _SSCantTodaySheet extends StatelessWidget {
   }
 
   Widget _buildOption(BuildContext context, String code, String title, String subtitle) {
-    final theme = SupplementarySportsTheme.dark;
+    const theme = SupplementarySportsTheme.dark;
     return GestureDetector(
       onTap: () async {
         RitmoHaptics.tap();

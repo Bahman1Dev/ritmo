@@ -5,6 +5,11 @@ import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/supplementary_sports/data/models/ss_user_profile_model.dart';
+import 'package:ritmo/core/di/service_locator.dart';
+import 'package:ritmo/core/platform/notification_platform.dart';
+import 'package:ritmo/features/supplementary_sports/movement/data/movement_repository.dart';
+import 'package:ritmo/features/supplementary_sports/movement/domain/movement_event.dart';
+import 'package:ritmo/features/supplementary_sports/movement/domain/movement_kind.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/continuity_bar.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/primary_button.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/ss_lottie_player.dart';
@@ -146,15 +151,18 @@ class _SSSessionSummaryScreenState extends State<SSSessionSummaryScreen> {
       );
 
       if (existingLogs.isEmpty) {
-        await db.insert('workout_logs', {
-          'id': RitmoIdFactory.workoutLog(),
-          'date': today.millisecondsSinceEpoch,
-          'activityType': 'ورزش تکمیلی',
-          'durationMinutes': (widget.durationSeconds / 60).round(),
-          'perceivedExertion': 5,
-          'createdAt': today.millisecondsSinceEpoch,
-          'updatedAt': today.millisecondsSinceEpoch,
-        });
+        final durMins = (widget.durationSeconds / 60).round().clamp(1, 999);
+        await MovementRepository.instance.logEvent(
+          MovementEvent(
+            id: RitmoIdFactory.workoutLog(),
+            kindCode: 'WEIGHTLIFTING',
+            durationMinutes: durMins,
+            intensity: MovementIntensity.medium,
+            loggedAt: today.millisecondsSinceEpoch,
+            sourceModule: 'SUPPLEMENTARY_SPORTS',
+            note: 'تمرین تکمیلی ${widget.sessionId}',
+          ),
+        );
       }
 
       // 3. Fire event to live sync calendar views
@@ -169,6 +177,13 @@ class _SSSessionSummaryScreenState extends State<SSSessionSummaryScreen> {
           },
         ),
       );
+
+      // 4. Refresh Home Widget snapshot
+      try {
+        await sl<NotificationPlatform>().refreshWidgets();
+      } catch (e) {
+        debugPrint('Error refreshing widgets: $e');
+      }
 
       setState(() {
         _isRegisteredInCalendar = true;

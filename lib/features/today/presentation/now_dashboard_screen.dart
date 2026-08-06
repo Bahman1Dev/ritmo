@@ -453,8 +453,8 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
   Future<void> _openSupplementarySports() async {
     try {
       final db = await DatabaseHelper.instance.database;
-      final settings = await db.query('app_settings', where: "key = 'ss_onboarding_completed'", limit: 1);
-      final hasCompletedOnboarding = settings.isNotEmpty && settings.first['value'] == 'true';
+      final profiles = await db.query('ss_user_profile', where: 'onboardingCompleted = 1', limit: 1);
+      final hasCompletedOnboarding = profiles.isNotEmpty;
 
       if (mounted) {
         unawaited(Navigator.push(

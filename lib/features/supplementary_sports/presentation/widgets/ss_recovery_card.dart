@@ -54,7 +54,7 @@ class _SSRecoveryCardState extends State<SSRecoveryCard> {
   }
 
   Widget _buildLevelSelector(String title, int current, ValueChanged<int> onChanged) {
-    final theme = SupplementarySportsTheme.dark;
+    const theme = SupplementarySportsTheme.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -102,7 +102,7 @@ class _SSRecoveryCardState extends State<SSRecoveryCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = SupplementarySportsTheme.dark;
+    const theme = SupplementarySportsTheme.dark;
 
     return Directionality(
       textDirection: TextDirection.rtl,

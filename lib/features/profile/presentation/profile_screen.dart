@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:ritmo/core/ai/ai_gateway.dart';
@@ -31,6 +32,7 @@ import 'package:ritmo/core/ux/ritmo_skeleton.dart';
 import 'package:ritmo/features/assistant/presentation/day_plan_template_management_screen.dart';
 import 'package:ritmo/features/cycle/presentation/cycle_screen.dart';
 import 'package:ritmo/features/premium/presentation/premium_upgrade_sheet.dart';
+import 'package:ritmo/features/profile/presentation/account_screen.dart';
 import 'package:ritmo/features/profile/presentation/ai_memory_management_screen.dart';
 import 'package:ritmo/features/profile/presentation/backup_screen.dart';
 import 'package:ritmo/features/profile/presentation/crash_reports_screen.dart';
@@ -575,6 +577,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onTap: _showAppearanceSheet,
                               ),
                               SettingsRow(
+                                icon: CupertinoIcons.person_crop_circle,
+                                iconColor: const Color(0xff10B981),
+                                title: 'حساب کاربری',
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const AccountScreen()),
+                                  );
+                                },
+                              ),
+                              SettingsRow(
                                 icon: CupertinoIcons.cloud,
                                 iconColor: const Color(0xff9B89FF),
                                 title: 'پشتیبان‌گیری و بازیابی',
@@ -901,6 +914,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       await db.insert('app_settings', {'key': 'user_name', 'value': newName, 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
                       await db.insert('app_settings', {'key': 'user_gender', 'value': genderTemp, 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
                       await db.insert('app_settings', {'key': 'user_age', 'value': ageTemp.toString(), 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
+                      try {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString('user_name', newName);
+                        await prefs.setString('user_gender', genderTemp);
+                      } catch (_) {}
                       if (!isFemaleSelected) {
                         await ModuleManagementService.instance.setModuleEnabled('module_cycle_enabled', false);
                       }

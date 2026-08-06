@@ -1,5 +1,6 @@
 // lib/features/supplementary_sports/presentation/ss_movement_tab_screen.dart
 
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
@@ -60,7 +61,7 @@ class _SSMovementTabScreenState extends State<SSMovementTabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = SupplementarySportsTheme.dark;
+    const theme = SupplementarySportsTheme.dark;
 
     return Scaffold(
       backgroundColor: theme.surfaceBackground,
@@ -185,7 +186,7 @@ class _SSMovementTabScreenState extends State<SSMovementTabScreen> {
                                 direction: DismissDirection.endToStart,
                                 onDismissed: (_) async {
                                   await MovementRepository.instance.deleteEvent(e.id);
-                                  _loadData();
+                                  unawaited(_loadData());
                                 },
                                 background: Container(
                                   alignment: Alignment.centerLeft,

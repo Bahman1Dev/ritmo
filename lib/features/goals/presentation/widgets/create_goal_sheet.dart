@@ -473,7 +473,7 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
       return _buildBanner('کنکور', colors, const KonkurScreen());
     }
     if (clean.contains('ورزش') || clean.contains('باشگاه') || clean.contains('تمرین') || clean.contains('بدنسازی')) {
-      return _buildBanner('ورزش تکمیلی', colors, const SSHomeDashboardScreen());
+      return _buildBanner('ورزش و حرکت', colors, const SSHomeDashboardScreen());
     }
     if (clean.contains('نماز') || clean.contains('قرآن') || clean.contains('عبادت') || clean.contains('دعا') || clean.contains('روزه')) {
       return _buildBanner('عبادت', colors, const WorshipScreen());

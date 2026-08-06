@@ -339,8 +339,9 @@ class _SSWorkoutSessionScreenState extends ConsumerState<SSWorkoutSessionScreen>
       }
 
       if (mounted) {
-        showModalBottomSheet(
-          context: context,
+        unawaited(
+          showModalBottomSheet(
+            context: context,
           backgroundColor: Colors.transparent,
           builder: (ctx) => BottomSheetContainer(
             title: 'تعویض حرکت ورزشی',
@@ -366,7 +367,7 @@ class _SSWorkoutSessionScreenState extends ConsumerState<SSWorkoutSessionScreen>
               },
             ),
           ),
-        );
+        ));
       }
     } catch (e) {
       debugPrint('Error showing swap sheet: $e');
@@ -476,15 +477,17 @@ class _SSWorkoutSessionScreenState extends ConsumerState<SSWorkoutSessionScreen>
     try {
       final result = await ref.read(ssWorkoutProvider(_key).notifier).finishAndLogWorkout();
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SSSessionSummaryScreen(
-              sessionId: result['sessionId'] as String,
-              completedCount: result['completedCount'] as int,
-              totalCount: result['totalCount'] as int,
-              durationSeconds: result['durationSeconds'] as int,
-              overallFeeling: result['overallFeeling'] as Feeling?,
+        unawaited(
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SSSessionSummaryScreen(
+                sessionId: result['sessionId'] as String,
+                completedCount: result['completedCount'] as int,
+                totalCount: result['totalCount'] as int,
+                durationSeconds: result['durationSeconds'] as int,
+                overallFeeling: result['overallFeeling'] as Feeling?,
+              ),
             ),
           ),
         );

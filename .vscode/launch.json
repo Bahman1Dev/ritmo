@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Ritmo (Dev - Appwrite Cloud)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=APPWRITE_ENDPOINT=https://nyc.cloud.appwrite.io/v1",
+        "--dart-define=APPWRITE_PROJECT_ID=6a74b9120005e1737ec6",
+        "--dart-define=APPWRITE_FUNCTION_ID=ritmo-core",
+        "--dart-define=SMS_ENABLED=true"
+      ]
+    },
+    {
+      "name": "Ritmo (Dev - Offline / No Backend)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1",
+        "--dart-define=APPWRITE_PROJECT_ID=",
+        "--dart-define=APPWRITE_FUNCTION_ID=ritmo-core",
+        "--dart-define=SMS_ENABLED=false"
+      ]
+    }
+  ]
+}

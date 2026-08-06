@@ -1,0 +1,9 @@
+{
+  "name": "ritmo-core-function",
+  "version": "1.0.0",
+  "description": "Ritmo Appwrite Core Function for OTP Request and Verify",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^11.0.0"
+  }
+}

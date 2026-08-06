@@ -1,5 +1,6 @@
 // lib/features/sports/movement/presentation/movement_log_sheet.dart
 
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -205,7 +206,7 @@ class _MovementLogSheetState extends State<MovementLogSheet> {
 
     try {
       final res = await MovementRepository.instance.logEvent(event);
-      HapticFeedback.mediumImpact();
+      unawaited(HapticFeedback.mediumImpact());
 
       if (mounted) {
         final isPr = res['isPr'] as bool? ?? false;

@@ -28,6 +28,8 @@ import 'package:ritmo/features/today/presentation/widgets/ai_deep_analysis_dialo
 import 'package:ritmo/features/today/presentation/widgets/insights_time_window_ruler.dart';
 import 'package:ritmo/features/today/presentation/widgets/life_pulse_sparkline_chart.dart';
 import 'package:ritmo/l10n/app_localizations.dart';
+import 'package:flutter/services.dart';
+import 'package:ritmo/core/ux/ritmo_snackbar.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -738,11 +740,13 @@ ${jsonEncode(digest.json)}
           tooltip: 'خروجی گرفتن',
           onPressed: () => _showExportSheet(colors),
         ),
-        IconButton(
-          icon: const Icon(CupertinoIcons.share, size: 20),
-          color: colors.textSecondary,
-          tooltip: 'اشتراک‌گذاری',
-          onPressed: () => _simulateShare(colors),
+        Builder(
+          builder: (btnCtx) => IconButton(
+            icon: const Icon(CupertinoIcons.share, size: 20),
+            color: colors.textSecondary,
+            tooltip: 'اشتراک‌گذاری',
+            onPressed: () => _simulateShare(btnCtx, colors),
+          ),
         ),
       ],
     );
@@ -2080,13 +2084,82 @@ ${jsonEncode(digest.json)}
     );
   }
 
-  // System Share Action
-  void _simulateShare(RitmoColors colors) {
+  // System Share Action with Dedicated Persian Sheet & Fast Clipboard Option
+  void _simulateShare(BuildContext buttonContext, RitmoColors colors) {
     final text = 'گزارش بینش‌های رفتاری ریتمو 🌿\n'
         'نبض زندگی: ${toPersianDigits('$_lifePulseAverage٪')}\n'
         'تداوم فعلی: ${toPersianDigits('$_currentStreak روز')}\n'
         'شاخص تعادل ابعاد: ${toPersianDigits('$_lifeBalanceScore٪')}';
-    Share.share(text);
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E2235) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colors.textSecondary.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(CupertinoIcons.share, color: Color(0xFFF59E0B), size: 22),
+                  const SizedBox(width: 10),
+                  Text(
+                    'اشتراک‌گذاری گزارش بینش‌ها',
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(CupertinoIcons.doc_on_clipboard, color: Color(0xFF10B981)),
+                title: Text('کپی متن گزارش در حافظه (کپی سریع)', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: colors.textPrimary)),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await Clipboard.setData(ClipboardData(text: text));
+                  if (mounted) {
+                    RitmoSnackbar.success(context, 'متن گزارش در حافظه دستگاه (Clipboard) کپی شد 📋');
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(CupertinoIcons.paperplane, color: Color(0xFF3B82F6)),
+                title: Text('ارسال به پیام‌رسان‌ها (اشتراک سیستم)', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 14, color: colors.textPrimary)),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final box = buttonContext.findRenderObject() as RenderBox?;
+                  final origin = (box != null && box.hasSize) ? (box.localToGlobal(Offset.zero) & box.size) : null;
+                  try {
+                    await Share.share(text, sharePositionOrigin: origin).timeout(const Duration(seconds: 3));
+                  } catch (_) {
+                    await Clipboard.setData(ClipboardData(text: text));
+                    if (mounted) {
+                      RitmoSnackbar.success(context, 'متن گزارش در حافظه دستگاه کپی شد 📋');
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

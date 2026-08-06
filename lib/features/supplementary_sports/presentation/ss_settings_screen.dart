@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 
@@ -265,9 +266,10 @@ class _SSSettingsScreenState extends State<SSSettingsScreen> {
   }
 
   Future<void> _showResetConfirmationDialog() async {
-    showDialog(
-      context: context,
-      builder: (context) {
+    unawaited(
+      showDialog(
+        context: context,
+        builder: (context) {
         return AlertDialog(
           title: const Text(
             'آیا مطمئن هستید؟',
@@ -302,7 +304,7 @@ class _SSSettingsScreenState extends State<SSSettingsScreen> {
           ],
         );
       },
-    );
+    ));
   }
 
   Future<void> _resetModule() async {
@@ -668,7 +670,7 @@ class _SSSettingsScreenState extends State<SSSettingsScreen> {
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAF8),
       appBar: AppBar(
-        title: const Text('تنظیمات ورزش تکمیلی', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
+        title: const Text('تنظیمات ورزش و حرکت', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: Directionality(
