@@ -17,60 +17,84 @@ import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 class EngineInvalidationPolicy {
   const EngineInvalidationPolicy();
 
-  static const Map<String, Set<EngineInvalidationTag>> eventTags = {
-    'RoutineCreated': {
+  static const Map<RitmoEventType, Set<EngineInvalidationTag>> eventTags = {
+    RitmoEventType.routineCreated: {
       EngineInvalidationTag.routineStructure,
     },
-    'RoutineEdited': {
+    RitmoEventType.routineUpdated: {
       EngineInvalidationTag.routineStructure,
       EngineInvalidationTag.routineOutcome,
     },
-    'RoutineDeleted': {
+    RitmoEventType.routineDeleted: {
       EngineInvalidationTag.routineStructure,
     },
-    'RoutineCompleted': {
+    RitmoEventType.occurrenceCompleted: {
       EngineInvalidationTag.routineOutcome,
     },
-    'RoutineSkipped': {
+    RitmoEventType.occurrenceSkipped: {
       EngineInvalidationTag.routineOutcome,
     },
-
-    'CourseSessionCompleted': {
-      EngineInvalidationTag.courses,
+    RitmoEventType.reshuffleConfirmed: {
+      EngineInvalidationTag.routineStructure,
     },
-    'GoalStepToggled': {
+    RitmoEventType.goalChanged: {
       EngineInvalidationTag.goals,
     },
-    'PrayerCompleted': {
+    RitmoEventType.goalStepToggled: {
+      EngineInvalidationTag.goals,
+    },
+    RitmoEventType.worshipChanged: {
       EngineInvalidationTag.worship,
     },
-    'WorshipUpdated': {
+    RitmoEventType.worshipPracticeChanged: {
       EngineInvalidationTag.worship,
     },
-
-    'EnergyLogged': {
+    RitmoEventType.workoutLogChanged: {
+      EngineInvalidationTag.routineOutcome,
+    },
+    RitmoEventType.reflectionSaved: {
+      EngineInvalidationTag.reflection,
+    },
+    RitmoEventType.completionRecorded: {
+      EngineInvalidationTag.routineOutcome,
+    },
+    RitmoEventType.completionDeleted: {
+      EngineInvalidationTag.routineOutcome,
+    },
+    RitmoEventType.konkurItemChanged: {
+      EngineInvalidationTag.courses,
+    },
+    RitmoEventType.courseSessionCompleted: {
+      EngineInvalidationTag.courses,
+    },
+    RitmoEventType.energyLogged: {
       EngineInvalidationTag.energy,
     },
-    'SleepLogged': {
+    RitmoEventType.sleepLogged: {
       EngineInvalidationTag.sleep,
     },
-    'ZoneChanged': {
+    RitmoEventType.moodLogged: {
+      EngineInvalidationTag.energy,
+    },
+    RitmoEventType.zoneChanged: {
       EngineInvalidationTag.zone,
     },
-    'CycleStarted': {
+    RitmoEventType.cycleStarted: {
       EngineInvalidationTag.cycle,
     },
-    'CycleEnded': {
+    RitmoEventType.cycleEnded: {
       EngineInvalidationTag.cycle,
     },
-    'MedicineTaken': {
+    RitmoEventType.medicineTaken: {
       EngineInvalidationTag.medicine,
     },
-
-    'DayRolledOver': {
+    RitmoEventType.dayRolledOver: {
       EngineInvalidationTag.global,
     },
-    'DataImported': {
+    RitmoEventType.dataImported: {
+      EngineInvalidationTag.global,
+    },
+    RitmoEventType.settingsChanged: {
       EngineInvalidationTag.global,
     },
   };
@@ -160,8 +184,12 @@ class EngineInvalidationPolicy {
   };
 
   Set<Type> enginesToInvalidateFor(RitmoEvent event) {
-    final tags = eventTags[event.type];
-    if (tags == null || tags.isEmpty) return const {};
+    final typeEnum = RitmoEventType.values.firstWhere(
+      (e) => e.code == event.type,
+      orElse: () => RitmoEventType.settingsChanged,
+    );
+    final tags = eventTags[typeEnum]!;
+    if (tags.isEmpty) return const {};
 
     final result = <Type>{};
     for (final entry in engineTags.entries) {

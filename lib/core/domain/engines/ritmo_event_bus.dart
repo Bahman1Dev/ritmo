@@ -15,7 +15,18 @@ enum RitmoEventType {
   reflectionSaved('ReflectionSaved'),
   completionRecorded('CompletionRecorded'),
   completionDeleted('CompletionDeleted'),
-  konkurItemChanged('KonkurItemChanged');
+  konkurItemChanged('KonkurItemChanged'),
+  energyLogged('EnergyLogged'),
+  sleepLogged('SleepLogged'),
+  moodLogged('MoodLogged'),
+  zoneChanged('ZoneChanged'),
+  cycleStarted('CycleStarted'),
+  cycleEnded('CycleEnded'),
+  medicineTaken('MedicineTaken'),
+  courseSessionCompleted('CourseSessionCompleted'),
+  dayRolledOver('DayRolledOver'),
+  dataImported('DataImported'),
+  settingsChanged('SettingsChanged');
 
   const RitmoEventType(this.code);
   final String code;

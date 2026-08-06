@@ -1,5 +1,8 @@
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/agenda/analysis/agenda_conflict_detector.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
+import 'package:ritmo/features/calendar/logic/timeline_snapping.dart';
+import 'package:ritmo/features/calendar/utils/calendar_defaults.dart';
 
 class ConflictChecker {
   static Future<List<AgendaItem>> checkConflicts({
@@ -22,47 +25,20 @@ class ConflictChecker {
       final dayAgenda = await DayAgendaService.instance.agendaForDate(targetDate);
       final items = dayAgenda.items;
 
-      final newStart = _timeToMinutes(timeStr);
-      final newDur = durationMinutes <= 0 ? 30 : durationMinutes;
-      final newEnd = newStart + newDur;
+      final startMinutes = TimelineSnappingHelper.parseTimeToMinutes(timeStr);
+      final dur = durationMinutes <= 0 ? CalendarDefaults.fallbackDurationMinutes : durationMinutes;
 
-      final conflicts = <AgendaItem>[];
+      final detector = const AgendaConflictDetector();
+      final conflicts = detector.checkCandidate(
+        existing: items,
+        startMinutes: startMinutes,
+        durationMinutes: dur,
+        ignoreSourceId: ignoreSourceId,
+      );
 
-      for (final item in items) {
-        if (item.timeOfDay == null || !item.timeOfDay!.contains(':')) {
-          continue;
-        }
-
-        // Ignore self
-        if (ignoreSourceId != null && 
-            (item.sourceId == ignoreSourceId || item.id == ignoreSourceId || item.id == 'routine:$ignoreSourceId')) {
-          continue;
-        }
-
-        final start = _timeToMinutes(item.timeOfDay!);
-        final dur = (item.durationMinutes == null || item.durationMinutes! <= 0) ? 30 : item.durationMinutes!;
-        final end = start + dur;
-
-        // Check overlap
-        if (newStart < end && newEnd > start) {
-          conflicts.add(item);
-        }
-      }
-
-      return conflicts;
+      return conflicts.map((c) => c.itemA).toList();
     } catch (_) {
       return [];
-    }
-  }
-
-  static int _timeToMinutes(String hhmm) {
-    try {
-      final parts = hhmm.split(':');
-      final h = int.parse(parts[0]);
-      final m = int.parse(parts[1]);
-      return h * 60 + m;
-    } catch (_) {
-      return 0;
     }
   }
 }

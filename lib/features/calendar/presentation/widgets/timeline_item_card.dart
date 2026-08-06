@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
-import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/core/theme/ritmo_colors.dart';
+import 'package:ritmo/core/widgets/ritmo/ritmo_time_range.dart';
 import 'package:ritmo/features/calendar/presentation/logic/timeline_layout_engine.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
+import 'package:ritmo/features/calendar/utils/domain_palette.dart';
 
 class TimelineItemCard extends StatelessWidget {
   const TimelineItemCard({
@@ -16,14 +18,9 @@ class TimelineItemCard extends StatelessWidget {
     this.isGhost = false,
     this.isDimmed = false,
     this.displayTimeOverride,
-    this.displayDurationOverride,
+    this.displayHeightOverride,
     this.onTap,
-    this.onDragStart,
-    this.onDragUpdate,
-    this.onDragEnd,
-    this.onResizeStart,
-    this.onResizeUpdate,
-    this.onResizeEnd,
+    this.onToggleComplete,
   });
 
   final TimelineLayoutItem layoutItem;
@@ -35,303 +32,231 @@ class TimelineItemCard extends StatelessWidget {
   final bool isGhost;
   final bool isDimmed;
   final String? displayTimeOverride;
-  final int? displayDurationOverride;
+  final double? displayHeightOverride;
   final VoidCallback? onTap;
-  final GestureDragStartCallback? onDragStart;
-  final GestureDragUpdateCallback? onDragUpdate;
-  final GestureDragEndCallback? onDragEnd;
-  final GestureDragStartCallback? onResizeStart;
-  final GestureDragUpdateCallback? onResizeUpdate;
-  final GestureDragEndCallback? onResizeEnd;
+  final VoidCallback? onToggleComplete;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final item = layoutItem.item;
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final domainColor = _getDomainColor(item.domain, theme);
     final isDone = item.isCompleted;
 
-    final effectiveTime = displayTimeOverride ?? item.timeOfDay;
-    final effectiveDuration = displayDurationOverride ?? item.durationMinutes;
-    final effectiveCardHeight = isResizing && displayDurationOverride != null
-        ? displayDurationOverride! * CalendarTokens.pxPerMinuteSplit
-        : layoutItem.height;
+    final color = domainColor(context, item.domain);
+    final bgContainerColor = domainContainerColor(context, item.domain);
 
-    final surfaceColor = isDone
-        ? theme.cardColor.withValues(alpha: 0.5)
-        : (isDragging || isGhost
-            ? domainColor.withValues(alpha: 0.20)
-            : domainColor.withValues(alpha: isDark ? 0.12 : CalendarTokens.alphaDomainFill));
+    final height = displayHeightOverride ?? layoutItem.height;
+    final isCompact = height < 36.0;
+    final isExpanded = height > 64.0;
 
-    final accentBarColor = isDone
-        ? theme.colorScheme.outline.withValues(alpha: 0.35)
-        : domainColor;
+    final cardOpacity = isDone ? 0.55 : (isDimmed ? 0.30 : (isGhost ? 0.85 : 1.0));
 
-    final cardGradient = isDone
-        ? null
-        : LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [
-              domainColor.withValues(alpha: isDark ? 0.28 : 0.18),
-              domainColor.withValues(alpha: isDark ? 0.14 : 0.08),
-            ],
-          );
+    final borderRadius = layoutItem.continuedFromPreviousDay
+        ? const BorderRadius.vertical(bottom: Radius.circular(CalendarTokens.radiusCard))
+        : (layoutItem.continuesToNextDay
+            ? const BorderRadius.vertical(top: Radius.circular(CalendarTokens.radiusCard))
+            : BorderRadius.circular(CalendarTokens.radiusCard));
+
+    final startMin = layoutItem.startMinutes;
+    final durMin = layoutItem.durationMinutes;
 
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Opacity(
-        opacity: isDimmed ? 0.25 : (isGhost ? 0.85 : 1.0),
-        child: Stack(
-          children: [
-            // Main Card Body — GestureDetector only handles onTap so scroll passes through
-            GestureDetector(
-              behavior: HitTestBehavior.deferToChild,
-              onTap: onTap,
-              child: AnimatedContainer(
-                width: double.infinity,
-                height: double.infinity,
-                duration: CalendarTokens.durationMicro,
-                curve: CalendarTokens.curveDefault,
+      child: Semantics(
+        label: '${item.title}، ${item.timeOfDay ?? "بدون زمان"}، ${domainLabelFa(item.domain)}',
+        child: Opacity(
+          opacity: cardOpacity,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: borderRadius,
+            child: AnimatedContainer(
+              duration: CalendarTokens.durationMicro,
+              curve: CalendarTokens.curveDefault,
               decoration: BoxDecoration(
-                color: isDone ? surfaceColor : null,
-                gradient: cardGradient,
-                borderRadius: BorderRadius.circular(12.0),
+                color: bgContainerColor,
+                borderRadius: borderRadius,
                 border: Border.all(
                   color: isHighlighted
-                      ? theme.colorScheme.primary
-                      : (isDragging || isResizing
-                          ? domainColor
-                          : domainColor.withValues(alpha: isDark ? 0.45 : 0.32)),
-                  width: (isHighlighted || isDragging || isResizing) ? 1.5 : 1.0,
+                      ? color
+                      : (item.isEstimated
+                          ? color.withValues(alpha: 0.4)
+                          : colors.border.withValues(alpha: 0.15)),
+                  width: isHighlighted ? 2.0 : 1.0,
+                  style: item.isEstimated ? BorderStyle.solid : BorderStyle.solid,
                 ),
-                boxShadow: (isDragging || isResizing)
-                    ? [
-                        BoxShadow(
-                          color: domainColor.withValues(alpha: 0.25),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        )
-                      ]
-                    : (isHighlighted
-                        ? [
-                            BoxShadow(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                            )
-                          ]
-                        : null),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(12.0),
-                child: Row(
+                borderRadius: borderRadius,
+                child: Stack(
                   children: [
-                    // Right Edge Domain Accent Bar (3px) in RTL
-                    Container(
-                      width: CalendarTokens.accentBarWidth,
-                      height: double.infinity,
-                      color: accentBarColor,
+                    // Right accent bar (RTL)
+                    Positioned(
+                      top: 0,
+                      bottom: 0,
+                      right: 0,
+                      width: 4.0,
+                      child: Container(
+                        color: isDone ? colors.disabled : color,
+                      ),
                     ),
 
-                    // Card Content
-                    Expanded(
-                      child: ClipRect(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6.0,
-                            vertical: effectiveCardHeight < 58 ? 2.0 : 4.0,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    _getDomainIcon(item.domain),
-                                    size: 12,
-                                    color: isDone
-                                        ? theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4)
-                                        : domainColor,
-                                  ),
-                                  const SizedBox(width: CalendarTokens.spacingXs),
-                                  if (isDone)
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: CalendarTokens.spacingXs),
-                                      child: Icon(
-                                        Icons.check_circle_rounded,
-                                        size: 12,
-                                        color: theme.colorScheme.primary.withValues(alpha: 0.8),
-                                      ),
-                                    ),
-                                  Expanded(
-                                    child: Text(
-                                      item.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: effectiveCardHeight < 36 ? 11.0 : CalendarTokens.textBody,
-                                        fontWeight: isDone ? FontWeight.w400 : FontWeight.w600,
-                                        color: isDone
-                                            ? theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.45)
-                                            : theme.textTheme.bodyLarge?.color,
-                                        fontFamily: 'Vazirmatn',
-                                      ),
-                                    ),
-                                  ),
-                                  if (isDraggable && effectiveCardHeight >= 36)
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 2.0),
-                                      child: Icon(
-                                        Icons.drag_indicator_rounded,
-                                        size: 13,
-                                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.35),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              if (effectiveCardHeight >= 58 && effectiveTime != null) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  toPersianDigits(
-                                    '$effectiveTime${effectiveDuration != null ? ' ($effectiveDuration دقیقه)' : ''}',
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: CalendarTokens.textMeta,
-                                    fontWeight: FontWeight.w500,
-                                    color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.60),
-                                    fontFamily: 'Vazirmatn',
-                                  ),
-                                ),
-                              ],
-                            ],
+                    // Single-day override indicator dot
+                    if (item.hasOverride)
+                      Positioned(
+                        top: 4,
+                        left: 4,
+                        child: Tooltip(
+                          message: 'فقط امروز تغییر کرده',
+                          child: Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: colors.accent,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
                       ),
+
+                    // Content layout by tier
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10.0, left: 6.0, top: 4.0, bottom: 4.0),
+                      child: isCompact
+                          ? _buildCompactTier(context, colors, color, isDone)
+                          : (isExpanded
+                              ? _buildExpandedTier(context, colors, color, isDone, startMin, durMin)
+                              : _buildNormalTier(context, colors, color, isDone, startMin, durMin)),
                     ),
                   ],
                 ),
               ),
             ),
           ),
-
-          // Truncated indicator ("ادامه دارد")
-          if (layoutItem.isTruncated)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 22,
-              child: IgnorePointer(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        surfaceColor.withValues(alpha: 0.0),
-                        surfaceColor.withValues(alpha: 0.95),
-                      ],
-                    ),
-                  ),
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Icon(
-                        Icons.keyboard_double_arrow_down_rounded,
-                        size: 14,
-                        color: domainColor.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-          // Bottom Resize Handle Pill
-          if (isResizable)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 12,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onVerticalDragStart: onResizeStart,
-                onVerticalDragUpdate: onResizeUpdate,
-                onVerticalDragEnd: onResizeEnd,
-                child: Center(
-                  child: Container(
-                    width: 24,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: domainColor.withValues(alpha: 0.60),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 
-  static IconData _getDomainIcon(AgendaDomain domain) {
-    switch (domain) {
-      case AgendaDomain.routine:
-        return Icons.sync_rounded;
-      case AgendaDomain.prayer:
-        return Icons.mosque_rounded;
-      case AgendaDomain.mustahab:
-        return Icons.menu_book_rounded;
-      case AgendaDomain.course:
-        return Icons.school_rounded;
-      case AgendaDomain.goalStep:
-        return Icons.track_changes_rounded;
-      case AgendaDomain.konkur:
-        return Icons.assignment_rounded;
-      case AgendaDomain.cycle:
-        return Icons.favorite_rounded;
-      case AgendaDomain.worshipDebt:
-        return Icons.restore_rounded;
-      case AgendaDomain.sport:
-        return Icons.fitness_center_rounded;
-      case AgendaDomain.medicine:
-        return Icons.medication_rounded;
-    }
+  Widget _buildCompactTier(BuildContext context, RitmoColors colors, Color color, bool isDone) {
+    final item = layoutItem.item;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            item.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: CalendarTokens.textLabel,
+              color: colors.textPrimary,
+              fontWeight: FontWeight.bold,
+              decoration: isDone ? TextDecoration.lineThrough : null,
+              fontFamily: 'Vazirmatn',
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
-  static Color _getDomainColor(AgendaDomain domain, ThemeData theme) {
-    switch (domain) {
-      case AgendaDomain.routine:
-        return Colors.teal.shade600;
-      case AgendaDomain.prayer:
-        return Colors.indigo.shade600;
-      case AgendaDomain.mustahab:
-        return Colors.blueGrey.shade600;
-      case AgendaDomain.course:
-        return Colors.amber.shade700;
-      case AgendaDomain.goalStep:
-        return Colors.deepPurple.shade600;
-      case AgendaDomain.konkur:
-        return Colors.red.shade600;
-      case AgendaDomain.cycle:
-        return Colors.pink.shade600;
-      case AgendaDomain.worshipDebt:
-        return Colors.brown.shade600;
-      case AgendaDomain.sport:
-        return Colors.green.shade600;
-      case AgendaDomain.medicine:
-        return Colors.orange.shade700;
-    }
+  Widget _buildNormalTier(BuildContext context, RitmoColors colors, Color color, bool isDone, int startMin, int durMin) {
+    final item = layoutItem.item;
+    return Row(
+      children: [
+        Icon(domainIcon(item.domain), size: 14, color: color),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: CalendarTokens.textMeta,
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  decoration: isDone ? TextDecoration.lineThrough : null,
+                  fontFamily: 'Vazirmatn',
+                ),
+              ),
+              if (item.isTimed)
+                RitmoTimeRange(
+                  startMinutes: startMin,
+                  endMinutes: startMin + durMin,
+                  style: TextStyle(
+                    fontSize: CalendarTokens.textLabel,
+                    color: colors.textSecondary,
+                    fontFamily: 'Vazirmatn',
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExpandedTier(BuildContext context, RitmoColors colors, Color color, bool isDone, int startMin, int durMin) {
+    final item = layoutItem.item;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(domainIcon(item.domain), size: 16, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: CalendarTokens.textTitle,
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  decoration: isDone ? TextDecoration.lineThrough : null,
+                  fontFamily: 'Vazirmatn',
+                ),
+              ),
+              if (item.subtitle != null && item.subtitle!.isNotEmpty)
+                Text(
+                  item.subtitle!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: CalendarTokens.textLabel,
+                    color: colors.textTertiary,
+                    fontFamily: 'Vazirmatn',
+                  ),
+                ),
+              const Spacer(),
+              if (item.isTimed)
+                RitmoTimeRange(
+                  startMinutes: startMin,
+                  endMinutes: startMin + durMin,
+                  style: TextStyle(
+                    fontSize: CalendarTokens.textLabel,
+                    color: colors.textSecondary,
+                    fontFamily: 'Vazirmatn',
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (onToggleComplete != null)
+          GestureDetector(
+            onTap: onToggleComplete,
+            child: Icon(
+              isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 18,
+              color: isDone ? colors.success : colors.disabled,
+            ),
+          ),
+      ],
+    );
   }
 }

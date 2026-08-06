@@ -7,6 +7,7 @@ import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v66_worship_seed.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v67_worship_schema.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v68_worship_backfill.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v69_calendar_occurrence_overrides.dart';
 
 class MigrationRunner {
   static final List<Migration> _migrations = [
@@ -77,6 +78,7 @@ class MigrationRunner {
     MigrationV66(), // Prompt 048 M1: Move seeding into migration
     MigrationV67(), // Prompt 048 M2: Additive schema for worship
     MigrationV68(), // Prompt 048 M3: Backfill completions
+    MigrationV69(), // Prompt 050 M1, M2: Occurrence overrides and incremental columns
   ];
 
   static Future<void> run(Database db, int oldVersion, int newVersion) async {

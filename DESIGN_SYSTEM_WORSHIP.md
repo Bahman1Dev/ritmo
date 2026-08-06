@@ -349,7 +349,7 @@ lib/features/worship/
 ├── presentation/
 │   ├── worship_screen.dart              -- صفحه اصلی عبادت
 │   └── widgets/
-│       ├── prayer_times_hero.dart       -- کارت Hero اوقات شرعی + شمارش معکوس
+│       ├── prayer_arc_hero.dart         -- کارت Hero قوس روز — مدار ۲۴ ساعته با هاب مرکزی
 │       ├── prayer_city_picker.dart      -- شیت انتخاب شهر
 │       ├── obligatory_prayers_section.dart  -- بخش ۱: نمازهای واجب
 │       ├── mustahab_section.dart        -- بخش ۲: مستحبات

@@ -254,7 +254,11 @@ class JourneyController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> commitItemDrag(AgendaItem item, String newTimeOfDay) async {
+  Future<void> commitItemDrag(
+    AgendaItem item,
+    String newTimeOfDay, {
+    CalendarEditScope scope = CalendarEditScope.thisDayOnly,
+  }) async {
     if (_isDisposed || _isExecutingAction) return;
     _isExecutingAction = true;
     notifyListeners();
@@ -267,6 +271,7 @@ class JourneyController extends ChangeNotifier {
         oldTimeOfDay: oldTimeOfDay,
         newTimeOfDay: newTimeOfDay,
         onRefresh: refresh,
+        scope: scope,
       );
       await command.execute();
       CommandStack.instance.push(command);
@@ -282,12 +287,16 @@ class JourneyController extends ChangeNotifier {
     }
   }
 
-  Future<void> commitItemResize(AgendaItem item, int newDurationMinutes) async {
+  Future<void> commitItemResize(
+    AgendaItem item,
+    int newDurationMinutes, {
+    CalendarEditScope scope = CalendarEditScope.thisDayOnly,
+  }) async {
     if (_isDisposed || _isExecutingAction) return;
     _isExecutingAction = true;
     notifyListeners();
 
-    final oldDuration = item.durationMinutes ?? 30;
+    final oldDuration = item.durationMinutes ?? CalendarDefaults.fallbackDurationMinutes;
     try {
       final command = _ResizeItemCommand(
         actionHandler: _actionHandler,
@@ -295,6 +304,7 @@ class JourneyController extends ChangeNotifier {
         oldDuration: oldDuration,
         newDuration: newDurationMinutes,
         onRefresh: refresh,
+        scope: scope,
       );
       await command.execute();
       CommandStack.instance.push(command);
@@ -460,6 +470,8 @@ class JourneyController extends ChangeNotifier {
   }
 }
 
+enum CalendarEditScope { thisDayOnly, allFutureDays }
+
 class _MoveItemCommand implements UndoableCommand {
   _MoveItemCommand({
     required this.actionHandler,
@@ -467,32 +479,57 @@ class _MoveItemCommand implements UndoableCommand {
     required this.oldTimeOfDay,
     required this.newTimeOfDay,
     required this.onRefresh,
-  });
+    this.scope = CalendarEditScope.thisDayOnly,
+    OccurrenceOverrideRepository? overrideRepo,
+  }) : _overrideRepo = overrideRepo ?? const SqliteOccurrenceOverrideRepository();
 
   final AgendaActionHandler actionHandler;
   final AgendaItem item;
   final String oldTimeOfDay;
   final String newTimeOfDay;
   final Future<void> Function() onRefresh;
+  final CalendarEditScope scope;
+  final OccurrenceOverrideRepository _overrideRepo;
 
   @override
   String get description => 'جابه‌جایی رویداد';
 
   @override
   Future<void> execute() async {
-    await actionHandler.updateAgendaItemTimeAndDuration(
-      item: item,
-      newTimeOfDay: newTimeOfDay,
-    );
+    final nowIso = DateTime.now().toIso8601String();
+    if (scope == CalendarEditScope.thisDayOnly) {
+      final override = OccurrenceOverride(
+        sourceType: item.domain.name,
+        sourceId: item.sourceId,
+        dateStr: item.dateStr,
+        timeOfDay: newTimeOfDay,
+        status: 'MOVED',
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      );
+      await _overrideRepo.upsert(override);
+    } else {
+      await _overrideRepo.removeAllFuture(item.domain.name, item.sourceId, item.dateStr);
+      await actionHandler.updateAgendaItemTimeAndDuration(
+        item: item,
+        newTimeOfDay: newTimeOfDay,
+      );
+    }
+    DayAgendaService.instance.invalidateDate(item.dateStr);
     await onRefresh();
   }
 
   @override
   Future<void> undo() async {
-    await actionHandler.updateAgendaItemTimeAndDuration(
-      item: item,
-      newTimeOfDay: oldTimeOfDay,
-    );
+    if (scope == CalendarEditScope.thisDayOnly) {
+      await _overrideRepo.remove(item.domain.name, item.sourceId, item.dateStr);
+    } else {
+      await actionHandler.updateAgendaItemTimeAndDuration(
+        item: item,
+        newTimeOfDay: oldTimeOfDay,
+      );
+    }
+    DayAgendaService.instance.invalidateDate(item.dateStr);
     await onRefresh();
   }
 }
@@ -504,32 +541,57 @@ class _ResizeItemCommand implements UndoableCommand {
     required this.oldDuration,
     required this.newDuration,
     required this.onRefresh,
-  });
+    this.scope = CalendarEditScope.thisDayOnly,
+    OccurrenceOverrideRepository? overrideRepo,
+  }) : _overrideRepo = overrideRepo ?? const SqliteOccurrenceOverrideRepository();
 
   final AgendaActionHandler actionHandler;
   final AgendaItem item;
   final int oldDuration;
   final int newDuration;
   final Future<void> Function() onRefresh;
+  final CalendarEditScope scope;
+  final OccurrenceOverrideRepository _overrideRepo;
 
   @override
   String get description => 'تغییر مدت زمان رویداد';
 
   @override
   Future<void> execute() async {
-    await actionHandler.updateAgendaItemTimeAndDuration(
-      item: item,
-      newDurationMinutes: newDuration,
-    );
+    final nowIso = DateTime.now().toIso8601String();
+    if (scope == CalendarEditScope.thisDayOnly) {
+      final override = OccurrenceOverride(
+        sourceType: item.domain.name,
+        sourceId: item.sourceId,
+        dateStr: item.dateStr,
+        durationMinutes: newDuration,
+        status: 'RESIZED',
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      );
+      await _overrideRepo.upsert(override);
+    } else {
+      await _overrideRepo.removeAllFuture(item.domain.name, item.sourceId, item.dateStr);
+      await actionHandler.updateAgendaItemTimeAndDuration(
+        item: item,
+        newDurationMinutes: newDuration,
+      );
+    }
+    DayAgendaService.instance.invalidateDate(item.dateStr);
     await onRefresh();
   }
 
   @override
   Future<void> undo() async {
-    await actionHandler.updateAgendaItemTimeAndDuration(
-      item: item,
-      newDurationMinutes: oldDuration,
-    );
+    if (scope == CalendarEditScope.thisDayOnly) {
+      await _overrideRepo.remove(item.domain.name, item.sourceId, item.dateStr);
+    } else {
+      await actionHandler.updateAgendaItemTimeAndDuration(
+        item: item,
+        newDurationMinutes: oldDuration,
+      );
+    }
+    DayAgendaService.instance.invalidateDate(item.dateStr);
     await onRefresh();
   }
 }

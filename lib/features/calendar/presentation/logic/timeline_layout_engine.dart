@@ -18,6 +18,8 @@ class TimelineLayoutItem {
     required this.isTruncated,
     this.isClippedAtStart = false,
     this.isClippedAtEnd = false,
+    this.continuesToNextDay = false,
+    this.continuedFromPreviousDay = false,
     this.overflowCount = 0,
     this.overflowItems = const [],
   });
@@ -33,6 +35,8 @@ class TimelineLayoutItem {
   final bool isTruncated;
   final bool isClippedAtStart;
   final bool isClippedAtEnd;
+  final bool continuesToNextDay;
+  final bool continuedFromPreviousDay;
   final int overflowCount;
   final List<AgendaItem> overflowItems;
 

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/theme/ritmo_colors.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
+import 'package:ritmo/features/calendar/utils/domain_palette.dart';
 import 'package:ritmo/features/courses/logic/course_scheduler.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
@@ -17,10 +20,13 @@ class JourneyMonthView extends StatelessWidget {
   final Map<String, DayAgendaSnapshot> rangeSnapshots;
   final ValueChanged<DateTime> onSelectDate;
 
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final colors = context.colors;
     final now = DateTime.now();
 
     final jalaliSelected = Jalali.fromDateTime(selectedDate);
@@ -36,8 +42,8 @@ class JourneyMonthView extends StatelessWidget {
 
     final gridDays = List.generate(gridDayCount, (i) => firstGridDay.add(Duration(days: i)));
 
-    // RTL Weekday headers order: ج · پ · چ · س · د · ی · ش (Right to Left)
-    const weekHeadersRtl = ['ج', 'پ', 'چ', 'س', 'د', 'ی', 'ش'];
+    // RTL Weekday headers order
+    const weekHeadersRtl = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -57,7 +63,7 @@ class JourneyMonthView extends StatelessWidget {
                       fontSize: CalendarTokens.textLabel,
                       fontWeight: FontWeight.w600,
                       fontFamily: 'Vazirmatn',
-                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.45),
+                      color: colors.textSecondary,
                     ),
                   ),
                 );
@@ -72,7 +78,7 @@ class JourneyMonthView extends StatelessWidget {
                   crossAxisCount: 7,
                   mainAxisSpacing: 4,
                   crossAxisSpacing: 4,
-                  childAspectRatio: 0.85,
+                  childAspectRatio: 0.82,
                 ),
                 itemCount: gridDays.length,
                 itemBuilder: (context, index) {
@@ -84,88 +90,86 @@ class JourneyMonthView extends StatelessWidget {
 
                   final dateKey = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
                   final snapshot = rangeSnapshots[dateKey];
-                  final totalItems = snapshot?.items.length ?? 0;
+                  final items = snapshot?.items ?? [];
+                  final overload = snapshot?.overloadScore ?? 0.0;
+                  final hasConflicts = (snapshot?.conflicts.length ?? 0) > 0;
+
+                  // Unique domain colors (up to 4)
+                  final presentDomains = <AgendaDomain>{};
+                  for (final item in items) {
+                    presentDomains.add(item.domain);
+                    if (presentDomains.length >= 4) break;
+                  }
+
+                  final tintAlpha = isCurrentMonth ? (overload.clamp(0.0, 1.0) * 0.22) : 0.0;
+                  final cellBgColor = isSelected
+                      ? colors.primaryContainer
+                      : (tintAlpha > 0
+                          ? colors.primary.withValues(alpha: tintAlpha)
+                          : (isCurrentMonth ? colors.surface : colors.sunken));
 
                   final dayNumStr = toPersianDigits(jDay.day.toString());
-
-                  final dotCount = totalItems == 0 ? 0 : (totalItems <= 2 ? 1 : (totalItems <= 4 ? 2 : 3));
 
                   return InkWell(
                     onTap: () => onSelectDate(day),
                     borderRadius: BorderRadius.circular(CalendarTokens.radiusBadge),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.20 : 0.12)
-                            : (isToday
-                                ? theme.colorScheme.primary.withValues(alpha: 0.08)
-                                : (isCurrentMonth
-                                    ? (isDark
-                                        ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.4)
-                                        : theme.cardColor)
-                                    : Colors.transparent)),
+                        color: cellBgColor,
                         borderRadius: BorderRadius.circular(CalendarTokens.radiusBadge),
-                        border: Border.all(
-                          color: isSelected
-                              ? theme.colorScheme.primary
-                              : (isToday
-                                  ? theme.colorScheme.primary.withValues(alpha: 0.5)
-                                  : theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder)),
-                          width: isSelected ? 1.5 : 1.0,
-                        ),
+                        border: isToday
+                            ? Border.all(color: colors.primary, width: 1.5)
+                            : (isSelected ? Border.all(color: colors.primary, width: 1.0) : null),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 6.0),
+                      padding: const EdgeInsets.all(2.0),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Day Number with Today Circle
-                          Container(
-                            width: 24,
-                            height: 24,
-                            alignment: Alignment.center,
-                            decoration: isToday
-                                ? BoxDecoration(
-                                    color: theme.colorScheme.primary,
-                                    shape: BoxShape.circle,
-                                  )
-                                : null,
-                            child: Text(
-                              dayNumStr,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontFamily: 'Vazirmatn',
-                                fontWeight: isSelected || isToday ? FontWeight.w700 : FontWeight.w500,
-                                color: isToday
-                                    ? theme.colorScheme.onPrimary
-                                    : (isCurrentMonth
-                                        ? (isSelected
-                                            ? theme.colorScheme.primary
-                                            : theme.textTheme.bodyMedium?.color)
-                                        : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.20)),
+                          // Day Number
+                          Align(
+                            alignment: Alignment.topRight,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 2, top: 2),
+                              child: Text(
+                                dayNumStr,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isCurrentMonth
+                                      ? (isSelected ? colors.primary : colors.textPrimary)
+                                      : colors.disabled,
+                                  fontFamily: 'Vazirmatn',
+                                ),
                               ),
                             ),
                           ),
 
-                          // Activity Density Dots (1..3 dots)
-                          if (dotCount > 0)
+                          // Domain Dots (up to 4)
+                          if (presentDomains.isNotEmpty)
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(dotCount, (i) {
+                              children: presentDomains.map((d) {
                                 return Container(
                                   width: 4,
                                   height: 4,
                                   margin: const EdgeInsets.symmetric(horizontal: 1.0),
                                   decoration: BoxDecoration(
+                                    color: domainColor(context, d),
                                     shape: BoxShape.circle,
-                                    color: isCurrentMonth
-                                        ? theme.colorScheme.primary.withValues(alpha: 0.70)
-                                        : theme.colorScheme.primary.withValues(alpha: 0.25),
                                   ),
                                 );
-                              }),
+                              }).toList(),
+                            ),
+
+                          // Conflict Underline
+                          if (hasConflicts)
+                            Container(
+                              height: 2,
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              color: colors.warning,
                             )
                           else
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                         ],
                       ),
                     ),
@@ -177,9 +181,5 @@ class JourneyMonthView extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  static bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 }

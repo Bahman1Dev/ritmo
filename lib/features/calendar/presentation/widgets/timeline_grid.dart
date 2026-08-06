@@ -561,36 +561,56 @@ class _TimelineGridState extends State<TimelineGrid> {
   }
 
   Widget _buildSleepBlock(int startM, int endM) {
-    if (endM <= startM) return const SizedBox.shrink();
+    final segments = _sleepSegmentsForDay(startM, endM);
+    if (segments.isEmpty) return const SizedBox.shrink();
 
-    // Clip sleep window within rangeStartMinutes and rangeEndMinutes
-    final visStart = max(startM, widget.rangeStartMinutes);
-    final visEnd = min(endM, widget.rangeEndMinutes);
-    if (visStart >= visEnd) return const SizedBox.shrink();
+    final colors = context.colors;
+    final widgets = <Widget>[];
 
-    final top = (visStart - widget.rangeStartMinutes) * widget.pxPerMinute;
-    final height = (visEnd - visStart) * widget.pxPerMinute;
+    for (final seg in segments) {
+      final visStart = max(seg.startMinutes, widget.rangeStartMinutes);
+      final visEnd = min(seg.endMinutes, widget.rangeEndMinutes);
+      if (visStart >= visEnd) continue;
 
-    return Positioned(
-      top: top,
-      left: 0,
-      right: 0,
-      height: height,
-      child: IgnorePointer(
-        child: Container(
-          color: Colors.indigo.withValues(alpha: 0.05),
-          padding: const EdgeInsets.all(4.0),
-          child: const Text(
-            'Sleep Window',
-            style: TextStyle(
-              fontSize: CalendarTokens.textLabel,
-              color: Colors.indigo,
-              fontStyle: FontStyle.italic,
-              fontFamily: 'Vazirmatn',
+      final top = (visStart - widget.rangeStartMinutes) * widget.pxPerMinute;
+      final height = (visEnd - visStart) * widget.pxPerMinute;
+      if (height <= 0) continue;
+
+      widgets.add(Positioned(
+        top: top,
+        left: 0,
+        right: 0,
+        height: height,
+        child: IgnorePointer(
+          child: Container(
+            color: colors.sunken.withValues(alpha: 0.55),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text(
+              'پنجره خواب',
+              style: TextStyle(
+                fontSize: CalendarTokens.textLabel,
+                color: colors.textTertiary,
+                fontFamily: 'Vazirmatn',
+              ),
             ),
           ),
         ),
-      ),
-    );
+      ));
+    }
+
+    return Stack(children: widgets);
+  }
+
+  List<({int startMinutes, int endMinutes})> _sleepSegmentsForDay(int startM, int endM) {
+    final start = startM % 1440;
+    final end = endM % 1440;
+    final crossesMidnight = startM > endM || endM > 1440;
+    if (!crossesMidnight && start < end) {
+      return [(startMinutes: start, endMinutes: end)];
+    }
+    return [
+      (startMinutes: 0, endMinutes: end),
+      (startMinutes: start, endMinutes: 1440),
+    ];
   }
 }

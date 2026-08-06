@@ -1,0 +1,17 @@
+Analyzing calendar...
+
+  error - presentation\journey_screen.dart:388:39 - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'. - unawaited_futures
+  error - presentation\widgets\domain_selection_sheet.dart:177:21 - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'. - unawaited_futures
+warning - presentation\journey_screen.dart:16:8 - Unused import: 'package:ritmo/features/calendar/presentation/utils/calendar_motion.dart'. Try removing the import directive. - unused_import
+warning - presentation\journey_screen.dart:19:8 - Unused import: 'package:ritmo/features/calendar/presentation/widgets/domain_selection_sheet.dart'. Try removing the import directive. - unused_import
+warning - presentation\journey_screen.dart:233:11 - The value of the local variable 'colorScheme' isn't used. Try removing the variable or using it. - unused_local_variable
+   info - presentation\journey_screen.dart:386:83 - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation. - prefer_const_constructors
+   info - presentation\models\now_pill_view_model.dart:77:93 - Unnecessary use of a null check ('!'). Try removing the null check. - unnecessary_null_checks
+   info - presentation\models\now_pill_view_model.dart:97:84 - Unnecessary use of a null check ('!'). Try removing the null check. - unnecessary_null_checks
+   info - presentation\widgets\calendar_search_delegate.dart:133:77 - Unnecessary use of a null check ('!'). Try removing the null check. - unnecessary_null_checks
+   info - presentation\widgets\journey_suggestions_section.dart:202:82 - Unnecessary use of a null check ('!'). Try removing the null check. - unnecessary_null_checks
+   info - presentation\widgets\timeline_grid.dart:504:34 - Unnecessary use of multiple underscores. Try using '_'. - unnecessary_underscores
+   info - presentation\widgets\timeline_overflow_card.dart:53:43 - Unnecessary use of multiple underscores. Try using '_'. - unnecessary_underscores
+   info - presentation\widgets\timeline_overflow_card.dart:75:63 - Unnecessary use of a null check ('!'). Try removing the null check. - unnecessary_null_checks
+
+13 issues found.

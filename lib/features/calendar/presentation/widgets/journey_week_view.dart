@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
+import 'package:ritmo/core/theme/ritmo_colors.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
+import 'package:ritmo/features/calendar/utils/domain_palette.dart';
 import 'package:ritmo/features/courses/logic/course_scheduler.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
@@ -18,260 +20,152 @@ class JourneyWeekView extends StatelessWidget {
   final Map<String, DayAgendaSnapshot> rangeSnapshots;
   final ValueChanged<DateTime> onSelectDate;
 
+  static const double miniPxPerMin = 0.35; // ~504px total timeline height
+
+  static const List<String> weekDayShortFa = ['ش', '۱ش', '۲ش', '۳ش', '۴ش', '۵ش', 'ج'];
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final colors = context.colors;
+    final now = DateTime.now();
 
     final sat = CourseScheduler.getSaturdayOfWeek(selectedDate);
     final weekDays = List.generate(7, (i) => sat.add(Duration(days: i)));
-    final now = DateTime.now();
+
+    final nowMinutes = (now.hour * 60) + now.minute;
+    final nowTop = nowMinutes * miniPxPerMin;
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: CalendarTokens.spacingL,
+          horizontal: CalendarTokens.spacingM,
           vertical: CalendarTokens.spacingS,
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Week Header Row (7 mini headers)
             Row(
-              children: [
-                Icon(Icons.date_range_rounded, size: 18, color: theme.colorScheme.primary),
-                const SizedBox(width: CalendarTokens.spacingS),
-                Text(
-                  'برنامه هفتگی',
-                  style: TextStyle(
-                    fontSize: CalendarTokens.textTitle,
-                    fontWeight: FontWeight.bold,
-                    color: theme.textTheme.bodyLarge?.color,
-                    fontFamily: 'Vazirmatn',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: CalendarTokens.spacingM),
-            Expanded(
-              child: ListView.separated(
-                itemCount: weekDays.length,
-                separatorBuilder: (context, index) => const SizedBox(height: CalendarTokens.spacingS),
-                itemBuilder: (context, index) {
-                  final day = weekDays[index];
-                  final dateKey = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
-                  final snapshot = rangeSnapshots[dateKey];
+              children: List.generate(7, (index) {
+                final day = weekDays[index];
+                final isSelected = _isSameDay(day, selectedDate);
+                final isToday = _isSameDay(day, now);
+                final jalali = Jalali.fromDateTime(day);
 
-                  final isSelected = _isSameDay(day, selectedDate);
-                  final isToday = _isSameDay(day, now);
-
-                  final items = snapshot?.items ?? [];
-                  final completedCount = snapshot?.completedCount ?? 0;
-                  final totalCount = items.length;
-                  final rhythmScore = snapshot?.rhythmScore ?? 0;
-                  final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
-
-                  final jalali = Jalali.fromDateTime(day);
-                  final dayNumStr = toPersianDigits(jalali.day.toString());
-
-                  return InkWell(
+                return Expanded(
+                  child: GestureDetector(
                     onTap: () => onSelectDate(day),
-                    borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
                     child: Container(
-                      padding: const EdgeInsets.all(CalendarTokens.spacingM),
+                      padding: const EdgeInsets.symmetric(vertical: 6.0),
+                      margin: const EdgeInsets.symmetric(horizontal: 2.0),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.12 : 0.08)
-                            : (isDark
-                                ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.50)
-                                : theme.cardColor),
-                        borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+                        color: isSelected ? colors.primary : (isToday ? colors.primaryContainer : colors.surface),
+                        borderRadius: BorderRadius.circular(10.0),
                         border: Border.all(
-                          color: isSelected
-                              ? theme.colorScheme.primary
-                              : (isToday
-                                  ? theme.colorScheme.primary.withValues(alpha: 0.6)
-                                  : theme.dividerColor.withValues(alpha: CalendarTokens.alphaCardBorder)),
-                          width: isSelected ? 1.5 : 1.0,
+                          color: isSelected ? colors.primary : (isToday ? colors.primary : colors.border),
                         ),
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
-                        child: Row(
-                          children: [
-                            // Right Accent Border for Today (3px) in RTL
-                            if (isToday)
-                              Container(
-                                width: CalendarTokens.accentBarWidth,
-                                height: 60,
-                                color: theme.colorScheme.primary,
-                              ),
-                            if (isToday) const SizedBox(width: CalendarTokens.spacingS),
-
-                            // Day Badge
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  _getFarsiDayName(day),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
-                                    fontFamily: 'Vazirmatn',
-                                    color: isToday
-                                        ? theme.colorScheme.primary
-                                        : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.65),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  width: 28,
-                                  height: 28,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: isToday
-                                        ? theme.colorScheme.primary
-                                        : (isSelected
-                                            ? theme.colorScheme.primaryContainer
-                                            : theme.dividerColor.withValues(alpha: 0.15)),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    dayNumStr,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'Vazirmatn',
-                                      color: isToday
-                                          ? theme.colorScheme.onPrimary
-                                          : (isSelected
-                                              ? theme.colorScheme.onPrimaryContainer
-                                              : theme.textTheme.bodyMedium?.color),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                      child: Column(
+                        children: [
+                          Text(
+                            weekDayShortFa[index],
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isSelected ? colors.onPrimary : colors.textSecondary,
+                              fontFamily: 'Vazirmatn',
                             ),
-                            const SizedBox(width: CalendarTokens.spacingM),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            toPersianDigits(jalali.day.toString()),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? colors.onPrimary : colors.textPrimary,
+                              fontFamily: 'Vazirmatn',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 8),
 
-                            // Content Details
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+            // 7 Mini Timeline Columns in a Single Scroll View
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(CalendarTokens.radiusCard),
+                  border: Border.all(color: colors.border),
+                ),
+                child: SingleChildScrollView(
+                  child: SizedBox(
+                    height: 1440 * miniPxPerMin,
+                    child: Row(
+                      children: List.generate(7, (index) {
+                        final day = weekDays[index];
+                        final dateKey = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+                        final snapshot = rangeSnapshots[dateKey];
+                        final isToday = _isSameDay(day, now);
+                        final isSelected = _isSameDay(day, selectedDate);
+
+                        final timedItems = (snapshot?.items ?? []).where((i) => i.isTimed).toList();
+
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () => onSelectDate(day),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isSelected ? colors.primaryContainer.withValues(alpha: 0.15) : null,
+                                border: Border(
+                                  left: BorderSide(color: colors.divider, width: 0.5),
+                                ),
+                              ),
+                              child: Stack(
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        '${toPersianDigits(totalCount.toString())} برنامه (${toPersianDigits(completedCount.toString())} تکمیل)',
-                                        style: TextStyle(
-                                          fontSize: CalendarTokens.textBody,
-                                          fontWeight: FontWeight.w600,
-                                          fontFamily: 'Vazirmatn',
-                                          color: theme.textTheme.bodyLarge?.color,
-                                        ),
-                                      ),
-                                      if (rhythmScore > 0)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(CalendarTokens.radiusBadge),
-                                          ),
-                                          child: Text(
-                                            'ریتم: ${toPersianDigits(rhythmScore.toString())}',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              color: theme.colorScheme.primary,
-                                              fontFamily: 'Vazirmatn',
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-
-                                  // Completion Mini Progress Bar
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(2),
-                                    child: LinearProgressIndicator(
-                                      value: progressRatio,
-                                      minHeight: 3,
-                                      backgroundColor: theme.dividerColor.withValues(alpha: 0.12),
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        completedCount == totalCount && totalCount > 0
-                                            ? CalendarTokens.emerald
-                                            : theme.colorScheme.primary,
+                                  // Grid Hour Lines (every 3 hours)
+                                  for (int h = 3; h < 24; h += 3)
+                                    Positioned(
+                                      top: (h * 60) * miniPxPerMin,
+                                      left: 0,
+                                      right: 0,
+                                      child: Container(
+                                        height: 0.5,
+                                        color: colors.divider.withValues(alpha: 0.3),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 6),
 
-                                  // Top Activity Chips
-                                  if (items.isEmpty)
-                                    Text(
-                                      'اطلاعاتی برای این روز ثبت نشده',
-                                      style: TextStyle(
-                                        fontSize: CalendarTokens.textMeta,
-                                        fontFamily: 'Vazirmatn',
-                                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.50),
+                                  // Mini Item Blocks (Compact tier - color block only)
+                                  for (final item in timedItems) _buildMiniItemBlock(context, item),
+
+                                  // Live Now Line (drawn ONLY on today's column)
+                                  if (isToday)
+                                    Positioned(
+                                      top: nowTop,
+                                      left: 0,
+                                      right: 0,
+                                      child: Container(
+                                        height: 1.5,
+                                        color: colors.error,
                                       ),
-                                    )
-                                  else
-                                    Wrap(
-                                      spacing: 4,
-                                      runSpacing: 4,
-                                      children: items.take(3).map((item) {
-                                        final domainColor = _getDomainColor(item.domain);
-                                        return Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: item.isCompleted
-                                                ? theme.disabledColor.withValues(alpha: 0.12)
-                                                : domainColor.withValues(alpha: isDark ? 0.15 : 0.08),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Container(
-                                                width: 6,
-                                                height: 6,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: item.isCompleted ? theme.disabledColor : domainColor,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                item.title,
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: item.isCompleted ? FontWeight.w400 : FontWeight.w600,
-                                                  fontFamily: 'Vazirmatn',
-                                                  decoration: item.isCompleted ? TextDecoration.lineThrough : null,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
                                     ),
                                 ],
                               ),
                             ),
-                            Icon(
-                              Icons.chevron_left_rounded,
-                              size: 20,
-                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.40),
-                            ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      }),
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
           ],
@@ -280,53 +174,28 @@ class JourneyWeekView extends StatelessWidget {
     );
   }
 
-  static bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
+  Widget _buildMiniItemBlock(BuildContext context, AgendaItem item) {
+    final colors = context.colors;
+    final parts = item.timeOfDay!.split(':');
+    final startM = (int.parse(parts[0]) * 60) + int.parse(parts[1]);
+    final durM = item.durationMinutes ?? 30;
 
-  static String _getFarsiDayName(DateTime dt) {
-    switch (dt.weekday) {
-      case DateTime.saturday:
-        return 'شنبه';
-      case DateTime.sunday:
-        return '۱شنبه';
-      case DateTime.monday:
-        return '۲شنبه';
-      case DateTime.tuesday:
-        return '۳شنبه';
-      case DateTime.wednesday:
-        return '۴شنبه';
-      case DateTime.thursday:
-        return '۵شنبه';
-      case DateTime.friday:
-        return 'جمعه';
-      default:
-        return '';
-    }
-  }
+    final top = startM * miniPxPerMin;
+    final height = (durM * miniPxPerMin).clamp(4.0, 1440 * miniPxPerMin);
 
-  static Color _getDomainColor(AgendaDomain domain) {
-    switch (domain) {
-      case AgendaDomain.routine:
-        return Colors.teal;
-      case AgendaDomain.prayer:
-        return Colors.indigo;
-      case AgendaDomain.mustahab:
-        return Colors.blueGrey;
-      case AgendaDomain.course:
-        return Colors.amber.shade800;
-      case AgendaDomain.goalStep:
-        return Colors.deepPurple;
-      case AgendaDomain.konkur:
-        return Colors.red;
-      case AgendaDomain.cycle:
-        return Colors.pink;
-      case AgendaDomain.worshipDebt:
-        return Colors.brown;
-      case AgendaDomain.sport:
-        return Colors.green;
-      case AgendaDomain.medicine:
-        return Colors.orange.shade800;
-    }
+    final color = domainColor(context, item.domain);
+
+    return Positioned(
+      top: top,
+      left: 1.5,
+      right: 1.5,
+      height: height,
+      child: Container(
+        decoration: BoxDecoration(
+          color: item.isCompleted ? colors.disabled : color,
+          borderRadius: BorderRadius.circular(3.0),
+        ),
+      ),
+    );
   }
 }

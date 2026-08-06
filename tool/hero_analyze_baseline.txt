@@ -1,0 +1,19 @@
+Analyzing worship...
+
+   info - logic\hijri_calendar.dart:68:5 - Local variables should be final. Try making the variable final. - prefer_final_locals
+   info - logic\hijri_calendar.dart:72:5 - Local variables should be final. Try making the variable final. - prefer_final_locals
+   info - logic\hijri_calendar.dart:74:5 - Local variables should be final. Try making the variable final. - prefer_final_locals
+   info - logic\hijri_calendar.dart:76:5 - Local variables should be final. Try making the variable final. - prefer_final_locals
+   info - logic\hijri_calendar.dart:77:5 - Local variables should be final. Try making the variable final. - prefer_final_locals
+   info - logic\hijri_calendar.dart:79:5 - Local variables should be final. Try making the variable final. - prefer_final_locals
+   info - logic\hijri_calendar.dart:80:5 - Local variables should be final. Try making the variable final. - prefer_final_locals
+   info - logic\worship_completion_repository.dart:38:5 - Local variables should be final. Try making the variable final. - prefer_final_locals
+   info - logic\worship_completion_repository.dart:66:18 - Angle brackets will be interpreted as HTML. Try using backticks around the content with angle brackets, or try replacing `<` with `&lt;` and `>` with `&gt;`. - unintended_html_in_doc_comment
+   info - presentation\widgets\ai_worship_assistant_sheet.dart:3:8 - The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/cupertino.dart'. Try removing the import directive. - unnecessary_import
+   info - presentation\widgets\night_prayer_card.dart:50:19 - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation. - prefer_const_constructors
+   info - presentation\widgets\night_prayer_card.dart:53:19 - Use 'const' literals as arguments to constructors of '@immutable' classes. Try adding 'const' before the literal. - prefer_const_literals_to_create_immutables
+   info - presentation\widgets\night_prayer_card.dart:77:15 - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation. - prefer_const_constructors
+   info - presentation\widgets\night_prayer_card.dart:78:27 - Use 'const' literals as arguments to constructors of '@immutable' classes. Try adding 'const' before the literal. - prefer_const_literals_to_create_immutables
+   info - presentation\widgets\prayer_action_body.dart:179:21 - 'activeColor' is deprecated and shouldn't be used. Use activeTrackColor instead. This feature was deprecated after v3.24.0-0.2.pre. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+
+15 issues found.

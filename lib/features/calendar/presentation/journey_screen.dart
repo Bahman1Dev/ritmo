@@ -552,7 +552,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
                           highlightedItemId: _controller.highlightedItemId,
                           onItemTap: _openItemDetails,
                           onItemMove: (item, newStartMinutes) async {
-                            final dur = item.durationMinutes ?? 30;
+                            final dur = item.durationMinutes ?? CalendarDefaults.fallbackDurationMinutes;
                             await _controller.scheduleItem(item, newStartMinutes, dur);
                             if (mounted) {
                               final timeStr = TimelineSnappingHelper.minutesToTimeString(newStartMinutes);

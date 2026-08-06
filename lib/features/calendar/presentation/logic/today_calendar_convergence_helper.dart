@@ -70,7 +70,7 @@ class TodayCalendarConvergenceHelper {
         routineId: item.sourceId,
         dateStr: item.dateStr,
         resultType: 'COMPLETED',
-        durationMinutes: item.durationMinutes ?? 30,
+        durationMinutes: item.durationMinutes ?? CalendarDefaults.fallbackDurationMinutes,
       ));
     } else {
       await _actionHandler.toggleAgendaItem(item: item, isDone: true);
