@@ -37,6 +37,16 @@ class ZoneCard extends StatelessWidget {
   final VoidCallback onEnergyTap;
   final VoidCallback onRealmChanged;
 
+  static Color _parseColorSafe(String? colorStr, Color fallback) {
+    if (colorStr == null || colorStr.isEmpty) return fallback;
+    try {
+      var hex = colorStr.replaceAll('#', '').trim();
+      if (hex.length == 6) hex = 'FF$hex';
+      if (hex.length == 8) return Color(int.parse(hex, radix: 16));
+    } catch (_) {}
+    return fallback;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -319,9 +329,7 @@ class ZoneCard extends StatelessWidget {
                               Icon(
                                 CupertinoIcons.briefcase_fill,
                                 size: 14,
-                                color: activeZoneColorHex != null
-                                    ? Color(int.parse(activeZoneColorHex!))
-                                    : colors.primary,
+                                color: _parseColorSafe(activeZoneColorHex, colors.primary),
                               ),
                           ],
                         ),
@@ -355,9 +363,7 @@ class ZoneCard extends StatelessWidget {
                               activeZone: activeZone!,
                               style: TextStyle(
                                 fontSize: 11,
-                                color: activeZoneColorHex != null
-                                    ? Color(int.parse(activeZoneColorHex!))
-                                    : colors.primary,
+                                color: _parseColorSafe(activeZoneColorHex, colors.primary),
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'Vazirmatn',
                               ),
