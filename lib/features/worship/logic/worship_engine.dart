@@ -663,11 +663,24 @@ class WorshipEngine {
       final dailyTarget = practice?.dailyTarget ?? 1;
       final practiceType = practice?.practiceType ?? 'PRAYER';
 
-      // Quality window for prayers
+      // Time-gating & Quality window for prayers
+      final now = DateTime.now();
+      final todayStr = _ds(now);
+      final isToday = dateStr == todayStr;
+
       String? qualityWindow;
       if (practiceType == 'PRAYER' && practice != null) {
         final times = await _prayerTimesFromDb(db, date);
-        qualityWindow = _qualityWindow(practice.subType ?? '', times, date);
+        final subType = practice.subType ?? '';
+        final slot = PrayerTimeline.getSlotFor(subType, times);
+
+        if (isToday && slot != null && now.isBefore(slot.at)) {
+          final prayerTitle = slot.titleFa;
+          return WorshipLogFailed('هنوز زمان $prayerTitle نرسیده است.');
+        }
+
+        final actualTime = isToday ? now : date;
+        qualityWindow = _qualityWindow(subType, times, actualTime);
       }
 
       final completionRow = <String, dynamic>{
@@ -1327,14 +1340,23 @@ class WorshipEngine {
     if (slot == null) return 'NORMAL';
     final deadline = PrayerTimeline.deadlineForSlot(slot.key, times);
     if (deadline == null) return 'NORMAL';
-    final len = deadline.difference(slot.at).inMinutes;
-    final elapsed = at.difference(slot.at).inMinutes;
-    if (elapsed < 0) return 'EARLY';
-    if (len <= 0) return 'NORMAL';
-    final ratio = elapsed / len;
-    if (ratio < 0.33) return 'EARLY';
-    if (ratio < 0.66) return 'NORMAL';
-    return 'LATE';
+
+    if (at.isBefore(slot.at)) {
+      return 'EARLY';
+    }
+
+    if (at.isAfter(deadline)) {
+      return 'LATE';
+    }
+
+    final elapsedMin = at.difference(slot.at).inMinutes;
+    // Fazilat window: first 30 minutes after Athan is "اول وقت" (EARLY)
+    // After 30 minutes until deadline is "در وقت" (NORMAL)
+    if (elapsedMin <= 30) {
+      return 'EARLY';
+    } else {
+      return 'NORMAL';
+    }
   }
 
   static String _ds(DateTime d) =>

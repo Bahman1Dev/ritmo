@@ -72,10 +72,13 @@ class AgendaActionHandler {
     final date = DateTime.tryParse(dateStr) ?? DateTime.now();
     for (final id in ids) {
       if (isDone) {
-        await WorshipEngine.instance.logDone(
+        final result = await WorshipEngine.instance.logDone(
           practiceId: id,
           date: date,
         );
+        if (result is WorshipLogFailed) {
+          throw Exception(result.error.toString());
+        }
       } else {
         await WorshipEngine.instance.clearLog(
           practiceId: id,
