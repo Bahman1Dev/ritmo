@@ -144,7 +144,6 @@ class _WorshipScreenState extends State<WorshipScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final shamsiNow = Jalali.now();
 
     return Directionality(
       textDirection: TextDirection.rtl,
