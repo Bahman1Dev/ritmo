@@ -67,6 +67,7 @@ class _FrictionlessMoodBarState extends State<FrictionlessMoodBar> {
         'mood_logs',
         {
           'id': id,
+          'mood': valence >= 4 ? 'HAPPY' : (valence <= 2 ? 'SAD' : 'NEUTRAL'),
           'valence': valence,
           'source': 'QUICK_BAR',
           'loggedAt': now.millisecondsSinceEpoch,

@@ -375,9 +375,9 @@ class _WorshipDebtsSectionState extends State<WorshipDebtsSection> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'بدهی‌های عبادی (قضا)',
+                'جبران و قضای عبادات',
                 style: TextStyle(
-                  fontSize: 16.5,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: colors.textPrimary,
                   fontFamily: 'Vazirmatn',
@@ -386,9 +386,8 @@ class _WorshipDebtsSectionState extends State<WorshipDebtsSection> {
               GestureDetector(
                 onTap: _showAddDebtSheet,
                 child: Text(
-                  '➕ ثبت بدهی جدید',
+                  '➕ افزودن مورد جبرانی',
                   style: TextStyle(
-                    fontSize: 13,
                     color: colors.primary,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Vazirmatn',
@@ -414,7 +413,7 @@ class _WorshipDebtsSectionState extends State<WorshipDebtsSection> {
                     Icon(CupertinoIcons.checkmark_seal, color: colors.textSecondary.withValues(alpha: 0.4), size: 28),
                     const SizedBox(height: 8),
                     Text(
-                      'هیچ بدهی عبادی ثبت نشده است.',
+                      'همه عبادات طبق برنامه انجام شده یا هیچ مورد جبرانی در انتظار نیست ✨',
                       style: TextStyle(color: colors.textSecondary, fontSize: 14, fontFamily: 'Vazirmatn'),
                     ),
                   ],
@@ -583,7 +582,7 @@ class _WorshipDebtsSectionState extends State<WorshipDebtsSection> {
                             margin: const EdgeInsets.symmetric(vertical: 4),
                             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                             decoration: BoxDecoration(
-                              color: colors.card,
+                              color: colors.surface,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(

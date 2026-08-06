@@ -69,7 +69,7 @@ void main() {
 
   test('sleep score renormalizes when quality is unknown', () {
     final withQuality = WellbeingEngine.sleepScore(
-        hours: 7.5, target: 7.5, quality: 100, consistency: 100);
+        hours: 7.5, target: 7.5, quality: 5.0, consistency: 100);
     final withoutQuality =
         WellbeingEngine.sleepScore(hours: 7.5, target: 7.5);
     expect(withQuality, closeTo(100, 0.001));

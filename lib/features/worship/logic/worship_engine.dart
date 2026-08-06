@@ -197,6 +197,46 @@ class WorshipEngine {
   Map<String, dynamic>? _settingsCache;
   List<OccasionItem>? _occasionsCache;
 
+  Future<void> _ensureDefaultPractices(DatabaseExecutor db) async {
+    try {
+      final count = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM worship_practices'),
+      ) ?? 0;
+      if (count > 0) return;
+
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+
+      final practices = [
+        {'id': 'wp_fajr', 'practiceType': 'PRAYER', 'subType': 'FAJR', 'title': 'نماز صبح', 'dailyTarget': 1, 'sortOrder': 1},
+        {'id': 'wp_dhuhr', 'practiceType': 'PRAYER', 'subType': 'DHUHR', 'title': 'نماز ظهر و عصر', 'dailyTarget': 1, 'sortOrder': 2},
+        {'id': 'wp_maghrib', 'practiceType': 'PRAYER', 'subType': 'MAGHRIB', 'title': 'نماز مغرب و عشا', 'dailyTarget': 1, 'sortOrder': 4},
+        {'id': 'wp_asr', 'practiceType': 'PRAYER', 'subType': 'ASR', 'title': 'نماز عصر', 'dailyTarget': 1, 'sortOrder': 3},
+        {'id': 'wp_isha', 'practiceType': 'PRAYER', 'subType': 'ISHA', 'title': 'نماز عشا', 'dailyTarget': 1, 'sortOrder': 5},
+      ];
+
+      for (final p in practices) {
+        await db.insert(
+          'worship_practices',
+          {
+            'id': p['id'],
+            'practiceType': p['practiceType'],
+            'subType': p['subType'],
+            'title': p['title'],
+            'dailyTarget': p['dailyTarget'],
+            'dailyDone': 0,
+            'sortOrder': p['sortOrder'],
+            'isActive': (p['subType'] == 'ASR' || p['subType'] == 'ISHA') ? 0 : 1,
+            'dailyDoneDate': todayStr,
+            'createdAt': nowMs,
+            'updatedAt': nowMs,
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
+    } catch (_) {}
+  }
+
   // ── Settings ─────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _loadSettings(DatabaseExecutor db) async {
@@ -220,6 +260,20 @@ class WorshipEngine {
     for (final r in rows) {
       map[r['key'] as String] = r['value'];
     }
+    if (map['prayer_city_id'] == null || (map['prayer_city_id'] as String).isEmpty) {
+      map['prayer_city_id'] = 'TEHRAN_TEHRAN';
+      try {
+        await db.insert(
+          'app_settings',
+          {
+            'key': 'prayer_city_id',
+            'value': 'TEHRAN_TEHRAN',
+            'updatedAt': DateTime.now().millisecondsSinceEpoch,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      } catch (_) {}
+    }
     _settingsCache = map;
     return map;
   }
@@ -239,7 +293,18 @@ class WorshipEngine {
     return _prayerTimesFromDb(db, date);
   }
 
+  static bool _cachePurged = false;
+
+  Future<void> _purgeStalePrayerTimesCache(DatabaseExecutor db) async {
+    if (_cachePurged) return;
+    try {
+      await db.delete('prayer_times_cache');
+      _cachePurged = true;
+    } catch (_) {}
+  }
+
   Future<PrayerTimes> _prayerTimesFromDb(DatabaseExecutor db, DateTime date) async {
+    await _purgeStalePrayerTimesCache(db);
     final dateStr = _ds(date);
     final settings = await _loadSettings(db);
     final cityId = settings['prayer_city_id'] as String? ?? '';
@@ -436,6 +501,7 @@ class WorshipEngine {
     if (_dayCache.containsKey(cacheKey)) return _dayCache[cacheKey]!;
 
     final db = await DatabaseHelper.instance.database;
+    await _ensureDefaultPractices(db);
     final settings = await _loadSettings(db);
     final hijriOffset = int.tryParse(settings['hijri_offset']?.toString() ?? '') ?? 0;
 
@@ -763,6 +829,22 @@ class WorshipEngine {
 
   // ── dayContext (F-1) ──────────────────────────────────────────────────────
 
+  Future<void> _ensureDayContextTable(DatabaseExecutor db) async {
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS worship_day_context (
+          date TEXT PRIMARY KEY,
+          isTraveller INTEGER NOT NULL DEFAULT 0,
+          fastingExempt INTEGER NOT NULL DEFAULT 0,
+          prayerExempt INTEGER NOT NULL DEFAULT 0,
+          reason TEXT,
+          createdAt TEXT NOT NULL,
+          updatedAt TEXT NOT NULL
+        );
+      ''');
+    } catch (_) {}
+  }
+
   /// Loads traveller/exemption context for [date].
   Future<WorshipDayContext> dayContext(DateTime date) async {
     return _loadDayContext(await DatabaseHelper.instance.database, date);
@@ -770,6 +852,7 @@ class WorshipEngine {
 
   Future<WorshipDayContext> _loadDayContext(DatabaseExecutor db, DateTime date) async {
     try {
+      await _ensureDayContextTable(db);
       final rows = await db.query(
         'worship_day_context',
         where: 'date = ?',
@@ -783,13 +866,18 @@ class WorshipEngine {
 
   /// Persists traveller/exemption context for a day.
   Future<void> setDayContext(WorshipDayContext ctx) async {
-    final db = await DatabaseHelper.instance.database;
-    await db.insert(
-      'worship_day_context',
-      ctx.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-    invalidate(date: ctx.date);
+    try {
+      final db = await DatabaseHelper.instance.database;
+      await _ensureDayContextTable(db);
+      await db.insert(
+        'worship_day_context',
+        ctx.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      invalidate(date: ctx.date);
+    } catch (e, st) {
+      RitmoLog.error('WorshipEngine', 'Error setting day context: $e', e, st);
+    }
   }
 
   // ── activeSeasons ─────────────────────────────────────────────────────────
@@ -965,7 +1053,8 @@ class WorshipEngine {
     final sol = _solar(jd);
     final decl = sol.$1;
     final eot = sol.$2;
-    final transit = 12.0 - eot / 60.0 - lon / 15.0;
+    final tzOffsetHours = date.timeZoneOffset.inMinutes / 60.0;
+    final transit = 12.0 - eot / 60.0 - lon / 15.0 + tzOffsetHours;
 
     double? angTime(double angle, bool morning) {
       final cosH = (_sind(-angle) - _sind(decl) * _sind(lat)) /
@@ -988,7 +1077,9 @@ class WorshipEngine {
     final dhuhrH = transit;
     final asrH = asrTime(1);
     final sunsetH = angTime(0.833, false) ?? (transit + 1.0);
-    final maghribH = sunsetH;
+    final maghribH = (method == 'TEHRAN_GEOPHYSICS' || method == 'JAFARI')
+        ? (angTime(4.5, false) ?? (sunsetH + 0.3))
+        : sunsetH;
     final ishaH = angTime(ia, false) ?? (sunsetH + 1.0);
 
     // Next-day fajr for correct shari midnight (W-5)
@@ -996,16 +1087,16 @@ class WorshipEngine {
     final jd2 = _jd(nextDay);
     final sol2 = _solar(jd2);
     final decl2 = sol2.$1, eot2 = sol2.$2;
-    final transit2 = 12.0 - eot2 / 60.0 - lon / 15.0;
+    final transit2 = 12.0 - eot2 / 60.0 - lon / 15.0 + tzOffsetHours;
     final cosHNext = (_sind(-fa) - _sind(decl2) * _sind(lat)) /
         (_cosd(decl2) * _cosd(lat));
     final nextFajrH = cosHNext.abs() <= 1
         ? transit2 - math.acos(cosHNext) * _r2d / 15.0
         : transit2 - 1.5;
 
-    // Shari midnight = midpoint between maghrib and next-day fajr (W-5 fix)
-    final nightLen = (nextFajrH + 24.0) - maghribH;
-    final midH = maghribH + nightLen / 2.0;
+    // Shari midnight = midpoint between SUNSET (غروب آفتاب) and next-day FAJR (اذان صبح) (Tehran Geophysics & Shia Fiqh standard)
+    final nightLen = (nextFajrH + 24.0) - sunsetH;
+    final midH = sunsetH + nightLen / 2.0;
 
     final ihtMin = ihtiyat / 60.0;
     return PrayerTimes(

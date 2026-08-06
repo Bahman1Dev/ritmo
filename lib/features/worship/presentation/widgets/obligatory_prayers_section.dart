@@ -9,6 +9,7 @@ import 'package:ritmo/core/domain/agenda/agenda_action_handler.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/cycle_consent_bridge.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
+import 'package:ritmo/features/worship/logic/worship_engine.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:ritmo/features/worship/presentation/widgets/prayer_agenda_card.dart';
 
@@ -330,6 +331,7 @@ class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
       isDone: isDone,
       dateStr: todayStr,
     );
+    WorshipEngine.instance.invalidate();
     await _loadPracticesAndStatus();
     widget.onChanged();
 

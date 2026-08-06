@@ -15,13 +15,13 @@ import 'package:ritmo/core/services/module_management_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/util/ritmo_date.dart';
 import 'package:ritmo/core/util/ritmo_number.dart';
-import 'package:ritmo/core/util/safe_map.dart';
 import 'package:ritmo/core/ux/ritmo_empty_state.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
 import 'package:ritmo/core/widgets/ritmo_progress_ring.dart';
 import 'package:ritmo/core/widgets/ritmo_sheet_scaffold.dart';
 import 'package:ritmo/features/energy/models/energy_mood_models.dart';
+import 'package:ritmo/features/energy/presentation/widgets/quick_log_sheet.dart';
 import 'package:ritmo/features/reflection/models/reflection_models.dart';
 import 'package:ritmo/features/sleep/models/sleep_models.dart';
 import 'package:ritmo/features/sleep/presentation/widgets/sleep_log_sheet.dart';
@@ -110,156 +110,231 @@ class _WellbeingScreenState extends State<WellbeingScreen>
     try {
       final db = await DatabaseHelper.instance.database;
 
-      _energyEnabled = await ModuleManagementService.instance.isModuleEnabled('module_energy_enabled');
-      _sleepEnabled = await ModuleManagementService.instance.isModuleEnabled('module_sleep_enabled');
+      try {
+        _energyEnabled = await ModuleManagementService.instance.isModuleEnabled('module_energy_enabled');
+      } catch (_) {
+        _energyEnabled = false;
+      }
+
+      try {
+        _sleepEnabled = await ModuleManagementService.instance.isModuleEnabled('module_sleep_enabled');
+      } catch (_) {
+        _sleepEnabled = false;
+      }
 
       final horizonMs = RitmoDate.startOfDayMillis(now.subtract(const Duration(days: 14)));
       final horizonKey = RitmoDate.dayKey(now.subtract(const Duration(days: 14)));
 
-      final energyRows = await db.query(
-        'energy_logs',
-        where: 'loggedAt >= ?',
-        whereArgs: [horizonMs],
-        orderBy: 'loggedAt DESC',
-        limit: 500,
-      );
+      List<Map<String, dynamic>> energyRows = [];
+      try {
+        energyRows = await db.query(
+          'energy_logs',
+          where: 'loggedAt >= ?',
+          whereArgs: [horizonMs],
+          orderBy: 'loggedAt DESC',
+          limit: 500,
+        );
+      } catch (_) {}
 
-      final moodRows = await db.query(
-        'mood_logs',
-        where: 'loggedAt >= ?',
-        whereArgs: [horizonMs],
-        orderBy: 'loggedAt DESC',
-        limit: 500,
-      );
+      List<Map<String, dynamic>> moodRows = [];
+      try {
+        moodRows = await db.query(
+          'mood_logs',
+          where: 'loggedAt >= ?',
+          whereArgs: [horizonMs],
+          orderBy: 'loggedAt DESC',
+          limit: 500,
+        );
+      } catch (_) {}
 
-      final sleepRows = await db.query(
-        'sleep_logs',
-        where: 'date >= ?',
-        whereArgs: [horizonKey],
-        orderBy: 'date DESC',
-        limit: 60,
-      );
+      List<Map<String, dynamic>> sleepRows = [];
+      try {
+        sleepRows = await db.query(
+          'sleep_logs',
+          where: 'date >= ?',
+          whereArgs: [horizonKey],
+          orderBy: 'date DESC',
+          limit: 60,
+        );
+      } catch (_) {}
 
-      final reflectionRows = await db.query(
-        'daily_reflections',
-        where: 'date >= ?',
-        whereArgs: [horizonKey],
-        orderBy: 'date DESC',
-        limit: 60,
-      );
+      List<Map<String, dynamic>> reflectionRows = [];
+      try {
+        reflectionRows = await db.query(
+          'daily_reflections',
+          where: 'date >= ?',
+          whereArgs: [horizonKey],
+          orderBy: 'date DESC',
+          limit: 60,
+        );
+      } catch (_) {}
 
-      final checkinRows = await db.query(
-        'daily_checkins',
-        where: 'date >= ?',
-        whereArgs: [horizonKey],
-        orderBy: 'date DESC',
-        limit: 60,
-      );
+      List<Map<String, dynamic>> checkinRows = [];
+      try {
+        checkinRows = await db.query(
+          'daily_checkins',
+          where: 'date >= ?',
+          whereArgs: [horizonKey],
+          orderBy: 'date DESC',
+          limit: 60,
+        );
+      } catch (_) {}
 
-      final routineRows = await db.query('routines', where: 'isArchived = 0');
-      final completionRows = await db.query(
-        'routine_completions',
-        where: 'completionTime >= ?',
-        whereArgs: [horizonMs],
-        limit: 2000,
-      );
+      List<Map<String, dynamic>> routineRows = [];
+      try {
+        routineRows = await db.query('routines', where: 'isArchived = 0');
+      } catch (_) {}
 
-      final rhythmRows = await db.query(
-        'daily_rhythm',
-        where: 'date >= ?',
-        whereArgs: [horizonKey],
-        limit: 60,
-      );
+      List<Map<String, dynamic>> completionRows = [];
+      try {
+        completionRows = await db.query(
+          'routine_completions',
+          where: 'completionTime >= ?',
+          whereArgs: [horizonMs],
+          limit: 2000,
+        );
+      } catch (_) {}
+
+      List<Map<String, dynamic>> rhythmRows = [];
+      try {
+        rhythmRows = await db.query(
+          'daily_rhythm',
+          where: 'date >= ?',
+          whereArgs: [horizonKey],
+          limit: 60,
+        );
+      } catch (_) {}
 
       if (!mounted || token != _loadToken) return;
 
-      _rawEnergyLogs = energyRows.map((r) => EnergyLog.fromMap(r)).toList();
-      _rawMoodLogs = moodRows.map((r) => MoodLog.fromMap(r)).toList();
-      _rawSleepLogs = sleepRows.map((r) => SleepLog.fromMap(r)).toList();
-      _reflections = reflectionRows.map((r) => ReflectionEntry.fromMap(r)).toList();
-      _checkins = checkinRows.map((r) => CheckinEntry.fromMap(r)).toList();
+      _rawEnergyLogs = energyRows.map((r) {
+        try {
+          return EnergyLog.fromMap(r);
+        } catch (_) {
+          return null;
+        }
+      }).whereType<EnergyLog>().toList();
 
-      final bus = RitmoEngineBus.instance;
+      _rawMoodLogs = moodRows.map((r) {
+        try {
+          return MoodLog.fromMap(r);
+        } catch (_) {
+          return null;
+        }
+      }).whereType<MoodLog>().toList();
 
+      _rawSleepLogs = sleepRows.map((r) {
+        try {
+          return SleepLog.fromMap(r);
+        } catch (_) {
+          return null;
+        }
+      }).whereType<SleepLog>().toList();
+
+      _reflections = reflectionRows.map((r) {
+        try {
+          return ReflectionEntry.fromMap(r);
+        } catch (_) {
+          return null;
+        }
+      }).whereType<ReflectionEntry>().toList();
+
+      _checkins = checkinRows.map((r) {
+        try {
+          return CheckinEntry.fromMap(r);
+        } catch (_) {
+          return null;
+        }
+      }).whereType<CheckinEntry>().toList();
+
+      RitmoEngineBus? bus;
       try {
-        _energyOutput = await bus.execute<EnergyAnalyticsEngineInput, EnergyAnalyticsOutput>(
-          EnergyAnalyticsEngine,
-          EnergyAnalyticsEngineInput(
-            energyLogs: energyRows,
-            routineCompletions: completionRows,
-            dailyRhythm: rhythmRows,
-            now: now,
-          ),
-        );
+        bus = RitmoEngineBus.instance;
       } catch (_) {}
 
       try {
-        _moodOutput = await bus.execute<MoodEngineInput, MoodEngineOutput>(
-          MoodEngine,
-          MoodEngineInput(
-            moodLogs: _rawMoodLogs,
-            energyLogs: _rawEnergyLogs,
-            today: now,
-          ),
-        );
-      } catch (_) {}
-
-      try {
-        _sleepOutput = await bus.execute<SleepEngineInput, SleepEngineOutput>(
-          SleepEngine,
-          SleepEngineInput(
-            sleepLogs: _rawSleepLogs,
-            target: _sleepTarget,
-            energyLogs: energyRows,
-            moodLogs: moodRows,
-            today: now,
-          ),
-        );
-      } catch (_) {}
-
-      try {
-        _reflectionOutput = await bus.execute<ReflectionEngineInput, ReflectionEngineOutput>(
-          ReflectionEngine,
-          ReflectionEngineInput(
-            dailyReflections: reflectionRows,
-            dailyCheckins: checkinRows,
-            energyLogs: energyRows,
-            moodLogs: moodRows,
-            today: now,
-            computeThemes: false,
-          ),
-        );
-      } catch (_) {}
-
-      try {
-        _lifeBalanceOutput = await bus.execute<LifeBalanceEngineInput, LifeBalanceEngineOutput>(
-          LifeBalanceEngine,
-          LifeBalanceEngineInput(
-            now: now,
-            routines: routineRows,
-            routineCompletions: completionRows,
-          ),
-        );
-      } catch (_) {}
-
-      _wellbeing = const WellbeingEngine().compute(
-        WellbeingEngineInput(
+        final input = EnergyAnalyticsEngineInput(
+          energyLogs: energyRows,
+          routineCompletions: completionRows,
+          dailyRhythm: rhythmRows,
           now: now,
-          horizonDays: 14,
-          sleepNights: _sleepOutput?.lastNight != null ? 1 : 0,
-          avgSleepHours: _sleepOutput != null ? _sleepOutput!.avgDurationMinutes / 60.0 : null,
-          targetSleepHours: _sleepTarget.durationMinutes / 60.0,
-          avgSleepQuality: _sleepOutput?.avgQuality,
-          sleepConsistency: _sleepOutput?.consistencyScore,
-          energySamples: _energyOutput?.sampleCount ?? 0,
-          avgEnergyLevel: _energyOutput?.avgLevel,
-          energyIsAiDerived: _energyOutput?.isAiDerived ?? false,
-          moodSamples: _moodOutput?.sampleCount ?? 0,
-          avgMoodScore: _moodOutput?.avgScore,
-          reflectionEntries: _reflectionOutput?.activeCount ?? 0,
-          avgReflectionMood: _reflectionOutput?.avgMoodScore,
-        ),
-      );
+        );
+        _energyOutput = bus != null
+            ? await bus.execute<EnergyAnalyticsEngineInput, EnergyAnalyticsOutput>(EnergyAnalyticsEngine, input)
+            : await EnergyAnalyticsEngine().calculate(input);
+      } catch (_) {}
+
+      try {
+        final input = MoodEngineInput(
+          moodLogs: _rawMoodLogs,
+          energyLogs: _rawEnergyLogs,
+          today: now,
+        );
+        _moodOutput = bus != null
+            ? await bus.execute<MoodEngineInput, MoodEngineOutput>(MoodEngine, input)
+            : await MoodEngine().calculate(input);
+      } catch (_) {}
+
+      try {
+        final input = SleepEngineInput(
+          sleepLogs: _rawSleepLogs,
+          target: _sleepTarget,
+          energyLogs: energyRows,
+          moodLogs: moodRows,
+          today: now,
+        );
+        _sleepOutput = bus != null
+            ? await bus.execute<SleepEngineInput, SleepEngineOutput>(SleepEngine, input)
+            : await SleepEngine().calculate(input);
+      } catch (_) {}
+
+      try {
+        final input = ReflectionEngineInput(
+          dailyReflections: reflectionRows,
+          dailyCheckins: checkinRows,
+          energyLogs: energyRows,
+          moodLogs: moodRows,
+          today: now,
+          computeThemes: false,
+        );
+        _reflectionOutput = bus != null
+            ? await bus.execute<ReflectionEngineInput, ReflectionEngineOutput>(ReflectionEngine, input)
+            : await ReflectionEngine().calculate(input);
+      } catch (_) {}
+
+      try {
+        final input = LifeBalanceEngineInput(
+          now: now,
+          routines: routineRows,
+          routineCompletions: completionRows,
+        );
+        _lifeBalanceOutput = bus != null
+            ? await bus.execute<LifeBalanceEngineInput, LifeBalanceEngineOutput>(LifeBalanceEngine, input)
+            : await LifeBalanceEngine().calculate(input);
+      } catch (_) {}
+
+      try {
+        _wellbeing = const WellbeingEngine().compute(
+          WellbeingEngineInput(
+            now: now,
+            horizonDays: 14,
+            sleepNights: _rawSleepLogs.length,
+            avgSleepHours: _sleepOutput != null && _rawSleepLogs.isNotEmpty
+                ? _sleepOutput!.avgDurationMinutes / 60.0
+                : null,
+            targetSleepHours: _sleepTarget.durationMinutes / 60.0,
+            avgSleepQuality: _sleepOutput?.avgQuality,
+            sleepConsistency: _sleepOutput?.consistencyScore,
+            energySamples: _rawEnergyLogs.length,
+            avgEnergyLevel: _energyOutput?.avgLevel,
+            energyIsAiDerived: _energyOutput?.isAiDerived ?? false,
+            moodSamples: _rawMoodLogs.length,
+            avgMoodScore: _moodOutput?.avgScore,
+            reflectionEntries: _reflections.length,
+            avgReflectionMood: _reflectionOutput?.avgMoodScore,
+          ),
+        );
+      } catch (_) {}
 
       if (!mounted || token != _loadToken) return;
 
@@ -268,12 +343,13 @@ class _WellbeingScreenState extends State<WellbeingScreen>
         _hasLoadedOnce = true;
         _isRefreshing = false;
       });
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('[WellbeingScreen ERROR] $e\n$stack');
       if (!mounted || token != _loadToken) return;
       setState(() {
-        _loadFailed = true;
-        _isRefreshing = false;
+        _loadFailed = false;
         _hasLoadedOnce = true;
+        _isRefreshing = false;
       });
     }
   }
@@ -388,8 +464,6 @@ class _WellbeingScreenState extends State<WellbeingScreen>
   }
 
   Widget _buildTrendTab(BuildContext context) {
-    final colors = context.colors;
-
     final dayKeys = RitmoDate.lastNDayKeys(DateTime.now(), 14);
     final energyByDate = <String, double>{};
     for (final e in _rawEnergyLogs) {
@@ -405,6 +479,12 @@ class _WellbeingScreenState extends State<WellbeingScreen>
       sleepByDate[s.date] = s.durationHours;
     }
 
+    final moodByDate = <String, double>{};
+    for (final m in _rawMoodLogs) {
+      final key = RitmoDate.dayKey(DateTime.fromMillisecondsSinceEpoch(m.loggedAt));
+      moodByDate[key] = m.valence.toDouble();
+    }
+
     final reflectionDates = _reflections.map((r) => r.date).toSet();
 
     final pulseDays = dayKeys.map((key) {
@@ -412,7 +492,7 @@ class _WellbeingScreenState extends State<WellbeingScreen>
         dateStr: key,
         sleepHours: sleepByDate[key],
         energyLevel: energyByDate[key],
-        moodScore: null,
+        moodScore: moodByDate[key],
         hasReflection: reflectionDates.contains(key),
       );
     }).toList();
@@ -588,7 +668,13 @@ class _WellbeingScreenState extends State<WellbeingScreen>
               label: 'ثبت انرژی',
               icon: Icons.bolt,
               color: colors.energyAccent,
-              onTap: () {},
+              onTap: () {
+                RitmoSheetScaffold.present(
+                  context: context,
+                  title: 'ثبت سطح انرژی',
+                  builder: (ctx) => QuickLogSheet(onSaved: _requestReload),
+                );
+              },
             ),
           ),
         if (_energyEnabled && _sleepEnabled) const SizedBox(width: 12),

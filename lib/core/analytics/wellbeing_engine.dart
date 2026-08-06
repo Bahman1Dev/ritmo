@@ -164,7 +164,7 @@ class WellbeingEngine {
   }) {
     final terms = <List<double>>[
       [0.5, sleepDurationScore(hours, target)],
-      if (quality != null) [0.3, quality.clamp(0.0, 100.0)],
+      if (quality != null) [0.3, _map1to5(quality)],
       if (consistency != null) [0.2, consistency.clamp(0.0, 100.0)],
     ];
     final w = terms.fold<double>(0, (a, t) => a + t[0]);

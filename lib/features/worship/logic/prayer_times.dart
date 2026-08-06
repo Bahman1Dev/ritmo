@@ -1,6 +1,4 @@
-// lib/features/worship/logic/prayer_times.dart
-// PrayerTimes model with full DateTime fields (W-5 fix).
-// Separated from WorshipEngine to avoid circular imports with PrayerTimeline.
+import 'package:ritmo/features/worship/models/worship_models.dart';
 
 /// Prayer times with full DateTime objects — not HH:mm strings (W-5 fix).
 class PrayerTimes {
@@ -53,4 +51,19 @@ class PrayerTimes {
 
   static String _fmt(DateTime dt) =>
       '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+  PrayerTime toPrayerTime() => PrayerTime(
+        date: date,
+        cityId: cityId,
+        fajr: fajrText,
+        sunrise: sunriseText,
+        dhuhr: dhuhrText,
+        asr: asrText,
+        maghrib: maghribText,
+        sunset: sunsetText,
+        isha: ishaText,
+        midnightShari: midnightShariText,
+        calculationMethod: calculationMethod,
+        ihtiyatMinutes: ihtiyatMinutes,
+      );
 }

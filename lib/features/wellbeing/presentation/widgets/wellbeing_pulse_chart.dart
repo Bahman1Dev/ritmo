@@ -97,8 +97,10 @@ class WellbeingPulseChart extends StatelessWidget {
     // Sleep bar height ratio (max 12h = 1.0)
     final sleepRatio = d.sleepHours == null ? 0.0 : (d.sleepHours! / 12.0).clamp(0.0, 1.0);
 
-    // Energy position ratio (1..3 = 0..1)
-    final energyRatio = d.energyLevel == null ? null : ((d.energyLevel! - 1.0) / 2.0).clamp(0.0, 1.0);
+    // Energy / Mood position ratio
+    final energyRatio = d.energyLevel != null
+        ? ((d.energyLevel! - 1.0) / 2.0).clamp(0.0, 1.0)
+        : (d.moodScore != null ? ((d.moodScore! - 1.0) / 4.0).clamp(0.0, 1.0) : null);
 
     return GestureDetector(
       onTap: () => _showDayDetailDialog(context, d),

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
+import 'package:ritmo/features/worship/presentation/widgets/fullscreen_tasbih_sheet.dart';
 
 class QuranDhikrSection extends StatefulWidget {
 
@@ -313,6 +314,22 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
     });
   }
 
+  void _openFullscreenTasbih({String? title, int target = 100, bool isFatima = false}) {
+    Navigator.push(
+      context,
+      CupertinoPageRoute(
+        builder: (_) => FullscreenTasbihSheet(
+          initialDhikrTitle: title ?? 'تسبیحات حضرت زهرا (س)',
+          targetCount: target,
+          isFatimaTasbih: isFatima,
+        ),
+      ),
+    ).then((_) {
+      _loadData();
+      widget.onChanged();
+    });
+  }
+
   // --- OTHER DHIKRS ACTIONS ---
   Future<void> _incrementDhikr(WorshipPractice practice, int amount) async {
     unawaited(HapticFeedback.lightImpact());
@@ -524,11 +541,23 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
                   fontFamily: 'Vazirmatn',
                 ),
               ),
-              IconButton(
-                icon: Icon(CupertinoIcons.settings, color: colors.textSecondary, size: 20),
-                onPressed: _showQuranSettingsSheet,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(CupertinoIcons.fullscreen, color: Color(0xffD4A843), size: 20),
+                    tooltip: 'تسبیح تمام‌صفحه',
+                    onPressed: () => _openFullscreenTasbih(isFatima: true),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    icon: Icon(CupertinoIcons.settings, color: colors.textSecondary, size: 20),
+                    onPressed: _showQuranSettingsSheet,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
               ),
             ],
           ),

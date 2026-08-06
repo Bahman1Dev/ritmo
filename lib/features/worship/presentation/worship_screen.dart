@@ -7,12 +7,15 @@ import 'package:ritmo/core/services/prayer_time_provider.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/ux/ritmo_skeleton.dart';
 import 'package:ritmo/core/widgets/ritmo_module_app_bar.dart';
+import 'package:ritmo/features/worship/logic/worship_engine.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
-import 'package:ritmo/features/worship/presentation/widgets/ai_worship_assistant_sheet.dart';
+import 'package:ritmo/features/worship/presentation/widgets/lunar_month_grid.dart';
 import 'package:ritmo/features/worship/presentation/widgets/mustahab_section.dart';
+import 'package:ritmo/features/worship/presentation/widgets/night_prayer_card.dart';
 import 'package:ritmo/features/worship/presentation/widgets/obligatory_prayers_section.dart';
+import 'package:ritmo/features/worship/presentation/widgets/prayer_arc_hero.dart';
 import 'package:ritmo/features/worship/presentation/widgets/prayer_city_picker.dart';
-import 'package:ritmo/features/worship/presentation/widgets/prayer_times_hero.dart';
+import 'package:ritmo/features/worship/presentation/widgets/qibla_compass_sheet.dart';
 import 'package:ritmo/features/worship/presentation/widgets/quran_dhikr_section.dart';
 import 'package:ritmo/features/worship/presentation/widgets/worship_debts_section.dart';
 import 'package:ritmo/features/worship/presentation/widgets/worship_seasons_section.dart';
@@ -26,8 +29,7 @@ class WorshipScreen extends StatefulWidget {
 }
 
 class _WorshipScreenState extends State<WorshipScreen> {
-  PrayerTime? _prayerTime;
-  HijriDate? _hijriDate;
+  WorshipDay? _worshipDay;
   bool _isLoading = true;
 
   @override
@@ -38,42 +40,45 @@ class _WorshipScreenState extends State<WorshipScreen> {
 
   Future<void> _loadData() async {
     try {
-      final db = await DatabaseHelper.instance.database;
-
-      // 1. Load prayer times cache
-      final settings = await db.query('app_settings', where: 'key = ?', whereArgs: ['prayer_city_id'], limit: 1);
-      final cityId = settings.isNotEmpty ? settings.first['value']! as String : 'TEHRAN_TEHRAN';
       final now = DateTime.now();
-      final dateStr = now.toIso8601String().substring(0, 10);
-
-      final cacheResults = await db.query(
-        'prayer_times_cache',
-        where: 'date = ? AND cityId = ?',
-        whereArgs: [dateStr, cityId],
-        limit: 1,
-      );
-
-      PrayerTime? pTime;
-      if (cacheResults.isNotEmpty) {
-        pTime = PrayerTime.fromMap(cacheResults.first);
-      }
-
-      // 2. Load Hijri Date
-      final hDate = await HijriDate.getOrFetch(now, db);
+      final day = await WorshipEngine.instance.loadDay(now);
 
       if (mounted) {
         setState(() {
-          _prayerTime = pTime;
-          _hijriDate = hDate;
+          _worshipDay = day;
           _isLoading = false;
         });
       }
     } catch (e) {
       debugPrint('Error loading worship screen data: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+      // Retry once after short delay if first load fails
+      await Future.delayed(const Duration(milliseconds: 500));
+      try {
+        final day = await WorshipEngine.instance.loadDay(DateTime.now());
+        if (mounted) {
+          setState(() {
+            _worshipDay = day;
+            _isLoading = false;
+          });
+        }
+      } catch (e2) {
+        debugPrint('Retry error loading worship screen data: $e2');
+        if (mounted) {
+          final now = DateTime.now();
+          final fallbackTimes = await WorshipEngine.instance.prayerTimes(now);
+          setState(() {
+            _worshipDay = WorshipDay(
+              date: now,
+              hijri: WorshipEngine.instance.hijriFor(now),
+              times: fallbackTimes,
+              practices: [],
+              seasons: [],
+              context: WorshipDayContext(date: now),
+              occasions: [],
+            );
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -110,13 +115,15 @@ class _WorshipScreenState extends State<WorshipScreen> {
     );
   }
 
-  void _openAiAssistant() {
+  void _openQiblaCompass() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-        return const AiWorshipAssistantSheet();
+        return QiblaCompassSheet(
+          cityName: _worshipDay?.times.cityId ?? 'تهران',
+        );
       },
     );
   }
@@ -356,9 +363,9 @@ class _WorshipScreenState extends State<WorshipScreen> {
             ),
             actions: [
               IconButton(
-                icon: const Icon(CupertinoIcons.sparkles, color: Color(0xffC4953B)),
-                tooltip: 'دستیار هوشمند',
-                onPressed: _openAiAssistant,
+                icon: const Icon(CupertinoIcons.compass, color: Color(0xffC4953B)),
+                tooltip: 'قبله‌نما',
+                onPressed: _openQiblaCompass,
               ),
               IconButton(
                 icon: Icon(CupertinoIcons.settings, color: isDarkMode ? Colors.white70 : Colors.black87),
@@ -374,49 +381,87 @@ class _WorshipScreenState extends State<WorshipScreen> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               children: [
-                // 1. PRAYER TIMES HERO CARD
-                PrayerTimesHero(
-                  onCityTap: () => _openCityPicker(0),
-                  hijriDate: _hijriDate,
-                ),
-                const SizedBox(height: 16),
+                if (_isLoading && _worshipDay == null) ...[
+                  const RitmoSkeletonCard(height: 320),
+                  const SizedBox(height: 16),
+                ] else if (_worshipDay != null) ...[
+                  // 1. DAY ARC HERO ("قوس روز") — Section 4 UI Innovation #1
+                  PrayerArcHero(
+                    day: _worshipDay!,
+                    onPracticeToggle: (practiceId, isDone) async {
+                      if (isDone) {
+                        await WorshipEngine.instance.logDone(practiceId: practiceId, date: DateTime.now());
+                      } else {
+                        await WorshipEngine.instance.logSkip(practiceId: practiceId, date: DateTime.now());
+                      }
+                      _onDataChanged();
+                    },
+                    onTravellerToggle: (isTraveller) async {
+                      final ctx = WorshipDayContext(
+                        date: _worshipDay?.context.date ?? DateTime.now(),
+                        isTraveller: isTraveller,
+                        prayerExempt: false,
+                        fastingExempt: isTraveller,
+                        reason: isTraveller ? 'TRAVEL' : null,
+                      );
+                      await WorshipEngine.instance.setDayContext(ctx);
+                      _onDataChanged();
+                    },
+                    onOpenCityPicker: () => _openCityPicker(0),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 2. NIGHT PRAYER RITUAL CARD — Section 5 Feature #3 (after Shari Midnight)
+                  NightPrayerCard(
+                    day: _worshipDay!,
+                    onComplete: _onDataChanged,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 3. LUNAR MONTH GRID — Section 4 UI Innovation #4
+                  LunarMonthGrid(
+                    currentHijri: _worshipDay!.hijri,
+                    isRamadan: _worshipDay!.seasons.any((s) => s.id == 'ws_ramadan'),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 if (_isLoading) ...[
                   const RitmoSkeletonList(itemCount: 4, itemHeight: 90),
                 ] else ...[
-                  // 2. OCCASIONS OF THE DAY (Premium borderless design)
-                  _buildOccasionsSection(shamsiNow, _hijriDate, context),
+                  // 4. OCCASIONS OF THE DAY (Premium borderless design)
+                  _buildOccasionsSection(shamsiNow, _worshipDay?.hijri, context),
                   const SizedBox(height: 16),
 
-                  // 3. OBLIGATORY PRAYERS
+                  // 5. OBLIGATORY PRAYERS
                   ObligatoryPrayersSection(
-                    prayerTime: _prayerTime,
                     onChanged: _onDataChanged,
+                    prayerTime: _worshipDay?.times.toPrayerTime(),
                   ),
                   const SizedBox(height: 24),
 
-                  // 4. MUSTAHAB
+                  // 6. MUSTAHAB
                   MustahabSection(
                     onChanged: _onDataChanged,
                   ),
                   const SizedBox(height: 24),
 
-                  // 5. QURAN & DHIKR
+                  // 7. QURAN & DHIKR
                   QuranDhikrSection(
                     onChanged: _onDataChanged,
                   ),
                   const SizedBox(height: 24),
 
-                  // 6. DEBTS
+                  // 8. DEBTS ("جبران")
                   WorshipDebtsSection(
                     onChanged: _onDataChanged,
                   ),
                   const SizedBox(height: 24),
 
-                  // 7. SEASONS
+                  // 9. SEASONS
                   WorshipSeasonsSection(
                     onChanged: _onDataChanged,
-                    hijriDate: _hijriDate,
+                    hijriDate: _worshipDay?.hijri,
                   ),
                   const SizedBox(height: 24),
                 ],

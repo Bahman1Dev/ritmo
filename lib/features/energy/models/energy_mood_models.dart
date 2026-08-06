@@ -127,11 +127,11 @@ class MoodLog {
 
   factory MoodLog.fromMap(Map<String, dynamic> map) {
     return MoodLog(
-      id: map['id'] as String,
-      mood: Mood.fromString(map['mood'] as String? ?? 'NEUTRAL'),
-      valence: map['valence'] as int? ?? 3,
-      note: map['note'] as String?,
-      loggedAt: map['loggedAt'] as int,
+      id: map['id']?.toString() ?? '',
+      mood: Mood.fromString(map['mood']?.toString() ?? 'NEUTRAL'),
+      valence: (map['valence'] as num?)?.toInt() ?? 3,
+      note: map['note']?.toString(),
+      loggedAt: (map['loggedAt'] as num?)?.toInt() ?? 0,
     );
   }
   final String id;
@@ -163,11 +163,11 @@ class EnergyLog {
 
   factory EnergyLog.fromMap(Map<String, dynamic> map) {
     return EnergyLog(
-      id: map['id'] as String,
-      energyLevel: EnergyLevel.fromString(map['energyLevel'] as String? ?? 'MEDIUM'),
-      source: map['source'] as String? ?? 'MANUAL',
-      note: map['note'] as String?,
-      loggedAt: map['loggedAt'] as int,
+      id: map['id']?.toString() ?? '',
+      energyLevel: EnergyLevel.fromString(map['energyLevel']?.toString() ?? 'MEDIUM'),
+      source: map['source']?.toString() ?? 'MANUAL',
+      note: map['note']?.toString(),
+      loggedAt: (map['loggedAt'] as num?)?.toInt() ?? 0,
     );
   }
   final String id;

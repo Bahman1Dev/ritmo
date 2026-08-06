@@ -6,6 +6,7 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/services/prayer_time_provider.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/ux/ritmo_snackbar.dart';
+import 'package:ritmo/features/worship/logic/worship_engine.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -144,6 +145,18 @@ class _PrayerCityPickerState extends State<PrayerCityPicker> {
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
+      await db.insert(
+        'app_settings',
+        {
+          'key': 'home_city_id',
+          'value': cityId,
+          'updatedAt': nowMs,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      // Invalidate engine cache so new city persists instantly across restarts
+      WorshipEngine.instance.invalidate();
 
       // 3. Re-cache prayer times
       await PrayerTimeProvider.instance.cachePrayerTimes(
