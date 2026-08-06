@@ -1,1583 +1,525 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/agenda/agenda_action_handler.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
-import 'package:ritmo/core/utils/cycle_consent_bridge.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/worship/logic/worship_engine.dart';
-import 'package:ritmo/features/worship/models/worship_models.dart';
+import 'package:ritmo/features/worship/models/worship_models.dart' hide toPersianDigits;
 import 'package:ritmo/features/worship/presentation/widgets/prayer_agenda_card.dart';
 
 class ObligatoryPrayersSection extends StatefulWidget {
-
   const ObligatoryPrayersSection({
     super.key,
     required this.onChanged,
     this.prayerTime,
+    this.date,
   });
+
   final VoidCallback onChanged;
   final PrayerTime? prayerTime;
+  final DateTime? date;
 
   @override
   State<ObligatoryPrayersSection> createState() => _ObligatoryPrayersSectionState();
 }
 
 class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
-  bool _isMenstruating = false;
   bool _isLoading = true;
-  List<WorshipPractice> _practices = [];
-  String _todayStr = '';
+  String? _errorMessage;
+  WorshipDay? _worshipDay;
+  Timer? _tickerTimer;
+  final Map<String, bool> _optimisticState = {};
 
   @override
   void initState() {
     super.initState();
-    _todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    _loadPracticesAndStatus();
+    _loadWorshipData();
+    _scheduleNextTick();
   }
 
   @override
   void didUpdateWidget(ObligatoryPrayersSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _loadPracticesAndStatus();
+    if (oldWidget.date != widget.date || oldWidget.prayerTime != widget.prayerTime) {
+      _loadWorshipData();
+    }
   }
 
-  Future<void> _loadPracticesAndStatus() async {
+  @override
+  void dispose() {
+    _tickerTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleNextTick() {
+    _tickerTimer?.cancel();
+    final now = DateTime.now();
+    final nextMinute = DateTime(now.year, now.month, now.day, now.hour, now.minute + 1);
+    final delay = nextMinute.difference(now);
+    _tickerTimer = Timer(delay, () {
+      if (mounted) {
+        setState(() {});
+        _scheduleNextTick();
+      }
+    });
+  }
+
+  Future<void> _loadWorshipData() async {
     try {
-      final db = await DatabaseHelper.instance.database;
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
-
-      // 1. Check menstruation and consent
-      final menstruating = await CycleConsentBridge.isWorshipSuspended();
-
-      // Find ws_ramadan season and check if active
-      var isRamadan = false;
-      final seasons = await db.query(
-        'worship_seasons',
-        where: "id = 'ws_ramadan'",
-        limit: 1,
-      );
-      if (seasons.isNotEmpty) {
-        final rStartStr = seasons.first['startDate']! as String;
-        final rEndStr = seasons.first['endDate']! as String;
-        final isActive = (seasons.first['isActive'] as int? ?? 1) == 1;
-        if (isActive) {
-          try {
-            final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-            if (todayStr.compareTo(rStartStr) >= 0 && todayStr.compareTo(rEndStr) <= 0) {
-              isRamadan = true;
-            }
-          } catch (_) {}
-        }
+      if (mounted && _worshipDay == null) {
+        setState(() {
+          _isLoading = true;
+          _errorMessage = null;
+        });
       }
 
-      // Upsert wp_fasting_ramadan if needed
-      final ramadanPQuery = await db.query(
-        'worship_practices',
-        where: "id = 'wp_fasting_ramadan'",
-        limit: 1,
-      );
-      if (isRamadan) {
-        if (ramadanPQuery.isEmpty) {
-          await db.insert('worship_practices', {
-            'id': 'wp_fasting_ramadan',
-            'practiceType': 'FASTING',
-            'subType': 'RAMADAN_FAST',
-            'title': 'روزه ماه مبارک رمضان',
-            'dailyTarget': 1,
-            'dailyDone': 0,
-            'isActive': 1,
-            'dailyDoneDate': _todayStr,
-            'createdAt': nowMs,
-            'updatedAt': nowMs,
-          });
-        } else {
-          final p = WorshipPractice.fromMap(ramadanPQuery.first);
-          if (!p.isActive) {
-            await db.update(
-              'worship_practices',
-              {'isActive': 1, 'updatedAt': nowMs},
-              where: "id = 'wp_fasting_ramadan'",
-            );
-          }
-        }
-      } else {
-        if (ramadanPQuery.isNotEmpty) {
-          final p = WorshipPractice.fromMap(ramadanPQuery.first);
-          if (p.isActive) {
-            await db.update(
-              'worship_practices',
-              {'isActive': 0, 'updatedAt': nowMs},
-              where: "id = 'wp_fasting_ramadan'",
-            );
-          }
-        }
-      }
-
-      // 2. Ensure default obligatory prayers exist and are active
-      final defaultPrayers = [
-        {'id': 'wp_fajr', 'subType': 'FAJR', 'title': 'نماز صبح', 'sortOrder': 1},
-        {'id': 'wp_dhuhr', 'subType': 'DHUHR', 'title': 'نماز ظهر و عصر', 'sortOrder': 2},
-        {'id': 'wp_maghrib', 'subType': 'MAGHRIB', 'title': 'نماز مغرب و عشا', 'sortOrder': 4},
-      ];
-
-      for (final dp in defaultPrayers) {
-        final existing = await db.query(
-          'worship_practices',
-          where: 'id = ?',
-          whereArgs: [dp['id']],
-          limit: 1,
-        );
-        if (existing.isEmpty) {
-          await db.insert('worship_practices', {
-            'id': dp['id'],
-            'practiceType': 'PRAYER',
-            'subType': dp['subType'],
-            'title': dp['title'],
-            'dailyTarget': 1,
-            'dailyDone': 0,
-            'isActive': 1,
-            'dailyDoneDate': _todayStr,
-            'createdAt': nowMs,
-            'updatedAt': nowMs,
-          });
-        } else {
-          final p = WorshipPractice.fromMap(existing.first);
-          if (!p.isActive) {
-            await db.update(
-              'worship_practices',
-              {'isActive': 1, 'updatedAt': nowMs},
-              where: 'id = ?',
-              whereArgs: [dp['id']],
-            );
-          }
-        }
-      }
-
-      // Fetch prayer and fasting practices
-      final results = await db.query(
-        'worship_practices',
-        where: "(practiceType = 'PRAYER' OR practiceType = 'FASTING') AND isActive = 1",
-        orderBy: 'sortOrder ASC',
-      );
-
-      final list = results.map(WorshipPractice.fromMap).toList();
-
-      // Daily reset is handled central in EndOfDaySweep
+      final targetDate = widget.date ?? DateTime.now();
+      final dayData = await WorshipEngine.instance.loadDay(targetDate);
 
       if (mounted) {
         setState(() {
-          _isMenstruating = menstruating;
-          _practices = list;
+          _worshipDay = dayData;
           _isLoading = false;
         });
       }
-    } catch (e) {
-      debugPrint('Error loading obligatory prayers: $e');
+    } catch (e, st) {
+      debugPrint('Error loading worship day data: $e\n$st');
       if (mounted) {
         setState(() {
+          _errorMessage = 'خطا در دریافت اطلاعات نمازها';
           _isLoading = false;
         });
       }
     }
   }
 
-  WorshipPractice? _getPracticeBySubType(String subType) {
+  WorshipPracticeState? _findPracticeState(String identifier) {
+    if (_worshipDay == null) return null;
     try {
-      return _practices.firstWhere((p) => p.subType == subType);
+      final key = identifier.toUpperCase();
+      return _worshipDay!.practices.firstWhere(
+        (ps) => ps.practice.id.toUpperCase() == key ||
+                (ps.practice.subType ?? '').toUpperCase() == key,
+      );
     } catch (_) {
       return null;
     }
   }
 
-  DateTime _parseTime(String timeStr, DateTime baseDate) {
-    final parts = timeStr.split(':');
-    final hour = int.parse(parts[0]);
-    final minute = int.parse(parts[1]);
-    return DateTime(baseDate.year, baseDate.month, baseDate.day, hour, minute);
+  String _formatTime(DateTime? dt) {
+    if (dt == null) return '';
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return toPersianDigits('$h:$m');
   }
 
-  Future<Map<String, dynamic>> _captureSnapshot(List<String> practiceIds, {String? debtType, String? debtTitle}) async {
-    final db = await DatabaseHelper.instance.database;
-    
-    // 1. Fetch practice states
-    final practices = <Map<String, dynamic>>[];
-    for (final id in practiceIds) {
-      final rows = await db.query('worship_practices', where: 'id = ?', whereArgs: [id]);
-      if (rows.isNotEmpty) {
-        practices.add(rows.first);
-      }
-    }
-    
-    // 2. Fetch debt states
-    final debts = <Map<String, dynamic>>[];
-    if (debtType != null && debtTitle != null) {
-      final rows = await db.query(
-        'worship_debts',
-        where: 'debtType = ? AND title = ? AND isArchived = 0',
-        whereArgs: [debtType, debtTitle],
-      );
-      if (rows.isNotEmpty) {
-        debts.add(rows.first);
-      }
-    }
-    
-    return {
-      'practices': practices,
-      'debts': debts,
-      'hadDebtBefore': debts.isNotEmpty,
-    };
-  }
+  Future<void> _handleToggleGroup({
+    required String groupKey,
+    required bool isDone,
+  }) async {
+    unawaited(HapticFeedback.mediumImpact());
+    final targetDate = widget.date ?? DateTime.now();
+    final dateStr = targetDate.toIso8601String().substring(0, 10);
 
-  Future<void> _restoreSnapshot(Map<String, dynamic> snapshot, List<String> practiceIds, {String? debtType, String? debtTitle}) async {
-    final db = await DatabaseHelper.instance.database;
-    await db.transaction((txn) async {
-      // 1. Restore practices
-      final practices = List<Map<String, dynamic>>.from(snapshot['practices']);
-      for (final p in practices) {
-        await txn.update(
-          'worship_practices',
-          {
-            'dailyDone': p['dailyDone'],
-            'dailyDoneDate': p['dailyDoneDate'],
-            'updatedAt': DateTime.now().millisecondsSinceEpoch,
-          },
-          where: 'id = ?',
-          whereArgs: [p['id']],
-        );
-      }
-      
-      // 2. Restore debts
-      final bool hadDebtBefore = snapshot['hadDebtBefore'];
-      final debts = List<Map<String, dynamic>>.from(snapshot['debts']);
-      if (hadDebtBefore && debts.isNotEmpty) {
-        // Restore previous counts
-        final oldDebt = debts.first;
-        await txn.update(
-          'worship_debts',
-          {
-            'totalCount': oldDebt['totalCount'],
-            'remainingCount': oldDebt['remainingCount'],
-            'updatedAt': DateTime.now().millisecondsSinceEpoch,
-          },
-          where: 'id = ?',
-          whereArgs: [oldDebt['id']],
-        );
-      } else if (!hadDebtBefore && debtType != null && debtTitle != null) {
-        // A new debt was inserted, so we should delete it!
-        await txn.delete(
-          'worship_debts',
-          where: 'debtType = ? AND title = ? AND isArchived = 0',
-          whereArgs: [debtType, debtTitle],
-        );
-      }
+    setState(() {
+      _optimisticState[groupKey] = isDone;
     });
-    
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    AgendaActionHandler.instance.notifyWorshipUpdated(todayStr);
-    await _loadPracticesAndStatus();
-    widget.onChanged();
+
+    try {
+      await AgendaActionHandler.instance.togglePrayer(
+        group: groupKey,
+        isDone: isDone,
+        dateStr: dateStr,
+      );
+
+      WorshipEngine.instance.invalidate(date: targetDate);
+      await _loadWorshipData();
+      if (mounted) {
+        setState(() {
+          _optimisticState.remove(groupKey);
+        });
+      }
+      widget.onChanged();
+
+      if (mounted) {
+        RitmoToast.show(
+          context,
+          isDone ? 'نماز با موفقیت ثبت شد.' : 'ثبت نماز لغو شد.',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error toggling prayer group: $e');
+      if (mounted) {
+        setState(() {
+          _optimisticState.remove(groupKey);
+        });
+        RitmoToast.show(context, 'خطا در ثبت وضعیت نماز.');
+      }
+    }
   }
 
-  void _showUndoSnackBar({
-    required String message,
-    required Map<String, dynamic> snapshot,
+  Future<void> _handleSkipGroup({
+    required String groupTitle,
     required List<String> practiceIds,
-    String? debtType,
-    String? debtTitle,
-  }) {
-    RitmoToast.show(
-      context,
-      message,
-      onUndo: () async {
-        await _restoreSnapshot(snapshot, practiceIds, debtType: debtType, debtTitle: debtTitle);
-        if (mounted) {
-          RitmoToast.show(
-            context,
-            'عملیات با موفقیت بازگردانی شد.',
-          );
-        }
-      },
-    );
-  }
-
-  Future<void> _toggleGroupDone(String group, bool isDone) async {
+    required bool addToQada,
+  }) async {
     unawaited(HapticFeedback.mediumImpact());
-    
-    final practiceIds = <String>[];
-    if (group == 'FAJR') {
-      practiceIds.add('wp_fajr');
-    } else if (group == 'DHUHR_ASR') {
-      practiceIds.add('wp_dhuhr');
-      final asr = _getPracticeBySubType('ASR');
-      if (asr != null) practiceIds.add(asr.id);
-    } else if (group == 'MAGHRIB_ISHA') {
-      practiceIds.add('wp_maghrib');
-      final isha = _getPracticeBySubType('ISHA');
-      if (isha != null) practiceIds.add(isha.id);
-    } else if (group == 'RAMADAN_FAST') {
-      practiceIds.add('wp_fasting_ramadan');
+    final targetDate = widget.date ?? DateTime.now();
+
+    try {
+      for (final id in practiceIds) {
+        await WorshipEngine.instance.logSkip(
+          practiceId: id,
+          date: targetDate,
+          addToQada: addToQada,
+        );
+      }
+
+      WorshipEngine.instance.invalidate(date: targetDate);
+      await _loadWorshipData();
+      widget.onChanged();
+
+      if (mounted) {
+        RitmoToast.show(
+          context,
+          addToQada ? 'نماز به عنوان قضا ثبت شد.' : 'نماز رد شد.',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error skipping prayer group: $e');
+      if (mounted) {
+        RitmoToast.show(context, 'خطا در ثبت قضا.');
+      }
     }
-
-    final snapshot = await _captureSnapshot(practiceIds);
-
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    await AgendaActionHandler.instance.togglePrayer(
-      group: group,
-      isDone: isDone,
-      dateStr: todayStr,
-    );
-    WorshipEngine.instance.invalidate();
-    await _loadPracticesAndStatus();
-    widget.onChanged();
-
-    _showUndoSnackBar(
-      message: isDone ? 'نماز با موفقیت ثبت شد.' : 'ثبت نماز لغو شد.',
-      snapshot: snapshot,
-      practiceIds: practiceIds,
-    );
   }
 
-  Future<void> _skipGroupWithQadaDirect(
-      String groupTitle, List<WorshipPractice> groupPractices, bool addToQada) async {
-    unawaited(HapticFeedback.mediumImpact());
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    final practicesList = groupPractices.map((p) => {
-      'id': p.id,
-      'subType': p.subType,
-      'title': p.title,
-      'practiceType': p.practiceType,
-    }).toList();
-
-    final practiceIds = groupPractices.map((p) => p.id).toList();
-    String? debtType;
-    String? debtTitle;
-    if (addToQada && groupPractices.isNotEmpty) {
-      final p = groupPractices.first;
-      debtType = p.practiceType == 'FASTING' ? 'FAST' : 'PRAYER';
-      debtTitle = p.practiceType == 'FASTING' ? 'روزه قضا' : p.title;
-    }
-    final snapshot = await _captureSnapshot(practiceIds, debtType: debtType, debtTitle: debtTitle);
-
-    await AgendaActionHandler.instance.skipPrayer(
-      practices: practicesList,
-      addToQada: addToQada,
-      dateStr: todayStr,
-    );
-
-    await _loadPracticesAndStatus();
-    widget.onChanged();
-
-    _showUndoSnackBar(
-      message: addToQada ? 'نماز به عنوان قضا ثبت شد.' : 'نماز رد شد.',
-      snapshot: snapshot,
-      practiceIds: practiceIds,
-      debtType: debtType,
-      debtTitle: debtTitle,
-    );
-  }
-
-  Widget _buildPassedUnactedRow({
-    required String title,
-    required String timeStr,
-    required List<WorshipPractice> practices,
-    required String group,
-    required RitmoColors colors,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-      decoration: BoxDecoration(
-        color: colors.medicalRed.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.medicalRed.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
-                    fontFamily: 'Vazirmatn',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(CupertinoIcons.exclamationmark_triangle_fill, size: 13, color: colors.medicalRed),
-                    const SizedBox(width: 4),
-                    Text(
-                      'وقت این نماز گذشته است',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: colors.medicalRed,
-                        fontFamily: 'Vazirmatn',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+  Future<void> _confirmSkipDialog({
+    required String groupTitle,
+    required List<String> practiceIds,
+  }) async {
+    final colors = context.colors;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colors.surfaceElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'افزودن $groupTitle به قضا',
+          style: TextStyle(color: colors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'آیا می‌خواهید این نماز را رد کرده و به فهرست بدهی‌های قضا اضافه کنید؟',
+          style: TextStyle(color: colors.textSecondary, fontSize: 13.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('انصراف', style: TextStyle(color: colors.textTertiary)),
           ),
-          
-          // Action Buttons
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: const Color(0xffD4A843),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () => _toggleGroupDone(group, true),
-                child: const Text(
-                  'خواندم',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Vazirmatn',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: colors.medicalRed,
-                  backgroundColor: colors.medicalRed.withValues(alpha: 0.1),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () => _skipGroupWithQadaDirect(title, practices, true),
-                child: const Text(
-                  'افزودن به قضا',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Vazirmatn',
-                  ),
-                ),
-              ),
-            ],
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.error,
+              foregroundColor: colors.textOnColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('افزودن به قضا'),
           ),
         ],
       ),
     );
-  }
 
-  void _showAllRemindersSettings({
-    required List<WorshipPractice> fajrGroup,
-    required List<WorshipPractice> dhuhrAsrGroup,
-    required List<WorshipPractice> maghribIshaGroup,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return _AllPrayersReminderSettingsSheet(
-          fajrPractices: fajrGroup,
-          dhuhrAsrPractices: dhuhrAsrGroup,
-          maghribIshaPractices: maghribIshaGroup,
-          onSaved: () {
-            _loadPracticesAndStatus();
-            widget.onChanged();
-          },
-        );
-      },
-    );
-  }
-
-  void _showSnoozeDialog(String groupTitle, List<WorshipPractice> groupPractices) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return _SnoozeSelectionDialog(
-          groupTitle: groupTitle,
-          practices: groupPractices,
-          prayerTime: widget.prayerTime,
-          onSnoozed: () {
-            _loadPracticesAndStatus();
-            widget.onChanged();
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _skipGroupAndPromptQada(String groupTitle, List<WorshipPractice> groupPractices) async {
-    final colors = context.colors;
-    unawaited(HapticFeedback.vibrate());
-    
-    // Show confirmation dialog to add to Qada debts
-    final addToQada = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: colors.card,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Text(
-              groupTitle == 'روزه ماه رمضان' ? 'ثبت روزه قضای ماه رمضان' : 'ثبت نماز قضای $groupTitle',
-              style: TextStyle(color: colors.textPrimary, fontFamily: 'Vazirmatn', fontSize: 16.5, fontWeight: FontWeight.bold),
-            ),
-            content: Text(
-              groupTitle == 'روزه ماه رمضان'
-                  ? 'آیا مایلید روزه امروز را به بدهی‌های عبادی (روزه قضا) اضافه کنید؟'
-                  : 'آیا مایلید نماز امروز ($groupTitle) را به بدهی‌های عبادی (نماز قضا) اضافه کنید؟',
-              style: TextStyle(color: colors.textSecondary, fontFamily: 'Vazirmatn', fontSize: 14.5),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text('خیر', style: TextStyle(color: colors.textSecondary, fontFamily: 'Vazirmatn')),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xffD4A843),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () => Navigator.pop(context, true),
-                child: Text('بله، اضافه کن', style: TextStyle(color: colors.textPrimary, fontFamily: 'Vazirmatn')),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (addToQada == null) return;
-
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    final practicesList = groupPractices.map((p) => {
-      'id': p.id,
-      'subType': p.subType,
-      'title': p.title,
-      'practiceType': p.practiceType,
-    }).toList();
-
-    final practiceIds = groupPractices.map((p) => p.id).toList();
-    String? debtType;
-    String? debtTitle;
-    if (addToQada == true && groupPractices.isNotEmpty) {
-      final p = groupPractices.first;
-      debtType = p.practiceType == 'FASTING' ? 'FAST' : 'PRAYER';
-      debtTitle = p.practiceType == 'FASTING' ? 'روزه قضا' : p.title;
+    if (result == true) {
+      await _handleSkipGroup(
+        groupTitle: groupTitle,
+        practiceIds: practiceIds,
+        addToQada: true,
+      );
     }
-    final snapshot = await _captureSnapshot(practiceIds, debtType: debtType, debtTitle: debtTitle);
+  }
 
-    await AgendaActionHandler.instance.skipPrayer(
-      practices: practicesList,
-      addToQada: addToQada == true,
-      dateStr: todayStr,
-    );
+  Future<void> _handleSnooze(List<String> practiceIds) async {
+    final dateStr = (widget.date ?? DateTime.now()).toIso8601String().substring(0, 10);
+    try {
+      await AgendaActionHandler.instance.snoozePrayer(
+        practiceIds: practiceIds,
+        minutes: 15,
+        dateStr: dateStr,
+      );
 
-    await _loadPracticesAndStatus();
-    widget.onChanged();
+      await _loadWorshipData();
+      widget.onChanged();
 
-    _showUndoSnackBar(
-      message: addToQada == true ? 'نماز به عنوان قضا ثبت شد.' : 'نماز رد شد.',
-      snapshot: snapshot,
-      practiceIds: practiceIds,
-      debtType: debtType,
-      debtTitle: debtTitle,
-    );
+      if (mounted) {
+        RitmoToast.show(context, 'یادآور با موفقیت ۱۵ دقیقه به تعویق افتاد.');
+      }
+    } catch (e) {
+      if (mounted) {
+        final msg = e.toString().replaceAll('Exception: ', '');
+        RitmoToast.show(context, msg);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_isLoading) {
-      return SizedBox(
-        height: 150,
-        child: Center(child: CircularProgressIndicator(color: colors.textPrimary)),
+      return Container(
+        padding: const EdgeInsets.all(16),
+        alignment: Alignment.center,
+        child: const CupertinoActivityIndicator(),
       );
     }
 
-    // Grouping elements
-    final fajrP = _getPracticeBySubType('FAJR');
-    final dhuhrP = _getPracticeBySubType('DHUHR');
-    final asrP = _getPracticeBySubType('ASR');
-    final maghribP = _getPracticeBySubType('MAGHRIB');
-    final ishaP = _getPracticeBySubType('ISHA');
-    final ramadanFastP = _getPracticeBySubType('RAMADAN_FAST');
-
-    final fajrGroup = <WorshipPractice>[?fajrP];
-    final dhuhrAsrGroup = <WorshipPractice>[?dhuhrP];
-    final maghribIshaGroup = <WorshipPractice>[?maghribP];
-
-    // Status Count
-    final pTime = widget.prayerTime;
-    
-    var isFajrPassed = false;
-    var isDhuhrAsrPassed = false;
-    var isMaghribIshaPassed = false;
-    
-    if (pTime != null) {
-      final now = DateTime.now();
-      
-      final sunriseDt = _parseTime(pTime.sunrise, now);
-      final sunsetDt = _parseTime(pTime.sunset, now);
-      var midnightDt = _parseTime(pTime.midnightShari, now);
-      if (midnightDt.hour < 4 && now.hour >= 4) {
-        midnightDt = midnightDt.add(const Duration(days: 1));
-      }
-      
-      isFajrPassed = now.isAfter(sunriseDt);
-      isDhuhrAsrPassed = now.isAfter(sunsetDt);
-      isMaghribIshaPassed = now.isAfter(midnightDt);
+    if (_errorMessage != null || _worshipDay == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.surfaceSunken,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(CupertinoIcons.exclamationmark_triangle, color: colors.error, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _errorMessage ?? 'خطا در بارگذاری اطلاعات نماز',
+                style: TextStyle(color: colors.textSecondary, fontSize: 13),
+              ),
+            ),
+            TextButton(
+              onPressed: _loadWorshipData,
+              child: const Text('تلاش مجدد'),
+            ),
+          ],
+        ),
+      );
     }
 
-    final visibleRows = <Widget>[];
-    var doneCount = 0;
-    var totalCount = 0;
+    final day = _worshipDay!;
+    final times = day.times;
+    final dayCtx = day.context;
+    final isExempt = dayCtx.prayerExempt;
+    final now = DateTime.now();
 
-    // Fajr Row
-    if (fajrP != null) {
-      totalCount++;
-      final isDone = fajrP.dailyDone >= 1;
-      final isSkipped = fajrP.dailyDone == -1;
-      if (isDone) doneCount++;
+    // Group 1: Fajr
+    final fajrState = _findPracticeState('FAJR') ?? _findPracticeState('wp_fajr');
+    final fajrDeadline = times.sunrise;
+    final fajrIsDone = _optimisticState.containsKey('FAJR')
+        ? _optimisticState['FAJR']!
+        : (fajrState?.isDone ?? false);
+    final fajrExpired = fajrState != null && !fajrIsDone && !fajrState.isSkipped && now.isAfter(fajrDeadline);
 
-      final timeStr = widget.prayerTime != null ? toPersianDigits(widget.prayerTime!.fajr) : '--:--';
-      if (isDone || isSkipped) {
-        visibleRows.add(_buildGroupRow(
-          title: 'نماز صبح',
-          timeStr: timeStr,
-          practices: fajrGroup,
-          isDone: isDone,
-          onToggle: (val) => _toggleGroupDone('FAJR', val),
-          colors: colors,
-        ));
-      } else if (isFajrPassed) {
-        visibleRows.add(_buildPassedUnactedRow(
-          title: 'نماز صبح',
-          timeStr: timeStr,
-          practices: fajrGroup,
-          group: 'FAJR',
-          colors: colors,
-        ));
-      } else {
-        visibleRows.add(_buildGroupRow(
-          title: 'نماز صبح',
-          timeStr: timeStr,
-          practices: fajrGroup,
-          isDone: false,
-          onToggle: (val) => _toggleGroupDone('FAJR', val),
-          colors: colors,
-        ));
-      }
-    }
+    // Group 2: Dhuhr & Asr
+    final dhuhrState = _findPracticeState('DHUHR') ?? _findPracticeState('wp_dhuhr');
+    final asrState = _findPracticeState('ASR') ?? _findPracticeState('wp_asr');
+    final dhuhrPractices = <WorshipPracticeState>[];
+    if (dhuhrState != null) dhuhrPractices.add(dhuhrState);
+    if (asrState != null) dhuhrPractices.add(asrState);
+    final dhuhrDeadline = times.maghrib;
+    final dhuhrDone = _optimisticState.containsKey('DHUHR_ASR')
+        ? _optimisticState['DHUHR_ASR']!
+        : (dhuhrPractices.isNotEmpty && dhuhrPractices.any((p) => p.isDone));
+    final dhuhrSkipped = dhuhrPractices.isNotEmpty && dhuhrPractices.every((p) => p.isSkipped);
+    final dhuhrExpired = dhuhrPractices.isNotEmpty && !dhuhrDone && !dhuhrSkipped && now.isAfter(dhuhrDeadline);
 
-    // Dhuhr / Asr Row
-    if (dhuhrP != null) {
-      totalCount++;
-      final isDone = dhuhrP.dailyDone >= 1 && (asrP == null || asrP.dailyDone >= 1);
-      final isSkipped = dhuhrP.dailyDone == -1 || (asrP != null && asrP.dailyDone == -1);
-      if (isDone) doneCount++;
+    // Group 3: Maghrib & Isha
+    final maghribState = _findPracticeState('MAGHRIB') ?? _findPracticeState('wp_maghrib');
+    final ishaState = _findPracticeState('ISHA') ?? _findPracticeState('wp_isha');
+    final maghribPractices = <WorshipPracticeState>[];
+    if (maghribState != null) maghribPractices.add(maghribState);
+    if (ishaState != null) maghribPractices.add(ishaState);
+    final maghribDeadline = times.midnightShari;
+    final maghribDone = _optimisticState.containsKey('MAGHRIB_ISHA')
+        ? _optimisticState['MAGHRIB_ISHA']!
+        : (maghribPractices.isNotEmpty && maghribPractices.any((p) => p.isDone));
+    final maghribSkipped = maghribPractices.isNotEmpty && maghribPractices.every((p) => p.isSkipped);
+    final maghribExpired = maghribPractices.isNotEmpty && !maghribDone && !maghribSkipped && now.isAfter(maghribDeadline);
 
-      final timeStr = widget.prayerTime != null
-          ? toPersianDigits(
-              asrP != null 
-                ? '${widget.prayerTime!.dhuhr} / ${widget.prayerTime!.asr}'
-                : widget.prayerTime!.dhuhr
-            )
-          : '--:--';
+    // Ramadan Fasting
+    final ramadanFastState = _findPracticeState('RAMADAN') ?? _findPracticeState('wp_fasting_ramadan');
+    final ramadanFastDone = _optimisticState.containsKey('RAMADAN_FAST')
+        ? _optimisticState['RAMADAN_FAST']!
+        : (ramadanFastState?.isDone ?? false);
 
-      if (isDone || isSkipped) {
-        visibleRows.add(_buildGroupRow(
-          title: 'نماز ظهر و عصر',
-          timeStr: timeStr,
-          practices: dhuhrAsrGroup,
-          isDone: isDone,
-          onToggle: (val) => _toggleGroupDone('DHUHR_ASR', val),
-          colors: colors,
-        ));
-      } else if (isDhuhrAsrPassed) {
-        visibleRows.add(_buildPassedUnactedRow(
-          title: 'نماز ظهر و عصر',
-          timeStr: timeStr,
-          practices: dhuhrAsrGroup,
-          group: 'DHUHR_ASR',
-          colors: colors,
-        ));
-      } else {
-        visibleRows.add(_buildGroupRow(
-          title: 'نماز ظهر و عصر',
-          timeStr: timeStr,
-          practices: dhuhrAsrGroup,
-          isDone: false,
-          onToggle: (val) => _toggleGroupDone('DHUHR_ASR', val),
-          colors: colors,
-        ));
-      }
-    }
-
-    // Maghrib / Isha Row
-    if (maghribP != null) {
-      totalCount++;
-      final isDone = maghribP.dailyDone >= 1 && (ishaP == null || ishaP.dailyDone >= 1);
-      final isSkipped = maghribP.dailyDone == -1 || (ishaP != null && ishaP.dailyDone == -1);
-      if (isDone) doneCount++;
-
-      final timeStr = widget.prayerTime != null
-          ? toPersianDigits(
-              ishaP != null 
-                ? '${widget.prayerTime!.maghrib} / ${widget.prayerTime!.isha}'
-                : widget.prayerTime!.maghrib
-            )
-          : '--:--';
-
-      if (isDone || isSkipped) {
-        visibleRows.add(_buildGroupRow(
-          title: 'نماز مغرب و عشا',
-          timeStr: timeStr,
-          practices: maghribIshaGroup,
-          isDone: isDone,
-          onToggle: (val) => _toggleGroupDone('MAGHRIB_ISHA', val),
-          colors: colors,
-        ));
-      } else if (isMaghribIshaPassed) {
-        visibleRows.add(_buildPassedUnactedRow(
-          title: 'نماز مغرب و عشا',
-          timeStr: timeStr,
-          practices: maghribIshaGroup,
-          group: 'MAGHRIB_ISHA',
-          colors: colors,
-        ));
-      } else {
-        visibleRows.add(_buildGroupRow(
-          title: 'نماز مغرب و عشا',
-          timeStr: timeStr,
-          practices: maghribIshaGroup,
-          isDone: false,
-          onToggle: (val) => _toggleGroupDone('MAGHRIB_ISHA', val),
-          colors: colors,
-        ));
-      }
-    }
-
-    // Fasting Row
-    if (ramadanFastP != null) {
-      final isDone = ramadanFastP.dailyDone >= 1;
-
-      visibleRows.add(_buildGroupRow(
-        title: 'روزه ماه رمضان',
-        timeStr: 'امروز',
-        practices: [ramadanFastP],
-        isDone: isDone,
-        onToggle: (val) => _toggleGroupDone('RAMADAN_FAST', val),
-        colors: colors,
-      ));
-    }
-
-    final allDone = totalCount > 0 && doneCount == totalCount;
-
-    // Status Count
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.border.withValues(alpha: 0.5)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Header
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'نمازهای واجب',
                 style: TextStyle(
-                  fontSize: 16.5,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: colors.textPrimary,
-                  fontFamily: 'Vazirmatn',
                 ),
               ),
-              IconButton(
-                icon: const Icon(CupertinoIcons.bell_fill, color: Color(0xffD4A843), size: 20),
-                onPressed: () => _showAllRemindersSettings(
-                  fajrGroup: fajrGroup,
-                  dhuhrAsrGroup: dhuhrAsrGroup,
-                  maghribIshaGroup: maghribIshaGroup,
+              const Spacer(),
+              if (times.isFallbackLocation)
+                Tooltip(
+                  message: 'اوقات شرعی بر اساس پیش‌فرض تهران محاسبه شده است.',
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    child: Icon(CupertinoIcons.location_slash, size: 16, color: colors.warning),
+                  ),
                 ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
-          // Main Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xff0b0b0e) : Colors.white.withValues(alpha: 0.52),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark ? const Color(0xffD4A843).withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.68),
-                width: 1.5,
+          // Exemption Banner if active
+          if (isExempt) ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: colors.accentContainer.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: colors.accent.withValues(alpha: 0.3)),
               ),
-              boxShadow: isDark
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      )
-                    ],
-            ),
-            child: Column(
-              children: [
-                ...List.generate(visibleRows.length, (index) {
-                  return Column(
-                    children: [
-                      visibleRows[index],
-                      if (index < visibleRows.length - 1)
-                        Divider(color: colors.border, height: 16),
-                    ],
-                  );
-                }),
-
-                if (allDone) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xffD4A843).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xffD4A843).withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(CupertinoIcons.checkmark_seal_fill, color: Color(0xffD4A843), size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'تمامی نمازهای واجب امروز انجام شده‌اند 🌟',
-                          style: TextStyle(
-                            color: colors.textPrimary,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Vazirmatn',
-                          ),
-                        ),
-                      ],
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.info_circle_fill, color: colors.accent, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'امروز معاف از نمازهای واجب هستید.',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
-
-                // Menstruation Banner
-                if (_isMenstruating) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xff8B5CF6).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xff8B5CF6).withValues(alpha: 0.3)),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(CupertinoIcons.heart_fill, color: Color(0xffA78BFA), size: 16),
-                        SizedBox(width: 8),
-                        Text(
-                          'امروز نماز به دلیل عادت ماهانه واجب نیست 💜',
-                          style: TextStyle(
-                            color: Color(0xffC084FC),
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Vazirmatn',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGroupRow({
-    required String title,
-    required String timeStr,
-    required List<WorshipPractice> practices,
-    required bool isDone,
-    required ValueChanged<bool> onToggle,
-    required RitmoColors colors,
-  }) {
-    final hasReminder = practices.any((p) => p.reminderEnabled);
-    final maxDeferCount = practices.map((p) => p.deferCount).fold(0, max);
-    final isSnoozed = practices.any((p) => p.lastDeferredUntil != null);
-    final isSkipped = practices.any((p) => p.dailyDone == -1);
-    
-    String? snoozeText;
-    if (isSnoozed) {
-      final latestSnooze = practices.map((p) => p.lastDeferredUntil ?? 0).fold(0, max);
-      if (latestSnooze > 0) {
-        final time = DateTime.fromMillisecondsSinceEpoch(latestSnooze);
-        final hour = time.hour.toString().padLeft(2, '0');
-        final min = time.minute.toString().padLeft(2, '0');
-        snoozeText = 'تعویق تا ${toPersianDigits("$hour:$min")}';
-      }
-    }
-
-    return PrayerAgendaCard(
-      title: title,
-      timeStr: timeStr,
-      isDone: isDone,
-      isSkipped: isSkipped,
-      isSnoozed: isSnoozed,
-      snoozeText: snoozeText,
-      deferCount: maxDeferCount,
-      hasReminder: hasReminder,
-      disableControls: _isMenstruating,
-      onToggle: onToggle,
-      onSnooze: () => _showSnoozeDialog(title, practices),
-      onSkip: () => _skipGroupAndPromptQada(title, practices),
-    );
-  }
-}
-
-class _AllPrayersReminderSettingsSheet extends StatefulWidget {
-
-  const _AllPrayersReminderSettingsSheet({
-    required this.fajrPractices,
-    required this.dhuhrAsrPractices,
-    required this.maghribIshaPractices,
-    required this.onSaved,
-  });
-  final List<WorshipPractice> fajrPractices;
-  final List<WorshipPractice> dhuhrAsrPractices;
-  final List<WorshipPractice> maghribIshaPractices;
-  final VoidCallback onSaved;
-
-  @override
-  State<_AllPrayersReminderSettingsSheet> createState() => _AllPrayersReminderSettingsSheetState();
-}
-
-class _AllPrayersReminderSettingsSheetState extends State<_AllPrayersReminderSettingsSheet> {
-  bool _fajrEnabled = true;
-  int _fajrOffset = 10;
-
-  bool _dhuhrAsrEnabled = true;
-  int _dhuhrAsrOffset = 10;
-
-  bool _maghribIshaEnabled = true;
-  int _maghribIshaOffset = 10;
-
-  @override
-  void initState() {
-    super.initState();
-    _fajrEnabled = widget.fajrPractices.any((p) => p.reminderEnabled);
-    if (widget.fajrPractices.isNotEmpty) {
-      _fajrOffset = widget.fajrPractices.first.reminderOffsetMinutes ?? 10;
-    }
-
-    _dhuhrAsrEnabled = widget.dhuhrAsrPractices.any((p) => p.reminderEnabled);
-    if (widget.dhuhrAsrPractices.isNotEmpty) {
-      _dhuhrAsrOffset = widget.dhuhrAsrPractices.first.reminderOffsetMinutes ?? 10;
-    }
-
-    _maghribIshaEnabled = widget.maghribIshaPractices.any((p) => p.reminderEnabled);
-    if (widget.maghribIshaPractices.isNotEmpty) {
-      _maghribIshaOffset = widget.maghribIshaPractices.first.reminderOffsetMinutes ?? 10;
-    }
-  }
-
-  Future<void> _save() async {
-    unawaited(HapticFeedback.mediumImpact());
-    try {
-      final db = await DatabaseHelper.instance.database;
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
-
-      await db.transaction((txn) async {
-        for (final p in widget.fajrPractices) {
-          await txn.update(
-            'worship_practices',
-            {
-              'reminderEnabled': _fajrEnabled ? 1 : 0,
-              'reminderOffsetMinutes': _fajrOffset,
-              'updatedAt': nowMs,
-            },
-            where: 'id = ?',
-            whereArgs: [p.id],
-          );
-        }
-        for (final p in widget.dhuhrAsrPractices) {
-          await txn.update(
-            'worship_practices',
-            {
-              'reminderEnabled': _dhuhrAsrEnabled ? 1 : 0,
-              'reminderOffsetMinutes': _dhuhrAsrOffset,
-              'updatedAt': nowMs,
-            },
-            where: 'id = ?',
-            whereArgs: [p.id],
-          );
-        }
-        for (final p in widget.maghribIshaPractices) {
-          await txn.update(
-            'worship_practices',
-            {
-              'reminderEnabled': _maghribIshaEnabled ? 1 : 0,
-              'reminderOffsetMinutes': _maghribIshaOffset,
-              'updatedAt': nowMs,
-            },
-            where: 'id = ?',
-            whereArgs: [p.id],
-          );
-        }
-      });
-
-      widget.onSaved();
-      if (mounted) {
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      debugPrint('Error saving all reminder settings: $e');
-    }
-  }
-
-  Widget _buildPrayerReminderSection({
-    required String title,
-    required bool enabled,
-    required int offsetMinutes,
-    required ValueChanged<bool> onEnabledChanged,
-    required ValueChanged<double> onOffsetChanged,
-    required RitmoColors colors,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
-            ),
-            CupertinoSwitch(
-              value: enabled,
-              activeTrackColor: const Color(0xffD4A843),
-              onChanged: onEnabledChanged,
+              ),
             ),
           ],
-        ),
-        if (enabled) ...[
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'زمان یادآوری:',
-                style: TextStyle(fontSize: 13, color: colors.textSecondary, fontFamily: 'Vazirmatn'),
+
+          // Fajr Row
+          if (fajrState != null)
+            PrayerAgendaCard(
+              title: 'نماز صبح',
+              timeStr: 'اذان صبح ${_formatTime(times.fajr)}',
+              isDone: fajrIsDone,
+              isSkipped: fajrState.isSkipped,
+              isSnoozed: false,
+              deferCount: 0,
+              hasReminder: true,
+              isExpired: fajrExpired,
+              isExempt: isExempt,
+              expiredTimeDetail: 'وقت نماز صبح گذشته است (طلوع: ${_formatTime(times.sunrise)}).',
+              onToggle: (val) => _handleToggleGroup(
+                groupKey: 'FAJR',
+                isDone: val,
               ),
-              Text(
-                offsetMinutes == 0
-                    ? 'دقیقاً زمان اذان'
-                    : offsetMinutes < 0
-                        ? toPersianDigits('${offsetMinutes.abs()} دقیقه قبل از اذان')
-                        : toPersianDigits('$offsetMinutes دقیقه بعد از اذان'),
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xffD4A843), fontFamily: 'Vazirmatn'),
+              onSkip: () => _confirmSkipDialog(
+                groupTitle: 'نماز صبح',
+                practiceIds: [fajrState.practice.id],
               ),
-            ],
-          ),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: const Color(0xffD4A843),
-              inactiveTrackColor: colors.glassBorder,
-              thumbColor: const Color(0xffD4A843),
-              overlayColor: const Color(0xffD4A843).withValues(alpha: 0.2),
-            ),
-            child: Slider(
-              value: offsetMinutes.toDouble(),
-              min: -60,
-              max: 60,
-              divisions: 24,
-              onChanged: onOffsetChanged,
-            ),
-          ),
-        ],
-        const SizedBox(height: 12),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: RitmoTheme.glassCardLight(
-        borderRadius: 28,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'تنظیم یادآوری نمازهای واجب',
-                    style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
-                  ),
-                  IconButton(
-                    icon: Icon(CupertinoIcons.xmark, color: colors.textSecondary, size: 18),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+              onLogAsQada: () => _handleToggleGroup(
+                groupKey: 'FAJR',
+                isDone: true,
               ),
-              const SizedBox(height: 16),
-
-              _buildPrayerReminderSection(
-                title: 'نماز صبح',
-                enabled: _fajrEnabled,
-                offsetMinutes: _fajrOffset,
-                onEnabledChanged: (val) => setState(() => _fajrEnabled = val),
-                onOffsetChanged: (val) => setState(() => _fajrOffset = val.toInt()),
-                colors: colors,
-              ),
-              Divider(color: colors.border),
-              _buildPrayerReminderSection(
-                title: 'نماز ظهر و عصر',
-                enabled: _dhuhrAsrEnabled,
-                offsetMinutes: _dhuhrAsrOffset,
-                onEnabledChanged: (val) => setState(() => _dhuhrAsrEnabled = val),
-                onOffsetChanged: (val) => setState(() => _dhuhrAsrOffset = val.toInt()),
-                colors: colors,
-              ),
-              Divider(color: colors.border),
-              _buildPrayerReminderSection(
-                title: 'نماز مغرب و عشا',
-                enabled: _maghribIshaEnabled,
-                offsetMinutes: _maghribIshaOffset,
-                onEnabledChanged: (val) => setState(() => _maghribIshaEnabled = val),
-                onOffsetChanged: (val) => setState(() => _maghribIshaOffset = val.toInt()),
-                colors: colors,
-              ),
-
-              const SizedBox(height: 16),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xffD4A843),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: _save,
-                child: const Text('ثبت تنظیمات یادآوری', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ReminderSettingsSheet extends StatefulWidget {
-
-  const _ReminderSettingsSheet({
-    required this.groupTitle,
-    required this.practices,
-    required this.onSaved,
-  });
-  final String groupTitle;
-  final List<WorshipPractice> practices;
-  final VoidCallback onSaved;
-
-  @override
-  State<_ReminderSettingsSheet> createState() => _ReminderSettingsSheetState();
-}
-
-class _ReminderSettingsSheetState extends State<_ReminderSettingsSheet> {
-  bool _reminderEnabled = true;
-  int _offsetMinutes = 10;
-
-  @override
-  void initState() {
-    super.initState();
-    _reminderEnabled = widget.practices.any((p) => p.reminderEnabled);
-    _offsetMinutes = widget.practices.first.reminderOffsetMinutes ?? 10;
-  }
-
-  Future<void> _save() async {
-    unawaited(HapticFeedback.mediumImpact());
-    try {
-      final db = await DatabaseHelper.instance.database;
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
-
-      await db.transaction((txn) async {
-        for (final p in widget.practices) {
-          await txn.update(
-            'worship_practices',
-            {
-              'reminderEnabled': _reminderEnabled ? 1 : 0,
-              'reminderOffsetMinutes': _offsetMinutes,
-              'updatedAt': nowMs,
-            },
-            where: 'id = ?',
-            whereArgs: [p.id],
-          );
-        }
-      });
-
-      widget.onSaved();
-      if (mounted) {
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      debugPrint('Error saving reminder settings: $e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: RitmoTheme.glassCardLight(
-        borderRadius: 28,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'تنظیم یادآوری ${widget.groupTitle}',
-                    style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
-                  ),
-                  IconButton(
-                    icon: Icon(CupertinoIcons.xmark, color: colors.textSecondary, size: 18),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Switch row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'فعال‌سازی یادآوری روزانه',
-                    style: TextStyle(fontSize: 14.5, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
-                  ),
-                  CupertinoSwitch(
-                    value: _reminderEnabled,
-                    activeTrackColor: const Color(0xffD4A843),
-                    onChanged: (val) {
-                      setState(() {
-                        _reminderEnabled = val;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              if (_reminderEnabled) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'زمان اعلام یادآوری',
-                      style: TextStyle(fontSize: 14.5, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
-                    ),
-                    Text(
-                      _offsetMinutes == 0
-                          ? 'دقیقاً زمان اذان'
-                          : _offsetMinutes < 0
-                              ? toPersianDigits('${_offsetMinutes.abs()} دقیقه قبل از اذان')
-                              : toPersianDigits('$_offsetMinutes دقیقه بعد از اذان'),
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xffD4A843), fontFamily: 'Vazirmatn'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: const Color(0xffD4A843),
-                    inactiveTrackColor: colors.glassBorder,
-                    thumbColor: const Color(0xffD4A843),
-                    overlayColor: const Color(0xffD4A843).withValues(alpha: 0.2),
-                  ),
-                  child: Slider(
-                    value: _offsetMinutes.toDouble(),
-                    min: -60,
-                    max: 60,
-                    divisions: 24, // multiples of 5 mins (-60 to 60)
-                    onChanged: (val) {
-                      setState(() {
-                        _offsetMinutes = val.toInt();
-                      });
-                    },
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xffD4A843),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: _save,
-                child: const Text('ثبت تنظیمات یادآوری', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SnoozeSelectionDialog extends StatefulWidget {
-
-  const _SnoozeSelectionDialog({
-    required this.groupTitle,
-    required this.practices,
-    required this.prayerTime,
-    required this.onSnoozed,
-  });
-  final String groupTitle;
-  final List<WorshipPractice> practices;
-  final PrayerTime? prayerTime;
-  final VoidCallback onSnoozed;
-
-  @override
-  State<_SnoozeSelectionDialog> createState() => _SnoozeSelectionDialogState();
-}
-
-class _SnoozeSelectionDialogState extends State<_SnoozeSelectionDialog> {
-  int _selectedMinutes = 15;
-  final TextEditingController _customController = TextEditingController();
-  bool _isCustom = false;
-  String? _warningMessage;
-
-  @override
-  void dispose() {
-    _customController.dispose();
-    super.dispose();
-  }
-
-  void _checkWarning(int mins) {
-    if (widget.prayerTime == null) return;
-    
-    // We want to check if snooze duration exceeds the NEXT actual prayer time.
-    final now = DateTime.now();
-    final snoozeTime = now.add(Duration(minutes: mins));
-
-    // Resolve next prayer time
-    final nextPrEntry = widget.prayerTime!.nextPrayer(now);
-    
-    if (snoozeTime.isAfter(nextPrEntry.value)) {
-      var nextPrFa = '';
-      switch (nextPrEntry.key) {
-        case 'FAJR': nextPrFa = 'صبح';
-        case 'DHUHR': nextPrFa = 'ظهر';
-        case 'ASR': nextPrFa = 'عصر';
-        case 'MAGHRIB': nextPrFa = 'مغرب';
-        case 'ISHA': nextPrFa = 'عشا';
-        default: nextPrFa = 'بعدی';
-      }
-      setState(() {
-        _warningMessage = '⚠️ هشدار: زمان تعویق از وقت نماز $nextPrFa نزدیک است!';
-      });
-    } else {
-      setState(() {
-        _warningMessage = null;
-      });
-    }
-  }
-
-  Future<void> _applySnooze() async {
-    unawaited(HapticFeedback.mediumImpact());
-    var mins = _selectedMinutes;
-    if (_isCustom) {
-      mins = int.tryParse(_customController.text) ?? 15;
-    }
-
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    try {
-      await AgendaActionHandler.instance.snoozePrayer(
-        practiceIds: widget.practices.map((p) => p.id).toList(),
-        minutes: mins,
-        dateStr: todayStr,
-      );
-      widget.onSnoozed();
-      if (mounted) {
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        final colors = context.colors;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              e.toString().replaceAll('Exception: ', ''),
-              style: const TextStyle(fontFamily: 'Vazirmatn'),
-            ),
-            backgroundColor: colors.medicalRed,
-          ),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: AlertDialog(
-        backgroundColor: colors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          'تعویق یادآوری ${widget.groupTitle}',
-          style: TextStyle(color: colors.textPrimary, fontFamily: 'Vazirmatn', fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'می‌خواهید یادآوری مجدد این نماز تا چند دقیقه دیگر به تاخیر بیفتد؟',
-              style: TextStyle(color: colors.textSecondary, fontFamily: 'Vazirmatn', fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            
-            // Standard Options
-            if (!_isCustom) ...[
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                alignment: WrapAlignment.center,
-                children: [15, 30, 60].map((mins) {
-                  final isSelected = _selectedMinutes == mins;
-                  return ChoiceChip(
-                    label: Text(toPersianDigits('$mins دقیقه'), style: const TextStyle(fontFamily: 'Vazirmatn')),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() {
-                          _selectedMinutes = mins;
-                        });
-                        _checkWarning(mins);
-                      }
-                    },
-                    selectedColor: const Color(0xffD4A843),
-                    backgroundColor: colors.inputBackground,
-                    labelStyle: TextStyle(color: isSelected ? Colors.black : colors.textPrimary, fontSize: 13.5),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Toggle Custom
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'زمان سفارشی',
-                  style: TextStyle(color: colors.textSecondary, fontSize: 13.5, fontFamily: 'Vazirmatn'),
-                ),
-                CupertinoSwitch(
-                  value: _isCustom,
-                  activeTrackColor: const Color(0xffD4A843),
-                  onChanged: (val) {
-                    setState(() {
-                      _isCustom = val;
-                      _warningMessage = null;
-                    });
-                    if (!val) {
-                      _checkWarning(_selectedMinutes);
-                    }
-                  },
-                ),
-              ],
+              onSnooze: () => _handleSnooze([fajrState.practice.id]),
             ),
 
-            if (_isCustom) ...[
-              const SizedBox(height: 10),
-              TextField(
-                controller: _customController,
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: colors.textPrimary, fontSize: 14.5, fontFamily: 'Vazirmatn'),
-                onChanged: (val) {
-                  final mins = int.tryParse(val) ?? 0;
-                  _checkWarning(mins);
-                },
-                decoration: InputDecoration(
-                  hintText: 'مدت زمان به دقیقه...',
-                  hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.4), fontSize: 13.5),
-                  fillColor: colors.textSecondary.withValues(alpha: 0.02),
-                  filled: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.06)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xffD4A843)),
-                  ),
-                ),
+          // Dhuhr & Asr Row
+          if (dhuhrPractices.isNotEmpty)
+            PrayerAgendaCard(
+              title: asrState != null ? 'نماز ظهر و عصر (مجزا)' : 'نماز ظهر و عصر',
+              timeStr: 'اذان ظهر ${_formatTime(times.dhuhr)}',
+              isDone: dhuhrDone,
+              isSkipped: dhuhrSkipped,
+              isSnoozed: false,
+              deferCount: 0,
+              hasReminder: true,
+              isExpired: dhuhrExpired,
+              isExempt: isExempt,
+              expiredTimeDetail: 'وقت نماز ظهر و عصر گذشته است (اذان مغرب: ${_formatTime(times.maghrib)}).',
+              onToggle: (val) => _handleToggleGroup(
+                groupKey: 'DHUHR_ASR',
+                isDone: val,
               ),
-            ],
-
-            if (_warningMessage != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _warningMessage!,
-                style: const TextStyle(color: Color(0xffF87171), fontSize: 12.5, fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn'),
+              onSkip: () => _confirmSkipDialog(
+                groupTitle: 'نماز ظهر و عصر',
+                practiceIds: dhuhrPractices.map((p) => p.practice.id).toList(),
               ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('انصراف', style: TextStyle(color: colors.textSecondary, fontFamily: 'Vazirmatn')),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xffD4A843),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onLogAsQada: () => _handleToggleGroup(
+                groupKey: 'DHUHR_ASR',
+                isDone: true,
+              ),
+              onSnooze: () => _handleSnooze(dhuhrPractices.map((p) => p.practice.id).toList()),
             ),
-            onPressed: _applySnooze,
-            child: Text('تایید تعویق', style: TextStyle(color: colors.textPrimary, fontFamily: 'Vazirmatn')),
-          ),
+
+          // Maghrib & Isha Row
+          if (maghribPractices.isNotEmpty)
+            PrayerAgendaCard(
+              title: ishaState != null ? 'نماز مغرب و عشا (مجزا)' : 'نماز مغرب و عشا',
+              timeStr: 'اذان مغرب ${_formatTime(times.maghrib)}',
+              isDone: maghribDone,
+              isSkipped: maghribSkipped,
+              isSnoozed: false,
+              deferCount: 0,
+              hasReminder: true,
+              isExpired: maghribExpired,
+              isExempt: isExempt,
+              expiredTimeDetail: 'وقت نماز مغرب و عشا گذشته است (نیمه‌شب شرعی: ${_formatTime(times.midnightShari)}).',
+              onToggle: (val) => _handleToggleGroup(
+                groupKey: 'MAGHRIB_ISHA',
+                isDone: val,
+              ),
+              onSkip: () => _confirmSkipDialog(
+                groupTitle: 'نماز مغرب و عشا',
+                practiceIds: maghribPractices.map((p) => p.practice.id).toList(),
+              ),
+              onLogAsQada: () => _handleToggleGroup(
+                groupKey: 'MAGHRIB_ISHA',
+                isDone: true,
+              ),
+              onSnooze: () => _handleSnooze(maghribPractices.map((p) => p.practice.id).toList()),
+            ),
+
+          // Ramadan Fasting Row (if active season)
+          if (ramadanFastState != null)
+            PrayerAgendaCard(
+              title: 'روزه ماه مبارک رمضان',
+              timeStr: 'از اذان صبح تا اذان مغرب',
+              isDone: ramadanFastDone,
+              isSkipped: ramadanFastState.isSkipped,
+              isSnoozed: false,
+              deferCount: 0,
+              hasReminder: false,
+              isExempt: dayCtx.fastingExempt,
+              onToggle: (val) => _handleToggleGroup(
+                groupKey: 'RAMADAN_FAST',
+                isDone: val,
+              ),
+              onSkip: () => _confirmSkipDialog(
+                groupTitle: 'روزه ماه رمضان',
+                practiceIds: [ramadanFastState.practice.id],
+              ),
+              onLogAsQada: () => _handleToggleGroup(
+                groupKey: 'RAMADAN_FAST',
+                isDone: true,
+              ),
+            ),
         ],
       ),
     );

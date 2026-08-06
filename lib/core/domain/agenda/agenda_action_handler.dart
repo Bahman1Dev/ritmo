@@ -18,11 +18,22 @@ class AgendaActionHandler {
   static final AgendaActionHandler instance = AgendaActionHandler._();
 
   Future<List<String>> _practiceIdsForGroup(DatabaseExecutor db, String group) async {
+    if (group == 'RAMADAN_FAST') {
+      final rows = await db.query(
+        'worship_practices',
+        columns: ['id'],
+        where: "id = 'wp_fasting_ramadan' OR subType = 'RAMADAN' OR practiceType = 'FASTING'",
+      );
+      if (rows.isNotEmpty) {
+        return rows.map((r) => r['id']! as String).toList();
+      }
+      return ['wp_fasting_ramadan'];
+    }
+
     const subTypesByGroup = {
       'FAJR': ['FAJR'],
       'DHUHR_ASR': ['DHUHR', 'ASR'],
       'MAGHRIB_ISHA': ['MAGHRIB', 'ISHA'],
-      'RAMADAN_FAST': ['RAMADAN_FAST'],
     };
 
     final subTypes = subTypesByGroup[group] ?? const <String>[];
@@ -31,9 +42,15 @@ class AgendaActionHandler {
     final rows = await db.query(
       'worship_practices',
       columns: ['id'],
-      where: 'subType IN (${List.filled(subTypes.length, '?').join(',')}) AND isActive = 1',
+      where: 'subType IN (${List.filled(subTypes.length, '?').join(',')})',
       whereArgs: subTypes,
     );
+
+    if (rows.isEmpty) {
+      if (group == 'FAJR') return ['wp_fajr'];
+      if (group == 'DHUHR_ASR') return ['wp_dhuhr', 'wp_asr'];
+      if (group == 'MAGHRIB_ISHA') return ['wp_maghrib', 'wp_isha'];
+    }
 
     return rows.map((r) => r['id']! as String).toList();
   }
@@ -60,10 +77,14 @@ class AgendaActionHandler {
           date: date,
         );
       } else {
-        final recordId = 'wc_${id}_$dateStr';
-        await WorshipCompletionRepository.instance.undo(recordId);
+        await WorshipEngine.instance.clearLog(
+          practiceId: id,
+          date: date,
+        );
       }
     }
+
+    _invalidateAndNotify(dateStr, 'WorshipUpdated', {'date': dateStr, 'group': group});
   }
 
   /// Centralized logic to snooze a prayer reminder.

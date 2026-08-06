@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 
 class PrayerAgendaCard extends StatelessWidget {
-
   const PrayerAgendaCard({
     super.key,
     required this.title,
@@ -17,11 +16,15 @@ class PrayerAgendaCard extends StatelessWidget {
     this.disableControls = false,
     this.isExpiringSoon = false,
     this.isExpired = false,
+    this.isExempt = false,
+    this.expiredTimeDetail,
     this.onToggle,
     this.onSnooze,
     this.onSkip,
+    this.onLogAsQada,
     this.onReminderSettings,
   });
+
   final String title;
   final String timeStr;
   final bool isDone;
@@ -33,10 +36,13 @@ class PrayerAgendaCard extends StatelessWidget {
   final bool disableControls;
   final bool isExpiringSoon;
   final bool isExpired;
+  final bool isExempt;
+  final String? expiredTimeDetail;
 
   final ValueChanged<bool>? onToggle;
   final VoidCallback? onSnooze;
   final VoidCallback? onSkip;
+  final VoidCallback? onLogAsQada;
   final VoidCallback? onReminderSettings;
 
   @override
@@ -46,21 +52,21 @@ class PrayerAgendaCard extends StatelessWidget {
     var cardBg = Colors.transparent;
     var borderCol = Colors.transparent;
 
-    if (!isDone && !isSkipped) {
+    if (!isDone && !isSkipped && !isExempt) {
       if (isExpired) {
-        cardBg = colors.medicalRed.withValues(alpha: 0.08);
-        borderCol = colors.medicalRed.withValues(alpha: 0.2);
+        cardBg = colors.error.withValues(alpha: 0.08);
+        borderCol = colors.error.withValues(alpha: 0.25);
       } else if (isExpiringSoon) {
         cardBg = colors.warning.withValues(alpha: 0.08);
-        borderCol = colors.warning.withValues(alpha: 0.2);
+        borderCol = colors.warning.withValues(alpha: 0.25);
       }
     }
 
-    final actualDisable = disableControls || isSkipped;
+    final actualDisable = disableControls || isSkipped || isExempt;
 
     return Container(
-      margin: EdgeInsets.zero,
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(12),
@@ -71,32 +77,42 @@ class PrayerAgendaCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              // Checkbox Done
-              Transform.scale(
-                scale: 1.1,
-                child: Checkbox(
-                  value: isDone,
-                  onChanged: actualDisable
-                      ? null
-                      : (val) {
-                          if (val != null && onToggle != null) {
-                            onToggle!(val);
-                          }
-                        },
-                  activeColor: const Color(0xffD4A843),
-                  checkColor: Colors.white,
-                  side: BorderSide(
-                    color: colors.textSecondary.withValues(alpha: 0.3),
-                    width: 1.5,
+              // Checkbox / State Indicator
+              if (isExempt)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: Icon(
+                    CupertinoIcons.minus_circle,
+                    color: colors.textTertiary,
+                    size: 20,
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(5),
+                )
+              else
+                Transform.scale(
+                  scale: 1.1,
+                  child: Checkbox(
+                    value: isDone,
+                    onChanged: actualDisable
+                        ? null
+                        : (val) {
+                            if (val != null && onToggle != null) {
+                              onToggle!(val);
+                            }
+                          },
+                    activeColor: colors.primary,
+                    checkColor: colors.onPrimary,
+                    side: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.4),
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
                   ),
                 ),
-              ),
               const SizedBox(width: 8),
 
-              // Text & Time
+              // Title & Time Detail
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,11 +122,12 @@ class PrayerAgendaCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.bold,
-                        color: isDone 
-                            ? colors.textSecondary.withValues(alpha: 0.7) 
-                            : (isSkipped ? colors.textSecondary.withValues(alpha: 0.5) : colors.textPrimary),
+                        color: isDone
+                            ? colors.textSecondary.withValues(alpha: 0.7)
+                            : (isSkipped || isExempt
+                                ? colors.textSecondary.withValues(alpha: 0.5)
+                                : colors.textPrimary),
                         decoration: isDone ? TextDecoration.lineThrough : null,
-                        fontFamily: 'Vazirmatn',
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -121,24 +138,22 @@ class PrayerAgendaCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             color: colors.textSecondary,
-                            fontFamily: 'Vazirmatn',
                           ),
                         ),
-                        if (snoozeText != null && !isDone && !isSkipped) ...[
+                        if (snoozeText != null && !isDone && !isSkipped && !isExempt) ...[
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: colors.textSecondary.withValues(alpha: 0.08),
+                              color: colors.accent.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               snoozeText!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10.5,
-                                color: Color(0xffD4A843),
+                                color: colors.accent,
                                 fontWeight: FontWeight.bold,
-                                fontFamily: 'Vazirmatn',
                               ),
                             ),
                           ),
@@ -148,16 +163,33 @@ class PrayerAgendaCard extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: colors.medicalRed.withValues(alpha: 0.1),
+                              color: colors.error.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text(
+                            child: Text(
                               'رد شده (قضا)',
                               style: TextStyle(
                                 fontSize: 10.5,
-                                color: Colors.redAccent,
+                                color: colors.error,
                                 fontWeight: FontWeight.bold,
-                                fontFamily: 'Vazirmatn',
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (isExempt) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: colors.surfaceSunken,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'معاف',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: colors.textTertiary,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
@@ -168,55 +200,87 @@ class PrayerAgendaCard extends StatelessWidget {
                 ),
               ),
 
-              // Actions
-              if (!isDone && !isSkipped && !disableControls) ...[
+              // Action Buttons
+              if (!isDone && !isSkipped && !isExempt && !disableControls) ...[
                 // Snooze Button
-                IconButton(
-                  icon: Icon(
-                    isSnoozed ? CupertinoIcons.timer_fill : CupertinoIcons.timer,
-                    color: deferCount >= 3 
-                        ? colors.textSecondary.withValues(alpha: 0.2) 
-                        : (isSnoozed ? const Color(0xffD4A843) : colors.textSecondary.withValues(alpha: 0.6)),
-                    size: 19,
+                Semantics(
+                  label: 'تعویق یادآور',
+                  button: true,
+                  child: IconButton(
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                    icon: Icon(
+                      isSnoozed ? CupertinoIcons.timer_fill : CupertinoIcons.timer,
+                      color: deferCount >= 2
+                          ? colors.textTertiary.withValues(alpha: 0.3)
+                          : (isSnoozed ? colors.accent : colors.textSecondary),
+                      size: 19,
+                    ),
+                    tooltip: deferCount >= 2 ? 'حداکثر تعویق' : 'تعویق',
+                    onPressed: deferCount >= 2 ? null : onSnooze,
                   ),
-                  tooltip: deferCount >= 3 ? 'حداکثر تعویق' : 'تعویق',
-                  onPressed: deferCount >= 3 ? null : onSnooze,
                 ),
 
                 // Skip Button
-                IconButton(
-                  icon: Icon(
-                    CupertinoIcons.clear_circled,
-                    color: isExpired 
-                        ? colors.medicalRed 
-                        : colors.textSecondary.withValues(alpha: 0.6),
-                    size: 19,
+                Semantics(
+                  label: 'رد کردن و افزودن به قضا',
+                  button: true,
+                  child: IconButton(
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                    icon: Icon(
+                      CupertinoIcons.clear_circled,
+                      color: isExpired ? colors.error : colors.textSecondary,
+                      size: 19,
+                    ),
+                    tooltip: 'رد کردن و افزودن به قضا',
+                    onPressed: onSkip,
                   ),
-                  tooltip: 'رد کردن و افزودن به قضا',
-                  onPressed: onSkip,
                 ),
               ],
-
             ],
           ),
-          if (isExpired && !isDone && !isSkipped) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(CupertinoIcons.exclamationmark_triangle_fill, color: colors.medicalRed, size: 13),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'وقت نماز گذشته است. مایلید آن را به قضا منتقل کنید؟',
-                    style: TextStyle(
-                      color: colors.medicalRed,
-                      fontSize: 11,
-                      fontFamily: 'Vazirmatn',
-                      fontWeight: FontWeight.w500,
+
+          // Expired Banner Action
+          if (isExpired && !isDone && !isSkipped && !isExempt) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colors.error.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.exclamationmark_circle, color: colors.error, size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      expiredTimeDetail ?? 'وقت این نماز گذشته است.',
+                      style: TextStyle(
+                        color: colors.error,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  if (onLogAsQada != null)
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.accent,
+                        foregroundColor: colors.textPrimary,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                      onPressed: onLogAsQada,
+                      child: const Text(
+                        'خواندم (قضا)',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ],

@@ -65,10 +65,18 @@ class WorshipPracticeState {
   /// Prayer window end (prayers only)
   final DateTime? windowEnd;
 
-  bool get isDone => resultType == 'DONE';
-  bool get isSkipped => resultType == 'SKIPPED';
+  bool get isDone =>
+      resultType == 'DONE' ||
+      (countDone >= countTarget && countTarget > 0) ||
+      practice.dailyDone == 1;
+
+  bool get isSkipped =>
+      resultType == 'SKIPPED' ||
+      resultType == 'QADA_ADDED' ||
+      practice.dailyDone == -1;
+
   bool get isMissed => resultType == 'MISSED';
-  bool get isPending => resultType == null;
+  bool get isPending => !isDone && !isSkipped && !isMissed;
 }
 
 /// Result of a worship log operation — never throws for business paths.
@@ -199,11 +207,6 @@ class WorshipEngine {
 
   Future<void> _ensureDefaultPractices(DatabaseExecutor db) async {
     try {
-      final count = Sqflite.firstIntValue(
-        await db.rawQuery('SELECT COUNT(*) FROM worship_practices'),
-      ) ?? 0;
-      if (count > 0) return;
-
       final nowMs = DateTime.now().millisecondsSinceEpoch;
       final todayStr = DateTime.now().toIso8601String().substring(0, 10);
 
@@ -216,23 +219,31 @@ class WorshipEngine {
       ];
 
       for (final p in practices) {
-        await db.insert(
+        final existing = await db.query(
           'worship_practices',
-          {
-            'id': p['id'],
-            'practiceType': p['practiceType'],
-            'subType': p['subType'],
-            'title': p['title'],
-            'dailyTarget': p['dailyTarget'],
-            'dailyDone': 0,
-            'sortOrder': p['sortOrder'],
-            'isActive': (p['subType'] == 'ASR' || p['subType'] == 'ISHA') ? 0 : 1,
-            'dailyDoneDate': todayStr,
-            'createdAt': nowMs,
-            'updatedAt': nowMs,
-          },
-          conflictAlgorithm: ConflictAlgorithm.ignore,
+          where: 'id = ?',
+          whereArgs: [p['id']],
+          limit: 1,
         );
+        if (existing.isEmpty) {
+          await db.insert(
+            'worship_practices',
+            {
+              'id': p['id'],
+              'practiceType': p['practiceType'],
+              'subType': p['subType'],
+              'title': p['title'],
+              'dailyTarget': p['dailyTarget'],
+              'dailyDone': 0,
+              'sortOrder': p['sortOrder'],
+              'isActive': (p['subType'] == 'ASR' || p['subType'] == 'ISHA') ? 0 : 1,
+              'dailyDoneDate': todayStr,
+              'createdAt': nowMs,
+              'updatedAt': nowMs,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+        }
       }
     } catch (_) {}
   }
@@ -365,60 +376,44 @@ class WorshipEngine {
     var isFallback = cityId.isEmpty;
 
     if (cityId.isNotEmpty) {
-      try {
-        final rows = await db.query(
-          'iran_cities',
-          columns: ['lat', 'lng'],
-          where: 'id = ?',
-          whereArgs: [cityId],
-          limit: 1,
-        );
-        if (rows.isNotEmpty) {
-          lat = (rows.first['lat'] as num).toDouble();
-          lon = (rows.first['lng'] as num).toDouble();
-        } else {
-          isFallback = true;
-          RitmoLogger.warning('WorshipEngine: city "$cityId" not found — using Tehran fallback (W-14)');
-        }
-      } catch (e) {
+      final coords = await _lookupCityLatLng(db, cityId);
+      if (coords != null) {
+        lat = coords['lat']!;
+        lon = coords['lon']!;
+      } else {
         isFallback = true;
-        RitmoLogger.warning('WorshipEngine: city lookup failed: $e');
+        RitmoLogger.warning('WorshipEngine: city "$cityId" not found — using Tehran fallback (W-14)');
       }
     }
 
     final times = _calcTimes(date, lat, lon, method, ihtiyat);
     final fallback = isFallback;
 
-    try {
-      await db.insert(
-        'prayer_times_cache',
-        {
-          'date': _ds(date),
-          'cityId': cityId,
-          'calculationMethod': method,
-          'ihtiyatMinutes': ihtiyat,
-          'fajr': times.fajrText,
-          'sunrise': times.sunriseText,
-          'dhuhr': times.dhuhrText,
-          'asr': times.asrText,
-          'maghrib': times.maghribText,
-          'sunset': times.sunsetText,
-          'isha': times.ishaText,
-          'midnightShari': times.midnightShariText,
-          'fajrIso': times.fajr.toIso8601String(),
-          'sunriseIso': times.sunrise.toIso8601String(),
-          'dhuhrIso': times.dhuhr.toIso8601String(),
-          'asrIso': times.asr.toIso8601String(),
-          'maghribIso': times.maghrib.toIso8601String(),
-          'sunsetIso': times.sunset.toIso8601String(),
-          'ishaIso': times.isha.toIso8601String(),
-          'midnightShariIso': times.midnightShari.toIso8601String(),
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    } catch (e) {
-      RitmoLogger.warning('WorshipEngine: cache write failed: $e');
-    }
+    final cacheData = {
+      'date': _ds(date),
+      'cityId': cityId,
+      'calculationMethod': method,
+      'ihtiyatMinutes': ihtiyat,
+      'fajr': times.fajrText,
+      'sunrise': times.sunriseText,
+      'dhuhr': times.dhuhrText,
+      'asr': times.asrText,
+      'maghrib': times.maghribText,
+      'sunset': times.sunsetText,
+      'isha': times.ishaText,
+      'midnightShari': times.midnightShariText,
+      'computedAt': DateTime.now().millisecondsSinceEpoch,
+      'fajrIso': times.fajr.toIso8601String(),
+      'sunriseIso': times.sunrise.toIso8601String(),
+      'dhuhrIso': times.dhuhr.toIso8601String(),
+      'asrIso': times.asr.toIso8601String(),
+      'maghribIso': times.maghrib.toIso8601String(),
+      'sunsetIso': times.sunset.toIso8601String(),
+      'ishaIso': times.isha.toIso8601String(),
+      'midnightShariIso': times.midnightShari.toIso8601String(),
+    };
+
+    await _insertPrayerTimesCache(db, cacheData);
 
     return PrayerTimes(
       date: _ds(date),
@@ -437,6 +432,46 @@ class WorshipEngine {
     );
   }
 
+  Future<Map<String, double>?> _lookupCityLatLng(DatabaseExecutor db, String cityId) async {
+    if (cityId.isEmpty) return null;
+    try {
+      final rows = await db.query(
+        'iran_cities',
+        where: 'id = ?',
+        whereArgs: [cityId],
+        limit: 1,
+      );
+      if (rows.isNotEmpty) {
+        final row = rows.first;
+        final latVal = row['latitude'] ?? row['lat'];
+        final lonVal = row['longitude'] ?? row['lng'];
+        if (latVal is num && lonVal is num) {
+          return {'lat': latVal.toDouble(), 'lon': lonVal.toDouble()};
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _insertPrayerTimesCache(DatabaseExecutor db, Map<String, dynamic> row) async {
+    try {
+      await db.insert('prayer_times_cache', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    } catch (_) {
+      final fallbackRow = Map<String, dynamic>.from(row)
+        ..remove('fajrIso')
+        ..remove('sunriseIso')
+        ..remove('dhuhrIso')
+        ..remove('asrIso')
+        ..remove('maghribIso')
+        ..remove('sunsetIso')
+        ..remove('ishaIso')
+        ..remove('midnightShariIso');
+      try {
+        await db.insert('prayer_times_cache', fallbackRow, conflictAlgorithm: ConflictAlgorithm.replace);
+      } catch (_) {}
+    }
+  }
+
   /// Builds yearly prayer cache in a single batch transaction (W-12).
   Future<void> cacheRange({int days = 365}) async {
     final db = await DatabaseHelper.instance.database;
@@ -445,16 +480,13 @@ class WorshipEngine {
     final method = settings['prayer_calculation_method'] as String? ?? 'TEHRAN_GEOPHYSICS';
     final ihtiyat = int.tryParse(settings['ihtiyat_minutes']?.toString() ?? '') ?? 10;
 
-
     double lat = 35.6892, lon = 51.3890;
     if (cityId.isNotEmpty) {
-      try {
-        final rows = await db.query('iran_cities', columns: ['lat', 'lng'], where: 'id = ?', whereArgs: [cityId], limit: 1);
-        if (rows.isNotEmpty) {
-          lat = (rows.first['lat'] as num).toDouble();
-          lon = (rows.first['lng'] as num).toDouble();
-        }
-      } catch (_) {}
+      final coords = await _lookupCityLatLng(db, cityId);
+      if (coords != null) {
+        lat = coords['lat']!;
+        lon = coords['lon']!;
+      }
     }
 
     final now = DateTime.now();
@@ -463,32 +495,29 @@ class WorshipEngine {
       for (var i = 0; i < days; i++) {
         final d = now.add(Duration(days: i));
         final times = _calcTimes(d, lLat, lLon, method, ihtiyat);
-        await txn.insert(
-          'prayer_times_cache',
-          {
-            'date': _ds(d),
-            'cityId': cityId,
-            'calculationMethod': method,
-            'ihtiyatMinutes': ihtiyat,
-            'fajr': times.fajrText,
-            'sunrise': times.sunriseText,
-            'dhuhr': times.dhuhrText,
-            'asr': times.asrText,
-            'maghrib': times.maghribText,
-            'sunset': times.sunsetText,
-            'isha': times.ishaText,
-            'midnightShari': times.midnightShariText,
-            'fajrIso': times.fajr.toIso8601String(),
-            'sunriseIso': times.sunrise.toIso8601String(),
-            'dhuhrIso': times.dhuhr.toIso8601String(),
-            'asrIso': times.asr.toIso8601String(),
-            'maghribIso': times.maghrib.toIso8601String(),
-            'sunsetIso': times.sunset.toIso8601String(),
-            'ishaIso': times.isha.toIso8601String(),
-            'midnightShariIso': times.midnightShari.toIso8601String(),
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
+        await _insertPrayerTimesCache(txn, {
+          'date': _ds(d),
+          'cityId': cityId,
+          'calculationMethod': method,
+          'ihtiyatMinutes': ihtiyat,
+          'fajr': times.fajrText,
+          'sunrise': times.sunriseText,
+          'dhuhr': times.dhuhrText,
+          'asr': times.asrText,
+          'maghrib': times.maghribText,
+          'sunset': times.sunsetText,
+          'isha': times.ishaText,
+          'midnightShari': times.midnightShariText,
+          'computedAt': DateTime.now().millisecondsSinceEpoch,
+          'fajrIso': times.fajr.toIso8601String(),
+          'sunriseIso': times.sunrise.toIso8601String(),
+          'dhuhrIso': times.dhuhr.toIso8601String(),
+          'asrIso': times.asr.toIso8601String(),
+          'maghribIso': times.maghrib.toIso8601String(),
+          'sunsetIso': times.sunset.toIso8601String(),
+          'ishaIso': times.isha.toIso8601String(),
+          'midnightShariIso': times.midnightShari.toIso8601String(),
+        });
       }
     });
   }
@@ -506,18 +535,34 @@ class WorshipEngine {
     final hijriOffset = int.tryParse(settings['hijri_offset']?.toString() ?? '') ?? 0;
 
     // ─ Query 1: practices (active, not user-disabled) ─
-    final practiceRows = await db.query(
-      'worship_practices',
-      where: 'isActive = 1 AND (userDisabledAt IS NULL)',
-      orderBy: 'sortOrder ASC',
-    );
+    List<Map<String, dynamic>> practiceRows;
+    try {
+      practiceRows = await db.query(
+        'worship_practices',
+        where: 'isActive = 1 AND (userDisabledAt IS NULL)',
+        orderBy: 'sortOrder ASC',
+      );
+    } catch (_) {
+      try {
+        practiceRows = await db.query(
+          'worship_practices',
+          where: 'isActive = 1',
+          orderBy: 'sortOrder ASC',
+        );
+      } catch (_) {
+        practiceRows = await db.query('worship_practices');
+      }
+    }
 
     // ─ Query 2: completions for this date ─
-    final completionRows = await db.query(
-      'worship_completions',
-      where: 'dateStr = ?',
-      whereArgs: [cacheKey],
-    );
+    List<Map<String, dynamic>> completionRows = [];
+    try {
+      completionRows = await db.query(
+        'worship_completions',
+        where: 'dateStr = ?',
+        whereArgs: [cacheKey],
+      );
+    } catch (_) {}
 
     // ─ Query 3: prayer times (self-healing) ─
     final times = await _prayerTimesFromDb(db, date);
@@ -625,23 +670,33 @@ class WorshipEngine {
         qualityWindow = _qualityWindow(practice.subType ?? '', times, date);
       }
 
+      final completionRow = <String, dynamic>{
+        'id': recordId,
+        'practiceId': practiceId,
+        'dateStr': dateStr,
+        'practiceType': practiceType,
+        'resultType': amount >= dailyTarget ? 'DONE' : 'PARTIAL',
+        'countDone': amount,
+        'countTarget': dailyTarget,
+        'loggedAt': nowMs,
+        'createdAt': nowMs,
+      };
+
       await db.transaction((txn) async {
-        await txn.insert(
-          'worship_completions',
-          {
-            'id': recordId,
-            'practiceId': practiceId,
-            'dateStr': dateStr,
-            'practiceType': practiceType,
-            'resultType': amount >= dailyTarget ? 'DONE' : 'PARTIAL',
-            'countDone': amount,
-            'countTarget': dailyTarget,
-            'qualityWindow': qualityWindow,
-            'loggedAt': nowMs,
-            'createdAt': nowMs,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
+        try {
+          final rowWithQuality = Map<String, dynamic>.from(completionRow)..['qualityWindow'] = qualityWindow;
+          await txn.insert(
+            'worship_completions',
+            rowWithQuality,
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        } catch (_) {
+          await txn.insert(
+            'worship_completions',
+            completionRow,
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
 
         // Write dailyDone as a write-only cache (never read in business logic)
         await txn.update(
@@ -683,6 +738,17 @@ class WorshipEngine {
       final nowMs = DateTime.now().millisecondsSinceEpoch;
       final recordId = 'wc_${practiceId}_$dateStr';
 
+      final practiceRows = await db.query(
+        'worship_practices',
+        where: 'id = ?',
+        whereArgs: [practiceId],
+        limit: 1,
+      );
+      final practice = practiceRows.isNotEmpty ? WorshipPractice.fromMap(practiceRows.first) : null;
+      final practiceType = practice?.practiceType ?? (practiceId.contains('fasting') ? 'FASTING' : 'PRAYER');
+      final debtType = practiceType == 'FASTING' ? 'FASTING' : 'PRAYER';
+      final debtId = 'debt_${debtType}_$practiceId';
+
       await db.transaction((txn) async {
         await txn.insert(
           'worship_completions',
@@ -690,7 +756,7 @@ class WorshipEngine {
             'id': recordId,
             'practiceId': practiceId,
             'dateStr': dateStr,
-            'practiceType': 'PRAYER',
+            'practiceType': practiceType,
             'resultType': addToQada ? 'QADA_ADDED' : 'SKIPPED',
             'countDone': 0,
             'reason': reason,
@@ -702,19 +768,18 @@ class WorshipEngine {
 
         if (addToQada) {
           // Deterministic debt ID — no timestamp, no duplicates (W-10)
-          final debtId = 'debt_PRAYER_$practiceId';
           await txn.rawInsert('''
             INSERT INTO worship_debts
               (id, debtType, sourcePracticeId, title,
                totalCount, remainingCount, dailyTarget,
                autoCreated, isArchived, createdAt, updatedAt)
-            SELECT ?, 'PRAYER', ?, title, 1, 1, 1, 1, 0, ?, ?
+            SELECT ?, ?, ?, title, 1, 1, 1, 1, 0, ?, ?
             FROM worship_practices WHERE id = ?
             ON CONFLICT(id) DO UPDATE SET
               totalCount = totalCount + 1,
               remainingCount = remainingCount + 1,
               updatedAt = excluded.updatedAt
-          ''', [debtId, practiceId, nowMs, nowMs, practiceId]);
+          ''', [debtId, debtType, practiceId, nowMs, nowMs, practiceId]);
         }
 
         await txn.update(
@@ -736,6 +801,80 @@ class WorshipEngine {
       return WorshipLogOk(recordId);
     } catch (e) {
       RitmoLogger.error('WorshipEngine.logSkip error: $e');
+      return WorshipLogFailed(e);
+    }
+  }
+
+  // ── clearLog ──────────────────────────────────────────────────────────────
+
+  /// Clears a completion entry for a practice on a date.
+  /// Safely decrements debt if a Qada debt was created.
+  Future<WorshipLogResult> clearLog({
+    required String practiceId,
+    required DateTime date,
+  }) async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final dateStr = _ds(date);
+      final recordId = 'wc_${practiceId}_$dateStr';
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+      await db.transaction((txn) async {
+        final existing = await txn.query(
+          'worship_completions',
+          where: 'id = ?',
+          whereArgs: [recordId],
+          limit: 1,
+        );
+
+        final wasQada = existing.isNotEmpty && existing.first['resultType'] == 'QADA_ADDED';
+        final practiceType = existing.isNotEmpty
+            ? (existing.first['practiceType'] as String? ?? 'PRAYER')
+            : (practiceId.contains('fasting') ? 'FASTING' : 'PRAYER');
+
+        await txn.delete(
+          'worship_completions',
+          where: 'id = ?',
+          whereArgs: [recordId],
+        );
+
+        await txn.update(
+          'worship_practices',
+          {'dailyDone': 0, 'dailyDoneDate': dateStr, 'updatedAt': nowMs},
+          where: 'id = ?',
+          whereArgs: [practiceId],
+        );
+
+        if (wasQada) {
+          final debtType = practiceType == 'FASTING' ? 'FASTING' : 'PRAYER';
+          final debtId = 'debt_${debtType}_$practiceId';
+          await txn.rawUpdate('''
+            UPDATE worship_debts
+            SET totalCount = MAX(0, totalCount - 1),
+                remainingCount = MAX(0, remainingCount - 1),
+                updatedAt = ?
+            WHERE id = ?
+          ''', [nowMs, debtId]);
+
+          await txn.delete(
+            'worship_debts',
+            where: 'id = ? AND totalCount <= 0 AND remainingCount <= 0',
+            whereArgs: [debtId],
+          );
+        }
+      });
+
+      invalidate(date: date);
+      DayAgendaService.instance.invalidateDate(dateStr);
+      RitmoEventBus().fire(RitmoEvent(
+        type: 'WorshipUpdated',
+        timestamp: DateTime.now(),
+        payload: {'date': dateStr, 'practiceId': practiceId},
+      ));
+
+      return WorshipLogOk(recordId);
+    } catch (e) {
+      RitmoLogger.error('WorshipEngine.clearLog error: $e');
       return WorshipLogFailed(e);
     }
   }
@@ -897,11 +1036,15 @@ class WorshipEngine {
     DateTime date,
     HijriDate hijri,
   ) async {
-    final rows = await db.query('worship_seasons', where: 'isActive = 1');
-    return rows
-        .map((r) => WorshipSeason.fromMap(r))
-        .where((s) => _isSeasonActive(s, date, hijri))
-        .toList();
+    try {
+      final rows = await db.query('worship_seasons', where: 'isActive = 1');
+      return rows
+          .map((r) => WorshipSeason.fromMap(r))
+          .where((s) => _isSeasonActive(s, date, hijri))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   /// Recurrence-aware season check (W-7). No fragile string parsing.
