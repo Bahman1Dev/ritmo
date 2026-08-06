@@ -256,10 +256,7 @@ class ZoneCard extends StatelessWidget {
                       center: const Alignment(0.8, -0.6),
                       radius: 1.2,
                       colors: [
-                        (activeZoneColorHex != null
-                                ? Color(int.parse(activeZoneColorHex!))
-                                : colors.primary)
-                            .withValues(alpha: 0.25),
+                        _parseColorSafe(activeZoneColorHex, colors.primary).withValues(alpha: 0.25),
                         colors.card.withValues(alpha: 0.65),
                       ],
                     )
@@ -269,9 +266,7 @@ class ZoneCard extends StatelessWidget {
                   : null,
               border: Border.all(
                 color: !isOutOfZone
-                    ? (activeZoneColorHex != null
-                        ? Color(int.parse(activeZoneColorHex!))
-                        : colors.primary).withValues(alpha: 0.4)
+                    ? _parseColorSafe(activeZoneColorHex, colors.primary).withValues(alpha: 0.4)
                     : colors.border.withValues(alpha: 0.5),
                 width: !isOutOfZone
                     ? 1.5
@@ -280,10 +275,7 @@ class ZoneCard extends StatelessWidget {
               boxShadow: !isOutOfZone
                   ? [
                       BoxShadow(
-                        color: (activeZoneColorHex != null
-                                ? Color(int.parse(activeZoneColorHex!))
-                                : colors.primary)
-                            .withValues(alpha: 0.1),
+                        color: _parseColorSafe(activeZoneColorHex, colors.primary).withValues(alpha: 0.1),
                         blurRadius: 10,
                         spreadRadius: 1,
                       )
@@ -375,9 +367,7 @@ class ZoneCard extends StatelessWidget {
                               : l10n.routinesConnectedToRealm(activeZoneRoutinesCount),
                           style: TextStyle(
                             fontSize: 10,
-                            color: activeZoneColorHex != null
-                                ? Color(int.parse(activeZoneColorHex!))
-                                : colors.primary,
+                            color: _parseColorSafe(activeZoneColorHex, colors.primary),
                             fontWeight: FontWeight.bold,
                             fontFamily: 'Vazirmatn',
                           ),
