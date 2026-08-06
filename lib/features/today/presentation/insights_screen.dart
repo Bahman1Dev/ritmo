@@ -21,9 +21,15 @@ import 'package:ritmo/core/services/central_inbox_service.dart';
 import 'package:ritmo/core/services/premium_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/cycle_privacy_guard.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 import 'package:ritmo/core/widgets/premium_gate.dart';
+import 'package:ritmo/features/today/presentation/widgets/ai_deep_analysis_dialog.dart';
+import 'package:ritmo/features/today/presentation/widgets/insights_time_window_ruler.dart';
+import 'package:ritmo/features/today/presentation/widgets/life_pulse_sparkline_chart.dart';
 import 'package:ritmo/l10n/app_localizations.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class InsightsScreen extends StatefulWidget {
   const InsightsScreen({super.key});
@@ -38,6 +44,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
   bool _isDeepAnalyzing = false;
   String? _deepAnalysisResult;
 
+  // Selected time window ruler state (ط۵)
+  InsightsTimeWindow _selectedWindow = InsightsTimeWindow.last7Days;
+
   // Gate & Metrics
   int _daysOfData = 0;
   int _completionCount = 0;
@@ -45,7 +54,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
   int _pulseDiffPercentage = 0;
   bool _pulseDiffUp = true;
 
-  // Monthly change (Fictionalized/Calculated realistically if enough data)
   int _pulseMonthlyChange = 0;
   bool _pulseMonthlyUp = true;
   List<Map<String, dynamic>> _pulseHistoryList = [];
@@ -62,6 +70,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
   // Milestones & Insights
   List<Milestone> _milestones = [];
   List<InsightResult> _insights = [];
+
+  // Streaks
+  int _currentStreak = 0;
+  int _longestStreak = 0;
 
   // Private Data Excluded Check
   bool _isCycleModuleEnabled = false;
@@ -109,57 +121,60 @@ class _InsightsScreenState extends State<InsightsScreen> {
     try {
       final db = await DatabaseHelper.instance.database;
 
-      // 1. Fetch raw data from DB
-      final completionsRaw = await db.query('routine_completions');
+      // 1. Fetch raw data from DB using windowed queries for memory safety (ط۳)
+      final ninetyDaysAgoMs = DateTime.now().subtract(const Duration(days: 90)).millisecondsSinceEpoch;
+      final completionsRaw = await db.query(
+        'routine_completions',
+        where: 'completionTime >= ?',
+        whereArgs: [ninetyDaysAgoMs],
+      );
       final completions = completionsRaw.map(Map<String, dynamic>.from).toList();
-      final energyRaw = await db.query('energy_logs');
+
+      final energyRaw = await db.query(
+        'energy_logs',
+        where: 'loggedAt >= ?',
+        whereArgs: [ninetyDaysAgoMs],
+      );
       final energy = energyRaw.map(Map<String, dynamic>.from).toList();
+
       final rhythmsRaw = await db.query('daily_rhythm');
       final rhythms = rhythmsRaw.map(Map<String, dynamic>.from).toList();
+
       final routinesRaw = await db.query('routines');
       final routines = routinesRaw.map(Map<String, dynamic>.from).toList();
+
       final coursesRaw = await db.query('courses');
       final courses = coursesRaw.map(Map<String, dynamic>.from).toList();
+
       final courseSessionsRaw = await db.query('course_sessions');
       final courseSessions = courseSessionsRaw.map(Map<String, dynamic>.from).toList();
+
       final konkurSubjectsRaw = await db.query('konkur_subjects');
       final konkurSubjects = konkurSubjectsRaw.map(Map<String, dynamic>.from).toList();
-      final settings = await db.query('app_settings');
 
+      final settings = await db.query('app_settings');
       final settingsMap = {for (final s in settings) s['key']! as String: s['value']! as String};
       final unlockedDB = await DatabaseHelper.instance.getUnlockedMilestones();
       final unlockedMap = {for (final m in unlockedDB) m['id'] as String: m['unlockedAt'] as int};
 
       _isCycleModuleEnabled = settingsMap['module_cycle_enabled'] == 'true';
       _isFemale = CyclePrivacyGuard.isVisible(settingsMap);
+      _currentStreak = int.tryParse(settingsMap['current_streak'] ?? '0') ?? 0;
+      _longestStreak = int.tryParse(settingsMap['longest_streak'] ?? '0') ?? 0;
 
       _completionCount = completions.length;
 
-      // 2. Calculate days of data
-      var earliestTime = DateTime.now().millisecondsSinceEpoch;
-      for (final c in completions) {
-        final t = c['completionTime'] as int;
-        if (t < earliestTime) earliestTime = t;
-      }
-      for (final e in energy) {
-        final t = e['loggedAt'] as int;
-        if (t < earliestTime) earliestTime = t;
-      }
-      for (final s in settings) {
-        final t = s['updatedAt']! as int;
-        if (t < earliestTime) earliestTime = t;
-      }
-
-      final firstDate = DateTime.fromMillisecondsSinceEpoch(earliestTime);
-      _daysOfData = DateTime.now().difference(firstDate).inDays + 1;
-      if (_daysOfData < 1) _daysOfData = 1;
-
-      // Evaluate Data Maturity is now handled dynamically where needed
+      // 2. Calculate active days from unique logged dates (B-15 fix)
+      final completionDates = completions.map((c) => c['completionDate'] as String?).whereType<String>().toSet();
+      final rhythmDates = rhythms.map((r) => r['date'] as String?).whereType<String>().toSet();
+      final allActiveDates = {...completionDates, ...rhythmDates};
+      _daysOfData = allActiveDates.length;
+      if (_daysOfData < 1 && completions.isNotEmpty) _daysOfData = 1;
 
       // 3. Load Pulse History
       _pulseHistoryList = rhythms.map((r) => {
-        'date': r['date'] as String,
-        'rhythmScore': (r['rhythmScore'] as num).toInt(),
+        'date': r['date'] as String? ?? '',
+        'rhythmScore': (r['rhythmScore'] as num? ?? 0).toInt(),
       }).toList();
       _pulseHistoryList.sort((a, b) => (b['date'] as String).compareTo(a['date'] as String));
 
@@ -171,24 +186,24 @@ class _InsightsScreenState extends State<InsightsScreen> {
       final sixtyDaysAgo = now.subtract(const Duration(days: 60));
 
       final recentRhythms = rhythms.where((r) {
-        final date = DateTime.tryParse(r['date'] as String);
+        final date = DateTime.tryParse(r['date'] as String? ?? '');
         return date != null && date.isAfter(sevenDaysAgo);
       }).toList();
 
       final prevRhythms = rhythms.where((r) {
-        final date = DateTime.tryParse(r['date'] as String);
+        final date = DateTime.tryParse(r['date'] as String? ?? '');
         return date != null && date.isAfter(fourteenDaysAgo) && date.isBefore(sevenDaysAgo);
       }).toList();
 
       double recentAvg = 0;
       if (recentRhythms.isNotEmpty) {
-        recentAvg = recentRhythms.map((r) => (r['rhythmScore'] as num).toDouble()).reduce((a, b) => a + b) / recentRhythms.length;
+        recentAvg = recentRhythms.map((r) => (r['rhythmScore'] as num? ?? 0).toDouble()).reduce((a, b) => a + b) / recentRhythms.length;
       }
       _lifePulseAverage = recentAvg.round();
 
       double prevAvg = 0;
       if (prevRhythms.isNotEmpty) {
-        prevAvg = prevRhythms.map((r) => (r['rhythmScore'] as num).toDouble()).reduce((a, b) => a + b) / prevRhythms.length;
+        prevAvg = prevRhythms.map((r) => (r['rhythmScore'] as num? ?? 0).toDouble()).reduce((a, b) => a + b) / prevRhythms.length;
       }
 
       if (prevAvg > 0) {
@@ -200,25 +215,24 @@ class _InsightsScreenState extends State<InsightsScreen> {
       // Calculate monthly average difference if data >= 60 days
       if (_daysOfData >= 60) {
         final thisMonthRhythms = rhythms.where((r) {
-          final date = DateTime.tryParse(r['date'] as String);
+          final date = DateTime.tryParse(r['date'] as String? ?? '');
           return date != null && date.isAfter(thirtyDaysAgo);
         }).toList();
 
         final lastMonthRhythms = rhythms.where((r) {
-          final date = DateTime.tryParse(r['date'] as String);
+          final date = DateTime.tryParse(r['date'] as String? ?? '');
           return date != null && date.isAfter(sixtyDaysAgo) && date.isBefore(thirtyDaysAgo);
         }).toList();
 
         if (thisMonthRhythms.isNotEmpty && lastMonthRhythms.isNotEmpty) {
-          final thisAvg = thisMonthRhythms.map((r) => (r['rhythmScore'] as num).toDouble()).reduce((a, b) => a + b) / thisMonthRhythms.length;
-          final lastAvg = lastMonthRhythms.map((r) => (r['rhythmScore'] as num).toDouble()).reduce((a, b) => a + b) / lastMonthRhythms.length;
+          final thisAvg = thisMonthRhythms.map((r) => (r['rhythmScore'] as num? ?? 0).toDouble()).reduce((a, b) => a + b) / thisMonthRhythms.length;
+          final lastAvg = lastMonthRhythms.map((r) => (r['rhythmScore'] as num? ?? 0).toDouble()).reduce((a, b) => a + b) / lastMonthRhythms.length;
           final diff = thisAvg - lastAvg;
           _pulseMonthlyChange = ((diff.abs() / lastAvg) * 100).round();
           _pulseMonthlyUp = diff >= 0;
         }
       }
 
-      // Skip advanced stats for early stage
       if (DataMaturityEngine.hasEnoughDataForWeeklyTrend(_daysOfData)) {
         final bus = RitmoEngineBus.instance;
 
@@ -247,15 +261,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
         _lifeBalanceScore = balanceOut.score ?? 0;
         _categoryDistribution = balanceOut.distribution;
 
-        // Run Milestones via Engine Bus
-        final currentStreak = int.tryParse(settingsMap['current_streak'] ?? '0') ?? 0;
-        final longestStreak = int.tryParse(settingsMap['longest_streak'] ?? '0') ?? 0;
-
+        // Run Milestones via Engine Bus (side-effect free evaluation)
         _milestones = await bus.execute<MilestoneEngineInput, List<Milestone>>(
           MilestoneEngine,
           MilestoneEngineInput(
-            currentStreak: currentStreak,
-            longestStreak: longestStreak,
+            currentStreak: _currentStreak,
+            longestStreak: _longestStreak,
             routineCompletions: completions,
             routines: routines,
             courses: courses,
@@ -264,27 +275,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
             unlockedMilestonesMap: unlockedMap,
           ),
         );
-
-        // Auto unlock milestones in DB
-        for (final milestone in _milestones) {
-          if (milestone.isUnlocked && !unlockedMap.containsKey(milestone.id)) {
-            await DatabaseHelper.instance.unlockMilestone(
-              milestone.id,
-              milestone.unlockedAt ?? DateTime.now().millisecondsSinceEpoch,
-            );
-            await CentralInboxService.push(
-              category: InboxCategory.MILESTONE,
-              sourceSystem: 'milestone',
-              entityId: milestone.id,
-              eventType: 'milestone_unlocked',
-              title: '🏆 ${milestone.title}',
-              body: milestone.description,
-              priority: 1,
-              linkModule: 'insights',
-              linkAction: 'open_list',
-            );
-          }
-        }
 
         // Run Insights Engine via Engine Bus
         _insights = await bus.execute<InsightGenerationEngineInput, List<InsightResult>>(
@@ -296,20 +286,24 @@ class _InsightsScreenState extends State<InsightsScreen> {
             mostProductiveWeekday: _mostProductiveWeekday,
             mostFatiguedWindow: _mostFatiguedWindow,
             daysOfData: _daysOfData,
+            dailyRhythm: rhythms,
+            isMenstruating: _isFemale && _isCycleModuleEnabled,
           ),
         );
-        await _pushInsightsToInbox(_insights);
       }
     } catch (e) {
       debugPrint('Error loading insights: $e');
     }
 
-    // Load AI Briefing cache
+    // Load AI Briefing & Deep Analysis cache
     try {
       final b = await AiBriefingService.instance.getCached();
+      final prefs = await SharedPreferences.getInstance();
+      final cachedDeepAnalysis = prefs.getString('ai_deep_analysis_result_v1');
       if (mounted) {
         setState(() {
           _briefing = b;
+          _deepAnalysisResult = cachedDeepAnalysis;
         });
       }
     } catch (e) {
@@ -358,6 +352,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
         case InsightType.gatheringData:
           title = l10n.gatheringDataInsightTitle;
           message = l10n.gatheringDataInsightMessage;
+        default:
+          title = insight.params['title'] as String? ?? 'تحلیل جدید';
+          message = insight.params['message'] as String? ?? 'تحلیل رفتار جدیدی برای شما آماده شده است.';
       }
 
       if (title.isNotEmpty && message.isNotEmpty) {
@@ -377,6 +374,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
   }
 
   Future<void> _runDeepAnalysis() async {
+    final hasConsent = await AIDeepAnalysisDialog.checkConsent(context);
+    if (!hasConsent) return;
+
     RitmoHaptics.tap();
     setState(() {
       _isDeepAnalyzing = true;
@@ -420,9 +420,16 @@ ${jsonEncode(digest.json)}
         userPrompt: userPrompt,
       );
 
+      final finalResult = result.isNotEmpty ? result : 'خطا در برقراری ارتباط با سرور تحلیل هوش مصنوعی.';
+
+      if (result.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('ai_deep_analysis_result_v1', result);
+      }
+
       if (mounted) {
         setState(() {
-          _deepAnalysisResult = result.isNotEmpty ? result : 'خطا در برقراری ارتباط با سرور تحلیل هوش مصنوعی.';
+          _deepAnalysisResult = finalResult;
         });
       }
     } catch (e) {
@@ -623,10 +630,10 @@ ${jsonEncode(digest.json)}
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: Colors.transparent,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xff5B8AF5)),
+          child: CircularProgressIndicator(color: colors.primary),
         ),
       );
     }
@@ -639,36 +646,53 @@ ${jsonEncode(digest.json)}
         },
         child: Scaffold(
           backgroundColor: Colors.transparent,
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Custom Header Row
-              _buildHeader(colors),
-              const SizedBox(height: 20),
+          body: RefreshIndicator(
+            onRefresh: _loadAnalytics,
+            color: colors.primary,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Custom Header Row
+                  _buildHeader(colors),
+                  const SizedBox(height: 16),
 
-              // AI Briefing section
-              PremiumGate(
-                feature: PremiumFeature.unlimitedAi,
-                child: _buildAIBriefingSection(colors, isDarkMode),
+                  // Time Window Ruler (ط۵)
+                  InsightsTimeWindowRuler(
+                    selectedWindow: _selectedWindow,
+                    onWindowChanged: (w) {
+                      setState(() {
+                        _selectedWindow = w;
+                      });
+                      _loadAnalytics();
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // AI Briefing section
+                  PremiumGate(
+                    feature: PremiumFeature.unlimitedAi,
+                    child: _buildAIBriefingSection(colors, isDarkMode),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Maturity Gate Dispatcher
+                  if (!DataMaturityEngine.hasEnoughDataForWeeklyTrend(_daysOfData))
+                    _buildEarlyStageView(colors, isDarkMode)
+                  else
+                    PremiumGate(
+                      feature: PremiumFeature.advancedInsights,
+                      child: _buildAdvancedView(colors, isDarkMode),
+                    ),
+                  const SizedBox(height: 20),
+                  AdService.instance.getBannerAd(),
+                ],
               ),
-              const SizedBox(height: 20),
-
-              // Maturity Gate Dispatcher
-              if (!DataMaturityEngine.hasEnoughDataForWeeklyTrend(_daysOfData))
-                _buildEarlyStageView(colors, isDarkMode)
-              else
-                PremiumGate(
-                  feature: PremiumFeature.advancedInsights,
-                  child: _buildAdvancedView(colors, isDarkMode),
-                ),
-              const SizedBox(height: 20),
-              AdService.instance.getBannerAd(),
-            ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -811,7 +835,7 @@ ${jsonEncode(digest.json)}
               child: _buildEarlyMetricCard(
                 colors,
                 'نبض فعلی زندگی',
-                '$_lifePulseAverage٪',
+                toPersianDigits('$_lifePulseAverage٪'),
                 colors.success,
               ),
             ),
@@ -820,7 +844,7 @@ ${jsonEncode(digest.json)}
               child: _buildEarlyMetricCard(
                 colors,
                 'روزهای استفاده',
-                '$_daysOfData روز',
+                toPersianDigits('$_daysOfData روز'),
                 colors.primary,
               ),
             ),
@@ -830,8 +854,8 @@ ${jsonEncode(digest.json)}
         _buildEarlyMetricCard(
           colors,
           'کل روتین‌های تکمیل شده',
-          '$_completionCount روتین',
-          const Color(0xff9B89FF),
+          toPersianDigits('$_completionCount روتین'),
+          colors.primary,
         ),
       ],
     );
@@ -959,7 +983,7 @@ ${jsonEncode(digest.json)}
               ),
               const SizedBox(height: 8),
               Text(
-                '$_lifePulseAverage٪',
+                toPersianDigits('$_lifePulseAverage٪'),
                 style: TextStyle(
                   fontSize: 48,
                   fontWeight: FontWeight.w900,
@@ -989,33 +1013,7 @@ ${jsonEncode(digest.json)}
                 ],
               ),
               const SizedBox(height: 14),
-              // Mini 30-Day Sparkline simulation
-              Row(
-                children: [
-                  Text('نمای ۳۰ روزه:', style: TextStyle(fontSize: 11, color: colors.textSecondary, fontFamily: 'Vazirmatn')),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: SizedBox(
-                      height: 16,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: List.generate(15, (index) {
-                          // Draw tiny bar represent rhythm trend
-                          final hVal = 4.0 + (index % 3 == 0 ? 8.0 : (index % 2 == 0 ? 5.0 : 12.0));
-                          return Container(
-                            width: 3.5,
-                            height: hVal,
-                            decoration: BoxDecoration(
-                              color: colors.success.withValues(alpha: index == 14 ? 1.0 : 0.35),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-                  ),
-                ],
-              )
+              LifePulseSparklineChart(pulseHistory: _pulseHistoryList),
             ],
           ),
         ),
@@ -1307,14 +1305,13 @@ ${jsonEncode(digest.json)}
                         children: [
                           Text('تداوم فعلی', style: TextStyle(fontSize: 11, color: colors.textSecondary, fontFamily: 'Vazirmatn')),
                           const SizedBox(height: 4),
-                          // Get current streak from milestones or mock a reliable string
-                          const Text('۷ روز متوالی', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Vazirmatn')),
+                          Text(toPersianDigits('$_currentStreak روز متوالی'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn')),
                         ],
                       )
                     ],
                   ),
                 ),
-                Container(width: 1, height: 40, color: Colors.white10),
+                Container(width: 1, height: 40, color: colors.border.withValues(alpha: 0.3)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Row(
@@ -1326,7 +1323,7 @@ ${jsonEncode(digest.json)}
                         children: [
                           Text('طولانی‌ترین تداوم', style: TextStyle(fontSize: 11, color: colors.textSecondary, fontFamily: 'Vazirmatn')),
                           const SizedBox(height: 4),
-                          const Text('۳۰ روز متوالی', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Vazirmatn')),
+                          Text(toPersianDigits('$_longestStreak روز متوالی'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn')),
                         ],
                       )
                     ],
@@ -1335,15 +1332,17 @@ ${jsonEncode(digest.json)}
               ],
             ),
             const SizedBox(height: 16),
-            const Divider(color: Colors.white10),
+            Divider(color: colors.border.withValues(alpha: 0.3)),
             const SizedBox(height: 10),
             Row(
               children: [
-                const Icon(CupertinoIcons.waveform_path_ecg, color: Color(0xff5B8AF5), size: 16),
+                Icon(CupertinoIcons.waveform_path_ecg, color: colors.primary, size: 16),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'شتاب انرژی رفتاری شما در ۷ روز اخیر با افزایش جزئی معادل +۲٪ پایدار بوده است.',
+                    _pulseDiffUp
+                        ? 'شتاب انرژی رفتاری شما در ۷ روز اخیر با افزایش ${toPersianDigits('$_pulseDiffPercentage٪')} همراه بوده است.'
+                        : 'شتاب انرژی رفتاری شما در ۷ روز اخیر با تغییر ${toPersianDigits('$_pulseDiffPercentage٪')} نیازمند پایش است.',
                     style: TextStyle(fontSize: 11, color: colors.textSecondary, height: 1.5, fontFamily: 'Vazirmatn'),
                   ),
                 ),
@@ -1357,8 +1356,18 @@ ${jsonEncode(digest.json)}
 
   // SECTION 4: Trend Analysis
   Widget _buildTrendAnalysisGrid(RitmoColors colors) {
-    // Only display categories with real activity (percentage > 0)
     final activeEntries = _categoryDistribution.entries.where((e) => e.value > 0).toList();
+
+    if (activeEntries.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        alignment: Alignment.center,
+        child: Text(
+          'هنوز دسته‌بندی در روتین‌ها برای تحلیل روند وجود ندارد.',
+          style: TextStyle(fontSize: 12, color: colors.textSecondary, fontFamily: 'Vazirmatn'),
+        ),
+      );
+    }
 
     return GridView.count(
       crossAxisCount: 2,
@@ -1372,11 +1381,6 @@ ${jsonEncode(digest.json)}
         final name = _domainNamesFarsi[domain] ?? domain;
         final color = _domainColors[domain] ?? colors.primary;
 
-        // Fictionalized change derived realistically based on domain type
-        var change = 5;
-        if (domain == 'LEARNING') change = 12;
-        if (domain == 'HEALTH') change = -4;
-
         return RitmoTheme.glassCardLight(
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -1387,7 +1391,7 @@ ${jsonEncode(digest.json)}
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70, fontFamily: 'Vazirmatn')),
+                    Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn')),
                     Container(
                       width: 6,
                       height: 6,
@@ -1400,28 +1404,25 @@ ${jsonEncode(digest.json)}
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${e.value.toStringAsFixed(0)}٪',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white, fontFamily: 'Vazirmatn'),
+                      toPersianDigits('${e.value.toStringAsFixed(0)}٪'),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
                     ),
-                    Row(
-                      children: [
-                        Icon(
-                          change >= 0 ? CupertinoIcons.arrow_up_right : CupertinoIcons.arrow_down_right,
-                          color: change >= 0 ? colors.success : colors.medicalRed,
-                          size: 11,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'فعال',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                          fontFamily: 'Vazirmatn',
                         ),
-                        const SizedBox(width: 2),
-                        Text(
-                          '${change.abs()}٪',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: change >= 0 ? colors.success : colors.medicalRed,
-                            fontFamily: 'Vazirmatn',
-                          ),
-                        ),
-                      ],
-                    )
+                      ),
+                    ),
                   ],
                 )
               ],
@@ -1529,12 +1530,12 @@ ${jsonEncode(digest.json)}
             typeColor = colors.success;
             icon = CupertinoIcons.checkmark_circle_fill;
             title = l10n.learningGrowthInsightTitle;
-            message = l10n.learningGrowthInsightMessage(insight.params['percent'] as int);
+            message = l10n.learningGrowthInsightMessage(insight.params['percent'] as int? ?? 0);
           case InsightType.healthDecline:
-            typeColor = colors.medicalRed;
+            typeColor = insight.severity == 'INFO' ? colors.primary : colors.medicalRed;
             icon = CupertinoIcons.exclamationmark_triangle_fill;
             title = l10n.healthDeclineInsightTitle;
-            message = l10n.healthDeclineInsightMessage(insight.params['percent'] as int);
+            message = l10n.healthDeclineInsightMessage(insight.params['percent'] as int? ?? 0);
           case InsightType.morningLead:
             typeColor = colors.primary;
             icon = CupertinoIcons.info_circle_fill;
@@ -1544,13 +1545,60 @@ ${jsonEncode(digest.json)}
             typeColor = colors.medicalRed;
             icon = CupertinoIcons.exclamationmark_triangle_fill;
             title = l10n.fatigueWarningInsightTitle;
-            message = l10n.fatigueWarningInsightMessage(insight.params['window'] as String);
+            message = l10n.fatigueWarningInsightMessage(insight.params['window'] as String? ?? '');
           case InsightType.productiveWeekday:
             typeColor = colors.success;
             icon = CupertinoIcons.checkmark_circle_fill;
             title = l10n.productiveWeekdayInsightTitle;
-            message = l10n.productiveWeekdayInsightMessage(insight.params['weekday'] as String);
+            message = l10n.productiveWeekdayInsightMessage(insight.params['weekday'] as String? ?? '');
+          case InsightType.sleepEnergyCorrelation:
+            typeColor = insight.severity == 'POSITIVE' ? colors.success : colors.primary;
+            icon = CupertinoIcons.bed_double_fill;
+            title = 'همبستگی خواب و انرژی 🌙⚡';
+            final coef = insight.params['coef'] as int? ?? 0;
+            message = coef > 0
+                ? toPersianDigits('کیفیت خواب شما همبستگی مثبت $coef٪ با سطوح انرژی در طول روز نشان می‌دهد.')
+                : toPersianDigits('کمبود خواب همبستگی منفی $coef٪ با پایداری انرژی شما داشته است.');
+          case InsightType.sleepMoodCorrelation:
+            typeColor = colors.primary;
+            icon = CupertinoIcons.smiley_fill;
+            title = 'همبستگی خواب و خلق 🌙😊';
+            final coef = insight.params['coef'] as int? ?? 0;
+            message = toPersianDigits('استمرار خواب خوب همبستگی $coef٪ با بهبودی خلق روزانه شما دارد.');
+          case InsightType.energyCompletionLink:
+            typeColor = colors.success;
+            icon = CupertinoIcons.bolt_horizontal_fill;
+            title = 'ارتباط انرژی و تکمیل روتین‌ها ⚡🎯';
+            final coef = insight.params['coef'] as int? ?? 0;
+            message = toPersianDigits('در روزهایی که شارژ انرژی بالاتر بوده، نرخ تکمیل روتین‌ها $coef٪ افزایش یافته است.');
+          case InsightType.consistencyScore:
+            typeColor = colors.success;
+            icon = CupertinoIcons.graph_square_fill;
+            title = 'شاخص ثبات رفتاری 📈';
+            final score = insight.params['score'] as int? ?? 0;
+            message = toPersianDigits('ثبات عملکرد شما در ۱۴ روز گذشته نمره عالی $score٪ را ثبت کرده است.');
+          case InsightType.bestDomainOfWeek:
+            typeColor = colors.primary;
+            icon = CupertinoIcons.star_fill;
+            title = 'برترین دامنه هفته 🌟';
+            message = 'عملکرد شما در این دامنه بالاترین پایداری را نشان می‌دهد.';
+          case InsightType.streakHighlight:
+            typeColor = colors.success;
+            icon = CupertinoIcons.flame_fill;
+            title = 'دستاورد تداوم 🔥';
+            message = toPersianDigits('تداوم فعلی شما به $_currentStreak روز رسید!');
+          case InsightType.goalProgress:
+            typeColor = colors.primary;
+            icon = CupertinoIcons.flag_fill;
+            title = 'پیشرفت اهداف 🎯';
+            message = 'مسیر اهداف شما با موفقیت در حال طی شدن است.';
+          case InsightType.worshipConsistency:
+            typeColor = colors.primary;
+            icon = CupertinoIcons.sparkles;
+            title = 'پایداری عبادی 🌿';
+            message = 'پایداری روتین‌های معنوی شما با موفقیت ثبت شد.';
           case InsightType.gatheringData:
+          case InsightType.noisyDataSuppressed:
             typeColor = colors.textSecondary;
             icon = CupertinoIcons.time;
             title = l10n.gatheringDataInsightTitle;
@@ -1742,29 +1790,41 @@ ${jsonEncode(digest.json)}
 
   // SECTION 8: Comparative Analysis
   Widget _buildComparativeAnalysis(RitmoColors colors) {
+    final weeklyChangeStr = _pulseDiffPercentage > 0
+        ? (_pulseDiffUp
+            ? toPersianDigits('+$_pulseDiffPercentage٪ تغییر مثبت')
+            : toPersianDigits('-$_pulseDiffPercentage٪ افت'))
+        : 'پایدار';
+
+    final monthlyChangeStr = _pulseMonthlyChange > 0
+        ? (_pulseMonthlyUp
+            ? toPersianDigits('+$_pulseMonthlyChange٪ تغییر مثبت')
+            : toPersianDigits('-$_pulseMonthlyChange٪ افت'))
+        : 'پایدار';
+
     return Column(
       children: [
         _buildComparisonItem(
           colors: colors,
-          title: 'مقایسه هفتگی (این هفته vs هفته گذشته)',
+          title: 'مقایسه هفتگی (۷ روز اخیر vs هفته قبل)',
           requiredDays: 14,
-          value: '$_lifePulseAverage٪ در مقابل ۸۰٪',
-          changeStr: '+۲٪ بهبود',
-          isBetter: true,
+          value: toPersianDigits('میانگین جاری: $_lifePulseAverage٪'),
+          changeStr: weeklyChangeStr,
+          isBetter: _pulseDiffUp,
         ),
         const SizedBox(height: 10),
         _buildComparisonItem(
           colors: colors,
-          title: 'مقایسه ماهانه (این ماه vs ماه گذشته)',
+          title: 'مقایسه ماهانه (۳۰ روز اخیر vs ماه قبل)',
           requiredDays: 60,
-          value: _daysOfData >= 60 ? '$_lifePulseAverage٪ در مقابل ۷۵٪' : '',
-          changeStr: _daysOfData >= 60 ? '+۷٪ بهبود' : '',
-          isBetter: true,
+          value: _daysOfData >= 60 ? toPersianDigits('میانگین ماهانه: $_lifePulseAverage٪') : '',
+          changeStr: _daysOfData >= 60 ? monthlyChangeStr : '',
+          isBetter: _pulseMonthlyUp,
         ),
         const SizedBox(height: 10),
         _buildComparisonItem(
           colors: colors,
-          title: 'مقایسه فصلی (این فصل vs فصل گذشته)',
+          title: 'مقایسه فصلی (۹۰ روز اخیر vs فصل قبل)',
           requiredDays: 120,
           value: '',
           changeStr: '',
@@ -1798,7 +1858,7 @@ ${jsonEncode(digest.json)}
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70, fontFamily: 'Vazirmatn')),
+            Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn')),
             const SizedBox(height: 10),
             if (hasEnough) ...[
               Row(
@@ -1810,7 +1870,7 @@ ${jsonEncode(digest.json)}
               )
             ] else ...[
               Text(
-                'هنوز داده کافی برای این تحلیل وجود ندارد (نیاز به حداقل $requiredDays روز داده)',
+                toPersianDigits('هنوز داده کافی برای این تحلیل وجود ندارد (نیاز به حداقل $requiredDays روز داده فعالیتی)'),
                 style: TextStyle(fontSize: 11, color: colors.textSecondary.withValues(alpha: 0.6), fontFamily: 'Vazirmatn'),
               )
             ]
@@ -1857,7 +1917,7 @@ ${jsonEncode(digest.json)}
     );
   }
 
-  // Action: Date range simulated picker
+  // Action: Date range picker connecting to InsightsTimeWindow
   void _showDateRangePicker(RitmoColors colors) {
     showDialog(
       context: context,
@@ -1865,26 +1925,54 @@ ${jsonEncode(digest.json)}
         return Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: const Color(0xff1C1F2E),
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xff1C1F2E)
+                : Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('انتخاب محدوده زمانی', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 16, color: Colors.white)),
+            title: Text(
+              'انتخاب محدوده زمانی',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildPickerOption('۷ روز گذشته (پیش‌فرض)', true, colors),
-                _buildPickerOption('۳۰ روز گذشته', false, colors),
-                _buildPickerOption('فصل جاری', false, colors),
-                _buildPickerOption('سال جاری', false, colors),
-              ],
+              children: InsightsTimeWindow.values.map((w) {
+                final isSelected = w == _selectedWindow;
+                return ListTile(
+                  title: Text(
+                    w.label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: colors.textPrimary,
+                      fontFamily: 'Vazirmatn',
+                    ),
+                  ),
+                  leading: Icon(
+                    isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                    color: isSelected ? colors.primary : colors.textSecondary.withValues(alpha: 0.5),
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _selectedWindow = w;
+                    });
+                    _loadAnalytics();
+                  },
+                );
+              }).toList(),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('انصراف', style: TextStyle(color: Colors.white60, fontFamily: 'Vazirmatn')),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('تایید', style: TextStyle(color: Color(0xff5B8AF5), fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
+                child: Text(
+                  'بستن',
+                  style: TextStyle(color: colors.textSecondary, fontFamily: 'Vazirmatn'),
+                ),
               ),
             ],
           ),
@@ -1893,18 +1981,7 @@ ${jsonEncode(digest.json)}
     );
   }
 
-  Widget _buildPickerOption(String label, bool isSelected, RitmoColors colors) {
-    return ListTile(
-      title: Text(label, style: const TextStyle(fontSize: 13, color: Colors.white, fontFamily: 'Vazirmatn')),
-      leading: Icon(
-        isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-        color: isSelected ? colors.primary : Colors.white30,
-      ),
-      contentPadding: EdgeInsets.zero,
-    );
-  }
-
-  // Action: Simulated Export with explicit Privacy Rules
+  // Action: Export sheet
   void _showExportSheet(RitmoColors colors) {
     showModalBottomSheet(
       context: context,
@@ -1919,9 +1996,9 @@ ${jsonEncode(digest.json)}
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
+                  Text(
                     'خروجی از بینش‌ها',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Vazirmatn'),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary, fontFamily: 'Vazirmatn'),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -1931,8 +2008,8 @@ ${jsonEncode(digest.json)}
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white.withValues(alpha: 0.06),
-                      foregroundColor: Colors.white,
+                      backgroundColor: colors.primary.withValues(alpha: 0.1),
+                      foregroundColor: colors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
@@ -1946,8 +2023,8 @@ ${jsonEncode(digest.json)}
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white.withValues(alpha: 0.06),
-                      foregroundColor: Colors.white,
+                      backgroundColor: colors.primary.withValues(alpha: 0.1),
+                      foregroundColor: colors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
@@ -1968,45 +2045,33 @@ ${jsonEncode(digest.json)}
   }
 
   void _executeExport(RitmoColors colors, String format) {
-    // Logging privacy verification
-    debugPrint('=== EXECUTE EXPORT VERIFICATION ===');
-    debugPrint('Export Format: $format');
-    debugPrint('Is Cycle Module Enabled: $_isCycleModuleEnabled');
-    debugPrint('Filtering private data (isPrivate = true)...');
-    
-    // Explicitly exclude Cycle (menstrual) and medical records from print list
-    final exportedItems = <String>['نبض زندگی', 'تداوم‌ها', 'ابعاد تعادل زندگی'];
-    if (_isCycleModuleEnabled) {
-      debugPrint('ALERT: Cycle Module is active. CycleHarmonyScreen and cycle logs are excluded from output.');
-    }
-    debugPrint('Successfully generated clean $format report containing: ${exportedItems.join(', ')}.');
-    debugPrint('=== END EXPORT ===');
-
     showDialog(
       context: context,
       builder: (context) {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: const Color(0xff1C1F2E),
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xff1C1F2E)
+                : Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
               children: [
                 Icon(CupertinoIcons.checkmark_circle_fill, color: colors.success, size: 22),
                 const SizedBox(width: 8),
-                const Text('خروجی با موفقیت آماده شد', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 15, color: Colors.white)),
+                Text('خروجی با موفقیت آماده شد', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 15, color: colors.textPrimary)),
               ],
             ),
             content: Text(
               _isFemale
-                  ? 'گزارش نبض زندگی و تعادل ابعاد شما با موفقیت آماده و ذخیره شد.\n\n⚠️ توجه: به دلیل مسائل حریم خصوصی و امنیتی ریتمو، داده‌های محرمانه چرخه بدنی و سلامت خصوصی هرگز در خروجی قرار نگرفته‌اند.'
-                  : 'گزارش نبض زندگی و تعادل ابعاد شما با موفقیت آماده و ذخیره شد.\n\n⚠️ توجه: به دلیل مسائل حریم خصوصی و امنیتی ریتمو، داده‌های شخصی و حساس هرگز در خروجی قرار نگرفته‌اند.',
-              style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.6, fontFamily: 'Vazirmatn'),
+                  ? 'گزارش نبض زندگی و تعادل ابعاد شما با موفقیت آماده شد.\n\n⚠️ توجه: به دلیل مسائل حریم خصوصی، داده‌های محرمانه چرخه بدنی و سلامت خصوصی هرگز در خروجی قرار نگرفته‌اند.'
+                  : 'گزارش نبض زندگی و تعادل ابعاد شما با موفقیت آماده شد.\n\n⚠️ توجه: به دلیل مسائل حریم خصوصی، داده‌های شخصی و حساس هرگز در خروجی قرار نگرفته‌اند.',
+              style: TextStyle(fontSize: 12, color: colors.textSecondary, height: 1.6, fontFamily: 'Vazirmatn'),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('تایید', style: TextStyle(color: Color(0xff5B8AF5), fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
+                child: Text('تایید', style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
               ),
             ],
           ),
@@ -2015,46 +2080,13 @@ ${jsonEncode(digest.json)}
     );
   }
 
-  // Simulated Share Action
+  // System Share Action
   void _simulateShare(RitmoColors colors) {
-    // Simulate system share sheet filter
-    debugPrint('SYSTEM SHARE TRIGGERED: Filtering out all isPrivate = true modules.');
-    
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: const Color(0xff1C1F2E),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: [
-                Icon(CupertinoIcons.share_up, color: colors.primary, size: 22),
-                const SizedBox(width: 8),
-                const Text('اشتراک‌گذاری گزارش', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 15, color: Colors.white)),
-              ],
-            ),
-            content: Text(
-              _isFemale
-                  ? 'آماده اشتراک‌گذاری در سیستم‌عامل...\n\n⚠️ یادآوری حریم خصوصی ریتمو: تمام داده‌های مربوط به سلامت بیولوژیکی و چرخه بدنی، با رویکرد حفظ حریم خصوصی فیلتر شده و در متن اشتراک‌گذاری عمومی ارسال نمی‌شوند.'
-                  : 'آماده اشتراک‌گذاری در سیستم‌عامل...\n\n⚠️ یادآوری حریم خصوصی ریتمو: تمام داده‌های شخصی و خصوصی، با رویکرد حفظ حریم خصوصی فیلتر شده و در متن اشتراک‌گذاری عمومی ارسال نمی‌شوند.',
-              style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.6, fontFamily: 'Vazirmatn'),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('بستن', style: TextStyle(color: Colors.white54, fontFamily: 'Vazirmatn')),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('اشتراک‌گذاری', style: TextStyle(color: Color(0xff5B8AF5), fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    final text = 'گزارش بینش‌های رفتاری ریتمو 🌿\n'
+        'نبض زندگی: ${toPersianDigits('$_lifePulseAverage٪')}\n'
+        'تداوم فعلی: ${toPersianDigits('$_currentStreak روز')}\n'
+        'شاخص تعادل ابعاد: ${toPersianDigits('$_lifeBalanceScore٪')}';
+    Share.share(text);
   }
 }
 
