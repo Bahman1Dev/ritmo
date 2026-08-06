@@ -20,7 +20,6 @@ import 'package:ritmo/features/worship/presentation/widgets/qibla_compass_sheet.
 import 'package:ritmo/features/worship/presentation/widgets/quran_dhikr_section.dart';
 import 'package:ritmo/features/worship/presentation/widgets/worship_debts_section.dart';
 import 'package:ritmo/features/worship/presentation/widgets/worship_seasons_section.dart';
-import 'package:shamsi_date/shamsi_date.dart';
 
 class WorshipScreen extends StatefulWidget {
   const WorshipScreen({super.key});
