@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
-import 'package:ritmo/core/domain/agenda/action_router.dart';
 import 'package:ritmo/core/domain/commands/ritmo_command.dart';
 import 'package:ritmo/core/domain/commands/ritmo_command_bus.dart';
 import 'package:ritmo/core/domain/completion/completion_gateway.dart';
@@ -209,7 +208,8 @@ class LogEnergyMoodRitmoCommand extends RitmoCommand {
     final logId = _genId();
     await db.insert('energy_logs', {
       'id': logId,
-      'value': ctx.payload['energyLevel'] ?? 70,
+      'energyLevel': (ctx.payload['energyLevel'] as String?) ?? 'MEDIUM',
+      'source': 'COMMAND',
       'loggedAt': DateTime.now().millisecondsSinceEpoch,
     });
     return CommandResult.ok(commandId: id, outputData: {'logId': logId});
@@ -321,7 +321,7 @@ class OpenPageRitmoCommand extends RitmoCommand {
     final route = ctx.payload['targetRoute']?.toString() ?? '/';
     final buildContext = ctx.payload['buildContext'] as BuildContext?;
     if (buildContext != null && buildContext.mounted) {
-      Navigator.of(buildContext).pushNamed(route);
+      unawaited(Navigator.of(buildContext).pushNamed(route));
     }
     return CommandResult.ok(commandId: id, outputData: {'route': route});
   }

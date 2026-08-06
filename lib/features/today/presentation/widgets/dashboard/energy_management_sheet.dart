@@ -5,6 +5,7 @@ import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 import 'package:ritmo/core/ux/ritmo_sheet_scaffold.dart';
+import 'package:sqflite/sqflite.dart';
 
 /// شیت مدیریت و ثبت سطح انرژی امروز
 /// حل باگ pop قبل از ثبت پایگاه‌داده
@@ -46,18 +47,24 @@ class _EnergyManagementSheetState extends State<EnergyManagementSheet> {
 
     try {
       final db = await DatabaseHelper.instance.database;
-      final now = DateTime.now();
-      final todayStr = now.toIso8601String().split('T').first;
-
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
       await db.insert('energy_logs', {
-        'id': 'energy_${now.millisecondsSinceEpoch}',
-        'dateStr': todayStr,
-        'timestamp': now.millisecondsSinceEpoch,
-        'energyPercent': _selectedPercent,
+        'id': 'energy_$nowMs',
         'energyLevel': _selectedLevel,
+        'source': 'MANUAL',
         'note': _noteController.text.trim(),
-        'createdAt': now.millisecondsSinceEpoch,
+        'loggedAt': nowMs,
       });
+
+      await db.insert(
+        'app_settings',
+        {
+          'key': 'default_energy_level',
+          'value': _selectedLevel,
+          'updatedAt': nowMs,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
 
       if (!mounted) return;
 
