@@ -107,14 +107,23 @@ class AIGateway {
       var apiKey = await SecureKeyStore.getKey(apiKeyKey) ?? settingsMap[apiKeyKey];
       var model = settingsMap[modelKey];
 
+      // Sanitize empty strings to null so fallback values trigger properly
+      if (baseUrl != null && baseUrl.trim().isEmpty) baseUrl = null;
+      if (apiKey != null && apiKey.trim().isEmpty) apiKey = null;
+      if (model != null && model.trim().isEmpty) model = null;
+
       if (isFeaturesConfig) {
-        baseUrl ??= defaultFeaturesBaseUrl;
+        baseUrl ??= defaultFeaturesBaseUrl.isNotEmpty ? defaultFeaturesBaseUrl : 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
         apiKey ??= defaultFeaturesApiKey;
         model ??= defaultFeaturesModel;
       } else {
-        baseUrl ??= settingsMap['ai_base_url'] ?? defaultBaseUrl;
-        apiKey ??= await SecureKeyStore.getKey('ai_api_key') ?? settingsMap['ai_api_key'] ?? defaultApiKey;
-        model ??= settingsMap['ai_model'] ?? defaultModel;
+        baseUrl ??= defaultBaseUrl.isNotEmpty ? defaultBaseUrl : defaultFeaturesBaseUrl;
+        apiKey ??= defaultApiKey.isNotEmpty ? defaultApiKey : defaultFeaturesApiKey;
+        model ??= defaultModel.isNotEmpty ? defaultModel : defaultFeaturesModel;
+      }
+
+      if (baseUrl.isEmpty) {
+        baseUrl = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
       }
 
       if (model == 'glm-4.7-flash') {
@@ -317,6 +326,12 @@ class AIGateway {
         if (i < chain.length - 1) continue;
         break;
       }
+      if (config.apiKey.isEmpty) {
+        debugPrint('AIGateway: apiKey is empty for key ${i + 1}/${chain.length}');
+        last = const _ChatOutcome.failure(errorBody: 'no_api_key', statusCode: 401);
+        if (i < chain.length - 1) continue;
+        break;
+      }
       final model = _effectiveModel(config, preferLightCloudflareModel);
       final isLastConfig = i == chain.length - 1;
 
@@ -435,6 +450,12 @@ class AIGateway {
       if (config.baseUrl.isEmpty) {
         debugPrint('AIGateway: baseUrl is empty for key ${i + 1}/${chain.length}');
         errorTag = 'Empty base URL';
+        if (i < chain.length - 1) continue;
+        break;
+      }
+      if (config.apiKey.isEmpty) {
+        debugPrint('AIGateway: apiKey is empty for key ${i + 1}/${chain.length}');
+        errorTag = 'no_api_key';
         if (i < chain.length - 1) continue;
         break;
       }

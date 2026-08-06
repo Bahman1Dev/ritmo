@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -164,7 +163,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       
       final text = _textController.text.trim();
       if (text.isNotEmpty) {
-        _send(text);
+        unawaited(_send(text));
       }
     }
   }
@@ -225,7 +224,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           _nextActions = output.nextActions;
           _isLoadingBriefing = false;
         });
-        _checkLastCommit();
+        unawaited(_checkLastCommit());
         unawaited(_runLearningLoop());
       }
     } catch (e) {
@@ -994,9 +993,14 @@ class _AiChatScreenState extends State<AiChatScreen> {
     if (idx != -1) {
       setState(() {
         final currentContent = _messages[idx].content;
-        final errorMsg = currentContent.isEmpty
-            ? 'خطا در ارتباط با سرور هوش مصنوعی.'
-            : '$currentContent\n\n[خطا در ارتباط: $errorText]';
+        String errorMsg;
+        if (errorText.contains('no_api_key') || errorText.contains('quota_exhausted')) {
+          errorMsg = 'کلید دسترسی (API Key) یا سهمیه هوش مصنوعی فعال نیست 🔌\n\nلطفاً وارد تنظیمات پروفایل (چرخ‌دنده بالای صفحه) -> «تنظیمات هوش مصنوعی (AI)» شوید و ارائه‌دهنده (مثل OpenRouter یا Zhipu AI) یا API Key خود را تنظیم نمایید.';
+        } else {
+          errorMsg = currentContent.isEmpty
+              ? 'خطا در ارتباط با سرور هوش مصنوعی. لطفاً اتصال اینترنت/فیلترشکن را بررسی کنید یا در تنظیمات پروفایل ارائه‌دهنده هوش مصنوعی را تغییر دهید 🔌'
+              : '$currentContent\n\n[خطا در ارتباط: $errorText]';
+        }
         _messages[idx] = _messages[idx].copyWith(content: errorMsg, isStreaming: false);
       });
     }
@@ -1067,7 +1071,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Future<void> _handleAction(ChatAction action) async {
     RitmoHaptics.confirm();
     if (action.type == 'openPage' && action.targetRoute != null) {
-      Navigator.pushNamed(context, action.targetRoute!);
+      unawaited(Navigator.pushNamed(context, action.targetRoute!));
     } else {
       await AssistantActionRegistry.executeAction(
         context,
