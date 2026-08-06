@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/ai/ai_gateway.dart';
 import 'package:ritmo/core/ai/chat/chat_action_parser.dart';
-import 'package:ritmo/core/ai/chat/chat_models.dart';
 import 'package:ritmo/core/ai/memory/assistant_memory_binding.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/commands/ritmo_command.dart';
@@ -184,6 +183,26 @@ ${_domainContext.isNotEmpty ? 'اطلاعات پر پرونده کاربر:\n$_d
       var fullResponse = '';
       _streamSubscription = stream.listen(
         (chunk) {
+          if (chunk.startsWith('error:')) {
+            final errorMsg = chunk.substring(6);
+            setState(() {
+              _isStreaming = false;
+              if (fullResponse.isEmpty) {
+                if (errorMsg == 'quota_exceeded') {
+                  _messages.last['content'] =
+                      'سهمیه رایگان روزانه ۱۰,۰۰۰ نورون هوش مصنوعی کلادفلر شما برای امروز به پایان رسیده است ⚠️\n\nمی‌توانید فردا مجدداً تلاش کنید یا در تنظیمات پروفایل ارائه‌دهنده را روی OpenRouter یا Zhipu AI تنظیم نمایید 🔌';
+                } else {
+                  _messages.last['content'] =
+                      'متأسفانه در حال حاضر خطایی در برقراری ارتباط با سرور هوش مصنوعی رخ داده است. لطفاً اتصال فیلترشکن یا اینترنت خود را بررسی کنید. همچنین می‌توانید در تنظیمات پروفایل، ارائه‌دهنده را روی OpenRouter یا Zhipu AI تنظیم نمایید 🔌';
+                }
+              } else {
+                _messages.last['content'] =
+                    '$fullResponse\n\n⚠️ [اتصال به هوش مصنوعی قطع شد]';
+              }
+            });
+            return;
+          }
+
           fullResponse += chunk;
           setState(() {
             _messages.last['content'] = fullResponse;
@@ -194,12 +213,17 @@ ${_domainContext.isNotEmpty ? 'اطلاعات پر پرونده کاربر:\n$_d
           setState(() {
             _isStreaming = false;
           });
-          _parseAndExecuteActions(fullResponse);
+          if (fullResponse.isNotEmpty && !fullResponse.startsWith('error:')) {
+            _parseAndExecuteActions(fullResponse);
+          }
         },
         onError: (err) {
           setState(() {
             _isStreaming = false;
-            _messages.last['content'] = 'خطا در دریافت پاسخ از هوش مصنوعی: $err';
+            if (fullResponse.isEmpty) {
+              _messages.last['content'] =
+                  'خطا در برقراری ارتباط با سرور هوش مصنوعی. لطفاً اتصال اینترنت/فیلترشکن را بررسی کنید 🔌';
+            }
           });
         },
       );
@@ -213,10 +237,9 @@ ${_domainContext.isNotEmpty ? 'اطلاعات پر پرونده کاربر:\n$_d
 
   Future<void> _parseAndExecuteActions(String response) async {
     final parsed = ChatActionParser.parse(response);
-    if (parsed.actionsJson != null && parsed.actionsJson!.isNotEmpty) {
+    if (parsed.actions.isNotEmpty) {
       try {
-        final actions = ChatActionParser.parseActions(parsed.actionsJson!);
-        for (final act in actions) {
+        for (final act in parsed.actions) {
           final actionType = AssistantActionType.tryFromString(act.type);
           if (actionType != null) {
             await RitmoCommandBus.instance.dispatch(
@@ -307,6 +330,7 @@ ${_domainContext.isNotEmpty ? 'اطلاعات پر پرونده کاربر:\n$_d
               padding: const EdgeInsets.all(16),
               itemCount: _messages.length,
               itemBuilder: (context, idx) {
+                final theme = Theme.of(context);
                 final msg = _messages[idx];
                 final isUser = msg['role'] == 'user';
                 return Align(
@@ -316,7 +340,7 @@ ${_domainContext.isNotEmpty ? 'اطلاعات پر پرونده کاربر:\n$_d
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: isUser
-                          ? RitmoTheme.primaryColor
+                          ? theme.colorScheme.primary
                           : (isDark ? const Color(0xFF2C2C3E) : Colors.grey[100]),
                       borderRadius: BorderRadius.circular(16),
                     ),

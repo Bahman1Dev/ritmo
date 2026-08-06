@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -404,23 +405,22 @@ class AIGateway {
         client.close();
       }
 
-      // Fail over to the next credential set only for limit-related problems
-      // (rate limit, quota exhaustion, or transient network exceptions). A
-      // hard error (e.g. 400/401/404) is not retried with another key.
-      final shouldFailover =
-          last.statusCode == 429 || last.quotaExhausted || last.exception != null;
+      // Fail over to the next credential set for any non-200 / failed outcome
+      final shouldFailover = !last.ok;
       if (!shouldFailover) break;
       if (!isLastConfig) {
-        debugPrint('AIGateway: failing over to secondary credentials (key ${i + 2}/${chain.length})');
+        debugPrint(
+          'AIGateway: failing over to next credentials in chain (${i + 2}/${chain.length}) due to: ${last.errorDetails}',
+        );
       }
     }
 
     return last;
   }
 
-  /// Opens a streaming chat request, failing over to the secondary credentials
-  /// when the primary returns a rate-limit / quota error before streaming
-  /// begins. On success the caller owns [client] and must close it.
+  /// Opens a streaming chat request, transparently failing over to the next
+  /// credential set when the primary returns any error or network exception
+  /// before streaming begins. On success the caller owns [client] and must close it.
   Future<({bool ok, http.Client? client, http.StreamedResponse? response, String errorTag})>
       _openStream({
     required List<Map<String, dynamic>> messages,
@@ -459,9 +459,11 @@ class AIGateway {
         request.headers.addAll(headers);
         request.body = jsonEncode(requestBody);
 
+        // Cap initial connection timeout to 15s to failover quickly if blocked
+        final connectTimeout = math.min(config.timeoutMs, 15000);
         final response = await client
             .send(request)
-            .timeout(Duration(milliseconds: config.timeoutMs));
+            .timeout(Duration(milliseconds: connectTimeout));
 
         if (response.statusCode == 200) {
           return (ok: true, client: client, response: response, errorTag: '');
@@ -476,9 +478,10 @@ class AIGateway {
             errorBody.contains('daily free allocation');
         errorTag = quota ? 'quota_exceeded' : 'HTTP Error ${response.statusCode}';
 
-        final isLimit = response.statusCode == 429 || quota;
-        if (isLimit && !isLastConfig) {
-          debugPrint('AIGateway(stream): failing over to secondary credentials');
+        if (!isLastConfig) {
+          debugPrint(
+            'AIGateway(stream): HTTP error ${response.statusCode} (key ${i + 1}/${chain.length}), failing over to next credentials in chain (${i + 2}/${chain.length})...',
+          );
           continue;
         }
         break;
@@ -490,7 +493,7 @@ class AIGateway {
         }
         errorTag = 'Exception: $e';
         if (!isLastConfig) {
-          debugPrint('AIGateway(stream): exception, failing over: $e');
+          debugPrint('AIGateway(stream): exception ($e), failing over to next credentials in chain (${i + 2}/${chain.length})...');
           continue;
         }
         break;
