@@ -16,6 +16,7 @@ enum AgendaDomain {
   worshipDebt,
   sport,
   medicine,
+  event,
 }
 
 /// Explicit classification of an agenda item's scheduling constraints.
@@ -77,6 +78,8 @@ class AgendaItem {
     required this.deepLink,
     this.windowStart,
     this.windowEnd,
+    this.hasOverride = false,
+    this.isEstimated = false,
     this.meta = const {},
     AgendaItemType? itemType,
   }) : itemType = itemType ??
@@ -132,6 +135,9 @@ class AgendaItem {
   /// Window boundaries for time-boxed items (e.g. prayers: fajr to sunrise).
   final DateTime? windowStart;
   final DateTime? windowEnd;
+
+  final bool hasOverride;
+  final bool isEstimated;
 
   /// Domain-specific extras. For routines: `meta['routine']` = raw routine map,
   /// `meta['schedule']` = raw schedule map.

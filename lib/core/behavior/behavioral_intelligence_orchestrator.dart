@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/ai/engines/helpers/sensitive_reflection_filter.dart';
 import 'package:ritmo/core/behavior/models/behavior_snapshot.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/engines/cache/engine_key.dart';
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,6 +16,15 @@ class BehavioralInput {
 class BehavioralIntelligenceOrchestrator implements CachedEngine<BehavioralInput, BehavioralSnapshot> {
   static const int engineVersionInt = 1;
   static const String snapshotVersionStr = '1.0';
+
+  @override
+  Duration get ttl => const Duration(hours: 6);
+
+  @override
+  String fingerprint(BehavioralInput input) {
+    final dayStamp = input.today.toIso8601String().substring(0, 10);
+    return '$dayStamp|$snapshotVersionStr|$engineVersionInt';
+  }
 
   @override
   bool canRun(BehavioralInput input) => true;
@@ -89,17 +99,7 @@ class BehavioralIntelligenceOrchestrator implements CachedEngine<BehavioralInput
       goalsCount,
     );
 
-    // 2. Cache check: If hash is identical, return cached snapshot from cacheStore
-    final cachedEntry = RitmoEngineBus.instance.cacheStore.get(BehavioralIntelligenceOrchestrator);
-    if (cachedEntry != null && cachedEntry.data is BehavioralSnapshot) {
-      final cachedSnapshot = cachedEntry.data as BehavioralSnapshot;
-      if (cachedSnapshot.behaviorHash == behaviorHash && cachedSnapshot.engineVersion == engineVersionInt) {
-        if (kDebugMode) {
-          debugPrint('[BI_ORCHESTRATOR] Cache Hit (Hash: $behaviorHash). Skipping engine calculations.');
-        }
-        return cachedSnapshot;
-      }
-    }
+
 
     // 3. Load full data from last 90 days for analysis
     final routinesList = await db.query('routines', where: 'isArchived = 0');

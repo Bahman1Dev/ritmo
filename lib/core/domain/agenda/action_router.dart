@@ -180,6 +180,12 @@ class ActionRouter {
           }
         }
         break;
+
+      case AgendaDomain.event:
+        if (context.mounted) {
+          ActionFeedback.info(context, message: item.title);
+        }
+        break;
     }
   }
 

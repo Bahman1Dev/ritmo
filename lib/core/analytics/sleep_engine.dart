@@ -126,6 +126,15 @@ class SleepEngine implements CachedEngine<SleepEngineInput, SleepEngineOutput> {
   }
 
   @override
+  Duration get ttl => const Duration(minutes: 5);
+
+  @override
+  String fingerprint(SleepEngineInput input) {
+    final dayStamp = input.today.toIso8601String().substring(0, 10);
+    return '$dayStamp|${input.horizonDays}|${input.sleepLogs.length}|${input.target.durationMinutes}';
+  }
+
+  @override
   void invalidate() {}
 
   @override

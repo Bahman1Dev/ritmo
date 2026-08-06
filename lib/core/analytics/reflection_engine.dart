@@ -248,6 +248,15 @@ class ReflectionEngine implements CachedEngine<ReflectionEngineInput, Reflection
   }
 
   @override
+  Duration get ttl => const Duration(minutes: 5);
+
+  @override
+  String fingerprint(ReflectionEngineInput input) {
+    final dayStamp = input.today.toIso8601String().substring(0, 10);
+    return '$dayStamp|${input.horizonDays}|${input.dailyReflections.length}';
+  }
+
+  @override
   void invalidate() {}
 
   @override

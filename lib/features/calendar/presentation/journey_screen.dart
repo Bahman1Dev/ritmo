@@ -17,6 +17,7 @@ import 'package:ritmo/features/calendar/presentation/utils/calendar_motion.dart'
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/calendar_search_delegate.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/domain_selection_sheet.dart';
+import 'package:ritmo/features/calendar/utils/calendar_defaults.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_month_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_scale_switcher.dart';

@@ -37,6 +37,14 @@ class InsightGenerationEngine implements CachedEngine<InsightGenerationEngineInp
   }
 
   @override
+  Duration get ttl => const Duration(minutes: 30);
+
+  @override
+  String fingerprint(InsightGenerationEngineInput input) {
+    return '${input.daysOfData}|${input.routineCompletions.length}|${input.routines.length}';
+  }
+
+  @override
   void invalidate() {}
 
   @override

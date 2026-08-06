@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:ritmo/core/theme/ritmo_colors.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
@@ -384,7 +385,7 @@ class _TimelineGridState extends State<TimelineGrid> {
       isDragging: isCurrentlyDragging,
       isResizing: isCurrentlyResizing,
       displayTimeOverride: displayTime,
-      displayDurationOverride: displayDuration,
+      displayHeightOverride: displayDuration != null ? displayDuration * widget.pxPerMinute : null,
       onTap: () => widget.onItemTap?.call(item),
       onResizeStart: isResizable
           ? (_) {

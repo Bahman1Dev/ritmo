@@ -329,6 +329,24 @@ class AssistantEngine implements CachedEngine<AssistantEngineInput, AssistantEng
   }
 
   @override
+  Duration get ttl => const Duration(minutes: 15);
+
+  @override
+  String fingerprint(AssistantEngineInput input) {
+    final dayStamp = _formatDateIso(input.today);
+    final nowMins = input.today.hour * 60 + input.today.minute;
+    final quarter = nowMins ~/ 15;
+    final todayCompletionsCount = input.routineCompletions.length;
+    final latestEnergy = input.energyLogs.isNotEmpty ? input.energyLogs.last['loggedAt'] ?? 0 : 0;
+    final overdueCount = input.goalSteps.where((step) {
+      final sDate = step['scheduledDate'] as String?;
+      final isComp = (step['isCompleted'] as int? ?? 0) == 1;
+      return sDate != null && sDate.compareTo(dayStamp) < 0 && !isComp;
+    }).length;
+    return '$dayStamp|$quarter|$todayCompletionsCount|$latestEnergy|$overdueCount';
+  }
+
+  @override
   void invalidate() {}
 
   @override

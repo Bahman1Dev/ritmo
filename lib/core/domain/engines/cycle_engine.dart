@@ -440,6 +440,18 @@ class CycleEngine implements CachedEngine<CycleEngineInput, CycleEngineOutput> {
   }
 
   @override
+  Duration get ttl => const Duration(minutes: 60);
+
+  @override
+  String fingerprint(CycleEngineInput input) {
+    final dayStamp = input.now.toIso8601String().substring(0, 10);
+    final avgLen = input.appSettings['cycle_avg_length'] ?? '28';
+    final avgPeriod = input.appSettings['cycle_avg_period'] ?? '6';
+    final pmsWindow = input.appSettings['cycle_pms_window_days'] ?? '4';
+    return '$dayStamp|$avgLen|$avgPeriod|$pmsWindow';
+  }
+
+  @override
   void invalidate() {}
 
   @override

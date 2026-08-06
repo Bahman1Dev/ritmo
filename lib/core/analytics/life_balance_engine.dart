@@ -51,6 +51,15 @@ class LifeBalanceEngine implements CachedEngine<LifeBalanceEngineInput, LifeBala
   }
 
   @override
+  Duration get ttl => const Duration(minutes: 5);
+
+  @override
+  String fingerprint(LifeBalanceEngineInput input) {
+    final dayStamp = input.now.toIso8601String().substring(0, 10);
+    return '$dayStamp|${input.routines.length}|${input.routineCompletions.length}';
+  }
+
+  @override
   void invalidate() {}
 
   @override

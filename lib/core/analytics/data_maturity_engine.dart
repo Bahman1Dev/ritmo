@@ -28,6 +28,14 @@ class DataMaturityEngine implements CachedEngine<DataMaturityEngineInput, DataMa
   }
 
   @override
+  Duration get ttl => const Duration(minutes: 5);
+
+  @override
+  String fingerprint(DataMaturityEngineInput input) {
+    return '${input.daysOfData}|${input.completionCount}|${input.energyLogsCount}';
+  }
+
+  @override
   void invalidate() {}
 
   @override

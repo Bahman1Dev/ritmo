@@ -51,6 +51,15 @@ class HealthEngine implements CachedEngine<HealthEngineInput, HealthEngineOutput
   }
 
   @override
+  Duration get ttl => const Duration(minutes: 5);
+
+  @override
+  String fingerprint(HealthEngineInput input) {
+    final dayStamp = input.today.toIso8601String().substring(0, 10);
+    return '$dayStamp|${input.windowDays}|${input.vitalSignLogs.length}|${input.medicationLogs.length}';
+  }
+
+  @override
   void invalidate() {}
 
   @override

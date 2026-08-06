@@ -93,6 +93,13 @@ class MedicineEngine implements CachedEngine<MedicineEngineInput, MedicineEngine
   }
 
   @override
+  Duration get ttl => Duration.zero;
+
+  @override
+  String fingerprint(MedicineEngineInput input) =>
+      '${input.now}|${input.stockCount}|${input.prnLogs24h.length}';
+
+  @override
   void invalidate() {}
 
   @override

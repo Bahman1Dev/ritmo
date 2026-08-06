@@ -163,6 +163,16 @@ class EnergyAnalyticsEngine implements CachedEngine<EnergyAnalyticsEngineInput, 
   }
 
   @override
+  Duration get ttl => const Duration(minutes: 5);
+
+  @override
+  String fingerprint(EnergyAnalyticsEngineInput input) {
+    final nowMs = (input.now ?? DateTime.now()).millisecondsSinceEpoch;
+    final quarter = nowMs ~/ (15 * 60 * 1000);
+    return '$quarter|${input.energyLogs.length}|${input.routineCompletions.length}';
+  }
+
+  @override
   void invalidate() {}
 
   @override

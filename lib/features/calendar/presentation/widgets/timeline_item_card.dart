@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/theme/ritmo_colors.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/widgets/ritmo/ritmo_time_range.dart';
 import 'package:ritmo/features/calendar/presentation/logic/timeline_layout_engine.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';

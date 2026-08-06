@@ -51,32 +51,20 @@ class KonkurEngineOutput {
 }
 
 class KonkurEngine implements CachedEngine<KonkurEngineInput, KonkurEngineOutput> {
-  KonkurEngineOutput? _cachedOutput;
-  int? _lastCalcHash;
+  @override
+  Duration get ttl => const Duration(minutes: 5);
 
   @override
-  void invalidate() {
-    _cachedOutput = null;
-    _lastCalcHash = null;
+  String fingerprint(KonkurEngineInput input) {
+    final dayStamp = _formatDateIso(input.today);
+    return '$dayStamp|${input.examDateIso}|${input.subjects.length}|${input.topics.length}|${input.sessions.length}|${input.planItems.length}';
   }
 
   @override
+  void invalidate() {}
+
+  @override
   Future<KonkurEngineOutput> calculate(KonkurEngineInput input) async {
-    final calcHash = Object.hash(
-      input.subjects.length,
-      input.topics.length,
-      input.sessions.length,
-      input.mockExams.length,
-      input.mockResults.length,
-      input.examDateIso,
-      input.today.day,
-      input.planItems.length,
-    );
-
-    if (_cachedOutput != null && _lastCalcHash == calcHash) {
-      return _cachedOutput!;
-    }
-
     final cleanToday = DateTime(input.today.year, input.today.month, input.today.day);
     final todayStr = _formatDateIso(cleanToday);
 
@@ -241,8 +229,6 @@ class KonkurEngine implements CachedEngine<KonkurEngineInput, KonkurEngineOutput
       todayPlanItems: todayPlan,
     );
 
-    _cachedOutput = output;
-    _lastCalcHash = calcHash;
     return output;
   }
 

@@ -68,6 +68,14 @@ class MilestoneEngine implements CachedEngine<MilestoneEngineInput, List<Milesto
   }
 
   @override
+  Duration get ttl => const Duration(minutes: 5);
+
+  @override
+  String fingerprint(MilestoneEngineInput input) {
+    return '${input.currentStreak}|${input.longestStreak}|${input.routineCompletions.length}|${input.courses.length}|${input.courseSessions.length}';
+  }
+
+  @override
   void invalidate() {}
 
   @override

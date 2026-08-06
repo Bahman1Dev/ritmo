@@ -1,3 +1,4 @@
+import 'package:ritmo/core/domain/engines/cache/fingerprint.dart';
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
 import 'package:ritmo/features/courses/models/course_models.dart';
 import 'package:ritmo/features/goals/logic/goal_progress_calculator.dart';
@@ -58,36 +59,51 @@ class GoalsEngineOutput {
 }
 
 class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
-  GoalsEngineOutput? _cachedOutput;
-  String? _cacheKey;
-
-  String _buildCacheKey(GoalsEngineInput input) {
-    final todayStr = input.today.toIso8601String().substring(0, 10);
-    final goalsHash = input.goals.fold<int>(0, (acc, g) => acc ^ g.id.hashCode ^ g.updatedAt.hashCode ^ g.status.hashCode);
-    final stepsCount = input.stepsByGoal.values.fold<int>(0, (acc, list) => acc + list.length);
-    return '$todayStr|${input.goals.length}|$stepsCount|${input.horizonDays}|$goalsHash';
-  }
+  @override
+  Duration get ttl => const Duration(minutes: 5);
 
   @override
-  void invalidate() {
-    _cachedOutput = null;
-    _cacheKey = null;
-  }
+  String fingerprint(GoalsEngineInput i) => fp((b) {
+        final dayStamp = i.today.toIso8601String().substring(0, 10);
+        b..write(i.horizonDays)..write('|')..write(dayStamp);
+        for (final g in i.goals) {
+          b
+            ..write('|G')
+            ..write(g.id)
+            ..write(':')
+            ..write(g.updatedAt)
+            ..write(':')
+            ..write(g.status);
+        }
+        for (final entry in i.stepsByGoal.entries) {
+          for (final s in entry.value) {
+            b
+              ..write('|S')
+              ..write(s.id)
+              ..write(':')
+              ..write(s.isCompleted ? 1 : 0)
+              ..write(':')
+              ..write(s.completedAt ?? s.createdAt);
+          }
+        }
+        b
+          ..write('|C')
+          ..write(i.courseSessions.length)
+          ..write('|R')
+          ..write(i.routineCompletions.length);
+      });
 
   @override
-  bool canRun(GoalsEngineInput input) {
-    return _cachedOutput == null || _buildCacheKey(input) != _cacheKey;
-  }
+  void invalidate() {}
+
+  @override
+  bool canRun(GoalsEngineInput input) => input.horizonDays > 0;
 
   @override
   List<Type> dependencies() => [];
 
   @override
   Future<GoalsEngineOutput> calculate(GoalsEngineInput input) async {
-    final currentKey = _buildCacheKey(input);
-    if (_cachedOutput != null && _cacheKey == currentKey) {
-      return _cachedOutput!;
-    }
 
     final cleanToday = DateTime(input.today.year, input.today.month, input.today.day);
     final todayStr = _formatDateIso(cleanToday);
@@ -252,9 +268,6 @@ class GoalsEngine implements CachedEngine<GoalsEngineInput, GoalsEngineOutput> {
       activeGoalsCount: activeGoalsCount,
       completedGoalsCount: completedGoalsCount,
     );
-
-    _cachedOutput = output;
-    _cacheKey = currentKey;
     return output;
   }
 

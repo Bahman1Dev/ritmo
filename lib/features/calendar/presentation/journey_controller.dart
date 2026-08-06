@@ -12,6 +12,8 @@ import 'package:ritmo/core/domain/commands/command_stack.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/features/courses/logic/course_scheduler.dart';
+import 'package:ritmo/core/domain/agenda/occurrence_override_repository.dart';
+import 'package:ritmo/features/calendar/utils/calendar_defaults.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 enum JourneyScale { day, week, month, year }

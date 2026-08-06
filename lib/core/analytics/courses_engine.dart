@@ -56,12 +56,17 @@ class CoursesEngineOutput {
 }
 
 class CoursesEngine implements CachedEngine<CoursesEngineInput, CoursesEngineOutput> {
-  CoursesEngineOutput? _cachedOutput;
+  @override
+  Duration get ttl => const Duration(minutes: 5);
 
   @override
-  void invalidate() {
-    _cachedOutput = null;
+  String fingerprint(CoursesEngineInput input) {
+    final dayStamp = _formatDate(input.today);
+    return '$dayStamp|${input.courses.length}|${input.sessions.length}';
   }
+
+  @override
+  void invalidate() {}
 
   @override
   Future<CoursesEngineOutput> calculate(CoursesEngineInput input) async {
@@ -249,7 +254,7 @@ class CoursesEngine implements CachedEngine<CoursesEngineInput, CoursesEngineOut
       }
     }
 
-    _cachedOutput = CoursesEngineOutput(
+    return CoursesEngineOutput(
       planningCourses: planningCourses,
       allCourses: input.courses,
       weeklyDoneSessions: weeklyDone,
@@ -266,7 +271,6 @@ class CoursesEngine implements CachedEngine<CoursesEngineInput, CoursesEngineOut
       requiredWeeklyPace: paceMap,
       masteryByCourse: masteryMap,
     );
-    return _cachedOutput!;
   }
 
 

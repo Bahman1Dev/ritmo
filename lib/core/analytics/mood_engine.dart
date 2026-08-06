@@ -66,6 +66,15 @@ class MoodEngineOutput {
 /// Analytics engine for mood trend and energy correlation.
 class MoodEngine implements CachedEngine<MoodEngineInput, MoodEngineOutput> {
   @override
+  Duration get ttl => const Duration(minutes: 30);
+
+  @override
+  String fingerprint(MoodEngineInput input) {
+    final dayStamp = input.today.toIso8601String().substring(0, 10);
+    return '$dayStamp|${input.horizonDays}|${input.moodLogs.length}|${input.energyLogs.length}';
+  }
+
+  @override
   void invalidate() {}
 
   @override
