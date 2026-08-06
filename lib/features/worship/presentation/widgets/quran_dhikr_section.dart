@@ -315,15 +315,11 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
   }
 
   void _openFullscreenTasbih({String? title, int target = 100, bool isFatima = false}) {
-    Navigator.push(
+    FullscreenTasbihSheet.present(
       context,
-      CupertinoPageRoute(
-        builder: (_) => FullscreenTasbihSheet(
-          initialDhikrTitle: title ?? 'تسبیحات حضرت زهرا (س)',
-          targetCount: target,
-          isFatimaTasbih: isFatima,
-        ),
-      ),
+      initialDhikrTitle: title ?? 'تسبیحات حضرت زهرا (س)',
+      targetCount: target,
+      isFatimaTasbih: isFatima,
     ).then((_) {
       _loadData();
       widget.onChanged();
@@ -541,23 +537,11 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
                   fontFamily: 'Vazirmatn',
                 ),
               ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(CupertinoIcons.fullscreen, color: Color(0xffD4A843), size: 20),
-                    tooltip: 'تسبیح تمام‌صفحه',
-                    onPressed: () => _openFullscreenTasbih(isFatima: true),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton(
-                    icon: Icon(CupertinoIcons.settings, color: colors.textSecondary, size: 20),
-                    onPressed: _showQuranSettingsSheet,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
+              IconButton(
+                icon: Icon(CupertinoIcons.settings, color: colors.textSecondary, size: 20),
+                onPressed: _showQuranSettingsSheet,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
             ],
           ),
@@ -872,17 +856,33 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
                 const SizedBox(width: 12),
                 Column(
                   children: [
-                    // Reset Button
-                    IconButton(
-                      style: IconButton.styleFrom(backgroundColor: colors.textSecondary.withValues(alpha: 0.04)),
-                      icon: Icon(CupertinoIcons.refresh, color: colors.textSecondary, size: 20),
-                      onPressed: _resetZahraCounter,
+                    Row(
+                      children: [
+                        // Fullscreen Tasbih Button
+                        IconButton(
+                          style: IconButton.styleFrom(backgroundColor: const Color(0xffD4A843).withValues(alpha: 0.12)),
+                          icon: const Icon(CupertinoIcons.fullscreen, color: Color(0xffD4A843), size: 18),
+                          tooltip: 'تسبیح تمام‌صفحه',
+                          onPressed: () => _openFullscreenTasbih(
+                            title: 'تسبیحات حضرت زهرا (س)',
+                            target: 100,
+                            isFatima: true,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        // Reset Button
+                        IconButton(
+                          style: IconButton.styleFrom(backgroundColor: colors.textSecondary.withValues(alpha: 0.04)),
+                          icon: Icon(CupertinoIcons.refresh, color: colors.textSecondary, size: 18),
+                          onPressed: _resetZahraCounter,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     // Manual Edit
                     IconButton(
                       style: IconButton.styleFrom(backgroundColor: colors.textSecondary.withValues(alpha: 0.04)),
-                      icon: Icon(CupertinoIcons.pencil, color: colors.textSecondary, size: 20),
+                      icon: Icon(CupertinoIcons.pencil, color: colors.textSecondary, size: 18),
                       onPressed: () => _manuallySetDhikrCount(activePractice),
                     ),
                   ],
@@ -957,24 +957,36 @@ class _QuranDhikrSectionState extends State<QuranDhikrSection> {
                   children: [
                     Row(
                       children: [
+                        // Fullscreen Tasbih Button
+                        IconButton(
+                          style: IconButton.styleFrom(backgroundColor: const Color(0xffD4A843).withValues(alpha: 0.12)),
+                          icon: const Icon(CupertinoIcons.fullscreen, color: Color(0xffD4A843), size: 18),
+                          tooltip: 'تسبیح تمام‌صفحه',
+                          onPressed: () => _openFullscreenTasbih(
+                            title: activePractice.title,
+                            target: activePractice.dailyTarget,
+                            isFatima: false,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
                         // Reset Button
                         IconButton(
                           style: IconButton.styleFrom(backgroundColor: colors.textSecondary.withValues(alpha: 0.04)),
                           icon: Icon(CupertinoIcons.refresh, color: colors.textSecondary, size: 18),
                           onPressed: () => _resetDhikr(activePractice),
                         ),
-                        const SizedBox(width: 4),
-                        // Fast Increment +10
-                        IconButton(
-                          style: IconButton.styleFrom(backgroundColor: const Color(0xffD4A843).withValues(alpha: 0.1)),
-                          icon: const Text('۱۰+', style: TextStyle(color: Color(0xffD4A843), fontSize: 12.5, fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
-                          onPressed: () => _incrementDhikr(activePractice, 10),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
+                        // Fast Increment +10
+                        IconButton(
+                          style: IconButton.styleFrom(backgroundColor: const Color(0xffD4A843).withValues(alpha: 0.1)),
+                          icon: const Text('۱۰+', style: TextStyle(color: Color(0xffD4A843), fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn')),
+                          onPressed: () => _incrementDhikr(activePractice, 10),
+                        ),
+                        const SizedBox(width: 4),
                         // Manual Edit
                         IconButton(
                           style: IconButton.styleFrom(backgroundColor: colors.textSecondary.withValues(alpha: 0.04)),

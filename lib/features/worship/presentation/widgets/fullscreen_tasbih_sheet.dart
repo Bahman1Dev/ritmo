@@ -1,14 +1,10 @@
-// lib/features/worship/presentation/widgets/fullscreen_tasbih_sheet.dart
-// Fullscreen Touch-Based Tasbih / Dhikr Counter — Section 4 UI Innovation
-// Entire screen is a tap target; short haptics per tap, heavy haptic at 33/34.
-// Auto-transitions through Tasbihat of Lady Fatima (SA) (34 -> 33 -> 33).
-
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/utils/persian_digits.dart';
 
 class FullscreenTasbihSheet extends StatefulWidget {
   const FullscreenTasbihSheet({
@@ -127,9 +123,9 @@ class _FullscreenTasbihSheetState extends State<FullscreenTasbihSheet> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final stage = widget.isFatimaTasbih ? _fatimaStages[_stageIndex] : null;
-    final activeColor = stage?.accentColor ?? colors.primary;
+    final activeColor = stage?.accentColor ?? const Color(0xffD4A843);
     final dhikrArabic = stage?.arabicText ?? widget.initialDhikrTitle;
-    final dhikrTitle = stage?.titleFa ?? widget.initialDhikrTitle;
+    final dhikrTitle = stage?.titleFa ?? 'ذکر و تسبیح';
     final target = stage?.target ?? widget.targetCount;
     final progress = (target > 0) ? (_currentCount / target).clamp(0.0, 1.0) : 0.0;
 
@@ -186,27 +182,32 @@ class _FullscreenTasbihSheetState extends State<FullscreenTasbihSheet> {
                       const SizedBox(height: 32),
                     ],
 
-                    // Arabic Dhikr Phrase
-                    Text(
-                      dhikrArabic,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Amiri', // Or default font
-                        color: colors.textPrimary,
-                        height: 1.4,
+                    // Arabic / Main Dhikr Phrase
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        dhikrArabic,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Vazirmatn',
+                          color: colors.textPrimary,
+                          height: 1.4,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
 
-                    Text(
-                      dhikrTitle,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: colors.textSecondary,
+                    if (widget.isFatimaTasbih)
+                      Text(
+                        dhikrTitle,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: colors.textSecondary,
+                          fontFamily: 'Vazirmatn',
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 48),
 
                     // Counter Circle Progress Ring
@@ -234,18 +235,20 @@ class _FullscreenTasbihSheetState extends State<FullscreenTasbihSheet> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                '$_currentCount',
+                                toPersianDigits('$_currentCount'),
                                 style: TextStyle(
-                                  fontSize: 64,
+                                  fontSize: 60,
                                   fontWeight: FontWeight.w900,
                                   color: colors.textPrimary,
+                                  fontFamily: 'Vazirmatn',
                                 ),
                               ),
                               Text(
-                                'از $target',
+                                toPersianDigits('از $target'),
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: colors.textSecondary,
+                                  fontFamily: 'Vazirmatn',
                                 ),
                               ),
                             ],

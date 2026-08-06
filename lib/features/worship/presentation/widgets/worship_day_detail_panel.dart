@@ -346,14 +346,11 @@ class WorshipDayDetailPanel extends StatelessWidget {
               if (onOpenTasbih != null) {
                 onOpenTasbih!();
               } else {
-                Navigator.push(
+                FullscreenTasbihSheet.present(
                   context,
-                  CupertinoPageRoute(
-                    builder: (_) => FullscreenTasbihSheet(
-                      initialDhikrTitle: selectedDay.dailyZikr.split('(').first.trim(),
-                      targetCount: 100,
-                    ),
-                  ),
+                  initialDhikrTitle: selectedDay.dailyZikr.split('(').first.trim(),
+                  targetCount: 100,
+                  isFatimaTasbih: false,
                 );
               }
             },
