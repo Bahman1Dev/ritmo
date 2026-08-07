@@ -43,6 +43,9 @@ class RoutineTables {
           progressionDoneSinceAdvance INTEGER NOT NULL DEFAULT 0,
           itemType TEXT NOT NULL DEFAULT 'ROUTINE',
           reminderOffsetMinutes INTEGER DEFAULT 0,
+          cognitiveLoad TEXT,
+          firstPhysicalStep TEXT,
+          temptationBundle TEXT,
           FOREIGN KEY(dependsOnRoutineId) REFERENCES routines(id) ON DELETE SET NULL
       );
     ''');
@@ -93,6 +96,9 @@ class RoutineTables {
           note TEXT,
           actual_duration_minutes INTEGER,
           partialRatio REAL,
+          skipReason TEXT,
+          masteryRating INTEGER,
+          pleasureRating INTEGER,
           createdAt INTEGER NOT NULL,
           FOREIGN KEY(routineId) REFERENCES routines(id) ON DELETE CASCADE
       );

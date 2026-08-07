@@ -3,7 +3,10 @@
 import 'package:get_it/get_it.dart';
 import 'package:ritmo/core/backend/auth_service.dart';
 import 'package:ritmo/core/analytics/assistant_engine.dart';
+import 'package:ritmo/core/analytics/cognitive_routing_engine.dart';
+import 'package:ritmo/core/analytics/daily_budget_engine.dart';
 import 'package:ritmo/core/analytics/energy_analytics_engine.dart';
+import 'package:ritmo/core/analytics/fresh_start_engine.dart';
 import 'package:ritmo/core/analytics/goals_engine.dart';
 import 'package:ritmo/core/analytics/health_engine.dart';
 import 'package:ritmo/core/analytics/insight_generation_engine.dart';
@@ -12,8 +15,10 @@ import 'package:ritmo/core/analytics/konkur_engine.dart';
 import 'package:ritmo/core/analytics/life_balance_engine.dart';
 import 'package:ritmo/core/analytics/milestone_engine.dart';
 import 'package:ritmo/core/analytics/mood_engine.dart';
+import 'package:ritmo/core/analytics/motivation_diagnosis_engine.dart';
 import 'package:ritmo/core/analytics/reflection_engine.dart';
 import 'package:ritmo/core/analytics/sleep_engine.dart';
+import 'package:ritmo/core/analytics/spaced_repetition_engine.dart';
 import 'package:ritmo/core/behavior/behavioral_intelligence_orchestrator.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
@@ -70,7 +75,12 @@ class AppBootstrapper {
       ..register(AssistantEngine())
       ..register(ReflectionEngine())
       ..register(HealthEngine())
-      ..register(BehavioralIntelligenceOrchestrator());
+      ..register(BehavioralIntelligenceOrchestrator())
+      ..register(MotivationDiagnosisEngine())
+      ..register(DailyBudgetEngine())
+      ..register(CognitiveRoutingEngine())
+      ..register(FreshStartEngine())
+      ..register(SpacedRepetitionEngine());
 
     sl.registerSingleton<EngineRegistry>(registry);
 

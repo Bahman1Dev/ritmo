@@ -1,6 +1,6 @@
 # ریتمو (Ritmo) - سیستم‌عامل سبک زندگی هوشمند
 
-[![Ritmo CI/CD](https://github.com/Mohammadsadeghyousefi044/ritmo/actions/workflows/ci.yml/badge.svg)](https://github.com/Mohammadsadeghyousefi044/ritmo/actions/workflows/ci.yml)
+[![Ritmo CI/CD](https://github.com/Bahman1Dev/ritmo/actions/workflows/ci.yml/badge.svg)](https://github.com/Bahman1Dev/ritmo/actions/workflows/ci.yml)
 
 ریتمو یک اپلیکیشن خودمراقبتی و مدیریت هوشمند زندگی است که با تمرکز بر تعادل زیستی (Biological Rhythm)، بهینه‌سازی انرژی روزانه، اهداف زنجیره‌ای، دوره‌های یادگیری و روتین‌های پیش رونده طراحی شده است.
 

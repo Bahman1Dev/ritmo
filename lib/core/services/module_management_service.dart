@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/models.dart';
+import 'package:ritmo/core/modules/module_registry.dart';
 import 'package:ritmo/core/services/alarm_scheduler_service.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -9,20 +10,8 @@ class ModuleManagementService {
   ModuleManagementService._();
   static final ModuleManagementService instance = ModuleManagementService._();
 
-  /// Canonical list of all module keys in Ritmo
-  static const List<String> allModuleKeys = [
-    'module_religion_enabled',
-    'module_medicine_enabled',
-    'module_supplementary_sports_enabled',
-    'module_cycle_enabled',
-    'module_courses_enabled',
-    'module_goals_enabled',
-    'module_assistant_enabled',
-    'module_konkur_enabled',
-    'module_energy_enabled',
-    'module_sleep_enabled',
-    'module_progressive_habits_enabled',
-  ];
+  /// Canonical list of all module keys dynamically retrieved from ModuleRegistry (§2.1)
+  static List<String> get allModuleKeys => ModuleRegistry.modules.map((m) => m.key).toList();
 
   /// Fetches all module enable flags atomically from SQLite `app_settings`
   Future<Map<String, bool>> getAllModuleStates() async {
@@ -34,8 +23,13 @@ class ModuleManagementService {
       };
 
       final states = <String, bool>{};
-      for (final key in allModuleKeys) {
-        states[key] = settingsMap[key] == 'true';
+      for (final desc in ModuleRegistry.modules) {
+        if (desc.isCore) {
+          states[desc.key] = true;
+        } else {
+          final rawVal = settingsMap[desc.key];
+          states[desc.key] = rawVal != null ? rawVal == 'true' : desc.defaultEnabled;
+        }
       }
       return states;
     } catch (e) {

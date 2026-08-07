@@ -58,6 +58,8 @@ key.properties
 android/local.properties
 google-services.json
 analysis_output.txt
+tree.txt
+tool/suite_test_output.txt
 
 # Windows special device file
 nul

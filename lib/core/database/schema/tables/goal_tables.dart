@@ -28,6 +28,7 @@ class GoalTables {
           abandonedAt INTEGER,
           abandonReason TEXT,
           iconKey TEXT,
+          identityStatement TEXT,
           createdAt INTEGER NOT NULL,
           updatedAt INTEGER NOT NULL,
           FOREIGN KEY(parentGoalId) REFERENCES goals(id) ON DELETE CASCADE

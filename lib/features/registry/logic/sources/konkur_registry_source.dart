@@ -12,7 +12,7 @@ class KonkurRegistrySource implements RegistrySource {
   RegistryDomain get domain => RegistryDomain.konkur;
 
   @override
-  String get moduleSettingsKey => 'module_konkur_enabled';
+  String get moduleSettingsKey => 'module_study_enabled';
 
   @override
   Future<int> count({bool includeArchived = false}) async {

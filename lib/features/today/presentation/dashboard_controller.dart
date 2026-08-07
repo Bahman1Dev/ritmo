@@ -648,11 +648,11 @@ class DashboardController {
       ));
     }
 
-    // کنکور — مباحث امروز
-    if (s['module_konkur_enabled'] == 'true') {
+    // درس و مطالعه — مباحث امروز
+    if (s['module_study_enabled'] == 'true' || s['module_konkur_enabled'] == 'true') {
       out.add(DashboardModuleSummary(
-        moduleId: 'konkur', title: 'کنکور',
-        icon: CupertinoIcons.doc_plaintext, accentColor: const Color(0xff8B5CF6),
+        moduleId: 'konkur', title: 'درس و مطالعه',
+        icon: CupertinoIcons.book_fill, accentColor: const Color(0xff8B5CF6),
         primary: '${fa(todaysKonkurPlanItems.length)} مبحث', secondary: 'برنامهی امروز',
         backgroundImage: 'assets/images/goals_card_top.png',
       ));

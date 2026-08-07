@@ -18,7 +18,7 @@ import 'package:ritmo/features/courses/presentation/courses_screen.dart';
 import 'package:ritmo/features/cycle/presentation/cycle_screen.dart';
 import 'package:ritmo/features/goals/presentation/goals_screen.dart';
 import 'package:ritmo/features/health/presentation/health_screen.dart';
-import 'package:ritmo/features/konkur/presentation/konkur_screen.dart';
+import 'package:ritmo/features/study/presentation/study_screen.dart';
 import 'package:ritmo/features/premium/presentation/premium_upgrade_sheet.dart';
 import 'package:ritmo/features/profile/presentation/profile_screen.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_home_dashboard_screen.dart';
@@ -162,7 +162,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
       _medicineEnabled = _settingsMap['module_medicine_enabled'] == 'true';
       _cycleEnabled = _settingsMap['module_cycle_enabled'] == 'true';
       _coursesEnabled = _settingsMap['module_courses_enabled'] == 'true';
-      _konkurEnabled = _settingsMap['module_konkur_enabled'] == 'true';
+      _konkurEnabled = _settingsMap['module_study_enabled'] == 'true' || _settingsMap['module_konkur_enabled'] == 'true';
       _goalsEnabled = _settingsMap['module_goals_enabled'] == 'true';
       _assistantEnabled = _settingsMap['module_assistant_enabled'] == 'true';
       _sportsEnabled = _settingsMap['module_sports_enabled'] == 'true';
@@ -599,18 +599,18 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
       );
     }
 
-    // 6. Konkur Module
-    if (_matchesSearch('کنکور', 'برنامه‌ریزی هوشمند، موفقیت')) {
+    // 6. Study Module (formerly Konkur)
+    if (_matchesSearch('درس و مطالعه', 'برنامه‌ریزی دروس و سرفصل‌ها')) {
       growthCards.add(
         _buildGridItem(
           index: cardIndex++,
-          icon: CupertinoIcons.doc_plaintext,
+          icon: CupertinoIcons.book_fill,
           iconColor: const Color(0xff8B5CF6),
-          title: 'کنکور',
-          description: 'برنامه‌ریزی هوشمند، موفقیت',
+          title: 'درس و مطالعه',
+          description: 'برنامه‌ریزی دروس و سرفصل‌ها',
           status: _konkurStatus,
           illustrationAsset: 'assets/images/goals_card_top.png',
-          onTap: () => _handleKonkurTap(colors),
+          onTap: () => _handleStudyTap(colors),
           colors: colors,
           isDarkMode: isDarkMode,
         ),
@@ -981,7 +981,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
     }
   }
 
-  void _handleKonkurTap(RitmoColors colors) {
+  void _handleStudyTap(RitmoColors colors) {
     if (!PremiumService.instance.can(PremiumFeature.konkurModule)) {
       PremiumUpgradeSheet.show(context);
       return;
@@ -989,19 +989,19 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
     if (_konkurEnabled) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const KonkurScreen()),
+        MaterialPageRoute(builder: (context) => const StudyScreen()),
       ).then((_) => _loadAllData());
     } else {
       _showActivationSheet(
-        title: 'فعال‌سازی سیستم کنکور',
-        description: 'با فعال‌سازی این سیستم، می‌توانید درختواره دروس و مباحث کنکوری را ایجاد و ثبت کرده، ساعت مطالعه و درصدهای کسب شده در آزمون‌های آزمایشی را مدیریت و تحلیل کنید.',
-        icon: CupertinoIcons.doc_plaintext,
+        title: 'فعال‌سازی ماژول درس و مطالعه',
+        description: 'با فعال‌سازی این سیستم، می‌توانید دروس، سرفصل‌ها و جلسات مطالعه را مدیریت کنید. (شامل حالت اختیاری برای داوطلبان کنکور)',
+        icon: CupertinoIcons.book_fill,
         iconColor: const Color(0xff8B5CF6),
-        settingKey: 'module_konkur_enabled',
+        settingKey: 'module_study_enabled',
         onActivated: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const KonkurScreen()),
+            MaterialPageRoute(builder: (context) => const StudyScreen()),
           ).then((_) => _loadAllData());
         },
         colors: colors,
@@ -1543,13 +1543,13 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
                 onReset: () => _confirmAndResetModule('module_assistant_enabled', 'دستیار هوشمند'),
               ),
               _buildSwitchOption(
-                title: 'کنکور 📚',
+                title: 'درس و مطالعه 📚',
                 value: _konkurEnabled,
                 onChanged: (val) async {
-                  await _toggleModule('module_konkur_enabled', val);
+                  await _toggleModule('module_study_enabled', val);
                   setSheetState(() => _konkurEnabled = val);
                 },
-                onReset: () => _confirmAndResetModule('module_konkur_enabled', 'کنکور'),
+                onReset: () => _confirmAndResetModule('module_study_enabled', 'درس و مطالعه'),
               ),
               _buildSwitchOption(
                 title: 'انرژی و خلق روزانه ⚡',

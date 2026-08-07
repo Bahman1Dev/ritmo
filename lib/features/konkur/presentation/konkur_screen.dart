@@ -25,7 +25,9 @@ import 'package:ritmo/features/konkur/presentation/widgets/konkur_stats_section.
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_today_section.dart';
 
 class KonkurScreen extends StatefulWidget {
-  const KonkurScreen({super.key});
+  const KonkurScreen({super.key, this.onSwitchToStudyMode});
+
+  final VoidCallback? onSwitchToStudyMode;
 
   @override
   State<KonkurScreen> createState() => _KonkurScreenState();
@@ -360,6 +362,7 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
           initialShowInDashboard: _settings['konkur_show_in_dashboard'] == 'true',
           onSaved: _loadAllData,
           onOpenCurriculumPicker: _showFieldPicker,
+          onSwitchToStudyMode: widget.onSwitchToStudyMode,
           onReset: () async {
             final confirm = await showDialog<bool>(
               context: context,
@@ -383,7 +386,7 @@ class _KonkurScreenState extends State<KonkurScreen> with SingleTickerProviderSt
               await KonkurRepository.instance.resetKonkurModule();
               if (!context.mounted) return;
               Navigator.pop(context); // Close settings sheet
-              _loadAllData(); // Refresh page (will show setup flow)
+              await _loadAllData(); // Refresh page (will show setup flow)
             }
           },
         );
@@ -603,6 +606,7 @@ class _KonkurSettingsSheet extends StatefulWidget {
     required this.onSaved,
     required this.onReset,
     this.onOpenCurriculumPicker,
+    this.onSwitchToStudyMode,
   });
   final String initialExamDateIso;
   final int initialDailyTargetMinutes;
@@ -610,6 +614,7 @@ class _KonkurSettingsSheet extends StatefulWidget {
   final VoidCallback onSaved;
   final VoidCallback onReset;
   final VoidCallback? onOpenCurriculumPicker;
+  final VoidCallback? onSwitchToStudyMode;
 
   @override
   State<_KonkurSettingsSheet> createState() => _KonkurSettingsSheetState();
@@ -686,6 +691,22 @@ class _KonkurSettingsSheetState extends State<_KonkurSettingsSheet> {
             ],
           ),
           const SizedBox(height: 16),
+          ListTile(
+            title: const Text('تغییر به حالت عمومی درس و مطالعه', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF3B82F6))),
+            subtitle: Text('خروج از حالت اختصاصی کنکور و خروج به محیط عمومی مطالعه.', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: colors.textSecondary)),
+            trailing: const Icon(Icons.swap_horiz_rounded, color: Color(0xFF3B82F6)),
+            onTap: () async {
+              final db = await DatabaseHelper.instance.database;
+              await db.insert('app_settings', {
+                'key': 'study_konkur_mode',
+                'value': 'false',
+                'updatedAt': DateTime.now().millisecondsSinceEpoch,
+              });
+              if (context.mounted) Navigator.pop(context);
+              widget.onSwitchToStudyMode?.call();
+            },
+          ),
+          const Divider(),
           // Curriculum Picker Button
           ListTile(
             title: const Text('بارگذاری سرفصل‌های کنکور', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, fontWeight: FontWeight.bold)),

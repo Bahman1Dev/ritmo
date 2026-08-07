@@ -9,6 +9,8 @@ import 'package:ritmo/core/database/migration/migrations/migration_v67_worship_s
 import 'package:ritmo/core/database/migration/migrations/migration_v68_worship_backfill.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v69_calendar_occurrence_overrides.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v70_course_skip_reason.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v71_motivation_cognitive.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v72_cleanup.dart';
 
 class MigrationRunner {
   static final List<Migration> _migrations = [
@@ -81,6 +83,8 @@ class MigrationRunner {
     MigrationV68(), // Prompt 048 M3: Backfill completions
     MigrationV69(), // Prompt 050 M1, M2: Occurrence overrides and incremental columns
     MigrationV70CourseSkipReason(), // Prompt 056: Add skipReason column to course_sessions
+    MigrationV71MotivationCognitive(), // Prompt 059: Motivation diagnosis, cognitive load & identity habit columns
+    MigrationV72Cleanup(), // Prompt 055: Drop deprecated zones, zone_schedules & worship_seasons tables
   ];
 
   static Future<void> run(Database db, int oldVersion, int newVersion) async {

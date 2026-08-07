@@ -33,12 +33,12 @@ class PremiumService {
   String _store = 'none';
   bool _debugMockActive = false;
 
-  bool get isPremium => _isPremium || _debugMockActive;
-  String get purchaseType => _debugMockActive ? 'lifetime' : _purchaseType;
-  int get expiryDateMs => _expiryDateMs;
-  int get purchaseDateMs => _purchaseDateMs;
-  String get store => _store;
-  bool get isDebugMockActive => _debugMockActive;
+  bool get isPremium => true; // Phase 10: Unlocked by default until real payment gateway integration
+  String get purchaseType => 'lifetime';
+  int get expiryDateMs => 0;
+  int get purchaseDateMs => 0;
+  String get store => 'all_access';
+  bool get isDebugMockActive => true;
 
 
   Future<void> init() async {
@@ -147,42 +147,14 @@ class PremiumService {
     return hmac.convert(messageBytes).toString();
   }
 
-  /// Check if premium or if a feature is allowed
+  /// Check if premium or if a feature is allowed (§10)
   bool can(PremiumFeature feature) {
-    if (isPremium) return true;
-
-    // Free features allowed
-    switch (feature) {
-      case PremiumFeature.unlimitedRoutines:
-      case PremiumFeature.unlimitedGoals:
-      case PremiumFeature.unlimitedAi:
-        return false; // has limits
-      case PremiumFeature.advancedInsights:
-      case PremiumFeature.smartReshuffle:
-      case PremiumFeature.coursesModule:
-      case PremiumFeature.konkurModule:
-      case PremiumFeature.advancedHealth:
-      case PremiumFeature.backupExport:
-      case PremiumFeature.customThemes:
-      case PremiumFeature.noAds:
-        return false; // completely locked in free version
-    }
+    return true; // All feature flags unlocked
   }
 
-  /// Get limits for numerical features
+  /// Get limits for numerical features (§10)
   int limitFor(PremiumFeature feature) {
-    if (isPremium) return 99999;
-
-    switch (feature) {
-      case PremiumFeature.unlimitedRoutines:
-        return 15;
-      case PremiumFeature.unlimitedGoals:
-        return 3;
-      case PremiumFeature.unlimitedAi:
-        return 5; // daily AI limit
-      default:
-        return 0;
-    }
+    return 99999; // Unlimited for all features
   }
 
   Future<bool> activateWithCode(String code) async {
