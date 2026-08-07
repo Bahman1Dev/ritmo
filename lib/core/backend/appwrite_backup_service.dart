@@ -33,7 +33,7 @@ class AppwriteBackupService {
   void _initStorage() {
     if (_storage == null && AppConfig.isAppwriteConfigured) {
       final client = Client()
-          .setEndpoint(AppConfig.appwriteEndpoint)
+          .setEndpoint(AppConfig.cleanEndpoint)
           .setProject(AppConfig.appwriteProjectId);
       _storage = Storage(client);
     }

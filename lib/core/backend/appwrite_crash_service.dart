@@ -18,7 +18,7 @@ class AppwriteCrashService {
   void _initDatabases() {
     if (_databases == null && AppConfig.isAppwriteConfigured) {
       final client = Client()
-          .setEndpoint(AppConfig.appwriteEndpoint)
+          .setEndpoint(AppConfig.cleanEndpoint)
           .setProject(AppConfig.appwriteProjectId);
       _databases = Databases(client);
     }

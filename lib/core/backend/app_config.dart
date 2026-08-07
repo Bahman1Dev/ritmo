@@ -27,6 +27,13 @@ class AppConfig {
     defaultValue: true,
   );
 
+  static String get cleanEndpoint {
+    if (appwriteEndpoint.contains('cloud.appwrite.io') && !appwriteEndpoint.contains('nyc.')) {
+      return appwriteEndpoint.replaceAll('cloud.appwrite.io', 'nyc.cloud.appwrite.io');
+    }
+    return appwriteEndpoint;
+  }
+
   static bool get isAppwriteConfigured =>
-      appwriteProjectId.isNotEmpty && appwriteEndpoint.isNotEmpty;
+      appwriteProjectId.isNotEmpty && cleanEndpoint.isNotEmpty;
 }
