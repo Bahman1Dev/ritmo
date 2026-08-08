@@ -1,5 +1,4 @@
-// lib/features/onboarding/presentation/steps/step_account.dart
-
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/backend/auth_service.dart';
 import 'package:ritmo/core/theme/ritmo_colors.dart';

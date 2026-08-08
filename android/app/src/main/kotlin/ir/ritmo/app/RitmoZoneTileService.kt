@@ -19,7 +19,7 @@ class RitmoZoneTileService : TileService() {
         val zoneIds = ArrayList<String>()
 
         try {
-            val dbPath = getDatabasePath("ritmo_secure.db")
+            val dbPath = getDatabasePath(DatabaseConfig.DATABASE_NAME)
             if (dbPath.exists()) {
                 val db = SQLiteDatabase.openDatabase(dbPath.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
                 val cursor = db.query("zones", arrayOf("id"), null, null, null, null, null)
@@ -70,7 +70,7 @@ class RitmoZoneTileService : TileService() {
         if (zoneId.isNotEmpty() && zoneId != "default_zone") {
             isActive = true
             try {
-                val dbPath = getDatabasePath("ritmo_secure.db")
+                val dbPath = getDatabasePath(DatabaseConfig.DATABASE_NAME)
                 if (dbPath.exists()) {
                     val db = SQLiteDatabase.openDatabase(dbPath.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
                     val cursor = db.query("zones", arrayOf("name"), "id = ?", arrayOf(zoneId), null, null, null)
@@ -96,7 +96,7 @@ class RitmoZoneTileService : TileService() {
     private fun getSettingFromDb(key: String, defaultValue: String): String {
         var value = defaultValue
         try {
-            val dbPath = getDatabasePath("ritmo_secure.db")
+            val dbPath = getDatabasePath(DatabaseConfig.DATABASE_NAME)
             if (dbPath.exists()) {
                 val db = SQLiteDatabase.openDatabase(dbPath.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
                 val cursor = db.query("app_settings", arrayOf("value"), "key = ?", arrayOf(key), null, null, null)

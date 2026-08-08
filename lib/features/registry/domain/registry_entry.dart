@@ -100,7 +100,7 @@ extension RegistryDomainX on RegistryDomain {
       case RegistryDomain.medicine:
         return 'module_health_enabled';
       case RegistryDomain.konkur:
-        return 'module_konkur_enabled';
+        return 'module_study_enabled';
       case RegistryDomain.movementKind:
       case RegistryDomain.workoutPlan:
         return 'module_supplementary_sports_enabled';

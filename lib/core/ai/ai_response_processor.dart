@@ -11,17 +11,6 @@ class AIResponseProcessor {
   static Map<String, dynamic> process(String rawOutput) {
     var sanitized = rawOutput.trim();
 
-    // Zero-Leak Rule 0: Double defense sanitization (Remove cycle references if any)
-    final cycleKeywords = [
-      'cycle', 'hormone', 'hormonal', 'menstrual', 'period', 'pregnancy', 'contraceptive',
-      'چرخه', 'قاعدگی', 'پریود', 'هورمون', 'عادت ماهیانه', 'پریودی', 'سیکل'
-    ];
-    for (final kw in cycleKeywords) {
-      if (sanitized.toLowerCase().contains(kw)) {
-        return AIFallbackEngine.getFallbackResponse();
-      }
-    }
-
     // Rule 0.5: Medical concepts check
     for (final kw in _medicalKeywords) {
       if (sanitized.toLowerCase().contains(kw)) {
@@ -79,20 +68,6 @@ class AIResponseProcessor {
 
   static Map<String, dynamic> processCopilot(String rawOutput) {
     var sanitized = rawOutput.trim();
-
-    // Zero-Leak Check
-    final cycleKeywords = [
-      'cycle', 'hormone', 'hormonal', 'menstrual', 'period', 'pregnancy', 'contraceptive',
-      'چرخه', 'قاعدگی', 'پریود', 'هورمون', 'عادت ماهیانه', 'پریودی', 'سیکل'
-    ];
-    for (final kw in cycleKeywords) {
-      if (sanitized.toLowerCase().contains(kw)) {
-        return {
-          'reply': 'بر اساس قوانین دسترسی، این اطلاعات در محدوده اختیارات دستیار نیست.',
-          'actions': []
-        };
-      }
-    }
 
     // Rule 0.5 Check
     for (final kw in _medicalKeywords) {

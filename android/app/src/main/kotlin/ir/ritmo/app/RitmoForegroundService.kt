@@ -139,7 +139,7 @@ class RitmoForegroundService : Service() {
     private fun getSettingFromDb(key: String, defaultValue: String): String {
         var value = defaultValue
         try {
-            val dbPath = getDatabasePath("ritmo_secure.db")
+            val dbPath = getDatabasePath(DatabaseConfig.DATABASE_NAME)
             if (dbPath.exists()) {
                 val db = SQLiteDatabase.openDatabase(dbPath.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
                 val cursor = db.query("app_settings", arrayOf("value"), "key = ?", arrayOf(key), null, null, null)

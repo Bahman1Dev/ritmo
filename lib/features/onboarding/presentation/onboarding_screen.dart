@@ -2,8 +2,6 @@ import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:ritmo/core/app_mode/app_mode_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/features/onboarding/logic/onboarding_controller.dart';
 
@@ -134,11 +132,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           onFinished: () {
             _controller.notifAsked = true;
             _controller.notifGranted = true;
-            if (AppModeService.instance.isSimple) {
-              _controller.save(onFinished: widget.onFinished);
-            } else {
-              _controller.next();
-            }
+            _controller.next();
           },
         );
       case 'CELEBRATION':

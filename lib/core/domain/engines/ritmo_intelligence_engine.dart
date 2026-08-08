@@ -167,7 +167,7 @@ class RitmoIntelligenceEngine {
       case Category.learning:
         return settings['module_courses_enabled'] == 'true';
       case Category.konkur:
-        return settings['module_konkur_enabled'] == 'true';
+        return settings['module_study_enabled'] == 'true';
       case Category.fitness:
       case Category.work:
       case Category.personal:

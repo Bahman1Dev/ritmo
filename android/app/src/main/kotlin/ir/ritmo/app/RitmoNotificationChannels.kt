@@ -20,7 +20,7 @@ object RitmoNotificationChannels {
         LEGACY.forEach { legacyId ->
             try {
                 nm.deleteNotificationChannel(legacyId)
-            } catch (_) {}
+            } catch (e: Exception) {}
         }
 
         val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)

@@ -15,8 +15,8 @@ class ConversationRAG {
     final normalized = query.toLowerCase().replaceAll('\u200c', ' ');
 
     final cycleKeywords = [
-      'چرخه', 'قاعدگی', 'پریود', 'پریودی', 'هورمون', 'سیکل', 'عادت ماهیانه',
-      'cycle', 'menstrual', 'period', 'hormone', 'hormonal', 'pregnancy'
+      'چرخه قاعدگی', 'سیکل قاعدگی', 'قاعدگی', 'پریود', 'پریودی', 'عادت ماهیانه',
+      'menstrual', 'period', 'pregnancy', 'contraceptive'
     ];
     final medicalKeywords = [
       'دارو', 'داروها', 'دوز', 'قرص', 'آمپول', 'نسخه', 'بیماری', 'درمان', 'پزشک', 'پزشکی',
@@ -30,7 +30,7 @@ class ConversationRAG {
       return const RagResult(
         blocked: true,
         blockReason: 'cycle_no_consent',
-        blockMessage: 'برای حفظ حریم خصوصی، اطلاعات چرخه و سلامت بانوان در چت عمومی مدیریت نمی‌شوند. لطفاً از دستیار اختصاصی بخش چرخه استفاده کنید.',
+        blockMessage: 'برای دسترسی به اطلاعات چرخه قاعدگی، می‌توانید ماژول چرخه را در بخش مدیریت ماژول‌ها یا تنظیمات برنامه فعال کنید.',
       );
     }
 

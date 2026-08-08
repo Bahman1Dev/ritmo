@@ -172,7 +172,7 @@ class GoalsController extends ChangeNotifier {
       final settings = {for (final row in settingsRows) row['key']! as String: row['value']! as String};
 
       final coursesEnabled = (settings['module_courses_enabled'] ?? 'true') == 'true';
-      final konkurEnabled = (settings['module_konkur_enabled'] ?? 'true') == 'true';
+      final konkurEnabled = (settings['module_study_enabled'] ?? 'true') == 'true';
 
       // Wave 1: Parallel loading of gated non-dependent resources (T20 / Fixes ه-10)
       final results = await Future.wait([

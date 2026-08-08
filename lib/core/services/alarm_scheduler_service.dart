@@ -23,6 +23,16 @@ class AlarmSchedulerService {
     final settingsList = await db.query('app_settings');
     final settingsMap = {for (final s in settingsList) s['key']! as String: s['value']! as String};
 
+    final masterEnabled = settingsMap['notif_master_enabled'] != 'false';
+    if (!masterEnabled) {
+      // All notifications blocked globally
+      return;
+    }
+
+    final quietEnabled = settingsMap['notif_quiet_enabled'] == 'true';
+    final quietStart = settingsMap['notif_quiet_start'] ?? '00:00';
+    final quietEnd = settingsMap['notif_quiet_end'] ?? '07:00';
+
     await sweepMissedAlarms();
 
     // Load active routines and schedules
@@ -157,6 +167,17 @@ class AlarmSchedulerService {
       final behavior = exceptionsMap[dateStr] ?? 'NORMAL';
       if (behavior == 'SILENCE_ALL' || (behavior == 'ESSENTIAL_ONLY' && !isEssential)) {
         continue;
+      }
+
+      // Check quiet hours: if routine is not essential and not medical/health, postpone after quiet hours
+      final categoryStr = rMap['category'] as String? ?? '';
+      final isMedical = categoryStr == 'medical' || categoryStr == 'health';
+      if (quietEnabled && !isEssential && !isMedical) {
+        final schedDateTime = DateTime.fromMillisecondsSinceEpoch(scheduledMs);
+        if (isTimeInQuietHours(schedDateTime, quietStart, quietEnd)) {
+          final adjustedTime = adjustTimeForQuietHours(schedDateTime, quietEnd);
+          scheduledMs = adjustedTime.millisecondsSinceEpoch;
+        }
       }
 
       // Register physical Alarm with AlarmManager
@@ -719,6 +740,43 @@ class AlarmSchedulerService {
     }
 
     return missedReminders;
+  }
+
+  static bool isTimeInQuietHours(DateTime time, String startStr, String endStr) {
+    final startParts = startStr.split(':');
+    final endParts = endStr.split(':');
+    final startH = int.tryParse(startParts[0]) ?? 0;
+    final startM = int.tryParse(startParts[1]) ?? 0;
+    final endH = int.tryParse(endParts[0]) ?? 7;
+    final endM = int.tryParse(endParts[1]) ?? 0;
+
+    final timeMin = time.hour * 60 + time.minute;
+    final startMin = startH * 60 + startM;
+    final endMin = endH * 60 + endM;
+
+    if (startMin == endMin) {
+      return false;
+    }
+
+    if (startMin < endMin) {
+      // Daytime quiet hours e.g. 13:00 to 15:00
+      return timeMin >= startMin && timeMin < endMin;
+    } else {
+      // Overnight quiet hours e.g. 23:00 to 07:00
+      return timeMin >= startMin || timeMin < endMin;
+    }
+  }
+
+  static DateTime adjustTimeForQuietHours(DateTime time, String endStr) {
+    final endParts = endStr.split(':');
+    final endH = int.tryParse(endParts[0]) ?? 7;
+    final endM = int.tryParse(endParts[1]) ?? 0;
+
+    var adjusted = DateTime(time.year, time.month, time.day, endH, endM);
+    if (!adjusted.isAfter(time)) {
+      adjusted = adjusted.add(const Duration(days: 1));
+    }
+    return adjusted;
   }
 }
 

@@ -16,6 +16,9 @@ import 'package:ritmo/core/database/migration/migrations/migration_v74_psych_lay
 import 'package:ritmo/core/database/migration/migrations/migration_v75_notification_reliability.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v76_simple_mode.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v77_ai_connection.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v78_settings_profile.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v79_task_upgrade.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v80_ai_opencode_defaults.dart';
 
 class MigrationRunner {
   static final List<Migration> _migrations = [
@@ -95,6 +98,9 @@ class MigrationRunner {
     MigrationV75NotificationReliability(), // Prompt 061: Notification reliability & full-screen alarm
     MigrationV76SimpleMode(), // Prompt 057: Simple Mode & tasks table
     MigrationV77AiConnection(), // Prompt 062: AI Connection mode, presets, timeout and model cleanups
+    MigrationV78SettingsProfile(), // Prompt 058: Settings registry, quiet hours, PIN split, dead keys cleanup
+    MigrationV79TaskUpgrade(), // Prompt 063: Task steps, importance, attachments
+    MigrationV80AiOpencodeDefaults(), // OpenCode AI default configuration
   ];
 
   static Future<void> run(Database db, int oldVersion, int newVersion) async {

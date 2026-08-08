@@ -15,6 +15,10 @@ object NativeChannels {
     const val NOTIF_ACTION_BG = "com.ritmo.app/notif_action_bg"
 }
 
+object DatabaseConfig {
+    const val DATABASE_NAME = "ritmo.db"
+}
+
 object AlarmMethods {
     const val SCHEDULE_EXACT_ALARM = "scheduleExactAlarm"
     const val CANCEL_ALARM = "cancelAlarm"

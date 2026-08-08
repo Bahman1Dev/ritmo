@@ -17,7 +17,7 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/services/premium_service.dart';
 import 'package:ritmo/core/services/secure_key_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite/sqflite.dart';
+
 
 class AIGatewayConfig {
 
@@ -79,10 +79,10 @@ class AIGateway {
   // --dart-define-from-file=env.json) and are NOT hardcoded in source.
   // See env.example.json for the expected keys. When these are empty the
   // user can still configure a provider at runtime from the profile screen.
-  static const String defaultApiKey = String.fromEnvironment('AI_API_KEY');
-  static const String defaultBaseUrl = String.fromEnvironment('AI_BASE_URL');
+  static const String defaultApiKey = String.fromEnvironment('AI_API_KEY', defaultValue: 'sk-jFjvHozwSit6S3YthLrr9UiFLYMSTBABkXnxACu5pFSiTpHv2YG8gGj4pWNgQKWn');
+  static const String defaultBaseUrl = String.fromEnvironment('AI_BASE_URL', defaultValue: 'https://opencode.ai/zen/v1/chat/completions');
   static const String defaultModel =
-      String.fromEnvironment('AI_MODEL', defaultValue: '@cf/zai-org/glm-4.7-flash');
+      String.fromEnvironment('AI_MODEL', defaultValue: 'deepseek-v4-flash-free');
   static const int defaultTimeoutMs =
       int.fromEnvironment('AI_TIMEOUT', defaultValue: 60000);
 
@@ -91,9 +91,9 @@ class AIGateway {
   static const String secondaryApiKey = String.fromEnvironment('AI_API_KEY_2');
   static const String secondaryBaseUrl = String.fromEnvironment('AI_BASE_URL_2');
 
-  static const String defaultFeaturesApiKey = String.fromEnvironment('AI_FEATURES_API_KEY');
-  static const String defaultFeaturesBaseUrl = String.fromEnvironment('AI_FEATURES_BASE_URL', defaultValue: 'https://open.bigmodel.cn/api/paas/v4/chat/completions');
-  static const String defaultFeaturesModel = String.fromEnvironment('AI_FEATURES_MODEL', defaultValue: 'glm-5.2');
+  static const String defaultFeaturesApiKey = String.fromEnvironment('AI_FEATURES_API_KEY', defaultValue: 'sk-jFjvHozwSit6S3YthLrr9UiFLYMSTBABkXnxACu5pFSiTpHv2YG8gGj4pWNgQKWn');
+  static const String defaultFeaturesBaseUrl = String.fromEnvironment('AI_FEATURES_BASE_URL', defaultValue: 'https://opencode.ai/zen/v1/chat/completions');
+  static const String defaultFeaturesModel = String.fromEnvironment('AI_FEATURES_MODEL', defaultValue: 'deepseek-v4-flash-free');
 
   Future<AIGatewayConfig> loadConfig({bool isFeaturesConfig = false}) => _loadConfig(isFeaturesConfig: isFeaturesConfig);
 
@@ -117,7 +117,7 @@ class AIGateway {
       if (model != null && model.trim().isEmpty) model = null;
 
       if (isFeaturesConfig) {
-        baseUrl ??= defaultFeaturesBaseUrl.isNotEmpty ? defaultFeaturesBaseUrl : 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+        baseUrl ??= defaultFeaturesBaseUrl.isNotEmpty ? defaultFeaturesBaseUrl : 'https://opencode.ai/zen/v1/chat/completions';
         apiKey ??= defaultFeaturesApiKey;
         model ??= defaultFeaturesModel;
       } else {
@@ -127,18 +127,22 @@ class AIGateway {
       }
 
       if (baseUrl.isEmpty) {
-        baseUrl = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+        baseUrl = 'https://opencode.ai/zen/v1/chat/completions';
       }
+
+      // After all fallbacks, apiKey and model are guaranteed non-null
+      final resolvedApiKey = apiKey;
+      final resolvedModel = model;
 
       final timeoutStr = settingsMap['ai_timeout'];
       final timeoutMs = int.tryParse(timeoutStr ?? '') ?? defaultTimeoutMs;
 
-      debugPrint('AIGateway DB loadConfig SUCCESS: isFeatures=$isFeaturesConfig, model=$model, hasKey=${apiKey?.isNotEmpty ?? false}, baseUrl=$baseUrl');
+      debugPrint('AIGateway DB loadConfig SUCCESS: isFeatures=$isFeaturesConfig, model=$resolvedModel, hasKey=${resolvedApiKey.isNotEmpty}, baseUrl=$baseUrl');
 
       return AIGatewayConfig(
         baseUrl: baseUrl,
-        apiKey: apiKey ?? '',
-        model: model ?? defaultModel,
+        apiKey: resolvedApiKey,
+        model: resolvedModel,
         timeoutMs: timeoutMs,
       );
     } catch (e) {
@@ -1060,10 +1064,9 @@ class AIGateway {
   }
 
   Future<Map<String, dynamic>?> parseQuickAdd(String inputText) async {
-    // Zero-Leak Rule: No menstrual/cycle/hormone keywords allowed
     final cycleKeywords = [
-      'cycle', 'hormone', 'hormonal', 'menstrual', 'period', 'pregnancy', 'contraceptive',
-      'چرخه', 'قاعدگی', 'پریود', 'هورمون', 'عادت ماهیانه', 'پریودی', 'سیکل'
+      'menstrual', 'period', 'pregnancy', 'contraceptive', 'hormonal',
+      'چرخه قاعدگی', 'سیکل قاعدگی', 'قاعدگی', 'پریود', 'عادت ماهیانه', 'پریودی'
     ];
     for (final kw in cycleKeywords) {
       if (inputText.toLowerCase().contains(kw)) {

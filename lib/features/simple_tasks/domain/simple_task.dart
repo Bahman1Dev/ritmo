@@ -13,6 +13,8 @@ class SimpleTask {
   final String? linkedRoutineId;
   final int orderIndex;
   final String origin; // 'SIMPLE' or 'PROMOTED'
+  final bool isImportant;
+  final DateTime? importantAt;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -29,6 +31,8 @@ class SimpleTask {
     this.linkedRoutineId,
     this.orderIndex = 0,
     this.origin = 'SIMPLE',
+    this.isImportant = false,
+    this.importantAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -53,6 +57,8 @@ class SimpleTask {
       linkedRoutineId: m['linkedRoutineId'] as String?,
       orderIndex: m['orderIndex'] as int? ?? 0,
       origin: m['origin'] as String? ?? 'SIMPLE',
+      isImportant: (m['isImportant'] as int? ?? 0) == 1,
+      importantAt: m['importantAt'] != null ? DateTime.fromMillisecondsSinceEpoch(m['importantAt'] as int) : null,
       createdAt: DateTime.fromMillisecondsSinceEpoch(m['createdAt'] as int),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(m['updatedAt'] as int),
     );
@@ -72,6 +78,8 @@ class SimpleTask {
       'linkedRoutineId': linkedRoutineId,
       'orderIndex': orderIndex,
       'origin': origin,
+      'isImportant': isImportant ? 1 : 0,
+      'importantAt': importantAt?.millisecondsSinceEpoch,
       'createdAt': createdAt.millisecondsSinceEpoch,
       'updatedAt': updatedAt.millisecondsSinceEpoch,
     };
@@ -90,6 +98,9 @@ class SimpleTask {
     String? linkedRoutineId,
     int? orderIndex,
     String? origin,
+    bool? isImportant,
+    bool clearImportantAt = false,
+    DateTime? importantAt,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -106,6 +117,8 @@ class SimpleTask {
       linkedRoutineId: linkedRoutineId ?? this.linkedRoutineId,
       orderIndex: orderIndex ?? this.orderIndex,
       origin: origin ?? this.origin,
+      isImportant: isImportant ?? this.isImportant,
+      importantAt: clearImportantAt ? null : (importantAt ?? this.importantAt),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

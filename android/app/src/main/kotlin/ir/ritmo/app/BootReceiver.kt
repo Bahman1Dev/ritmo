@@ -1,6 +1,7 @@
 package ir.ritmo.app
 
 import android.app.AlarmManager
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -16,8 +17,12 @@ import java.util.Calendar
 
 class BootReceiver : BroadcastReceiver() {
 
+    companion object {
+        const val ACTION_TRIGGER_ALARM = "com.ritmo.app.ACTION_TRIGGER_ALARM"
+    }
+
     private val TAG = "RitmoBootReceiver"
-    private val ALARM_TRIGGER_ACTION = "com.ritmo.app.ACTION_TRIGGER_ALARM"
+    private val ALARM_TRIGGER_ACTION = ACTION_TRIGGER_ALARM
     private val GROUP_KEY_NON_ESSENTIAL = "ritmo_non_essential"
     private val SUMMARY_NOTIF_ID = 8888
 

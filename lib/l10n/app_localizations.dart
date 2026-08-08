@@ -527,7 +527,7 @@ abstract class AppLocalizations {
   /// No description provided for @labelRealm.
   ///
   /// In fa, this message translates to:
-  /// **'قلمرو:'**
+  /// **'حالت:'**
   String get labelRealm;
 
   /// No description provided for @quickSystemsTitle.

@@ -35,6 +35,7 @@ import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/time/ritmo_clock.dart';
 
+import 'package:ritmo/core/settings/settings_service.dart';
 import 'package:ritmo/core/app_mode/app_mode_service.dart';
 import 'package:ritmo/core/observability/privacy_error_sink.dart';
 import 'package:ritmo/core/observability/ritmo_friendly_error_pane.dart';
@@ -95,8 +96,9 @@ void main() async {
     return RitmoFriendlyErrorPane(details: details);
   };
 
-  // 1. Initialize service locator
+  // 1. Initialize service locator & settings cache
   await AppBootstrapper.init();
+  await SettingsService.instance.init();
 
   // Register Agenda Renderers
   AgendaRendererRegistry.register(AgendaDomain.prayer, const PrayerAgendaRenderer());

@@ -267,7 +267,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get labelEnergy => 'انرژی:';
 
   @override
-  String get labelRealm => 'قلمرو:';
+  String get labelRealm => 'حالت:';
 
   @override
   String get quickSystemsTitle => 'سیستم‌های سریع';

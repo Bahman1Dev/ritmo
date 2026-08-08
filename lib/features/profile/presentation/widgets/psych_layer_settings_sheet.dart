@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/settings/settings_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
-import 'package:sqflite/sqflite.dart';
 
 class PsychLayerSettingsSheet extends StatefulWidget {
   const PsychLayerSettingsSheet({super.key});
@@ -39,19 +38,10 @@ class _PsychLayerSettingsSheetState extends State<PsychLayerSettingsSheet> {
     _loadSettings();
   }
 
-  Future<void> _loadSettings() async {
-    final db = await DatabaseHelper.instance.database;
-    final rows = await db.query('app_settings');
-    final map = <String, String>{};
-    for (final r in rows) {
-      map[r['key'] as String] = r['value'] as String? ?? '';
-    }
-
+  void _loadSettings() {
     setState(() {
       for (final k in _settings.keys) {
-        if (map.containsKey(k)) {
-          _settings[k] = map[k] == 'true';
-        }
+        _settings[k] = SettingsService.instance.get<bool>(k);
       }
       _isLoading = false;
     });
@@ -59,13 +49,7 @@ class _PsychLayerSettingsSheetState extends State<PsychLayerSettingsSheet> {
 
   Future<void> _toggleSetting(String key, bool val) async {
     setState(() => _settings[key] = val);
-    final db = await DatabaseHelper.instance.database;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    await db.insert(
-      'app_settings',
-      {'key': key, 'value': val ? 'true' : 'false', 'updatedAt': now},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await SettingsService.instance.set(key, val);
   }
 
   @override

@@ -649,7 +649,7 @@ class DashboardController {
     }
 
     // درس و مطالعه — مباحث امروز
-    if (s['module_study_enabled'] == 'true' || s['module_konkur_enabled'] == 'true') {
+    if (s['module_study_enabled'] == 'true') {
       out.add(DashboardModuleSummary(
         moduleId: 'konkur', title: 'درس و مطالعه',
         icon: CupertinoIcons.book_fill, accentColor: const Color(0xff8B5CF6),

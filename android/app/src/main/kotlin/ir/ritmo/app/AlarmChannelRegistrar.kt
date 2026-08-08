@@ -42,7 +42,7 @@ object AlarmChannelRegistrar {
                 AlarmMethods.CHECK_EXACT_ALARM_PERMISSION -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-                        result.success(alarmManager?.canScheduleExactAlarms() ?? true)
+                        result.success(alarmManager?.canScheduleExactAlarms() ?: true)
                     } else {
                         result.success(true)
                     }

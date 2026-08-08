@@ -21,6 +21,8 @@ import 'package:ritmo/features/health/presentation/health_screen.dart';
 import 'package:ritmo/features/study/study_module_entry.dart';
 import 'package:ritmo/features/premium/presentation/premium_upgrade_sheet.dart';
 import 'package:ritmo/features/profile/presentation/profile_screen.dart';
+import 'package:ritmo/features/settings/presentation/groups/modules_group_screen.dart';
+import 'package:ritmo/features/settings/presentation/settings_screen.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_home_dashboard_screen.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_intro_screen.dart';
 import 'package:ritmo/features/wellbeing/presentation/wellbeing_screen.dart';
@@ -162,7 +164,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
       _medicineEnabled = _settingsMap['module_medicine_enabled'] == 'true';
       _cycleEnabled = _settingsMap['module_cycle_enabled'] == 'true';
       _coursesEnabled = _settingsMap['module_courses_enabled'] == 'true';
-      _konkurEnabled = _settingsMap['module_study_enabled'] == 'true' || _settingsMap['module_konkur_enabled'] == 'true';
+      _konkurEnabled = _settingsMap['module_study_enabled'] == 'true';
       _goalsEnabled = _settingsMap['module_goals_enabled'] == 'true';
       _assistantEnabled = _settingsMap['module_assistant_enabled'] == 'true';
       _sportsEnabled = _settingsMap['module_sports_enabled'] == 'true';
@@ -345,15 +347,14 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
           children: [
             GestureDetector(
               onTap: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  barrierColor: Colors.black.withValues(alpha: 0.4),
-                  builder: (context) => ProfileScreen(
-                    onLogout: widget.onLogout,
-                    themeRepository: widget.themeRepository,
-                    localeRepository: widget.localeRepository,
+                Navigator.push(
+                  context,
+                  CupertinoPageRoute(
+                    builder: (_) => SettingsScreen(
+                      onFactoryReset: widget.onLogout,
+                      themeRepository: widget.themeRepository,
+                      localeRepository: widget.localeRepository,
+                    ),
                   ),
                 ).then((_) {
                   if (mounted) _loadAllData();
@@ -1324,252 +1325,11 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
     }
   }
 
-  Widget _buildSwitchOption({
-    required String title,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-    required VoidCallback onReset,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xff1C1F2E);
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: isDark ? 0.03 : 0.05),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 13,
-                  fontFamily: 'Vazirmatn',
-                ),
-              ),
-            ),
-            InkWell(
-              onTap: onReset,
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(CupertinoIcons.arrow_counterclockwise, size: 12, color: Colors.redAccent),
-                    const SizedBox(width: 4),
-                    Text(
-                      'ریست',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.redAccent.shade100 : Colors.redAccent.shade700,
-                        fontFamily: 'Vazirmatn',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            CupertinoSwitch(
-              value: value,
-              activeTrackColor: const Color(0xff5B8AF5),
-              onChanged: onChanged,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFrostedBottomSheet({
-    required String title,
-    required List<Widget> children,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? Colors.white : const Color(0xff1C1F2E);
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: RitmoTheme.glassCardLight(
-        borderRadius: 30,
-        color: isDark ? Colors.black.withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.65),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.85,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: titleColor,
-                  fontFamily: 'Vazirmatn',
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
-                    children: children,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showModulesManagementSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          return _buildFrostedBottomSheet(
-            title: 'مدیریت ماژول‌های فعال',
-            children: [
-              _buildSwitchOption(
-                title: 'عبادت 🕌',
-                value: _religionEnabled,
-                onChanged: (val) async {
-                  await _toggleModule('module_religion_enabled', val);
-                  setSheetState(() => _religionEnabled = val);
-                },
-                onReset: () => _confirmAndResetModule('module_religion_enabled', 'عبادت'),
-              ),
-              _buildSwitchOption(
-                title: 'دارو و سلامت 💊',
-                value: _medicineEnabled,
-                onChanged: (val) async {
-                  await _toggleModule('module_medicine_enabled', val);
-                  setSheetState(() => _medicineEnabled = val);
-                },
-                onReset: () => _confirmAndResetModule('module_medicine_enabled', 'دارو و سلامت'),
-              ),
-              _buildSwitchOption(
-                title: 'ورزش و حرکت 🏃',
-                value: _sportsEnabled || _supplementarySportsEnabled,
-                onChanged: (val) async {
-                  await _toggleModule('module_sports_enabled', val);
-                  setSheetState(() {
-                    _sportsEnabled = val;
-                    _supplementarySportsEnabled = val;
-                  });
-                },
-                onReset: () => _confirmAndResetModule('module_sports_enabled', 'ورزش و حرکت'),
-              ),
-              if (_isFemale)
-                _buildSwitchOption(
-                  title: 'چرخه بدن 🌸',
-                  value: _cycleEnabled,
-                  onChanged: (val) async {
-                    await _toggleModule('module_cycle_enabled', val);
-                    setSheetState(() => _cycleEnabled = val);
-                  },
-                  onReset: () => _confirmAndResetModule('module_cycle_enabled', 'چرخه بدن'),
-                ),
-              _buildSwitchOption(
-                title: 'دوره‌های آموزشی 🎓',
-                value: _coursesEnabled,
-                onChanged: (val) async {
-                  await _toggleModule('module_courses_enabled', val);
-                  setSheetState(() => _coursesEnabled = val);
-                },
-                onReset: () => _confirmAndResetModule('module_courses_enabled', 'دوره‌های آموزشی'),
-              ),
-              _buildSwitchOption(
-                title: 'اهداف و برنامه‌ها 🎯',
-                value: _goalsEnabled,
-                onChanged: (val) async {
-                  await _toggleModule('module_goals_enabled', val);
-                  setSheetState(() => _goalsEnabled = val);
-                },
-                onReset: () => _confirmAndResetModule('module_goals_enabled', 'اهداف و برنامه‌ها'),
-              ),
-              _buildSwitchOption(
-                title: 'دستیار هوشمند 💬',
-                value: _assistantEnabled,
-                onChanged: (val) async {
-                  await _toggleModule('module_assistant_enabled', val);
-                  setSheetState(() => _assistantEnabled = val);
-                },
-                onReset: () => _confirmAndResetModule('module_assistant_enabled', 'دستیار هوشمند'),
-              ),
-              _buildSwitchOption(
-                title: 'درس و مطالعه 📚',
-                value: _konkurEnabled,
-                onChanged: (val) async {
-                  await _toggleModule('module_study_enabled', val);
-                  setSheetState(() => _konkurEnabled = val);
-                },
-                onReset: () => _confirmAndResetModule('module_study_enabled', 'درس و مطالعه'),
-              ),
-              _buildSwitchOption(
-                title: 'انرژی و خلق روزانه ⚡',
-                value: _energyEnabled,
-                onChanged: (val) async {
-                  await _toggleModule('module_energy_enabled', val);
-                  setSheetState(() => _energyEnabled = val);
-                },
-                onReset: () => _confirmAndResetModule('module_energy_enabled', 'انرژی و خلق روزانه'),
-              ),
-              _buildSwitchOption(
-                title: 'خواب و بیداری 😴',
-                value: _sleepEnabled,
-                onChanged: (val) async {
-                  await _toggleModule('module_sleep_enabled', val);
-                  setSheetState(() => _sleepEnabled = val);
-                },
-                onReset: () => _confirmAndResetModule('module_sleep_enabled', 'خواب و بیداری'),
-              ),
-              _buildSwitchOption(
-                title: 'عادات پیش‌رونده 📈',
-                value: _progressiveHabitsEnabled,
-                onChanged: (val) async {
-                  await _toggleModule('module_progressive_habits_enabled', val);
-                  setSheetState(() => _progressiveHabitsEnabled = val);
-                },
-                onReset: () => _confirmAndResetModule('module_progressive_habits_enabled', 'عادات پیش‌رونده'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+    Navigator.push(
+      context,
+      CupertinoPageRoute(builder: (_) => const ModulesGroupScreen()),
+    ).then((_) => _loadAllData());
   }
 }
 

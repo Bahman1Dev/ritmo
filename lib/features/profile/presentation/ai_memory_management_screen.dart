@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:ritmo/core/ai/memory/ai_memory_service.dart';
 import 'package:ritmo/core/ai/memory/memory_models.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/settings/settings_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/ux/ritmo_directional_icon.dart';
 import 'package:sqflite/sqflite.dart';
@@ -55,12 +56,8 @@ class _AiMemoryManagementScreenState extends State<AiMemoryManagementScreen> {
     try {
       final db = await DatabaseHelper.instance.database;
       
-      // Load settings
-      final settings = await db.query('app_settings');
-      final settingsMap = {for (final s in settings) s['key']! as String: s['value']! as String};
-      
-      _memoryEnabled = (settingsMap['ai_memory_enabled'] ?? 'true') == 'true';
-      _implicitEnabled = (settingsMap['ai_memory_implicit_enabled'] ?? 'true') == 'true';
+      _memoryEnabled = SettingsService.instance.get<bool>('ai_memory_enabled');
+      _implicitEnabled = SettingsService.instance.get<bool>('ai_memory_implicit_enabled');
 
       // Load active and archived memories
       final List<Map<String, dynamic>> rows = await db.query('ai_memory', orderBy: 'createdAt DESC');
@@ -79,13 +76,7 @@ class _AiMemoryManagementScreenState extends State<AiMemoryManagementScreen> {
 
   Future<void> _toggleSetting(String key, bool val) async {
     try {
-      final db = await DatabaseHelper.instance.database;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      await db.insert(
-        'app_settings',
-        {'key': key, 'value': val ? 'true' : 'false', 'updatedAt': now},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      await SettingsService.instance.set(key, val);
       setState(() {
         if (key == 'ai_memory_enabled') _memoryEnabled = val;
         if (key == 'ai_memory_implicit_enabled') _implicitEnabled = val;

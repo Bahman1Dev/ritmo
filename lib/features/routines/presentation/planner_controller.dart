@@ -219,7 +219,7 @@ class PlannerController extends ChangeNotifier {
       moduleMedicineEnabled = settingsMap['module_medicine_enabled'] == 'true';
       moduleCycleEnabled = settingsMap['module_cycle_enabled'] == 'true';
       moduleCoursesEnabled = settingsMap['module_courses_enabled'] == 'true';
-      moduleKonkurEnabled = settingsMap['module_study_enabled'] == 'true' || settingsMap['module_konkur_enabled'] == 'true';
+      moduleKonkurEnabled = settingsMap['module_study_enabled'] == 'true';
       moduleGoalsEnabled = settingsMap['module_goals_enabled'] == 'true';
       moduleSportsEnabled = settingsMap['module_sports_enabled'] == 'true';
       moduleEnergyEnabled = settingsMap['module_energy_enabled'] == 'true';

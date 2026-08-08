@@ -40,6 +40,7 @@ import 'package:ritmo/features/inbox/presentation/inbox_screen.dart';
 import 'package:ritmo/features/study/study_module_entry.dart';
 import 'package:ritmo/features/premium/presentation/premium_upgrade_sheet.dart';
 import 'package:ritmo/features/profile/presentation/profile_screen.dart';
+import 'package:ritmo/features/settings/presentation/settings_screen.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
 import 'package:ritmo/features/routines/presentation/widgets/routine_snooze_bottom_sheet.dart';
 import 'package:ritmo/features/routines/shared/routine_actions.dart';
@@ -805,15 +806,14 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
   }
 
   void _showMoreSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.4),
-      builder: (context) => ProfileScreen(
-        onLogout: widget.onLogout,
-        themeRepository: widget.themeRepository,
-        localeRepository: widget.localeRepository,
+    Navigator.push(
+      context,
+      CupertinoPageRoute(
+        builder: (_) => SettingsScreen(
+          onFactoryReset: widget.onLogout,
+          themeRepository: widget.themeRepository,
+          localeRepository: widget.localeRepository,
+        ),
       ),
     ).then((_) {
       if (mounted) _loadDashboardData();

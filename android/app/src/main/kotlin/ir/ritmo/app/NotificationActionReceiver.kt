@@ -249,7 +249,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     private fun saveSettingToDb(context: Context, key: String, value: String) {
         try {
-            val dbPath = context.getDatabasePath("ritmo_secure.db")
+            val dbPath = context.getDatabasePath(DatabaseConfig.DATABASE_NAME)
             if (dbPath.exists()) {
                 val db = SQLiteDatabase.openDatabase(dbPath.absolutePath, null, SQLiteDatabase.OPEN_READWRITE)
                 val cv = ContentValues().apply {

@@ -1,7 +1,7 @@
 class SensitiveReflectionFilter {
   static const List<String> cycleKeywords = [
-    'cycle', 'hormone', 'hormonal', 'menstrual', 'period', 'pregnancy', 'contraceptive',
-    'چرخه', 'قاعدگی', 'پریود', 'هورمون', 'عادت ماهیانه', 'پریودی', 'سیکل'
+    'menstrual', 'period', 'pregnancy', 'contraceptive', 'hormonal',
+    'چرخه قاعدگی', 'سیکل قاعدگی', 'قاعدگی', 'پریود', 'هورمون', 'عادت ماهیانه', 'پریودی'
   ];
 
   static const List<String> medicalKeywords = [

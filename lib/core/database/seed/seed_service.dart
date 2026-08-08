@@ -56,7 +56,7 @@ class SeedService {
       'prayer_city_id': 'TEHRAN_TEHRAN',
       'module_medicine_enabled': 'false',
       'module_cycle_enabled': 'false',
-      'module_konkur_enabled': 'false',
+      'module_study_enabled': 'false',
       'module_courses_enabled': 'false',
       'module_goals_enabled': 'false',
       'module_progressive_habits_enabled': 'false',

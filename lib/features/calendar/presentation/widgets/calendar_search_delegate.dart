@@ -7,6 +7,8 @@ import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 import 'package:ritmo/features/registry/domain/registry_entry.dart';
 
+import 'package:ritmo/core/utils/persian_text.dart';
+
 class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
   CalendarSearchDelegate({
     required this.items,
@@ -54,35 +56,24 @@ class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
     return _buildList(context);
   }
 
-  static String _normalizeFa(String s) {
-    return s
-        .replaceAll('ي', 'ی')
-        .replaceAll('ك', 'ک')
-        .replaceAll('\u200c', ' ')
-        .replaceAll(RegExp(r'[\u064B-\u0652]'), '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim()
-        .toLowerCase();
-  }
-
   Widget _buildList(BuildContext context) {
     final theme = Theme.of(context);
-    final q = _normalizeFa(query);
+    final q = normalizeFa(query);
 
     final todayResults = q.isEmpty
         ? items
         : items
             .where((i) =>
-                _normalizeFa(i.title).contains(q) ||
-                (i.subtitle != null && _normalizeFa(i.subtitle!).contains(q)))
+                normalizeFa(i.title).contains(q) ||
+                (i.subtitle != null && normalizeFa(i.subtitle!).contains(q)))
             .toList();
 
     final allRegistryResults = q.isEmpty
         ? registryEntries
         : registryEntries
             .where((r) =>
-                _normalizeFa(r.title).contains(q) ||
-                (r.subtitle != null && _normalizeFa(r.subtitle!).contains(q)))
+                normalizeFa(r.title).contains(q) ||
+                (r.subtitle != null && normalizeFa(r.subtitle!).contains(q)))
             .toList();
 
     if (todayResults.isEmpty && allRegistryResults.isEmpty) {

@@ -28,7 +28,7 @@ class ModuleGateFilter implements RoutineFilter {
       case Category.learning:
         return settings['module_courses_enabled'] == 'true';
       case Category.konkur:
-        return settings['module_konkur_enabled'] == 'true';
+        return settings['module_study_enabled'] == 'true';
       case Category.work:
       case Category.personal:
       case Category.fitness:

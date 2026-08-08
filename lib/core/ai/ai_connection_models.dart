@@ -32,6 +32,16 @@ class AiProviderPreset {
 
 const List<AiProviderPreset> kAiProviderPresets = [
   AiProviderPreset(
+    id: 'opencode',
+    nameFa: 'OpenCode (پیش‌فرض)',
+    taglineFa: 'سرویس‌دهنده پیش‌فرض ریتمو — بدون نیاز به سیستم تحریم‌شکن',
+    endpoint: 'https://opencode.ai/zen/v1/chat/completions',
+    models: ['deepseek-v4-flash-free', 'deepseek-chat', 'deepseek-coder'],
+    keyUrl: 'https://opencode.ai/',
+    brandColor: Color(0xff10B981),
+    worksInIranWithoutVpn: true,
+  ),
+  AiProviderPreset(
     id: 'zhipu',
     nameFa: 'ژیپو (智谱)',
     taglineFa: 'پیشنهاد ریتمو برای ایران — سریع و ارزان',

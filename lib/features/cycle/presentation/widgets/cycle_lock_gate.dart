@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/services/secure_key_store.dart';
+import 'package:ritmo/core/settings/settings_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -142,10 +144,10 @@ class _CycleLockGateState extends State<CycleLockGate> with WidgetsBindingObserv
     });
 
     if (_enteredPin.length == 4) {
-      final hasPasswordSet = _settings['app_lock_password'] != null && _settings['app_lock_password']!.isNotEmpty;
-      
-      Future.delayed(const Duration(milliseconds: 200), () async {
-        if (!hasPasswordSet) {
+      Future.microtask(() async {
+        final hasExistingPin = await SecureKeyStore.getKey('cycle_lock_password');
+        
+        if (hasExistingPin == null || hasExistingPin.isEmpty) {
           if (_firstEnteredPin == null) {
             // First stage PIN complete
             if (mounted) {
@@ -158,25 +160,12 @@ class _CycleLockGateState extends State<CycleLockGate> with WidgetsBindingObserv
           } else {
             // Second stage confirm PIN
             if (_enteredPin == _firstEnteredPin) {
-              final db = await DatabaseHelper.instance.database;
-              final nowMs = DateTime.now().millisecondsSinceEpoch;
-              await db.insert(
-                'app_settings',
-                {
-                  'key': 'app_lock_password',
-                  'value': _enteredPin,
-                  'updatedAt': nowMs,
-                },
-                conflictAlgorithm: ConflictAlgorithm.replace,
-              );
+              await SecureKeyStore.setKey('cycle_lock_password', _enteredPin);
+              await SettingsService.instance.set('cycle_lock_password', _enteredPin);
               
               await HapticFeedback.mediumImpact();
-              final settingsList = await db.query('app_settings');
-              final updatedSettings = {for (final s in settingsList) if (s['key'] != null) s['key'].toString(): s['value']?.toString() ?? ''};
-              
               if (mounted) {
                 setState(() {
-                  _settings = updatedSettings;
                   _isLocked = false;
                   _enteredPin = '';
                   _firstEnteredPin = null;
@@ -194,7 +183,7 @@ class _CycleLockGateState extends State<CycleLockGate> with WidgetsBindingObserv
             }
           }
         } else {
-          if (_enteredPin == _settings['app_lock_password']) {
+          if (_enteredPin == hasExistingPin) {
             await HapticFeedback.mediumImpact();
             if (mounted) {
               setState(() {

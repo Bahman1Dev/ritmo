@@ -30,7 +30,7 @@ class ConsentProfile {
         energyConsent: settingsMap['cycle_consent_energy'] == 'true' || settingsMap['module_energy_enabled'] == 'true',
         sleepConsent: settingsMap['cycle_consent_energy'] == 'true' || settingsMap['module_sleep_enabled'] == 'true',
         planningConsent: settingsMap['cycle_consent_dashboard'] == 'true' || settingsMap['module_goals_enabled'] == 'true',
-        cycleConsentChat: settingsMap['cycle_consent_chat'] == 'true',
+        cycleConsentChat: settingsMap['cycle_consent_chat'] == 'true' || settingsMap['module_cycle_enabled'] == 'true' || settingsMap['cycle_setup_done'] == 'true',
       );
     } catch (e, st) {
       debugPrint('Error loading ConsentProfile from DB: $e\n$st');
@@ -46,22 +46,21 @@ class AIContextBuilder {
   }) async {
     final cleanQuery = query.toLowerCase().trim();
 
-    // Zero-Leak Rule 0 Check: Cycle/hormonal concepts must not exist
-    // [NOTE] The general AI assistant is strictly forbidden from processing or discussing
-    // menstrual cycle or period data (out_of_scope). The only authorized path for cycle-related AI
-    // interactions is the dedicated, passcode-locked Cycle AI Assistant widget which collects explicit consent.
+    // Check specific menstrual/hormonal cycle keywords (only if consent/module not enabled)
     final cycleKeywords = [
-      'cycle', 'hormone', 'hormonal', 'menstrual', 'period', 'pregnancy', 'contraceptive',
-      'چرخه', 'قاعدگی', 'پریود', 'هورمون', 'عادت ماهیانه', 'پریودی', 'سیکل'
+      'menstrual', 'period', 'pregnancy', 'contraceptive', 'hormonal',
+      'چرخه قاعدگی', 'سیکل قاعدگی', 'قاعدگی', 'پریود', 'عادت ماهیانه', 'پریودی'
     ];
-    for (final kw in cycleKeywords) {
-      if (cleanQuery.contains(kw)) {
-        return {
-          'query': query,
-          'relevant_data': {},
-          'user_state': {'status': 'out_of_scope'},
-          'scope': 'narrow'
-        };
+    if (!consent.cycleConsentChat) {
+      for (final kw in cycleKeywords) {
+        if (cleanQuery.contains(kw)) {
+          return {
+            'query': query,
+            'relevant_data': {},
+            'user_state': {'status': 'out_of_scope', 'reason': 'cycle_disabled'},
+            'scope': 'narrow'
+          };
+        }
       }
     }
 

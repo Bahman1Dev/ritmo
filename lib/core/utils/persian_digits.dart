@@ -8,6 +8,8 @@ class PersianDigits {
     }
     return result;
   }
+
+  static String toPersian(Object? input) => convert(input?.toString() ?? '');
 }
 
 String toPersianDigits(Object? input) => PersianDigits.convert(input?.toString() ?? '');

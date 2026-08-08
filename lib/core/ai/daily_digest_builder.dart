@@ -110,7 +110,7 @@ class DailyDigestBuilder {
     final activeCourses = await db.rawQuery("SELECT COUNT(*) as count FROM courses WHERE status = 'ACTIVE' AND isArchived = 0");
     final activeCoursesCount = activeCourses.isNotEmpty ? activeCourses.first['count']! as int : 0;
 
-    final konkurEnabledCheck = await db.rawQuery("SELECT value FROM app_settings WHERE key = 'module_konkur_enabled'");
+    final konkurEnabledCheck = await db.rawQuery("SELECT value FROM app_settings WHERE key = 'module_study_enabled'");
     final konkurEnabled = konkurEnabledCheck.isNotEmpty && konkurEnabledCheck.first['value'] == 'true';
 
     // Energy & Mood

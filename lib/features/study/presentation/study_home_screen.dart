@@ -38,8 +38,9 @@ class _StudyHomeScreenState extends State<StudyHomeScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     final settings = await StudySettingsRepository.instance.load();
-    final subjects = await StudyRepository.instance.getSubjects(isKonkurMode: false);
-    final topics = await StudyRepository.instance.getTopics(isKonkurMode: false);
+    final isKonkur = settings.konkurMode;
+    final subjects = await StudyRepository.instance.getSubjects(isKonkurMode: isKonkur);
+    final topics = await StudyRepository.instance.getTopics(isKonkurMode: isKonkur);
 
     final todayIso = DateTime.now().toIso8601String().substring(0, 10);
     final todaySessions = await StudyRepository.instance.getSessions(dateIso: todayIso);

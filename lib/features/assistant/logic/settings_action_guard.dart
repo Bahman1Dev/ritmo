@@ -55,10 +55,10 @@ const Map<String, SettingSchema> kAiSettingsAllowlist = {
     max: 20,
     humanLabel: 'حداکثر اعلان‌های غیرضروری در ساعت',
   ),
-  'theme': SettingSchema(
+  'theme_mode': SettingSchema(
     type: 'enum',
     allowed: ['dark', 'light', 'system'],
-    humanLabel: 'پوسته اپلیکیشن',
+    humanLabel: 'حالت روشنایی تم',
   ),
   'theme_palette': SettingSchema(
     type: 'enum',

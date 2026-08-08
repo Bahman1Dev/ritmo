@@ -46,7 +46,41 @@
                 <data android:scheme="appwrite-callback" />
                 <data android:scheme="appwrite-callback-6a74b9120005e1737ec6" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
+
+        <!-- Quick Add Widget Receiver -->
+        <receiver
+            android:name=".RitmoQuickAddWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/ritmo_quick_add_widget_info" />
+        </receiver>
+
+        <!-- Quick Settings Tile Service -->
+        <service
+            android:name=".RitmoTaskTileService"
+            android:icon="@mipmap/ic_launcher"
+            android:label="افزودن کار"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
         <!-- Full-Screen Alarm Activity -->
         <activity

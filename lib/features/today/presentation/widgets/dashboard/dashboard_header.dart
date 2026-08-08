@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
@@ -121,10 +122,22 @@ class DashboardHeader extends StatelessWidget {
         ? '${tg.greeting}، $userName'
         : l10n.welcomeUser(userName);
 
-    final hasAvatarFile =
-        avatarPath != null &&
-        avatarPath!.isNotEmpty &&
-        File(avatarPath!).existsSync();
+    bool isAvatarValid(String? path) {
+      if (path == null || path.isEmpty) return false;
+      if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:') || path.startsWith('data:')) {
+        return true;
+      }
+      if (!kIsWeb) {
+        try {
+          return File(path).existsSync();
+        } catch (_) {
+          return false;
+        }
+      }
+      return false;
+    }
+
+    final hasAvatarFile = isAvatarValid(avatarPath);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

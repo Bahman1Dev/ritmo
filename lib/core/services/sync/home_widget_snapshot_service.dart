@@ -189,7 +189,7 @@ class HomeWidgetSnapshotService {
     // اهداف / دوره‌ها / کنکور — از اجندای مشترکِ امروز
     final goalsEnabled = s['module_goals_enabled'] == 'true';
     final coursesEnabled = s['module_courses_enabled'] == 'true';
-    final konkurEnabled = s['module_konkur_enabled'] == 'true';
+    final konkurEnabled = s['module_study_enabled'] == 'true';
     if (goalsEnabled || coursesEnabled || konkurEnabled) {
       try {
         final dayAgenda = await DayAgendaService.instance.agendaForDate(

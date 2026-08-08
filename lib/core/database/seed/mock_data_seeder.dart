@@ -70,7 +70,7 @@ class MockDataSeeder {
       'module_religion_enabled': 'true',
       'module_medicine_enabled': 'true',
       'module_cycle_enabled': 'true',
-      'module_konkur_enabled': 'true',
+      'module_study_enabled': 'true',
       'module_courses_enabled': 'true',
       'module_goals_enabled': 'true',
       'module_sports_enabled': 'true',

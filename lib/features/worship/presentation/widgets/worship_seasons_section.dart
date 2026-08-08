@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
-import 'package:ritmo/features/profile/presentation/widgets/worship_seasons_sheet.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 import 'package:sqflite/sqflite.dart';
@@ -168,17 +167,8 @@ class _WorshipSeasonsSectionState extends State<WorshipSeasonsSection> {
   }
 
   void _showManageSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return const WorshipSeasonsSheet();
-      },
-    ).then((_) {
-      _loadSeasons();
-      widget.onChanged();
-    });
+    _loadSeasons();
+    widget.onChanged();
   }
 
   String _formatDateToJalali(String dateStr) {

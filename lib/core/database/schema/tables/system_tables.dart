@@ -306,5 +306,28 @@ class SystemTables {
     await db.execute('CREATE INDEX idx_inbox_status ON inbox_items(status);');
     await db.execute('CREATE INDEX idx_inbox_createdAt ON inbox_items(createdAt);');
     await db.execute('CREATE UNIQUE INDEX idx_inbox_dedupe ON inbox_items(dedupeKey);');
+
+    // simple_tasks table (Prompt 057)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS simple_tasks (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          note TEXT,
+          isDone INTEGER NOT NULL DEFAULT 0,
+          doneAt INTEGER,
+          dueDate TEXT,
+          dueTime TEXT,
+          reminderAtMs INTEGER,
+          reminderId TEXT,
+          linkedRoutineId TEXT,
+          orderIndex INTEGER NOT NULL DEFAULT 0,
+          origin TEXT NOT NULL DEFAULT 'SIMPLE',
+          createdAt INTEGER NOT NULL,
+          updatedAt INTEGER NOT NULL
+      );
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_simple_tasks_isDone ON simple_tasks(isDone);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_simple_tasks_dueDate ON simple_tasks(dueDate);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_simple_tasks_order ON simple_tasks(orderIndex);');
   }
 }

@@ -1,5 +1,6 @@
 class CyclePrivacyGuard {
   static bool isVisible(Map<String, String> settings) {
-    return settings['user_gender'] == 'FEMALE';
+    final val = (settings['user_gender'] ?? '').trim().toUpperCase();
+    return val == 'FEMALE' || val == 'WOMAN' || val == 'ZAN' || val == 'زن';
   }
 }

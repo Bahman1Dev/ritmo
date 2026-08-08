@@ -140,12 +140,14 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   void _showPasscodeSheet({required VoidCallback onSuccess}) {
+    final colors = context.colors;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        final viewInsets = MediaQuery.of(context).viewInsets;
+      builder: (sheetContext) {
+        final viewInsets = MediaQuery.of(sheetContext).viewInsets;
         final passController = TextEditingController();
         final hintController = TextEditingController();
         final formKey = GlobalKey<FormState>();
@@ -154,114 +156,132 @@ class _BackupScreenState extends State<BackupScreen> {
           padding: EdgeInsets.only(bottom: viewInsets.bottom),
           child: Directionality(
             textDirection: TextDirection.rtl,
-            child: RitmoTheme.glassCardLight(
-              borderRadius: 30,
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 36,
-                          height: 4.5,
-                          margin: const EdgeInsets.only(bottom: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: colors.card,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(color: colors.border, width: 1),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4.5,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: colors.textTertiary.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(3),
                         ),
                       ),
-                      const Text(
-                        'تنظیم رمز عبور پشتیبان 🔑',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          fontFamily: 'Vazirmatn',
+                    ),
+                    Text(
+                      'تنظیم رمز عبور پشتیبان 🔑',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colors.textPrimary,
+                        fontFamily: 'Vazirmatn',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'این رمز عبور برای رمزگذاری سرتاسری داده‌های شما در گوگل درایو استفاده می‌شود. حتماً آن را یادداشت کنید؛ بدون این رمز، بازیابی اطلاعات غیرممکن خواهد بود.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: colors.textSecondary,
+                        fontFamily: 'Vazirmatn',
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: passController,
+                      obscureText: true,
+                      style: TextStyle(color: colors.textPrimary, fontFamily: 'Vazirmatn'),
+                      decoration: InputDecoration(
+                        hintText: 'رمز عبور (حداقل ۸ کاراکتر)',
+                        hintStyle: TextStyle(color: colors.textTertiary),
+                        filled: true,
+                        fillColor: colors.surfaceSunken,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: colors.primary, width: 1.5),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'این رمز عبور برای رمزگذاری سرتاسری داده‌های شما در گوگل درایو استفاده می‌شود. حتماً آن را یادداشت کنید؛ بدون این رمز، بازیابی اطلاعات غیرممکن خواهد بود.',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: Colors.white70,
-                          fontFamily: 'Vazirmatn',
-                          height: 1.5,
+                      validator: (value) {
+                        if (value == null || value.trim().length < 8) {
+                          return 'رمز عبور باید حداقل ۸ کاراکتر باشد.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: hintController,
+                      style: TextStyle(color: colors.textPrimary, fontFamily: 'Vazirmatn'),
+                      decoration: InputDecoration(
+                        hintText: 'راهنما / نشانه برای یادآوری رمز (اختیاری)',
+                        hintStyle: TextStyle(color: colors.textTertiary),
+                        filled: true,
+                        fillColor: colors.surfaceSunken,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: colors.primary, width: 1.5),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: passController,
-                        obscureText: true,
-                        style: const TextStyle(color: Colors.white, fontFamily: 'Vazirmatn'),
-                        decoration: InputDecoration(
-                          hintText: 'رمز عبور (حداقل ۸ کاراکتر)',
-                          hintStyle: const TextStyle(color: Colors.white38),
-                          filled: true,
-                          fillColor: Colors.white12,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().length < 8) {
-                            return 'رمز عبور باید حداقل ۸ کاراکتر باشد.';
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.primary,
+                        foregroundColor: colors.onPrimary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: () async {
+                        if (formKey.currentState!.validate()) {
+                          await _passcodeManager.setPasscode(
+                            passController.text.trim(),
+                            hint: hintController.text.trim().isEmpty ? null : hintController.text.trim(),
+                          );
+                          setState(() {
+                            _hasPasscode = true;
+                            _passcodeHint = hintController.text.trim().isEmpty ? null : hintController.text.trim();
+                          });
+                          if (sheetContext.mounted) {
+                            Navigator.pop(sheetContext);
                           }
-                          return null;
-                        },
+                          onSuccess();
+                        }
+                      },
+                      child: const Text(
+                        'ذخیره و تایید رمز عبور',
+                        style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: hintController,
-                        style: const TextStyle(color: Colors.white, fontFamily: 'Vazirmatn'),
-                        decoration: InputDecoration(
-                          hintText: 'راهنما / نشانه برای یادآوری رمز (اختیاری)',
-                          hintStyle: const TextStyle(color: Colors.white38),
-                          filled: true,
-                          fillColor: Colors.white12,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xff5B8AF5),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onPressed: () async {
-                          if (formKey.currentState!.validate()) {
-                            await _passcodeManager.setPasscode(
-                              passController.text.trim(),
-                              hint: hintController.text.trim().isEmpty ? null : hintController.text.trim(),
-                            );
-                            setState(() {
-                              _hasPasscode = true;
-                              _passcodeHint = hintController.text.trim().isEmpty ? null : hintController.text.trim();
-                            });
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                            }
-                            onSuccess();
-                          }
-                        },
-                        child: const Text(
-                          'ذخیره و تایید رمز عبور',
-                          style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -305,9 +325,11 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   void _showRestoreDialog(RemoteBackupMetadata meta) {
+    final colors = context.colors;
+
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         final passController = TextEditingController();
         final formKey = GlobalKey<FormState>();
         var localLoading = false;
@@ -317,38 +339,50 @@ class _BackupScreenState extends State<BackupScreen> {
           child: StatefulBuilder(
             builder: (context, setDialogState) {
               return AlertDialog(
-                backgroundColor: const Color(0xff1A1D26),
-                title: const Text('بازیابی اطلاعات ☁️', style: TextStyle(color: Colors.white, fontFamily: 'Vazirmatn', fontSize: 16, fontWeight: FontWeight.bold)),
+                backgroundColor: colors.card,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Text(
+                  'بازیابی اطلاعات ☁️',
+                  style: TextStyle(color: colors.textPrimary, fontFamily: 'Vazirmatn', fontSize: 16, fontWeight: FontWeight.bold),
+                ),
                 content: Form(
                   key: formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
+                      Text(
                         'با بازیابی، تمام اطلاعات فعلی این دستگاه حذف شده و با اطلاعات فایل پشتیبان جایگزین خواهد شد. رمز عبوری که در زمان تهیه این پشتیبان تنظیم کرده بودید را وارد کنید:',
-                        style: TextStyle(color: Colors.white70, fontFamily: 'Vazirmatn', fontSize: 12.5, height: 1.5),
+                        style: TextStyle(color: colors.textSecondary, fontFamily: 'Vazirmatn', fontSize: 12.5, height: 1.5),
                       ),
                       const SizedBox(height: 16),
                       if (_passcodeHint != null) ...[
                         Text(
                           'راهنمای رمز شما: $_passcodeHint',
-                          style: const TextStyle(color: Color(0xff5B8AF5), fontFamily: 'Vazirmatn', fontSize: 11.5, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: colors.primary, fontFamily: 'Vazirmatn', fontSize: 11.5, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 10),
                       ],
                       TextFormField(
                         controller: passController,
                         obscureText: true,
-                        style: const TextStyle(color: Colors.white, fontFamily: 'Vazirmatn'),
+                        style: TextStyle(color: colors.textPrimary, fontFamily: 'Vazirmatn'),
                         decoration: InputDecoration(
                           hintText: 'رمز عبور پشتیبان‌گیری',
-                          hintStyle: const TextStyle(color: Colors.white38),
+                          hintStyle: TextStyle(color: colors.textTertiary),
                           filled: true,
-                          fillColor: Colors.white12,
+                          fillColor: colors.surfaceSunken,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                            borderSide: BorderSide(color: colors.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: colors.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: colors.primary, width: 1.5),
                           ),
                         ),
                         validator: (value) {
@@ -360,20 +394,21 @@ class _BackupScreenState extends State<BackupScreen> {
                       ),
                       if (localLoading) ...[
                         const SizedBox(height: 16),
-                        const Center(child: CircularProgressIndicator(color: Color(0xff5B8AF5))),
+                        Center(child: CircularProgressIndicator(color: colors.primary)),
                       ],
                     ],
                   ),
                 ),
                 actions: [
                   TextButton(
-                    onPressed: localLoading ? null : () => Navigator.pop(context),
-                    child: const Text('انصراف', style: TextStyle(color: Colors.white54, fontFamily: 'Vazirmatn')),
+                    onPressed: localLoading ? null : () => Navigator.pop(dialogContext),
+                    child: Text('انصراف', style: TextStyle(color: colors.textSecondary, fontFamily: 'Vazirmatn')),
                   ),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
+                      backgroundColor: colors.medicalRed,
                       foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: localLoading ? null : () async {
                       if (formKey.currentState!.validate()) {
@@ -381,11 +416,10 @@ class _BackupScreenState extends State<BackupScreen> {
                         try {
                           await _driveService.restoreFromCloud(meta.fileId, passController.text.trim());
                           
-                          // Save this passcode locally since it succeeded
                           await _passcodeManager.setPasscode(passController.text.trim(), hint: _passcodeHint);
 
-                          if (context.mounted) {
-                            Navigator.pop(context);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
                             _showRestoreSuccessOverlay();
                           }
                         } catch (e) {
@@ -411,41 +445,45 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   void _showRestoreSuccessOverlay() {
+    final colors = context.colors;
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
+      builder: (dialogContext) {
         return PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, _) {},
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: AlertDialog(
-              backgroundColor: const Color(0xff12141C),
+              backgroundColor: colors.card,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(CupertinoIcons.check_mark_circled_solid, color: Colors.green, size: 54),
+                  Icon(CupertinoIcons.check_mark_circled_solid, color: colors.success, size: 54),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'بازیابی با موفقیت انجام شد 🎉',
-                    style: TextStyle(color: Colors.white, fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(color: colors.textPrimary, fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'برای بارگذاری اطلاعات جدید، اپلیکیشن به صورت خودکار راه‌اندازی مجدد می‌شود.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70, fontFamily: 'Vazirmatn', fontSize: 13, height: 1.45),
+                    style: TextStyle(color: colors.textSecondary, fontFamily: 'Vazirmatn', fontSize: 13, height: 1.45),
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xff5B8AF5),
-                      foregroundColor: Colors.white,
+                      backgroundColor: colors.primary,
+                      foregroundColor: colors.onPrimary,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pop(dialogContext);
                       RestartWidget.restart(context);
                     },
                     child: const Text('راه‌اندازی مجدد', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
@@ -494,33 +532,63 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   String _formatDateTime(DateTime dt) {
-    // Simple Persianized Gregorian date or basic format
     return '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')} - ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildCard({required Widget child, Color? borderColor}) {
+    final colors = context.colors;
+    final isDark = context.isDark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: borderColor ?? (isDark ? Colors.white.withValues(alpha: 0.1) : colors.border),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: child,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
+    final isDarkMode = context.isDark;
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        backgroundColor: colors.background,
         extendBodyBehindAppBar: true,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: const Text(
+          title: Text(
             'پشتیبان‌گیری ابری ☁️',
-            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white),
+            style: TextStyle(
+              fontFamily: 'Vazirmatn',
+              fontWeight: FontWeight.bold,
+              fontSize: 17,
+              color: colors.textPrimary,
+            ),
           ),
           leading: IconButton(
-            icon: RitmoIcons.back(context, color: Colors.white),
+            icon: RitmoIcons.back(context, color: colors.textPrimary),
             onPressed: () => Navigator.pop(context),
           ),
         ),
         body: Stack(
           children: [
-            // Background Gradient (Same as app theme shell)
+            // Background Gradient
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
@@ -529,7 +597,7 @@ class _BackupScreenState extends State<BackupScreen> {
                     end: Alignment.bottomCenter,
                     colors: isDarkMode
                         ? [const Color(0xff08090C), const Color(0xff12141C)]
-                        : [const Color(0xffF2F5FA), const Color(0xffE5ECF6)],
+                        : [colors.background, colors.surfaceSunken],
                   ),
                 ),
               ),
@@ -541,32 +609,47 @@ class _BackupScreenState extends State<BackupScreen> {
                 padding: const EdgeInsets.all(20),
                 children: [
                   // 1. Google Account Status
-                  RitmoTheme.glassCardLight(
+                  _buildCard(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
+                          Text(
                             'حساب گوگل درایو',
-                            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                            style: TextStyle(
+                              fontFamily: 'Vazirmatn',
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                              fontSize: 14,
+                            ),
                           ),
                           const SizedBox(height: 12),
                           if (!_isGoogleConnected) ...[
-                            const Text(
+                            Text(
                               'برای پشتیبان‌گیری ابری و بازیابی آسان داده‌ها، باید به حساب گوگل درایو خود متصل شوید.',
-                              style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white70, fontSize: 11.5, height: 1.5),
+                              style: TextStyle(
+                                fontFamily: 'Vazirmatn',
+                                color: colors.textSecondary,
+                                fontSize: 11.5,
+                                height: 1.5,
+                              ),
                             ),
                             const SizedBox(height: 6),
-                            const Text(
+                            Text(
                               '🔒 حریم خصوصی: ما فقط به یک پوشه مخفی اختصاصی ریتمو (appDataFolder) دسترسی داریم و فایل‌های شخصی شما هرگز خوانده یا لمس نخواهند شد.',
-                              style: TextStyle(fontFamily: 'Vazirmatn', color: Color(0xff9B89FF), fontSize: 10.5, height: 1.5),
+                              style: TextStyle(
+                                fontFamily: 'Vazirmatn',
+                                color: colors.primary,
+                                fontSize: 10.5,
+                                height: 1.5,
+                              ),
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xff5B8AF5),
-                                foregroundColor: Colors.white,
+                                backgroundColor: colors.primary,
+                                foregroundColor: colors.onPrimary,
                                 padding: const EdgeInsets.symmetric(vertical: 13),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                               ),
@@ -582,19 +665,31 @@ class _BackupScreenState extends State<BackupScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text('متصل شده با حساب:', style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white54, fontSize: 11)),
+                                      Text(
+                                        'متصل شده با حساب:',
+                                        style: TextStyle(
+                                          fontFamily: 'Vazirmatn',
+                                          color: colors.textTertiary,
+                                          fontSize: 11,
+                                        ),
+                                      ),
                                       const SizedBox(height: 3),
                                       Text(
                                         _googleEmail ?? '',
-                                        style: const TextStyle(fontFamily: 'Vazirmatn', color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5),
+                                        style: TextStyle(
+                                          fontFamily: 'Vazirmatn',
+                                          color: colors.textPrimary,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.5,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
                                 OutlinedButton.icon(
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.redAccent,
-                                    side: const BorderSide(color: Colors.redAccent),
+                                    foregroundColor: colors.medicalRed,
+                                    side: BorderSide(color: colors.medicalRed),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
                                   onPressed: _isLoading ? null : _disconnectGoogle,
@@ -612,27 +707,37 @@ class _BackupScreenState extends State<BackupScreen> {
 
                   // 2. Manual Backup & Password Setting
                   if (_isGoogleConnected) ...[
-                    RitmoTheme.glassCardLight(
+                    _buildCard(
                       child: Padding(
                         padding: const EdgeInsets.all(20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Text(
+                            Text(
                               'پشتیبان‌گیری دستی',
-                              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                              style: TextStyle(
+                                fontFamily: 'Vazirmatn',
+                                fontWeight: FontWeight.bold,
+                                color: colors.textPrimary,
+                                fontSize: 14,
+                              ),
                             ),
                             const SizedBox(height: 12),
                             if (!_hasPasscode) ...[
-                              const Text(
+                              Text(
                                 'برای اجرای اولین پشتیبان‌گیری، ابتدا باید یک رمز عبور (passcode) امن تعریف کنید.',
-                                style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white70, fontSize: 11.5, height: 1.5),
+                                style: TextStyle(
+                                  fontFamily: 'Vazirmatn',
+                                  color: colors.textSecondary,
+                                  fontSize: 11.5,
+                                  height: 1.5,
+                                ),
                               ),
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xff5B8AF5),
-                                  foregroundColor: Colors.white,
+                                  backgroundColor: colors.primary,
+                                  foregroundColor: colors.onPrimary,
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 ),
@@ -643,20 +748,28 @@ class _BackupScreenState extends State<BackupScreen> {
                             ] else ...[
                               Row(
                                 children: [
-                                  const Icon(CupertinoIcons.checkmark_circle, color: Colors.green, size: 18),
+                                  Icon(CupertinoIcons.checkmark_circle, color: colors.success, size: 18),
                                   const SizedBox(width: 8),
-                                  const Text('رمز عبور پشتیبان قبلاً ثبت شده است.', style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
+                                  Text(
+                                    'رمز عبور پشتیبان قبلاً ثبت شده است.',
+                                    style: TextStyle(
+                                      fontFamily: 'Vazirmatn',
+                                      color: colors.success,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                   const Spacer(),
                                   TextButton(
                                     onPressed: () => _showPasscodeSheet(onSuccess: () => _showToast('رمز عبور جدید با موفقیت تنظیم شد.')),
-                                    child: const Text('تغییر رمز 🔑', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 11)),
+                                    child: Text('تغییر رمز 🔑', style: TextStyle(color: colors.primary, fontFamily: 'Vazirmatn', fontSize: 11)),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xffEC4899),
+                                  backgroundColor: colors.accent,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(vertical: 13),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -673,27 +786,42 @@ class _BackupScreenState extends State<BackupScreen> {
                     const SizedBox(height: 20),
 
                     // 3. Auto Backup settings
-                    RitmoTheme.glassCardLight(
+                    _buildCard(
                       child: Padding(
                         padding: const EdgeInsets.all(20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Text(
+                            Text(
                               'پشتیبان‌گیری خودکار',
-                              style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                              style: TextStyle(
+                                fontFamily: 'Vazirmatn',
+                                fontWeight: FontWeight.bold,
+                                color: colors.textPrimary,
+                                fontSize: 14,
+                              ),
                             ),
                             const SizedBox(height: 12),
                             SwitchListTile(
-                              activeThumbColor: const Color(0xff5B8AF5),
+                              activeTrackColor: colors.primary,
                               contentPadding: EdgeInsets.zero,
-                              title: const Text(
+                              title: Text(
                                 'پشتیبان‌گیری خودکار هفتگی',
-                                style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontFamily: 'Vazirmatn',
+                                  color: colors.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              subtitle: const Text(
+                              subtitle: Text(
                                 'داده‌های شما هفته‌ای یک‌بار در صورت اتصال به Wi-Fi در پس‌زمینه پشتیبان‌گیری می‌شوند.',
-                               style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white54, fontSize: 10.5, height: 1.5),
+                                style: TextStyle(
+                                  fontFamily: 'Vazirmatn',
+                                  color: colors.textSecondary,
+                                  fontSize: 10.5,
+                                  height: 1.5,
+                                ),
                               ),
                               value: _isWeeklyBackupEnabled,
                               onChanged: _isLoading ? null : _toggleWeeklyBackup,
@@ -705,7 +833,7 @@ class _BackupScreenState extends State<BackupScreen> {
                     const SizedBox(height: 20),
 
                     // 4. Remote Backups List
-                    RitmoTheme.glassCardLight(
+                    _buildCard(
                       child: Padding(
                         padding: const EdgeInsets.all(20),
                         child: Column(
@@ -714,28 +842,37 @@ class _BackupScreenState extends State<BackupScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
+                                Text(
                                   'لیست نسخه‌های پشتیبان ابری',
-                                  style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                                  style: TextStyle(
+                                    fontFamily: 'Vazirmatn',
+                                    fontWeight: FontWeight.bold,
+                                    color: colors.textPrimary,
+                                    fontSize: 14,
+                                  ),
                                 ),
                                 if (_isLoading)
-                                  const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white))
+                                  SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: colors.primary))
                                 else
                                   IconButton(
-                                    icon: const Icon(CupertinoIcons.refresh, color: Colors.white54, size: 18),
+                                    icon: Icon(CupertinoIcons.refresh, color: colors.textSecondary, size: 18),
                                     onPressed: _fetchBackupList,
                                   ),
                               ],
                             ),
                             const SizedBox(height: 10),
                             if (_remoteBackups.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 24),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 24),
                                 child: Center(
                                   child: Text(
                                     'هیچ نسخه‌ای یافت نشد. اولین نسخه پشتیبان خود را تهیه کنید.',
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white38, fontSize: 11.5),
+                                    style: TextStyle(
+                                      fontFamily: 'Vazirmatn',
+                                      color: colors.textTertiary,
+                                      fontSize: 11.5,
+                                    ),
                                   ),
                                 ),
                               )
@@ -750,13 +887,13 @@ class _BackupScreenState extends State<BackupScreen> {
                                     margin: const EdgeInsets.only(bottom: 12),
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.04),
+                                      color: colors.surfaceSunken,
                                       borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                                      border: Border.all(color: colors.border),
                                     ),
                                     child: Row(
                                       children: [
-                                        const Icon(CupertinoIcons.cloud, color: Color(0xff9B89FF), size: 24),
+                                        Icon(CupertinoIcons.cloud, color: colors.primary, size: 24),
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: Column(
@@ -764,41 +901,64 @@ class _BackupScreenState extends State<BackupScreen> {
                                             children: [
                                               Text(
                                                 _formatDateTime(meta.createdAt),
-                                                style: const TextStyle(fontFamily: 'Vazirmatn', color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.5),
+                                                style: TextStyle(
+                                                  fontFamily: 'Vazirmatn',
+                                                  color: colors.textPrimary,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12.5,
+                                                ),
                                               ),
                                               const SizedBox(height: 4),
                                               Text(
                                                 'حجم: ${_formatSize(meta.sizeBytes)}',
-                                                style: const TextStyle(fontFamily: 'Vazirmatn', color: Colors.white54, fontSize: 10.5),
+                                                style: TextStyle(
+                                                  fontFamily: 'Vazirmatn',
+                                                  color: colors.textSecondary,
+                                                  fontSize: 10.5,
+                                                ),
                                               ),
                                             ],
                                           ),
                                         ),
                                         IconButton(
-                                          icon: const Icon(CupertinoIcons.cloud_download, color: Colors.greenAccent, size: 20),
+                                          icon: Icon(CupertinoIcons.cloud_download, color: colors.success, size: 20),
                                           onPressed: () => _showRestoreDialog(meta),
                                           tooltip: 'بازیابی',
                                         ),
                                         IconButton(
-                                          icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent, size: 20),
+                                          icon: Icon(CupertinoIcons.trash, color: colors.medicalRed, size: 20),
                                           onPressed: () async {
                                             final confirm = await showDialog<bool>(
                                               context: context,
-                                              builder: (ctx) => AlertDialog(
-                                                backgroundColor: const Color(0xff1A1D26),
-                                                title: const Text('حذف فایل پشتیبان؟', style: TextStyle(color: Colors.redAccent, fontFamily: 'Vazirmatn', fontSize: 16, fontWeight: FontWeight.bold)),
-                                                content: const Text(
+                                              builder: (dialogCtx) => AlertDialog(
+                                                backgroundColor: colors.card,
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                title: Text(
+                                                  'حذف فایل پشتیبان؟',
+                                                  style: TextStyle(
+                                                    color: colors.medicalRed,
+                                                    fontFamily: 'Vazirmatn',
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                content: Text(
                                                   'آیا مطمئن هستید که می‌خواهید این فایل پشتیبان را از گوگل درایو حذف کنید؟ این عمل غیرقابل بازگشت است.',
-                                                  style: TextStyle(color: Colors.white70, fontFamily: 'Vazirmatn', fontSize: 13, height: 1.5),
+                                                  style: TextStyle(
+                                                    color: colors.textSecondary,
+                                                    fontFamily: 'Vazirmatn',
+                                                    fontSize: 13,
+                                                    height: 1.5,
+                                                  ),
                                                 ),
                                                 actions: [
                                                   TextButton(
-                                                    onPressed: () => Navigator.pop(ctx, false),
-                                                    child: const Text('انصراف', style: TextStyle(color: Colors.white54, fontFamily: 'Vazirmatn')),
+                                                    onPressed: () => Navigator.pop(dialogCtx, false),
+                                                    child: Text('انصراف', style: TextStyle(color: colors.textSecondary, fontFamily: 'Vazirmatn')),
                                                   ),
                                                   TextButton(
-                                                    onPressed: () => Navigator.pop(ctx, true),
-                                                    child: const Text('بله، حذف کن', style: TextStyle(color: Colors.redAccent, fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
+                                                    onPressed: () => Navigator.pop(dialogCtx, true),
+                                                    child: Text('بله، حذف کن', style: TextStyle(color: colors.medicalRed, fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
                                                   ),
                                                 ],
                                               ),
@@ -822,27 +982,37 @@ class _BackupScreenState extends State<BackupScreen> {
                   ],
 
                   // 5. Passcode Warning Card
-                  RitmoTheme.glassCardLight(
-                    color: Colors.redAccent.withValues(alpha: 0.08),
-                    child: const Padding(
-                      padding: EdgeInsets.all(20),
+                  _buildCard(
+                    borderColor: colors.warning.withValues(alpha: 0.3),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.orangeAccent, size: 24),
-                          SizedBox(width: 14),
+                          Icon(CupertinoIcons.exclamationmark_triangle_fill, color: colors.warning, size: 24),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'هشدار امنیتی بسیار مهم ⚠️',
-                                  style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                                  style: TextStyle(
+                                    fontFamily: 'Vazirmatn',
+                                    fontWeight: FontWeight.bold,
+                                    color: colors.warning,
+                                    fontSize: 13,
+                                  ),
                                 ),
-                                SizedBox(height: 6),
+                                const SizedBox(height: 6),
                                 Text(
                                   'رمز عبوری که برای فایل‌های پشتیبان تنظیم می‌کنید کاملاً مستقل از رمز عبور حساب گوگل شماست. ما این رمز را روی سرور ذخیره نمی‌کنیم؛ بنابراین اگر رمز عبور خود را فراموش کنید، به هیچ عنوان داده‌های شما در دستگاه‌های دیگر قابل بازیابی نخواهند بود.',
-                                  style: TextStyle(fontFamily: 'Vazirmatn', color: Colors.white70, fontSize: 11, height: 1.5),
+                                  style: TextStyle(
+                                    fontFamily: 'Vazirmatn',
+                                    color: colors.textSecondary,
+                                    fontSize: 11,
+                                    height: 1.5,
+                                  ),
                                 ),
                               ],
                             ),
@@ -858,11 +1028,11 @@ class _BackupScreenState extends State<BackupScreen> {
 
             // Loading overlay
             if (_isLoading)
-              const ColoredBox(
-                color: Colors.black45,
+              ColoredBox(
+                color: colors.overlay,
                 child: Center(
                   child: CircularProgressIndicator(
-                    color: Color(0xff5B8AF5),
+                    color: colors.primary,
                   ),
                 ),
               ),

@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
+import 'package:ritmo/core/utils/persian_text.dart';
 import 'package:ritmo/features/registry/domain/registry_entry.dart';
 import 'package:ritmo/features/registry/domain/registry_query.dart';
 import 'package:ritmo/features/registry/logic/sources/course_registry_source.dart';
@@ -116,7 +117,7 @@ class RegistryIndex {
         final nextDate = nextRunDates[item.sourceId];
         final updated = item.copyWith(nextRunDateStr: nextDate);
         if (_matchesQuery(updated, query)) {
-          final titleKey = _normalizeFa(updated.title);
+          final titleKey = normalizeFa(updated.title);
           final isDuplicateId = seenIds.contains(updated.id);
           final isDuplicateSource = updated.sourceId.isNotEmpty && seenSourceIds.contains(updated.sourceId);
           final isDuplicateTitle = titleKey.isNotEmpty && seenTitleKeys.contains(titleKey);
@@ -171,25 +172,14 @@ class RegistryIndex {
       return false;
     }
     if (query.searchText.trim().isNotEmpty) {
-      final q = _normalizeFa(query.searchText);
-      final titleNorm = _normalizeFa(entry.title);
-      final subNorm = _normalizeFa(entry.subtitle ?? '');
+      final q = normalizeFa(query.searchText);
+      final titleNorm = normalizeFa(entry.title);
+      final subNorm = normalizeFa(entry.subtitle ?? '');
       if (!titleNorm.contains(q) && !subNorm.contains(q)) {
         return false;
       }
     }
     return true;
-  }
-
-  static String _normalizeFa(String s) {
-    return s
-        .replaceAll('ي', 'ی')
-        .replaceAll('ك', 'ک')
-        .replaceAll('\u200c', ' ')
-        .replaceAll(RegExp(r'[\u064B-\u0652]'), '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim()
-        .toLowerCase();
   }
 
   void dispose() {

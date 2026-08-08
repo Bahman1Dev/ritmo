@@ -19,7 +19,7 @@ class CoursesAiHelper {
       final routinesRes = await db.query('routines', where: 'isArchived = 0');
       activeRoutinesCount = routinesRes.length;
 
-      final settingsList = await db.query('app_settings', where: 'key = ?', whereArgs: ['module_konkur_enabled']);
+      final settingsList = await db.query('app_settings', where: 'key = ?', whereArgs: ['module_study_enabled']);
       if (settingsList.isNotEmpty) {
         isKonkurActive = settingsList.first['value'] == 'true';
       }

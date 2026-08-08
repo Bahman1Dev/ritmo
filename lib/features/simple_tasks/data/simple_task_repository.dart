@@ -1,63 +1,135 @@
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/di/service_locator.dart';
 import 'package:ritmo/core/platform/alarm_platform.dart';
+import 'package:ritmo/core/utils/persian_text.dart';
+import 'package:ritmo/features/simple_tasks/data/task_attachment_repository.dart';
+import 'package:ritmo/features/simple_tasks/data/task_step_repository.dart';
 import 'package:ritmo/features/simple_tasks/domain/simple_task.dart';
+import 'package:ritmo/features/simple_tasks/domain/task_bucket.dart';
+import 'package:ritmo/features/simple_tasks/logic/task_bucketing.dart';
 import 'package:sqflite/sqflite.dart';
 
 class SimpleTaskRepository {
   SimpleTaskRepository._();
   static final SimpleTaskRepository instance = SimpleTaskRepository._();
 
-  Future<Database> get _db async => DatabaseHelper.instance.database;
+  Future<Database> get _db async {
+    final db = await DatabaseHelper.instance.database;
+    await _ensureTable(db);
+    return db;
+  }
+
+  Future<void> _ensureTable(Database db) async {
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS simple_tasks (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            note TEXT,
+            isDone INTEGER NOT NULL DEFAULT 0,
+            doneAt INTEGER,
+            dueDate TEXT,
+            dueTime TEXT,
+            reminderAtMs INTEGER,
+            reminderId TEXT,
+            linkedRoutineId TEXT,
+            orderIndex INTEGER NOT NULL DEFAULT 0,
+            origin TEXT NOT NULL DEFAULT 'SIMPLE',
+            isImportant INTEGER NOT NULL DEFAULT 0,
+            importantAt INTEGER,
+            createdAt INTEGER NOT NULL,
+            updatedAt INTEGER NOT NULL
+        );
+      ''');
+    } catch (_) {}
+  }
 
   /// Returns active tasks due today OR overdue past tasks (isDone = 0 AND dueDate <= todayIso)
   Future<List<SimpleTask>> today(String todayIso) async {
-    final db = await _db;
-    final rows = await db.query(
-      'simple_tasks',
-      where: 'isDone = 0 AND dueDate IS NOT NULL AND dueDate <= ?',
-      whereArgs: [todayIso],
-      orderBy: 'orderIndex ASC, createdAt ASC',
-    );
-    return rows.map((m) => SimpleTask.fromMap(m)).toList();
+    try {
+      final db = await _db;
+      final rows = await db.query(
+        'simple_tasks',
+        where: 'isDone = 0 AND dueDate IS NOT NULL AND dueDate <= ?',
+        whereArgs: [todayIso],
+        orderBy: 'orderIndex ASC, createdAt ASC',
+      );
+      return rows.map((m) => SimpleTask.fromMap(m)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   /// Returns upcoming tasks (isDone = 0 AND dueDate > todayIso)
   Future<List<SimpleTask>> upcoming(String todayIso) async {
-    final db = await _db;
-    final rows = await db.query(
-      'simple_tasks',
-      where: 'isDone = 0 AND dueDate IS NOT NULL AND dueDate > ?',
-      whereArgs: [todayIso],
-      orderBy: 'dueDate ASC, orderIndex ASC',
-    );
-    return rows.map((m) => SimpleTask.fromMap(m)).toList();
+    try {
+      final db = await _db;
+      final rows = await db.query(
+        'simple_tasks',
+        where: 'isDone = 0 AND dueDate IS NOT NULL AND dueDate > ?',
+        whereArgs: [todayIso],
+        orderBy: 'dueDate ASC, orderIndex ASC',
+      );
+      return rows.map((m) => SimpleTask.fromMap(m)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   /// Returns someday tasks with no dueDate (isDone = 0 AND dueDate IS NULL)
   Future<List<SimpleTask>> someday() async {
-    final db = await _db;
-    final rows = await db.query(
-      'simple_tasks',
-      where: 'isDone = 0 AND dueDate IS NULL',
-      orderBy: 'orderIndex ASC, createdAt ASC',
-    );
-    return rows.map((m) => SimpleTask.fromMap(m)).toList();
+    try {
+      final db = await _db;
+      final rows = await db.query(
+        'simple_tasks',
+        where: 'isDone = 0 AND dueDate IS NULL',
+        orderBy: 'orderIndex ASC, createdAt ASC',
+      );
+      return rows.map((m) => SimpleTask.fromMap(m)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   /// Returns tasks completed today
   Future<List<SimpleTask>> doneToday(String todayIso) async {
-    final db = await _db;
-    final startOfDayMs = DateTime.parse(todayIso).millisecondsSinceEpoch;
-    final endOfDayMs = DateTime.parse(todayIso).add(const Duration(days: 1)).millisecondsSinceEpoch;
+    try {
+      final db = await _db;
+      final dt = DateTime.tryParse(todayIso) ?? DateTime.now();
+      final startOfDayMs = DateTime(dt.year, dt.month, dt.day).millisecondsSinceEpoch;
+      final endOfDayMs = DateTime(dt.year, dt.month, dt.day + 1).millisecondsSinceEpoch;
 
-    final rows = await db.query(
-      'simple_tasks',
-      where: 'isDone = 1 AND (dueDate = ? OR (doneAt >= ? AND doneAt < ?))',
-      whereArgs: [todayIso, startOfDayMs, endOfDayMs],
-      orderBy: 'doneAt DESC, updatedAt DESC',
-    );
-    return rows.map((m) => SimpleTask.fromMap(m)).toList();
+      final rows = await db.query(
+        'simple_tasks',
+        where: 'isDone = 1 AND (dueDate = ? OR (doneAt >= ? AND doneAt < ?))',
+        whereArgs: [todayIso, startOfDayMs, endOfDayMs],
+        orderBy: 'doneAt DESC, updatedAt DESC',
+      );
+      return rows.map((m) => SimpleTask.fromMap(m)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Returns all active and done tasks grouped into TaskBucket sections
+  Future<Map<TaskBucket, List<SimpleTask>>> buckets(String todayIso) async {
+    try {
+      final db = await _db;
+      final dt = DateTime.tryParse(todayIso) ?? DateTime.now();
+      final startOfDayMs = DateTime(dt.year, dt.month, dt.day).millisecondsSinceEpoch;
+      final endOfDayMs = DateTime(dt.year, dt.month, dt.day + 1).millisecondsSinceEpoch;
+
+      final rows = await db.query(
+        'simple_tasks',
+        where: 'isDone = 0 OR (dueDate = ? OR (doneAt >= ? AND doneAt < ?))',
+        whereArgs: [todayIso, startOfDayMs, endOfDayMs],
+      );
+
+      final tasks = rows.map((m) => SimpleTask.fromMap(m)).toList();
+      return groupTasks(tasks, now: dt);
+    } catch (_) {
+      return {};
+    }
   }
 
   /// Creates a new SimpleTask
@@ -68,6 +140,7 @@ class SimpleTaskRepository {
     String? note,
     int? reminderAtMs,
     String? reminderId,
+    bool isImportant = false,
   }) async {
     final db = await _db;
     final now = DateTime.now();
@@ -86,12 +159,30 @@ class SimpleTaskRepository {
       reminderId: reminderId,
       orderIndex: maxOrder + 1,
       origin: 'SIMPLE',
+      isImportant: isImportant,
+      importantAt: isImportant ? now : null,
       createdAt: now,
       updatedAt: now,
     );
 
     await db.insert('simple_tasks', task.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
     return task;
+  }
+
+  /// Toggle task importance star
+  Future<void> setImportant(String id, {required bool important}) async {
+    final db = await _db;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    await db.update(
+      'simple_tasks',
+      {
+        'isImportant': important ? 1 : 0,
+        'importantAt': important ? nowMs : null,
+        'updatedAt': nowMs,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   /// Toggle task completion status + cancel alarm if completed
@@ -165,7 +256,7 @@ class SimpleTaskRepository {
     await db.insert('simple_tasks', task.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  /// Delete task + cancel alarm if present
+  /// Delete task + steps + attachments + cancel alarm
   Future<void> delete(String id) async {
     final db = await _db;
     final rows = await db.query('simple_tasks', where: 'id = ?', whereArgs: [id], limit: 1);
@@ -177,6 +268,9 @@ class SimpleTaskRepository {
         } catch (_) {}
       }
     }
+
+    await TaskStepRepository.instance.deleteForTask(id);
+    await TaskAttachmentRepository.instance.deleteForTask(id);
     await db.delete('simple_tasks', where: 'id = ?', whereArgs: [id]);
   }
 
@@ -212,18 +306,19 @@ class SimpleTaskRepository {
     );
   }
 
-  /// Search tasks by title or note
+  /// Search tasks by title, note, or sub-step title
   Future<List<SimpleTask>> search(String query) async {
-    if (query.trim().isEmpty) return [];
+    final normalized = normalizeFa(query);
+    if (normalized.isEmpty) return [];
     final db = await _db;
-    final q = '%${query.trim()}%';
-    final rows = await db.query(
-      'simple_tasks',
-      where: 'title LIKE ? OR note LIKE ?',
-      whereArgs: [q, q],
-      orderBy: 'isDone ASC, updatedAt DESC',
-      limit: 20,
-    );
+    final q = '%$normalized%';
+    final rows = await db.rawQuery('''
+      SELECT DISTINCT t.* FROM simple_tasks t
+      LEFT JOIN task_steps s ON s.taskId = t.id
+      WHERE t.title LIKE ? OR t.note LIKE ? OR s.title LIKE ?
+      ORDER BY t.isDone ASC, t.isImportant DESC, t.updatedAt DESC
+      LIMIT 20
+    ''', [q, q, q]);
     return rows.map((m) => SimpleTask.fromMap(m)).toList();
   }
 }
