@@ -132,11 +132,11 @@ class TodaysTasksSection extends StatelessWidget {
         child: InkWell(
           onTap: () {
             RitmoHaptics.tap();
-            if (isCompleted) {
-              onOpenDetails(routine);
-            } else {
-              onStartTask(routine);
-            }
+            onOpenDetails(routine);
+          },
+          onLongPress: () {
+            RitmoHaptics.warning();
+            onStartTask(routine);
           },
           borderRadius: BorderRadius.circular(18),
           child: Padding(
@@ -175,12 +175,27 @@ class TodaysTasksSection extends StatelessWidget {
                     ],
                   ),
                 ),
-                Icon(
-                  isCompleted
-                      ? CupertinoIcons.check_mark_circled_solid
-                      : CupertinoIcons.circle,
-                  color: isCompleted ? colors.success : colors.textSecondary,
-                  size: 22,
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      isCompleted
+                          ? CupertinoIcons.check_mark_circled_solid
+                          : CupertinoIcons.circle,
+                      color: isCompleted ? colors.success : colors.textSecondary,
+                      size: 22,
+                    ),
+                    onPressed: () {
+                      RitmoHaptics.tap();
+                      if (!isCompleted) {
+                        onStartTask(routine);
+                      } else {
+                        onOpenDetails(routine);
+                      }
+                    },
+                  ),
                 ),
               ],
             ),

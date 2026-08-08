@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:ritmo/core/app_mode/app_mode_service.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
@@ -42,7 +43,8 @@ class OnboardingController extends ChangeNotifier {
   bool isSaving = false;
   String? errorMessage;
 
-  static const List<String> stepCodes = [
+  static const List<String> simpleStepCodes = ['NAME', 'NOTIFICATIONS'];
+  static const List<String> fullStepCodes = [
     'WELCOME',
     'IDENTITY',
     'DAY_ARC',
@@ -51,6 +53,9 @@ class OnboardingController extends ChangeNotifier {
     'NOTIFICATIONS',
     'CELEBRATION',
   ];
+
+  List<String> get stepCodes =>
+      AppModeService.instance.isSimple ? simpleStepCodes : fullStepCodes;
 
   Future<void> _initDefaults() async {
     final suggestion = await DayArcInferencer.suggest();
@@ -202,6 +207,10 @@ class OnboardingController extends ChangeNotifier {
 
       // Check if onboarding is already completed (Idempotency guard)
       final alreadyCompleted = await OnboardingGate.isCompleted(db);
+
+      if (AppModeService.instance.isSimple) {
+        selectedStarterRoutines = [];
+      }
 
       if (!alreadyCompleted) {
         // 1. Create starter routines with deterministic IDs to ensure idempotency (Best Effort)

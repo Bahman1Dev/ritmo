@@ -13,6 +13,9 @@ import 'package:ritmo/core/database/migration/migrations/migration_v71_motivatio
 import 'package:ritmo/core/database/migration/migrations/migration_v72_cleanup.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v73_study_schema.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v74_psych_layer_settings.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v75_notification_reliability.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v76_simple_mode.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v77_ai_connection.dart';
 
 class MigrationRunner {
   static final List<Migration> _migrations = [
@@ -89,6 +92,9 @@ class MigrationRunner {
     MigrationV72Cleanup(), // Prompt 055: Drop deprecated zones, zone_schedules & worship_seasons tables
     MigrationV73StudySchema(), // Prompt 056: Study module schema refactoring
     MigrationV74PsychLayerSettings(), // Prompt 060: Psychology layer settings
+    MigrationV75NotificationReliability(), // Prompt 061: Notification reliability & full-screen alarm
+    MigrationV76SimpleMode(), // Prompt 057: Simple Mode & tasks table
+    MigrationV77AiConnection(), // Prompt 062: AI Connection mode, presets, timeout and model cleanups
   ];
 
   static Future<void> run(Database db, int oldVersion, int newVersion) async {

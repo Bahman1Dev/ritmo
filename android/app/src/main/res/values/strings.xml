@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Ritmo</string>
-    <string name="notif_vital_routine_title">⏰ Vital Routine</string>
-    <string name="notif_essential_channel_name">Vital Reminders (Medication/Prayer)</string>
-    <string name="notif_normal_channel_name">Normal Reminders</string>
-    <string name="notif_action_done">Done ✅</string>
-    <string name="notif_action_snooze">Snooze ⏰</string>
-    <string name="notif_action_dismiss">Dismiss</string>
-    <string name="notif_action_start_timer">Do Now ⏱️</string>
+    <string name="app_name">ریتمو</string>
+
+    <string name="notif_vital_routine_title">⏰ یادآور مهم</string>
+    <string name="notif_daily_routine_title">🌿 روتین روزانه</string>
+
+    <string name="notif_essential_channel_name">یادآورهای حیاتی (دارو و عبادت)</string>
+    <string name="notif_essential_channel_desc">یادآورهایی که نباید از دست بروند. با صدای بلند و روی صفحهٔ قفل نمایش داده می‌شوند.</string>
+    <string name="notif_normal_channel_name">یادآورهای روزمره</string>
+    <string name="notif_normal_channel_desc">یادآور روتین‌های عادی روزانه.</string>
+
+    <string name="notif_action_done">انجام شد ✅</string>
+    <string name="notif_action_snooze">تعویق ⏰</string>
+    <string name="notif_action_dismiss">رد کردن</string>
+    <string name="notif_action_start_timer">الان انجام می‌دهم ⏱️</string>
+    <string name="notif_action_minimal">نسخهٔ حداقلی</string>
+    <string name="notif_action_why_not">چرا نشد؟</string>
+
+    <string name="notif_summary_title">یادآوری‌های این بازه</string>
+    <string name="notif_summary_text">%1$d یادآوری جدید</string>
+
+    <string name="alarm_fullscreen_later">بعداً</string>
+    <string name="alarm_fullscreen_done">انجام شد</string>
+    <string name="alarm_fullscreen_minimal">نسخهٔ حداقلی</string>
+    <string name="alarm_fullscreen_first_step">اولین قدم</string>
 </resources>

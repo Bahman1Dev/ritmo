@@ -23,6 +23,8 @@ class AlarmSchedulerService {
     final settingsList = await db.query('app_settings');
     final settingsMap = {for (final s in settingsList) s['key']! as String: s['value']! as String};
 
+    await sweepMissedAlarms();
+
     // Load active routines and schedules
     final routines = await db.query('routines', where: 'isArchived = 0');
     final schedules = await db.query('routine_schedules');
@@ -132,16 +134,21 @@ class AlarmSchedulerService {
         final remState = existingReminder.first['state']! as String;
         final snoozeTime = existingReminder.first['snoozeUntil'] as int?;
 
-        // If it was snoozed/delayed, make sure it is scheduled for the snooze time
-        if (remState == 'delayed' && snoozeTime != null && snoozeTime > nowMs) {
-          scheduledMs = snoozeTime;
-          // Register physical Alarm
-          await sl<AlarmPlatform>().scheduleExactAlarm(
-            id: reminderId,
-            timeMsUTC: scheduledMs,
-            title: title,
-            isEssential: isEssential,
-          );
+        // If it was snoozed/delayed, make sure it is scheduled for the snooze time or reset if expired
+        if (remState == 'delayed' && snoozeTime != null) {
+          if (snoozeTime > nowMs) {
+            scheduledMs = snoozeTime;
+            final ok = await sl<AlarmPlatform>().scheduleExactAlarm(
+              id: reminderId,
+              timeMsUTC: scheduledMs,
+              title: title,
+              isEssential: isEssential,
+            );
+            await db.update('pending_reminders', {'nativeScheduled': ok ? 1 : 0}, where: 'id = ?', whereArgs: [reminderId]);
+          } else {
+            // Expired snooze: reset state to unknown so sweep can pick it up
+            await db.update('pending_reminders', {'state': 'unknown'}, where: 'id = ?', whereArgs: [reminderId]);
+          }
         }
         continue;
       }
@@ -151,6 +158,14 @@ class AlarmSchedulerService {
       if (behavior == 'SILENCE_ALL' || (behavior == 'ESSENTIAL_ONLY' && !isEssential)) {
         continue;
       }
+
+      // Register physical Alarm with AlarmManager
+      final ok = await sl<AlarmPlatform>().scheduleExactAlarm(
+        id: reminderId,
+        timeMsUTC: scheduledMs,
+        title: title,
+        isEssential: isEssential,
+      );
 
       // Insert new reminder with 'unknown' state
       await db.insert(
@@ -163,18 +178,11 @@ class AlarmSchedulerService {
           'scheduledTime': scheduledMs,
           'state': 'unknown',
           'deferCount': 0,
+          'nativeScheduled': ok ? 1 : 0,
           'createdAt': nowMs,
           'updatedAt': nowMs,
         },
         conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
-
-      // Register physical Alarm with AlarmManager
-      await sl<AlarmPlatform>().scheduleExactAlarm(
-        id: reminderId,
-        timeMsUTC: scheduledMs,
-        title: title,
-        isEssential: isEssential,
       );
 
       await DatabaseHelper.instance.logNotificationEvent(
@@ -482,7 +490,7 @@ class AlarmSchedulerService {
         alarmsToCancel.add(remId);
         await txn.update(
           'pending_reminders',
-          {'state': 'opened', 'updatedAt': now},
+          {'state': 'skipped', 'updatedAt': now},
           where: 'id = ?',
           whereArgs: [remId],
         );
@@ -490,7 +498,7 @@ class AlarmSchedulerService {
 
       await DatabaseHelper.instance.logNotificationEvent(
         routineId: routineId,
-        actionTaken: 'opened',
+        actionTaken: 'skipped',
         notificationType: 'ROUTINE',
         executor: txn,
       );
@@ -504,80 +512,6 @@ class AlarmSchedulerService {
     }
 
     await SnapshotSyncService.syncAll();
-  }
-
-  /// Snoozes a reminder, updates reminder and occurrence status, registers new alarm
-  static Future<void> snoozeReminder(String reminderId, int snoozeMinutes) async {
-    final db = await DatabaseHelper.instance.database;
-    final now = DateTime.now();
-    final nowMs = now.millisecondsSinceEpoch;
-    final snoozeUntilMs = nowMs + (snoozeMinutes * 60 * 1000);
-
-    String? rId;
-    String? title;
-    var isEssential = false;
-
-    await db.transaction((txn) async {
-      final reminders = await txn.query(
-        'pending_reminders',
-        where: 'id = ?',
-        whereArgs: [reminderId],
-      );
-
-      if (reminders.isNotEmpty) {
-        final rem = reminders.first;
-        rId = rem['routineId']! as String;
-        final origTimeMs = rem['originalTime']! as int;
-        final dateStr = DateTime.fromMillisecondsSinceEpoch(origTimeMs).toIso8601String().substring(0, 10);
-
-        // 1. Update reminder columns
-        await txn.update(
-          'pending_reminders',
-          {
-            'state': 'delayed',
-            'snoozeUntil': snoozeUntilMs,
-            'scheduledTime': snoozeUntilMs,
-            'deferCount': (rem['deferCount']! as int) + 1,
-            'updatedAt': nowMs,
-          },
-          where: 'id = ?',
-          whereArgs: [reminderId],
-        );
-
-        // 2. Update occurrence status
-        await txn.update(
-          'routine_occurrences',
-          {'status': 'snoozed'},
-          where: 'routine_id = ? AND date = ?',
-          whereArgs: [rId, dateStr],
-        );
-
-        // 3. Load routine details for alarm configuration
-        final routineList = await txn.query('routines', where: 'id = ?', whereArgs: [rId], limit: 1);
-        title = routineList.isNotEmpty ? routineList.first['title']! as String : 'روتین';
-        isEssential = routineList.isNotEmpty && routineList.first['isEssential'] == 1;
-
-        await DatabaseHelper.instance.logNotificationEvent(
-          routineId: rId,
-          actionTaken: 'delayed',
-          notificationType: 'ROUTINE',
-          executor: txn,
-        );
-      }
-    });
-
-    // 4. Register physical Alarm outside transaction
-    if (rId != null) {
-      await sl<AlarmPlatform>().cancelAlarm(reminderId);
-      await sl<AlarmPlatform>().scheduleExactAlarm(
-        id: reminderId,
-        timeMsUTC: snoozeUntilMs,
-        title: title ?? 'روتین',
-        isEssential: isEssential,
-      );
-
-      await SnapshotSyncService.syncAll();
-    }
   }
 
   /// Triggered when a routine completion is logged.
@@ -740,6 +674,51 @@ class AlarmSchedulerService {
     try {
       await sl<AlarmPlatform>().cancelAlarm(id);
     } catch (_) {}
+  }
+
+  /// Sweeps reminders whose scheduledTime has passed but were never fired.
+  static Future<List<Map<String, Object?>>> sweepMissedAlarms() async {
+    final db = await DatabaseHelper.instance.database;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    final missedReminders = await db.rawQuery('''
+      SELECT pr.id, pr.routineId, pr.scheduledTime
+      FROM pending_reminders pr
+      LEFT JOIN routine_occurrences ro ON pr.routineId = ro.routine_id AND SUBSTR(pr.id, -10) = ro.date
+      WHERE pr.scheduledTime < ?
+        AND pr.state IN ('unknown', 'delayed')
+        AND (ro.status IS NULL OR ro.status IN ('pending', 'snoozed'))
+    ''', [nowMs]);
+
+    for (final row in missedReminders) {
+      final remId = row['id']! as String;
+      final rId = row['routineId'] as String?;
+      final expectedAt = row['scheduledTime']! as int;
+      final logId = 'missed_$remId';
+
+      await db.insert(
+        'alarm_delivery_log',
+        {
+          'id': logId,
+          'reminderId': remId,
+          'routineId': rId,
+          'expectedAt': expectedAt,
+          'firedAt': null,
+          'outcome': 'missed',
+          'createdAt': nowMs,
+        },
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+
+      await db.update(
+        'pending_reminders',
+        {'state': 'missed', 'updatedAt': nowMs},
+        where: 'id = ?',
+        whereArgs: [remId],
+      );
+    }
+
+    return missedReminders;
   }
 }
 

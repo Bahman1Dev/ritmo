@@ -185,6 +185,7 @@ class RitmoAgendaWidgetProvider : AppWidgetProvider() {
                         )
                     )
                     sBackgroundEngine = engine
+                    AlarmChannelRegistrar.register(context, engine.dartExecutor.binaryMessenger)
                     sMethodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "com.ritmo.app/notif_action_bg")
                     isNewEngine = true
                 } else {

@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:ritmo/core/app_mode/app_mode_service.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/localization/locale_repository.dart';
@@ -14,6 +15,7 @@ import 'package:ritmo/core/widgets/ritmo/ritmo_glass_surface.dart';
 import 'package:ritmo/features/assistant/presentation/assistant_screen.dart';
 import 'package:ritmo/features/calendar/presentation/calendar_screen.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
+import 'package:ritmo/features/simple_tasks/presentation/simple_tasks_screen.dart';
 import 'package:ritmo/features/today/presentation/insights_screen.dart';
 import 'package:ritmo/features/today/presentation/now_dashboard_screen.dart';
 import 'package:ritmo/features/today/presentation/systems_hub_screen.dart';
@@ -34,29 +36,49 @@ class HomeNavigationShell extends StatefulWidget {
 }
 
 class _HomeNavigationShellState extends State<HomeNavigationShell> {
-  int _currentIndex = 2; // Default starting tab: Home Dashboard (index 2)
-  final List<Widget?> _screens = List.filled(5, null);
+  late AppMode _activeMode;
+  late int _currentIndex;
+  late List<Widget?> _screens;
   StreamSubscription<RitmoEvent>? _eventSubscription;
   DateTime? _lastBackPressTime;
+  bool _isNavBarVisible = true;
+  double _lastScrollOffset = 0;
+  bool _focusTasksAddField = false;
 
   @override
   void initState() {
     super.initState();
-    _screens[_currentIndex] = _buildScreen(_currentIndex);
+    _activeMode = AppModeService.instance.current;
+    _currentIndex = _activeMode == AppMode.simple ? 0 : 2;
+    _screens = List.filled(_activeMode == AppMode.simple ? 3 : 5, null);
+    _screens[_currentIndex] = _buildScreen(_currentIndex, _activeMode);
 
     _eventSubscription = RitmoEventBus().onEvents.listen((event) {
       if (event.type == 'navigate_tab') {
         final index = event.payload['index'] as int?;
-        if (index != null && index >= 0 && index < 5) {
+        final maxTabs = _activeMode == AppMode.simple ? 3 : 5;
+        if (index != null && index >= 0 && index < maxTabs) {
           setState(() {
             _currentIndex = index;
-            _screens[index] ??= _buildScreen(index);
+            _screens[index] ??= _buildScreen(index, _activeMode);
           });
         }
+      } else if (event.type == 'app_mode_changed') {
+        _handleModeChange(AppModeService.instance.current);
       }
     });
 
     _requestNotificationPermissionIfNeeded();
+  }
+
+  void _handleModeChange(AppMode newMode) {
+    if (_activeMode == newMode) return;
+    setState(() {
+      _activeMode = newMode;
+      _currentIndex = newMode == AppMode.simple ? 0 : 2;
+      _screens = List.filled(newMode == AppMode.simple ? 3 : 5, null);
+      _screens[_currentIndex] = _buildScreen(_currentIndex, newMode);
+    });
   }
 
   Future<void> _requestNotificationPermissionIfNeeded() async {
@@ -86,34 +108,54 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
     }
   }
 
-  Widget _buildScreen(int index) {
-    switch (index) {
-      case 0:
-        return SystemsHubScreen(
-          onLogout: widget.onLogout,
-          themeRepository: widget.themeRepository,
-          localeRepository: widget.localeRepository,
-        );
-      case 1:
-        return const InsightsScreen();
-      case 2:
-        return NowDashboardScreen(
-          onLogout: widget.onLogout,
-          themeRepository: widget.themeRepository,
-          localeRepository: widget.localeRepository,
-          onNavigateToTab: (index) {
-            setState(() {
-              _currentIndex = index;
-              _screens[index] ??= _buildScreen(index);
-            });
-          },
-        );
-      case 3:
-        return const AssistantScreen(isTab: true);
-      case 4:
-        return const CalendarScreen();
-      default:
-        return const SizedBox.shrink();
+  Widget _buildScreen(int index, AppMode mode) {
+    if (mode == AppMode.simple) {
+      switch (index) {
+        case 0:
+          return SimpleTasksScreen(focusAddField: _focusTasksAddField);
+        case 1:
+          return const CalendarScreen();
+        case 2:
+          return SystemsHubScreen(
+            onLogout: widget.onLogout,
+            themeRepository: widget.themeRepository,
+            localeRepository: widget.localeRepository,
+          );
+        default:
+          return const SizedBox.shrink();
+      }
+    } else {
+      switch (index) {
+        case 0:
+          return SystemsHubScreen(
+            onLogout: widget.onLogout,
+            themeRepository: widget.themeRepository,
+            localeRepository: widget.localeRepository,
+          );
+        case 1:
+          return const InsightsScreen();
+        case 2:
+          return NowDashboardScreen(
+            onLogout: widget.onLogout,
+            themeRepository: widget.themeRepository,
+            localeRepository: widget.localeRepository,
+            onNavigateToTab: (idx) {
+              final maxTabs = _screens.length;
+              if (idx >= 0 && idx < maxTabs) {
+                setState(() {
+                  _currentIndex = idx;
+                  _screens[idx] ??= _buildScreen(idx, mode);
+                });
+              }
+            },
+          );
+        case 3:
+          return const AssistantScreen(isTab: true);
+        case 4:
+          return const CalendarScreen();
+        default:
+          return const SizedBox.shrink();
+      }
     }
   }
 
@@ -127,139 +169,176 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
     setState(() {});
   }
 
-  bool _isNavBarVisible = true;
-  double _lastScrollOffset = 0;
-
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-
-        // If user is on a tab other than Home Dashboard (index 2), switch to Home first
-        if (_currentIndex != 2) {
-          setState(() {
-            _currentIndex = 2;
-            _screens[2] ??= _buildScreen(2);
+    return ValueListenableBuilder<AppMode>(
+      valueListenable: AppModeService.instance.notifier,
+      builder: (context, currentMode, _) {
+        if (_activeMode != currentMode) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _handleModeChange(currentMode);
           });
-          return;
         }
 
-        final now = DateTime.now();
-        if (_lastBackPressTime == null ||
-            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
-          _lastBackPressTime = now;
-          RitmoToast.show(
-            context,
-            'برای خروج، دوباره دکمه برگشت را بزنید',
-            icon: Icons.exit_to_app_rounded,
-            iconColor: const Color(0xffF59E0B),
-          );
-        } else {
-          await SystemNavigator.pop();
+        final defaultTab = currentMode == AppMode.simple ? 0 : 2;
+        final maxTabs = currentMode == AppMode.simple ? 3 : 5;
+
+        // Prevent out-of-bounds index
+        if (_currentIndex >= maxTabs) {
+          _currentIndex = defaultTab;
         }
-      },
-      child: Scaffold(
-        extendBody: true,
-        body: Stack(
-          children: [
-            // Background Gradient (Theme-Aware)
-            Positioned.fill(
-              child: RitmoTheme.buildBackgroundContainer(
-                context: context,
-                child: const SizedBox.expand(),
-              ),
-            ),
 
-            // Current Screen View
-            Positioned.fill(
-              child: SafeArea(
-                bottom: false,
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    if (notification is ScrollUpdateNotification) {
-                      final currentOffset = notification.metrics.pixels;
-                      final delta = currentOffset - _lastScrollOffset;
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
 
-                      if (delta > 10 && _isNavBarVisible && currentOffset > 50) {
-                        setState(() {
-                          _isNavBarVisible = false;
-                        });
-                      } else if (delta < -10 && !_isNavBarVisible) {
-                        setState(() {
-                          _isNavBarVisible = true;
-                        });
-                      }
+            if (_currentIndex != defaultTab) {
+              setState(() {
+                _currentIndex = defaultTab;
+                _screens[defaultTab] ??= _buildScreen(defaultTab, currentMode);
+              });
+              return;
+            }
 
-                      _lastScrollOffset = currentOffset;
-                    }
-                    return false;
-                  },
-                  child: IndexedStack(
-                    index: _currentIndex,
-                    children: List.generate(5, (index) {
-                      return _screens[index] ?? const SizedBox.shrink();
-                    }),
+            final now = DateTime.now();
+            if (_lastBackPressTime == null ||
+                now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+              _lastBackPressTime = now;
+              RitmoToast.show(
+                context,
+                'برای خروج، دوباره دکمه برگشت را بزنید',
+                icon: Icons.exit_to_app_rounded,
+                iconColor: const Color(0xffF59E0B),
+              );
+            } else {
+              await SystemNavigator.pop();
+            }
+          },
+          child: Scaffold(
+            extendBody: true,
+            body: Stack(
+              children: [
+                // Background Gradient
+                Positioned.fill(
+                  child: RitmoTheme.buildBackgroundContainer(
+                    context: context,
+                    child: const SizedBox.expand(),
                   ),
                 ),
-              ),
-            ),
 
-            // Bottom Navigation Bar
-            if (MediaQuery.of(context).viewInsets.bottom == 0)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 16 + MediaQuery.of(context).padding.bottom,
-                child: AnimatedSlide(
-                  offset: _isNavBarVisible ? Offset.zero : const Offset(0, 2),
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeInOut,
-                  child: AnimatedOpacity(
-                    opacity: _isNavBarVisible ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 180),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 380),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: _buildCustomBottomBar(),
-                        ),
+                // Current Screen View
+                Positioned.fill(
+                  child: SafeArea(
+                    bottom: false,
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (notification) {
+                        if (notification is ScrollUpdateNotification) {
+                          final currentOffset = notification.metrics.pixels;
+                          final delta = currentOffset - _lastScrollOffset;
+
+                          if (delta > 10 && _isNavBarVisible && currentOffset > 50) {
+                            setState(() {
+                              _isNavBarVisible = false;
+                            });
+                          } else if (delta < -10 && !_isNavBarVisible) {
+                            setState(() {
+                              _isNavBarVisible = true;
+                            });
+                          }
+
+                          _lastScrollOffset = currentOffset;
+                        }
+                        return false;
+                      },
+                      child: IndexedStack(
+                        index: _currentIndex < maxTabs ? _currentIndex : defaultTab,
+                        children: List.generate(maxTabs, (index) {
+                          return _screens[index] ?? const SizedBox.shrink();
+                        }),
                       ),
                     ),
                   ),
                 ),
-              ),
+
+                // Bottom Navigation Bar
+                if (MediaQuery.of(context).viewInsets.bottom == 0)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 16 + MediaQuery.of(context).padding.bottom,
+                    child: AnimatedSlide(
+                      offset: _isNavBarVisible ? Offset.zero : const Offset(0, 2),
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeInOut,
+                      child: AnimatedOpacity(
+                        opacity: _isNavBarVisible ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 180),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 380),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: currentMode == AppMode.simple
+                                  ? _buildSimpleBottomBar()
+                                  : _buildFullBottomBar(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 3-Tab Bottom Bar for Simple Mode
+  Widget _buildSimpleBottomBar() {
+    return RitmoGlassSurface(
+      blurSigma: 24,
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      borderRadius: BorderRadius.circular(RitmoRadius.sheet),
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            // Tab 0: Tasks
+            _buildNavItem(0, CupertinoIcons.check_mark_circled_solid, CupertinoIcons.check_mark_circled, 'کارها'),
+
+            // Dynamic Center Button: Plus/Focus
+            _buildSimpleCenterButton(),
+
+            // Tab 1: Calendar
+            _buildNavItem(1, CupertinoIcons.calendar_circle_fill, CupertinoIcons.calendar, 'تقویم'),
+
+            // Tab 2: More / Systems
+            _buildNavItem(2, CupertinoIcons.square_grid_2x2_fill, CupertinoIcons.square_grid_2x2, 'بیشتر'),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCustomBottomBar() {
+  /// 5-Tab Bottom Bar for Full Mode
+  Widget _buildFullBottomBar() {
     return RitmoGlassSurface(
       blurSigma: 24,
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
       borderRadius: BorderRadius.circular(RitmoRadius.sheet),
       child: Directionality(
-        textDirection: TextDirection.rtl, // RTL tab layout
+        textDirection: TextDirection.rtl,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            // 1. Calendar (Rightmost)
             _buildNavItem(4, CupertinoIcons.calendar_circle_fill, CupertinoIcons.calendar, 'تقویم'),
-
-            // 2. Assistant
             _buildNavItem(3, CupertinoIcons.sparkles, CupertinoIcons.sparkles, 'دستیار'),
-
-            // 3. Dynamic Center Home/Plus Button
-            _buildDynamicCenterButton(),
-
-            // 4. Systems (Swapped)
+            _buildFullCenterButton(),
             _buildNavItem(0, CupertinoIcons.square_grid_2x2_fill, CupertinoIcons.square_grid_2x2, 'سیستم‌ها'),
-
-            // 5. Reports / Insights (Swapped to Leftmost)
             _buildNavItem(1, CupertinoIcons.lightbulb_fill, CupertinoIcons.lightbulb, 'بینش‌ها'),
           ],
         ),
@@ -279,7 +358,7 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
         RitmoHapticsPolicy.selection();
         setState(() {
           _currentIndex = index;
-          _screens[index] ??= _buildScreen(index);
+          _screens[index] ??= _buildScreen(index, _activeMode);
         });
       },
       behavior: HitTestBehavior.opaque,
@@ -310,7 +389,54 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
     );
   }
 
-  Widget _buildDynamicCenterButton() {
+  Widget _buildSimpleCenterButton() {
+    final colors = context.colors;
+
+    return GestureDetector(
+      onTap: () {
+        RitmoHapticsPolicy.tap();
+        if (_currentIndex != 0) {
+          setState(() {
+            _currentIndex = 0;
+            _focusTasksAddField = true;
+            _screens[0] = _buildScreen(0, AppMode.simple);
+          });
+        } else {
+          // Re-trigger focus on Tasks add field
+          setState(() {
+            _focusTasksAddField = true;
+            _screens[0] = _buildScreen(0, AppMode.simple);
+          });
+        }
+      },
+      child: Container(
+        height: 44,
+        width: 44,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: colors.brandGradient,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colors.primary.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: const Icon(
+          CupertinoIcons.add,
+          color: Colors.white,
+          size: 22,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullCenterButton() {
     final isHomeActive = _currentIndex == 2;
     final colors = context.colors;
 
@@ -318,7 +444,6 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
       onTap: () {
         RitmoHapticsPolicy.tap();
         if (isHomeActive) {
-          // Trigger quick add screen when already home
           Navigator.push(
             context,
             PageRouteBuilder(
@@ -330,10 +455,9 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
             ),
           );
         } else {
-          // Navigate back to home dashboard when elsewhere
           setState(() {
             _currentIndex = 2;
-            _screens[2] ??= _buildScreen(2);
+            _screens[2] ??= _buildScreen(2, AppMode.full);
           });
         }
       },

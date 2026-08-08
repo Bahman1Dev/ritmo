@@ -44,17 +44,17 @@ class PlannerHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  controller.isEditing ? '✏️ ویرایش ایستگاه' : '✨ ثبت سریع ایستگاه',
+                  controller.isEditing ? '✏️ ویرایش کار' : '✨ کار جدید',
                   style: TextStyle(
                     fontFamily: 'Vazirmatn',
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: colors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
-                  controller.isEditing ? 'تغییر جزئیات این ایستگاه رشد' : 'ایجاد مستقیم ایستگاه جدید در مسیر زندگی',
+                  controller.isEditing ? 'تغییر جزئیات این کار' : 'ایجاد مستقیم کار جدید در مسیر زندگی',
                   style: TextStyle(
                     fontFamily: 'Vazirmatn',
                     fontSize: 11,

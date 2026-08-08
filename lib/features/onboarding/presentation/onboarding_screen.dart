@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ritmo/core/app_mode/app_mode_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/features/onboarding/logic/onboarding_controller.dart';
 
@@ -12,6 +13,7 @@ import 'package:ritmo/features/onboarding/presentation/steps/step_first_routine.
 import 'package:ritmo/features/onboarding/presentation/steps/step_focus.dart';
 import 'package:ritmo/features/onboarding/presentation/steps/step_identity.dart';
 import 'package:ritmo/features/onboarding/presentation/steps/step_notifications.dart';
+import 'package:ritmo/features/onboarding/presentation/steps/step_simple_name.dart';
 import 'package:ritmo/features/onboarding/presentation/steps/step_welcome.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -56,10 +58,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildStepWidget() {
-    switch (_controller.currentIndex) {
-      case 0:
+    final currentCodes = _controller.stepCodes;
+    if (_controller.currentIndex >= currentCodes.length) {
+      return const SizedBox.shrink();
+    }
+    final code = currentCodes[_controller.currentIndex];
+    switch (code) {
+      case 'NAME':
+        return StepSimpleName(
+          name: _controller.userName,
+          onNameChanged: (val) {
+            _controller.userName = val;
+            _controller.notifyListeners();
+          },
+          onStart: _controller.next,
+        );
+      case 'WELCOME':
         return StepWelcome(onStart: _controller.next);
-      case 1:
+      case 'IDENTITY':
         return StepIdentity(
           name: _controller.userName,
           onNameChanged: (val) {
@@ -77,7 +93,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             _controller.notifyListeners();
           },
         );
-      case 2:
+      case 'DAY_ARC':
         return StepDayArc(
           wakeTime: _controller.wakeTime,
           onWakeTimeChanged: (val) {
@@ -92,7 +108,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           isInferred: _controller.isDayArcInferred,
           reasonFa: _controller.dayArcReason,
         );
-      case 3:
+      case 'FOCUS':
         return StepFocus(
           chosenAreas: _controller.focusAreas,
           onAreaToggled: _controller.toggleFocusArea,
@@ -108,20 +124,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             _controller.notifyListeners();
           },
         );
-      case 4:
+      case 'STARTER_PACK':
         return StepFirstRoutine(
           suggestedTemplates: _controller.selectedStarterRoutines,
           onTemplateToggled: _controller.toggleStarterRoutine,
         );
-      case 5:
+      case 'NOTIFICATIONS':
         return StepNotifications(
           onFinished: () {
             _controller.notifAsked = true;
             _controller.notifGranted = true;
-            _controller.next();
+            if (AppModeService.instance.isSimple) {
+              _controller.save(onFinished: widget.onFinished);
+            } else {
+              _controller.next();
+            }
           },
         );
-      case 6:
+      case 'CELEBRATION':
         return StepCelebration(
           name: _controller.userName,
           selectedRoutines: _controller.selectedStarterRoutines,
@@ -143,8 +163,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       listenable: _controller,
       builder: (context, _) {
         final idx = _controller.currentIndex;
-        final isWelcome = idx == 0;
-        final isCelebration = idx == 6;
+        final totalSteps = _controller.stepCodes.length;
+        final currentCode = idx < totalSteps ? _controller.stepCodes[idx] : '';
+        final isWelcome = currentCode == 'WELCOME' || currentCode == 'NAME';
+        final isCelebration = currentCode == 'CELEBRATION';
 
         return PopScope(
           canPop: isWelcome,
@@ -203,12 +225,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  // 7-segment Progress Bar (Hidden on welcome step)
+                                  // Progress Bar (Hidden on welcome step)
                                   if (!isWelcome) ...[
                                     Semantics(
-                                      label: 'گام ${idx + 1} از 7',
+                                      label: 'گام ${idx + 1} از $totalSteps',
                                       child: Row(
-                                        children: List.generate(7, (index) {
+                                        children: List.generate(totalSteps, (index) {
                                           final isActive = index <= idx;
                                           return Expanded(
                                             child: Container(

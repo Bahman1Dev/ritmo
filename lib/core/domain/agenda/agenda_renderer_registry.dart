@@ -7,6 +7,7 @@ import 'package:ritmo/core/domain/agenda/quran_dhikr_agenda_renderer.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
+import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
 import 'package:ritmo/features/routines/presentation/widgets/routine_snooze_bottom_sheet.dart';
 import 'package:ritmo/features/routines/shared/routine_actions.dart';
@@ -196,27 +197,19 @@ class PrayerAgendaRenderer extends AgendaTileRenderer {
                 onPressed: () async {
                   Navigator.pop(context);
                   try {
-                    await AgendaActionHandler.instance.snoozePrayer(
+                    final outcome = await AgendaActionHandler.instance.snoozePrayer(
                       practiceIds: [practice['id'] as String],
                       minutes: selectedMinutes,
                       dateStr: item.dateStr,
                     );
                     if (context.mounted) {
-                      onChanged();
+                      if (outcome is SnoozeRefused) {
+                        RitmoToast.show(context, outcome.userMessage);
+                      } else {
+                        onChanged();
+                      }
                     }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            e.toString().replaceAll('Exception: ', ''),
-                            style: const TextStyle(fontFamily: 'Vazirmatn'),
-                          ),
-                          backgroundColor: colors.medicalRed,
-                        ),
-                      );
-                    }
-                  }
+                  } catch (_) {}
                 },
                 child: Text('ثبت تعویق', style: TextStyle(color: colors.textPrimary, fontFamily: 'Vazirmatn')),
               ),

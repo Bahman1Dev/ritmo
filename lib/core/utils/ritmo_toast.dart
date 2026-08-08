@@ -9,7 +9,10 @@ class RitmoToast {
     IconData icon = Icons.check_circle_rounded,
     Color iconColor = const Color(0xffD4A843),
     VoidCallback? onUndo,
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
+    final effectiveUndo = onUndo ?? onAction;
     final overlayState = Overlay.of(context);
     late OverlayEntry overlayEntry;
     overlayEntry = OverlayEntry(
@@ -20,7 +23,7 @@ class RitmoToast {
         onDismiss: () {
           overlayEntry.remove();
         },
-        onUndo: onUndo,
+        onUndo: effectiveUndo,
       ),
     );
     overlayState.insert(overlayEntry);

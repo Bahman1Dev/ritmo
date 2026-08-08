@@ -4,7 +4,11 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:ritmo/core/ai/ai_cache_manager.dart';
+import 'package:ritmo/core/ai/ai_connection_models.dart';
+import 'package:ritmo/core/ai/ai_connection_repository.dart';
 import 'package:ritmo/core/ai/ai_context_builder.dart';
+import 'package:ritmo/core/ai/ai_endpoint_normalizer.dart';
+import 'package:ritmo/core/ai/ai_error_messages.dart';
 import 'package:ritmo/core/ai/ai_fallback_engine.dart';
 import 'package:ritmo/core/ai/ai_prompt_engine.dart';
 import 'package:ritmo/core/ai/ai_rate_limiter.dart';
@@ -80,7 +84,7 @@ class AIGateway {
   static const String defaultModel =
       String.fromEnvironment('AI_MODEL', defaultValue: '@cf/zai-org/glm-4.7-flash');
   static const int defaultTimeoutMs =
-      int.fromEnvironment('AI_TIMEOUT', defaultValue: 200000);
+      int.fromEnvironment('AI_TIMEOUT', defaultValue: 60000);
 
   // Secondary credentials used as automatic failover when the primary key
   // hits a rate limit (429) or exhausts its daily quota (Cloudflare 4006).
@@ -126,39 +130,15 @@ class AIGateway {
         baseUrl = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
       }
 
-      if (model == 'glm-4.7-flash') {
-        model = 'glm-5.2';
-        try {
-          await db.insert(
-            'app_settings',
-            {'key': modelKey, 'value': 'glm-5.2'},
-            conflictAlgorithm: ConflictAlgorithm.replace,
-          );
-        } catch (e) {
-          debugPrint('Error updating model setting to glm-5.2: $e');
-        }
-      } else if (model == '@cf/zai-org/glm-5.2') {
-        model = '@cf/zai-org/glm-4.7-flash';
-        try {
-          await db.insert(
-            'app_settings',
-            {'key': modelKey, 'value': '@cf/zai-org/glm-4.7-flash'},
-            conflictAlgorithm: ConflictAlgorithm.replace,
-          );
-        } catch (e) {
-          debugPrint('Error updating deprecated model setting: $e');
-        }
-      }
-
       final timeoutStr = settingsMap['ai_timeout'];
       final timeoutMs = int.tryParse(timeoutStr ?? '') ?? defaultTimeoutMs;
 
-      debugPrint('AIGateway DB loadConfig SUCCESS: isFeatures=$isFeaturesConfig, model=$model, apiKeyLength=${apiKey.length}, baseUrl=$baseUrl');
+      debugPrint('AIGateway DB loadConfig SUCCESS: isFeatures=$isFeaturesConfig, model=$model, hasKey=${apiKey?.isNotEmpty ?? false}, baseUrl=$baseUrl');
 
       return AIGatewayConfig(
         baseUrl: baseUrl,
-        apiKey: apiKey,
-        model: model,
+        apiKey: apiKey ?? '',
+        model: model ?? defaultModel,
         timeoutMs: timeoutMs,
       );
     } catch (e) {
@@ -184,6 +164,13 @@ class AIGateway {
 
     var secKey = secondaryApiKey;
     var secUrl = secondaryBaseUrl;
+
+    // T-A5: Check SecureKeyStore first for ai_api_key_2
+    final secureSecKey = await SecureKeyStore.getKey('ai_api_key_2');
+    if (secureSecKey != null && secureSecKey.isNotEmpty) {
+      secKey = secureSecKey;
+    }
+
     try {
       final db = await DatabaseHelper.instance.database;
       final rows = await db.query(
@@ -195,7 +182,9 @@ class AIGateway {
         final key = r['key'];
         final value = (r['value'] as String?) ?? '';
         if (value.isEmpty) continue;
-        if (key == 'ai_api_key_2') secKey = value;
+        if (key == 'ai_api_key_2' && (secKey.isEmpty || secKey == secondaryApiKey)) {
+          secKey = value;
+        }
         if (key == 'ai_base_url_2') secUrl = value;
       }
     } catch (e) {
@@ -279,6 +268,115 @@ class AIGateway {
       }
     }
     return config.model;
+  }
+
+  /// همان منطق _effectiveModel، برای نمایش شفاف در صفحهٔ تنظیمات.
+  String previewEffectiveModel({required String baseUrl, required String model}) =>
+      _effectiveModel(
+        AIGatewayConfig(baseUrl: baseUrl, apiKey: '', model: model, timeoutMs: 0),
+        false,
+      );
+
+  /// یک درخواست حداقلی به «همین» اعتبارنامه می‌فرستد.
+  /// عمداً از _configChain رد نمی‌شود تا نتیجه دربارهٔ همان کلیدی باشد
+  /// که کاربر جلوی چشمش دارد.
+  Future<AiTestResult> testConnection({
+    required String baseUrl,
+    required String apiKey,
+    required String model,
+    int timeoutMs = 15000,
+  }) async {
+    final normalizedUrl = AiEndpointNormalizer.normalize(baseUrl);
+    final effectiveM = previewEffectiveModel(baseUrl: normalizedUrl, model: model);
+    final stopwatch = Stopwatch()..start();
+    final client = http.Client();
+
+    try {
+      final urlError = AiEndpointNormalizer.validate(normalizedUrl);
+      if (urlError != null) {
+        final res = AiTestResult(
+          ok: false,
+          latencyMs: 0,
+          resolvedModel: effectiveM,
+          messageFa: urlError,
+          statusCode: 400,
+        );
+        await AiConnectionRepository.instance.recordTest(res);
+        return res;
+      }
+
+      if (apiKey.trim().isEmpty) {
+        final res = AiTestResult(
+          ok: false,
+          latencyMs: 0,
+          resolvedModel: effectiveM,
+          messageFa: 'کلید API وارد نشده است',
+          statusCode: 401,
+        );
+        await AiConnectionRepository.instance.recordTest(res);
+        return res;
+      }
+
+      final response = await client
+          .post(
+            Uri.parse(normalizedUrl),
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Authorization': 'Bearer $apiKey',
+            },
+            body: jsonEncode({
+              'model': effectiveM,
+              'messages': [
+                {'role': 'user', 'content': 'ping'}
+              ],
+              'temperature': 0,
+              'max_tokens': 1,
+            }),
+          )
+          .timeout(Duration(milliseconds: timeoutMs));
+
+      stopwatch.stop();
+      final latency = stopwatch.elapsedMilliseconds;
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final res = AiTestResult(
+          ok: true,
+          latencyMs: latency,
+          resolvedModel: effectiveM,
+          messageFa: 'اتصال برقرار است',
+          statusCode: response.statusCode,
+        );
+        await AiConnectionRepository.instance.recordTest(res);
+        return res;
+      } else {
+        final msg = AiErrorMessages.fa(
+          statusCode: response.statusCode,
+          errorBody: response.body,
+        );
+        final res = AiTestResult(
+          ok: false,
+          latencyMs: latency,
+          resolvedModel: effectiveM,
+          messageFa: msg,
+          statusCode: response.statusCode,
+        );
+        await AiConnectionRepository.instance.recordTest(res);
+        return res;
+      }
+    } catch (e) {
+      stopwatch.stop();
+      final msg = AiErrorMessages.fa(exception: e.toString());
+      final res = AiTestResult(
+        ok: false,
+        latencyMs: stopwatch.elapsedMilliseconds,
+        resolvedModel: effectiveM,
+        messageFa: msg,
+      );
+      await AiConnectionRepository.instance.recordTest(res);
+      return res;
+    } finally {
+      client.close();
+    }
   }
 
   /// Performs a non-streaming chat completion, transparently failing over to

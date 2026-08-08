@@ -16,6 +16,7 @@ class RoutineCard extends StatelessWidget {
     required this.displayStreak,
     required this.customCategoriesMap,
     required this.onTap,
+    this.onLongPress,
     this.onComplete,
     this.onSnooze,
     this.onSwipeManage,
@@ -25,6 +26,7 @@ class RoutineCard extends StatelessWidget {
   final int displayStreak;
   final Map<String, CustomCategory> customCategoriesMap;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final VoidCallback? onComplete;
   final VoidCallback? onSnooze;
   final VoidCallback? onSwipeManage;
@@ -44,6 +46,7 @@ class RoutineCard extends StatelessWidget {
           onSwipeManage: onSwipeManage ?? onSnooze,
           child: RitmoPressable(
             onTap: onTap,
+            onLongPress: onLongPress,
             child: Container(
               decoration: BoxDecoration(
                 color: isCompleted

@@ -355,6 +355,10 @@ class WorshipEngine {
       final midnight = _isoOrTime(row['midnightShariIso'] as String?, row['midnightShari'] as String?, date);
 
       if (fajr != null && maghrib != null && isha != null && midnight != null) {
+        var midnightShari = midnight;
+        if (midnightShari.isBefore(maghrib)) {
+          midnightShari = midnightShari.add(const Duration(days: 1));
+        }
         return PrayerTimes(
           date: dateStr,
           cityId: cityId,
@@ -365,7 +369,7 @@ class WorshipEngine {
           maghrib: maghrib,
           sunset: sunset ?? maghrib,
           isha: isha,
-          midnightShari: midnight,
+          midnightShari: midnightShari,
           calculationMethod: method,
           ihtiyatMinutes: 0,
         );
@@ -1208,6 +1212,14 @@ class WorshipEngine {
       date: date,
     );
 
+    final maghrib = _isoOrTime(null, map['maghrib'], date) ?? date;
+    final sunset = _isoOrTime(null, map['sunset'], date) ?? date;
+    final isha = _isoOrTime(null, map['isha'], date) ?? date;
+    var midnightShari = _isoOrTime(null, map['midnightShari'], date) ?? date;
+    if (midnightShari.isBefore(maghrib)) {
+      midnightShari = midnightShari.add(const Duration(days: 1));
+    }
+
     return PrayerTimes(
       date: _ds(date),
       cityId: '',
@@ -1215,10 +1227,10 @@ class WorshipEngine {
       sunrise: _isoOrTime(null, map['sunrise'], date) ?? date,
       dhuhr: _isoOrTime(null, map['dhuhr'], date) ?? date,
       asr: _isoOrTime(null, map['asr'], date) ?? date,
-      maghrib: _isoOrTime(null, map['maghrib'], date) ?? date,
-      sunset: _isoOrTime(null, map['sunset'], date) ?? date,
-      isha: _isoOrTime(null, map['isha'], date) ?? date,
-      midnightShari: _isoOrTime(null, map['midnightShari'], date) ?? date,
+      maghrib: maghrib,
+      sunset: sunset,
+      isha: isha,
+      midnightShari: midnightShari,
       calculationMethod: method,
       ihtiyatMinutes: 0,
     );

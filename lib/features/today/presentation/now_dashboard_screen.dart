@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -38,7 +37,6 @@ import 'package:ritmo/features/goals/presentation/goals_screen.dart';
 import 'package:ritmo/features/health/presentation/health_screen.dart';
 import 'package:ritmo/features/inbox/logic/inbox_navigator.dart';
 import 'package:ritmo/features/inbox/presentation/inbox_screen.dart';
-import 'package:ritmo/features/konkur/presentation/konkur_screen.dart';
 import 'package:ritmo/features/study/study_module_entry.dart';
 import 'package:ritmo/features/premium/presentation/premium_upgrade_sheet.dart';
 import 'package:ritmo/features/profile/presentation/profile_screen.dart';
@@ -100,10 +98,6 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
 
   // Specialized Dashboard state variables
   Map<String, String> _settingsMap = {};
-  int? _rhythmScore;
-  String? _currentEnergyTimeAgo;
-  List<String> _currentEnergyExplanation = [];
-
 
   DailyBehavior? _dailyBehavior;
   Map<String, dynamic>? _activeZone;
@@ -122,6 +116,8 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
   double _currentEnergyPercent = 65;
   String _currentEnergyLabel = 'متوسط';
   String _currentEnergyDesc = 'مناسب برای مطالعه، پروژه‌ها و روتین‌ها';
+  String? _currentEnergyTimeAgo;
+  List<String> _currentEnergyExplanation = [];
   String? _peakPerformanceWindow;
   String? _mostFatiguedWindow;
   String? _mostProductiveWeekday;
@@ -365,8 +361,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
     if (!mounted) return;
     setState(() {
       _isFirstLoad = false;
-      _isLoading = false; // first paint is ready
-      _rhythmScore = controller.rhythmScore;
+      _isLoading = false;
       _timelineItems = controller.timelineItems;
       _settingsMap = controller.settingsMap;
       _activeZone = controller.activeZone;
@@ -434,11 +429,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
       case 'cycle': screen = const CycleScreen();
       case 'goals': screen = const GoalsScreen();
       case 'courses':
-        if (!PremiumService.instance.can(PremiumFeature.coursesModule)) {
-          PremiumUpgradeSheet.show(context);
-          return;
-        }
-        screen = const CoursesScreen();
+        screen = const CoursesScreen(); // can() always returns true
       case 'study':
       case 'konkur':
         StudyModuleEntry.open(context).then((_) => _loadDashboardData());
@@ -645,11 +636,14 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
                     },
                   ),
                 ),
-                const SizedBox(height: RitmoSpacing.section),
+                _enter(
+                  1,
+                  _buildCriticalAlertsSection(),
+                ),
 
                 // 2. کارت هیروی اقدام بعدی (Next Action Hero)
                 _enter(
-                  1,
+                  2,
                   NextActionHero(
                     data: _buildNextActionHeroData(),
                   ),
@@ -802,7 +796,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
     return NextActionHeroData(
       type: HeroPriorityType.emptyState,
       title: 'برنامه‌ای برای این زمان ثبت نشده است',
-      subtitle: 'با افزودن ایستگاه جدید، ریتم امروزتان را شکل دهید',
+      subtitle: 'با افزودن کار جدید، ریتم امروزتان را شکل دهید',
       primaryCtaLabel: 'افزودن برنامه',
       onPrimaryTap: () {
         UniversalPlannerSheet.show(context: context);

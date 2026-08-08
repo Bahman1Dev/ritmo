@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/platform/native_channel_contract.dart';
 
@@ -64,12 +66,15 @@ class NativeBridge {
         e,
         st,
       );
+      unawaited(_recordNativeFailure());
       return false;
     } on PlatformException catch (e, st) {
       RitmoLog.error('NativeBridge', 'Platform error scheduling exact alarm: ${e.message}', e, st);
+      unawaited(_recordNativeFailure());
       return false;
     } catch (e, st) {
       RitmoLog.error('NativeBridge', 'Unexpected error scheduling exact alarm', e, st);
+      unawaited(_recordNativeFailure());
       return false;
     }
   }
@@ -92,14 +97,53 @@ class NativeBridge {
         e,
         st,
       );
+      unawaited(_recordNativeFailure());
       return false;
     } on PlatformException catch (e, st) {
       RitmoLog.error('NativeBridge', 'Platform error cancelling alarm: ${e.message}', e, st);
+      unawaited(_recordNativeFailure());
       return false;
     } catch (e, st) {
       RitmoLog.error('NativeBridge', 'Unexpected error cancelling alarm', e, st);
+      unawaited(_recordNativeFailure());
       return false;
     }
+  }
+
+  /// Checks if exact alarm permission is granted.
+  static Future<bool> checkExactAlarmPermission() async {
+    if (kIsWeb) return true;
+    try {
+      final bool? result = await _alarmChannel.invokeMethod<bool>(AlarmMethods.checkExactAlarmPermission);
+      return result ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Requests exact alarm permission from OS settings.
+  static Future<bool> requestExactAlarmPermission() async {
+    if (kIsWeb) return true;
+    try {
+      final bool? result = await _alarmChannel.invokeMethod<bool>(AlarmMethods.requestExactAlarmPermission);
+      return result ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static Future<void> _recordNativeFailure() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      await db.rawUpdate('''
+        INSERT INTO app_settings (key, value, updatedAt)
+        VALUES ('alarm_native_failure_count', '1', ?)
+        ON CONFLICT(key) DO UPDATE SET
+          value = CAST(CAST(value AS INTEGER) + 1 AS TEXT),
+          updatedAt = excluded.updatedAt
+      ''', [nowMs]);
+    } catch (_) {}
   }
 
   /// Starts or updates the persistent foreground service in Status Mode.

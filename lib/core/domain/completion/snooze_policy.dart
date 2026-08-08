@@ -24,9 +24,17 @@ class SnoozeDecision {
 class SnoozePolicy {
   SnoozePolicy._();
 
-  static int maxCap({String? category, int? isEssential, int configuredMax = 3}) {
+  static int maxCap({
+    String? category,
+    int? isEssential,
+    int configuredMax = 3,
+    bool quotaEnabled = false,
+  }) {
     if (category == 'medical' || isEssential == 1) {
       return 2;
+    }
+    if (!quotaEnabled) {
+      return 9999;
     }
     return configuredMax;
   }
@@ -40,9 +48,15 @@ class SnoozePolicy {
     String? category,
     int? isEssential,
     int configuredMax = 3,
+    bool quotaEnabled = false,
     String? recurrenceRuleType,
   }) {
-    final cap = maxCap(category: category, isEssential: isEssential, configuredMax: configuredMax);
+    final cap = maxCap(
+      category: category,
+      isEssential: isEssential,
+      configuredMax: configuredMax,
+      quotaEnabled: quotaEnabled,
+    );
 
     // 1. Check Midnight Guard
     final midnight = DateTime(now.year, now.month, now.day, 23, 59, 59);

@@ -6,6 +6,7 @@ import 'package:ritmo/core/domain/execution/command_context.dart';
 import 'package:ritmo/core/domain/execution/command_handler.dart';
 import 'package:ritmo/core/domain/execution/events/kernel_event_factory.dart';
 import 'package:ritmo/core/domain/execution/kernel_mutation_result.dart';
+import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/platform/alarm_platform.dart';
 import 'package:ritmo/core/services/snapshot_sync_service.dart';
 
@@ -59,14 +60,14 @@ class SnoozeReminderHandler
 
     final affected = await context.txn.rawUpdate(
       'UPDATE routine_occurrences SET status = ? WHERE routine_id = ? AND date = ?',
-      ['rescheduled', routineId, dateStr],
+      ['snoozed', routineId, dateStr],
     );
 
     if (affected == 0) {
       await context.txn.insert('routine_occurrences', {
         'routine_id': routineId,
         'date': dateStr,
-        'status': 'rescheduled',
+        'status': 'snoozed',
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
 
@@ -84,12 +85,22 @@ class SnoozeReminderHandler
 
     tasks.add(() async {
       await sl<AlarmPlatform>().cancelAlarm(command.reminderId);
-      await sl<AlarmPlatform>().scheduleExactAlarm(
+      final ok = await sl<AlarmPlatform>().scheduleExactAlarm(
         id: command.reminderId,
         timeMsUTC: snoozeUntilMs,
         title: title,
         isEssential: isEssential,
       );
+      final db = await DatabaseHelper.instance.database;
+      await db.update(
+        'pending_reminders',
+        {'nativeScheduled': ok ? 1 : 0},
+        where: 'id = ?',
+        whereArgs: [command.reminderId],
+      );
+      if (!ok) {
+        RitmoLog.error('ALARM', 'Native alarm registration FAILED for ${command.reminderId}');
+      }
       await DatabaseHelper.instance.logNotificationEvent(
         routineId: routineId,
         actionTaken: 'delayed',

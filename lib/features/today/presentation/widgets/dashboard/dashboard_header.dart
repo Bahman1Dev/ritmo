@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
+import 'package:ritmo/features/search/presentation/global_search_screen.dart';
 import 'package:ritmo/l10n/app_localizations.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
@@ -20,6 +21,7 @@ class DashboardHeader extends StatelessWidget {
     required this.onAvatarTap,
     required this.onBellTap,
     required this.onAssistantTap,
+    this.onSearchTap,
   });
 
   final String userName;
@@ -29,6 +31,7 @@ class DashboardHeader extends StatelessWidget {
   final VoidCallback onAvatarTap;
   final VoidCallback onBellTap;
   final VoidCallback onAssistantTap;
+  final VoidCallback? onSearchTap;
 
   /// سلام زمان‌محور: صبح/ظهر/عصر/شب بخیر
   static ({String greeting, String emoji}) timeGreeting(DateTime now) {
@@ -213,9 +216,32 @@ class DashboardHeader extends StatelessWidget {
           ),
         ),
 
-        // چپ: دستیار + زنگوله
+        // چپ: جستجو + دستیار + زنگوله
         Row(
           children: [
+            _iconButton(
+              context: context,
+              semanticLabel: 'جستجو',
+              onTap: () {
+                RitmoHaptics.tap();
+                if (onSearchTap != null) {
+                  onSearchTap!();
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const GlobalSearchScreen(),
+                    ),
+                  );
+                }
+              },
+              child: Icon(
+                CupertinoIcons.search,
+                color: colors.textSecondary,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: RitmoSpacing.sm),
             if (isAssistantActive) ...[
               _iconButton(
                 context: context,

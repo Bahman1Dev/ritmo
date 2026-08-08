@@ -12,7 +12,6 @@ import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/database/seed/seed_service.dart';
 import 'package:ritmo/core/services/account_reset_service.dart';
-import 'package:ritmo/core/services/device_service.dart';
 import 'package:ritmo/core/security/app_lock_gate.dart';
 import 'package:ritmo/core/theme/ritmo_colors.dart';
 import 'package:ritmo/core/theme/ritmo_palette.dart';
@@ -21,7 +20,6 @@ import 'package:ritmo/core/theme/theme_preferences.dart';
 import 'package:ritmo/core/widgets/restart_widget.dart';
 import 'package:ritmo/core/theme/theme_repository.dart';
 import 'package:ritmo/core/localization/locale_repository.dart';
-import 'package:ritmo/core/services/premium_service.dart';
 import 'package:ritmo/l10n/app_localizations.dart';
 import 'package:ritmo/features/onboarding/logic/onboarding_gate.dart';
 import 'package:ritmo/features/onboarding/presentation/onboarding_screen.dart';
@@ -31,13 +29,13 @@ import 'package:ritmo/features/today/presentation/home_navigation_shell.dart';
 // Engines & Service Locator Imports
 import 'package:ritmo/core/di/service_locator.dart';
 import 'package:ritmo/core/domain/engines/ritmo_intelligence_orchestrator.dart';
-import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/agenda/agenda_renderer_registry.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 
 import 'package:ritmo/core/logging/ritmo_logger.dart';
 import 'package:ritmo/core/time/ritmo_clock.dart';
 
+import 'package:ritmo/core/app_mode/app_mode_service.dart';
 import 'package:ritmo/core/observability/privacy_error_sink.dart';
 import 'package:ritmo/core/observability/ritmo_friendly_error_pane.dart';
 
@@ -109,6 +107,8 @@ void main() async {
 
   final localeRepository = sl<LocaleRepository>();
   await localeRepository.init();
+
+  await AppModeService.instance.load();
 
   runApp(RestartWidget(
     child: ProviderScope(

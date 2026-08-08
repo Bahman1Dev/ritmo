@@ -148,7 +148,7 @@ class PlannerJourneyPreview extends StatelessWidget {
 
                 _buildTimelineNode(
                   time: selectedTimeStr,
-                  title: controller.title.isEmpty ? 'ایستگاه جدید' : controller.title,
+                  title: controller.title.isEmpty ? 'کار جدید' : controller.title,
                   icon: _getCategoryIcon(controller.selectedCategory, itemType: controller.itemType),
                   color: colors.primary,
                   isNew: true,
@@ -233,7 +233,7 @@ class PlannerJourneyPreview extends StatelessWidget {
               ),
               if (isNew)
                 const Text(
-                  'این ایستگاه به این قسمت از مسیر اضافه می‌شود.',
+                  'این کار به این قسمت از مسیر اضافه می‌شود.',
                   style: TextStyle(
                     fontFamily: 'Vazirmatn',
                     fontSize: 9.5,

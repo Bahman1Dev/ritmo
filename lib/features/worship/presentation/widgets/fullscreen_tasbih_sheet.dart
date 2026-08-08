@@ -10,17 +10,20 @@ class FullscreenTasbihSheet extends StatefulWidget {
   const FullscreenTasbihSheet({
     super.key,
     this.initialDhikrTitle = 'تسبیحات حضرت زهرا (س)',
+    this.dhikrSubtitle,
     this.targetCount = 100,
     this.isFatimaTasbih = true,
   });
 
   final String initialDhikrTitle;
+  final String? dhikrSubtitle;
   final int targetCount;
   final bool isFatimaTasbih;
 
   static Future<void> present(
     BuildContext context, {
     String initialDhikrTitle = 'تسبیحات حضرت زهرا (س)',
+    String? dhikrSubtitle,
     int targetCount = 100,
     bool isFatimaTasbih = true,
   }) {
@@ -29,6 +32,7 @@ class FullscreenTasbihSheet extends StatefulWidget {
       CupertinoPageRoute(
         builder: (_) => FullscreenTasbihSheet(
           initialDhikrTitle: initialDhikrTitle,
+          dhikrSubtitle: dhikrSubtitle,
           targetCount: targetCount,
           isFatimaTasbih: isFatimaTasbih,
         ),
@@ -199,9 +203,9 @@ class _FullscreenTasbihSheetState extends State<FullscreenTasbihSheet> {
                     ),
                     const SizedBox(height: 8),
 
-                    if (widget.isFatimaTasbih)
+                    if (widget.isFatimaTasbih || widget.dhikrSubtitle != null)
                       Text(
-                        dhikrTitle,
+                        widget.dhikrSubtitle ?? dhikrTitle,
                         style: TextStyle(
                           fontSize: 14,
                           color: colors.textSecondary,

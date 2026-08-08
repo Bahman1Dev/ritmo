@@ -35,13 +35,7 @@ class _ReshufflePreviewSheetState extends State<ReshufflePreviewSheet> {
   @override
   void initState() {
     super.initState();
-    if (!PremiumService.instance.can(PremiumFeature.smartReshuffle)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pop(context);
-        PremiumUpgradeSheet.show(context);
-      });
-      return;
-    }
+    // can() always returns true — no paywall
     _loadReshuffleData();
   }
 

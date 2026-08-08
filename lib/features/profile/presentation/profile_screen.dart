@@ -11,10 +11,14 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:ritmo/core/ai/ai_gateway.dart';
+import 'package:ritmo/core/ai/ai_connection_models.dart';
+import 'package:ritmo/core/ai/ai_connection_repository.dart';
+import 'package:ritmo/features/profile/presentation/ai_connection_screen.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/localization/locale_repository.dart';
+import 'package:ritmo/core/app_mode/app_mode_service.dart';
+import 'package:ritmo/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:ritmo/core/security/app_lock_service.dart';
 import 'package:ritmo/core/services/alarm_scheduler_service.dart';
 import 'package:ritmo/core/services/device_service.dart';
@@ -88,6 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Module switches
   bool _religionEnabled = false;
   bool _cycleEnabled = false;
+  String _aiStatusLabel = 'پیکربندی نشده';
 
   bool get _isFemale => CyclePrivacyGuard.isVisible({'user_gender': _userGender});
 
@@ -110,6 +115,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  Future<void> _loadAiStatus() async {
+    try {
+      final mode = await AiConnectionRepository.instance.loadMode();
+      if (mode == AiMode.ritmoServer) {
+        if (mounted) setState(() => _aiStatusLabel = 'متصل');
+        return;
+      }
+      final test = await AiConnectionRepository.instance.lastTest();
+      final config = await AiConnectionRepository.instance.load();
+      if (mounted) {
+        setState(() {
+          if (test != null && test.ok) {
+            _aiStatusLabel = 'متصل';
+          } else if (config.apiKey.isEmpty && config.baseUrl.isEmpty) {
+            _aiStatusLabel = 'پیکربندی نشده';
+          } else if (test != null && !test.ok) {
+            _aiStatusLabel = 'مشکل در اتصال';
+          } else {
+            _aiStatusLabel = 'پیکربندی شده';
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
   Future<void> _loadProfileData() async {
     setState(() {
       _isLoading = true;
@@ -119,6 +149,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final db = await DatabaseHelper.instance.database;
       final settings = await db.query('app_settings');
       final settingsMap = {for (final s in settings) s['key']! as String: s['value']! as String};
+
+      await _loadAiStatus();
 
       _userName = settingsMap['user_name'] ?? 'بهمن';
       _userGender = settingsMap['user_gender'] ?? 'UNSET';
@@ -455,6 +487,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           Divider(color: colors.border, height: 32),
 
+                          _buildAppModeSettingSection(),
+
                           // 1. Account Section
                           SettingsGroup(
                             title: 'بخش حساب',
@@ -555,8 +589,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               SettingsRow(
                                 icon: CupertinoIcons.sparkles,
                                 iconColor: const Color(0xffEC4899),
-                                title: 'تنظیمات هوش مصنوعی (AI)',
-                                onTap: _showAiSettingsSheet,
+                                title: 'اتصال هوش مصنوعی',
+                                value: _aiStatusLabel,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  CupertinoPageRoute(builder: (_) => const AiConnectionScreen()),
+                                ).then((_) => _loadAiStatus()),
                               ),
                               SettingsRow(
                                 icon: CupertinoIcons.folder_open,
@@ -1592,519 +1630,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const Icon(CupertinoIcons.checkmark_alt, color: Color(0xff34D399), size: 18),
       ],
-    );
-  }
-
-  void _showAiSettingsSheet() {
-    final colors = context.colors;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          return FutureBuilder<Map<String, String>>(
-            future: () async {
-              final db = await DatabaseHelper.instance.database;
-              final settings = await db.query('app_settings');
-              return {for (final s in settings) s['key']! as String: s['value']! as String};
-            }(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _buildFrostedBottomSheet(
-                  title: 'تنظیمات هوش مصنوعی (AI)',
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Center(child: CircularProgressIndicator(color: Color(0xff5B8AF5))),
-                    ),
-                  ],
-                );
-              }
-              final settingsMap = snapshot.data ?? {};
-              final currentBaseUrl = settingsMap['ai_base_url'] ?? '';
-              final currentApiKey = settingsMap['ai_api_key'] ?? '';
-              final currentModel = settingsMap['ai_model'] ?? '';
-
-              final currentFeaturesBaseUrl = settingsMap['ai_features_base_url'] ?? '';
-              final currentFeaturesApiKey = settingsMap['ai_features_api_key'] ?? '';
-              final currentFeaturesModel = settingsMap['ai_features_model'] ?? '';
-
-              final urlController = TextEditingController(text: currentBaseUrl);
-              final keyController = TextEditingController(text: currentApiKey);
-              final modelController = TextEditingController(text: currentModel);
-
-              final featuresUrlController = TextEditingController(text: currentFeaturesBaseUrl);
-              final featuresKeyController = TextEditingController(text: currentFeaturesApiKey);
-              final featuresModelController = TextEditingController(text: currentFeaturesModel);
-
-              var obscureKey = true;
-              var obscureFeaturesKey = true;
-              var briefingEnabled = (settingsMap['assistant_briefing_enabled'] ?? 'true') == 'true';
-              var proactiveEnabled = (settingsMap['assistant_proactive_enabled'] ?? 'true') == 'true';
-
-              return Padding(
-                padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-                child: StatefulBuilder(
-                  builder: (context, setInnerState) {
-                    return _buildFrostedBottomSheet(
-                      title: 'تنظیمات هوش مصنوعی (AI)',
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: colors.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colors.primary.withValues(alpha: 0.15)),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(Icons.info_outline, color: colors.primary, size: 18),
-                              const SizedBox(width: 8),
-                              const Expanded(
-                                child: Text(
-                                  'برای هر یک از بخش‌های برنامه (دستیار هوشمند یا سایر ابزارها) می‌توانید سرویس‌دهنده‌های متفاوتی مانند OpenRouter، کلادفلر یا Zhipu AI را جداگانه تنظیم نمایید.',
-                                  style: TextStyle(fontSize: 11, height: 1.5, fontFamily: 'Vazirmatn', color: Colors.white70),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        const Text('۱. تنظیمات هوش مصنوعی دستیار (اصلی و فرعی):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Vazirmatn', color: Colors.tealAccent)),
-                        const SizedBox(height: 12),
-
-                        const Text('آدرس Endpoint دستیار (Base URL):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, fontFamily: 'Vazirmatn', color: Colors.white70)),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                          ),
-                          child: TextField(
-                            controller: urlController,
-                            style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: Colors.white),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              hintText: 'https://api.cloudflare.com/client/v4/accounts/...',
-                              hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        const Text('کلید API دستیار (API Key):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, fontFamily: 'Vazirmatn', color: Colors.white70)),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: keyController,
-                                  obscureText: obscureKey,
-                                  style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: Colors.white),
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    hintText: 'کلید احراز هویت سرویس‌دهنده دستیار',
-                                    hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                icon: Icon(obscureKey ? CupertinoIcons.eye_slash : CupertinoIcons.eye, size: 16, color: Colors.white60),
-                                                        onPressed: () {
-                                                          setInnerState(() {
-                                    obscureKey = !obscureKey;
-                                  });
-                                                        },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        const Text('نام مدل دستیار (Model):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, fontFamily: 'Vazirmatn', color: Colors.white70)),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                          ),
-                          child: TextField(
-                            controller: modelController,
-                            style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: Colors.white),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              hintText: '@cf/zai-org/glm-4.7-flash',
-                              hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        const Text('تنظیمات سریع دستیار (Presets):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, fontFamily: 'Vazirmatn', color: Colors.white60)),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: colors.primary.withValues(alpha: 0.5)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              ),
-                              onPressed: () {
-                                setInnerState(() {
-                                  urlController.text = 'https://openrouter.ai/api/v1/chat/completions';
-                                  modelController.text = 'google/gemma-2-9b-it:free';
-                                });
-                              },
-                              child: const Text('تنظیم OpenRouter 🚀', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Colors.white)),
-                            ),
-                             OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.tealAccent),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              ),
-                              onPressed: () {
-                                setInnerState(() {
-                                  urlController.text = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-                                  modelController.text = 'glm-5.2';
-                                });
-                              },
-                              child: const Text('تنظیم Zhipu AI (智谱) 🇨🇳', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Colors.tealAccent)),
-                            ),
-                            OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.blueAccent),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              ),
-                              onPressed: () {
-                                setInnerState(() {
-                                  urlController.text = AIGateway.defaultBaseUrl.isNotEmpty
-                                      ? AIGateway.defaultBaseUrl
-                                      : 'https://api.cloudflare.com/client/v4/accounts/YOUR_ACCOUNT_ID/ai/v1/chat/completions';
-                                  modelController.text = '@cf/zai-org/glm-4.7-flash';
-                                });
-                              },
-                              child: const Text('تنظیم Cloudflare ☁️', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Colors.blueAccent)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.redAccent),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            minimumSize: const Size(double.infinity, 32),
-                          ),
-                          onPressed: () {
-                            setInnerState(() {
-                              urlController.clear();
-                              keyController.clear();
-                              modelController.clear();
-                            });
-                          },
-                          child: const Text('بازنشانی پیش‌فرض دستیار 🔄', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Colors.redAccent)),
-                        ),
-                        
-                        const Divider(color: Colors.white12, height: 32),
-                        const Text('۲. تنظیمات هوش مصنوعی سایر امکانات (خلاصه‌سازی، اهداف و...):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Vazirmatn', color: Colors.amberAccent)),
-                        const SizedBox(height: 12),
-
-                        const Text('آدرس Endpoint امکانات (Base URL):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, fontFamily: 'Vazirmatn', color: Colors.white70)),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                          ),
-                          child: TextField(
-                            controller: featuresUrlController,
-                            style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: Colors.white),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              hintText: 'https://open.bigmodel.cn/api/paas/v4/chat/completions (پیش‌فرض)',
-                              hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        const Text('کلید API امکانات (API Key):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, fontFamily: 'Vazirmatn', color: Colors.white70)),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: featuresKeyController,
-                                  obscureText: obscureFeaturesKey,
-                                  style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: Colors.white),
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    hintText: 'پیش‌فرض: فعال با کلید BigModel ثبت‌شده',
-                                    hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                icon: Icon(obscureFeaturesKey ? CupertinoIcons.eye_slash : CupertinoIcons.eye, size: 16, color: Colors.white60),
-                                onPressed: () {
-                                  setInnerState(() {
-                                    obscureFeaturesKey = !obscureFeaturesKey;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        const Text('نام مدل امکانات (Model):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, fontFamily: 'Vazirmatn', color: Colors.white70)),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                          ),
-                          child: TextField(
-                            controller: featuresModelController,
-                            style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: Colors.white),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              hintText: 'glm-4.7-flash (پیش‌فرض)',
-                              hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        const Text('تنظیمات سریع امکانات (Presets):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, fontFamily: 'Vazirmatn', color: Colors.white60)),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: colors.primary.withValues(alpha: 0.5)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              ),
-                              onPressed: () {
-                                setInnerState(() {
-                                  featuresUrlController.text = 'https://openrouter.ai/api/v1/chat/completions';
-                                  featuresModelController.text = 'google/gemma-2-9b-it:free';
-                                });
-                              },
-                              child: const Text('تنظیم OpenRouter 🚀', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Colors.white)),
-                            ),
-                             OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.tealAccent),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              ),
-                              onPressed: () {
-                                setInnerState(() {
-                                  featuresUrlController.text = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-                                  featuresModelController.text = 'glm-5.2';
-                                });
-                              },
-                              child: const Text('تنظیم Zhipu AI (智谱) 🇨🇳', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Colors.tealAccent)),
-                            ),
-                            OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.blueAccent),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              ),
-                              onPressed: () {
-                                setInnerState(() {
-                                  featuresUrlController.text = AIGateway.defaultBaseUrl.isNotEmpty
-                                      ? AIGateway.defaultBaseUrl
-                                      : 'https://api.cloudflare.com/client/v4/accounts/YOUR_ACCOUNT_ID/ai/v1/chat/completions';
-                                  featuresModelController.text = '@cf/zai-org/glm-4.7-flash';
-                                });
-                              },
-                              child: const Text('تنظیم Cloudflare ☁️', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Colors.blueAccent)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.redAccent),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            minimumSize: const Size(double.infinity, 32),
-                          ),
-                          onPressed: () {
-                            setInnerState(() {
-                              featuresUrlController.clear();
-                              featuresKeyController.clear();
-                              featuresModelController.clear();
-                            });
-                          },
-                          child: const Text('بازنشانی پیش‌فرض امکانات 🔄', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, color: Colors.redAccent)),
-                        ),
-
-                        const Divider(color: Colors.white12, height: 32),
-                        const Text('تنظیمات رفتاری دستیار:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, fontFamily: 'Vazirmatn')),
-                        const SizedBox(height: 6),
-                        SwitchListTile(
-                          activeThumbColor: colors.primary,
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('خلاصه روزانه هوشمند (Daily Briefing)', style: TextStyle(fontSize: 12, fontFamily: 'Vazirmatn', color: Colors.white)),
-                          subtitle: const Text('نمایش وضعیت، آمار و خلاصه‌ای از شرایط روز در تب امروز دستیار', style: TextStyle(fontSize: 10, fontFamily: 'Vazirmatn', color: Colors.white60)),
-                          value: briefingEnabled,
-                          onChanged: (val) {
-                            setInnerState(() {
-                              briefingEnabled = val;
-                            });
-                          },
-                        ),
-                        SwitchListTile(
-                          activeThumbColor: colors.primary,
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('پیشنهادهای فعالانه (Proactive Suggestions)', style: TextStyle(fontSize: 12, fontFamily: 'Vazirmatn', color: Colors.white)),
-                          subtitle: const Text('ارائه بهترین اقدام بعدی و پیشنهادهای داینامیک بر اساس ریتم زندگی شما', style: TextStyle(fontSize: 10, fontFamily: 'Vazirmatn', color: Colors.white60)),
-                          value: proactiveEnabled,
-                          onChanged: (val) {
-                            setInnerState(() {
-                              proactiveEnabled = val;
-                            });
-                          },
-                        ),
-                        const Divider(color: Colors.white12, height: 32),
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: colors.primary),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            minimumSize: const Size(double.infinity, 44),
-                          ),
-                          icon: Icon(Icons.psychology, color: colors.primary, size: 18),
-                          label: Text(
-                            'مدیریت حافظه دستیار 🧠',
-                            style: TextStyle(fontFamily: 'Vazirmatn', color: colors.primary, fontSize: 13, fontWeight: FontWeight.bold),
-                          ),
-                          onPressed: () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              CupertinoPageRoute(
-                                builder: (context) => const AiMemoryManagementScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 24),
-
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colors.primary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            minimumSize: const Size(double.infinity, 48),
-                          ),
-                          onPressed: () async {
-                            final db = await DatabaseHelper.instance.database;
-                            final now = DateTime.now().millisecondsSinceEpoch;
-
-                            final url = urlController.text.trim();
-                            final key = keyController.text.trim();
-                            final modelVal = modelController.text.trim();
-
-                            final featuresUrl = featuresUrlController.text.trim();
-                            final featuresKey = featuresKeyController.text.trim();
-                            final featuresModelVal = featuresModelController.text.trim();
-
-                            if (url.isEmpty) {
-                              await db.delete('app_settings', where: 'key = ?', whereArgs: ['ai_base_url']);
-                            } else {
-                              await db.insert('app_settings', {'key': 'ai_base_url', 'value': url, 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
-                            }
-
-                            if (key.isEmpty) {
-                              await SecureKeyStore.deleteKey('ai_api_key');
-                            } else {
-                              await SecureKeyStore.setKey('ai_api_key', key);
-                            }
-
-                            if (modelVal.isEmpty) {
-                              await db.delete('app_settings', where: 'key = ?', whereArgs: ['ai_model']);
-                            } else {
-                              await db.insert('app_settings', {'key': 'ai_model', 'value': modelVal, 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
-                            }
-
-                            if (featuresUrl.isEmpty) {
-                              await db.delete('app_settings', where: 'key = ?', whereArgs: ['ai_features_base_url']);
-                            } else {
-                              await db.insert('app_settings', {'key': 'ai_features_base_url', 'value': featuresUrl, 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
-                            }
-
-                            if (featuresKey.isEmpty) {
-                              await db.delete('app_settings', where: 'key = ?', whereArgs: ['ai_features_api_key']);
-                            } else {
-                              await db.insert('app_settings', {'key': 'ai_features_api_key', 'value': featuresKey, 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
-                            }
-
-                            if (featuresModelVal.isEmpty) {
-                              await db.delete('app_settings', where: 'key = ?', whereArgs: ['ai_features_model']);
-                            } else {
-                              await db.insert('app_settings', {'key': 'ai_features_model', 'value': featuresModelVal, 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
-                            }
-
-                            await db.insert('app_settings', {'key': 'assistant_briefing_enabled', 'value': briefingEnabled ? 'true' : 'false', 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
-                            await db.insert('app_settings', {'key': 'assistant_proactive_enabled', 'value': proactiveEnabled ? 'true' : 'false', 'updatedAt': now}, conflictAlgorithm: ConflictAlgorithm.replace);
-
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تنظیمات هوش مصنوعی با موفقیت ذخیره شد.', style: TextStyle(fontFamily: 'Vazirmatn')),
-                                ),
-                              );
-                            }
-                          },
-                          child: const Text('ذخیره تنظیمات', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              );
-            },
-          );
-        },
-      ),
     );
   }
 
@@ -3603,7 +3128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
 
               Text(
-                'ریتمو (Ritmo) - سیستم‌عامل شخصی زندگی شما\nتمامی حقوق محفوظ است.',
+                'ریتمو (Ritmo) - برنامهٔ روزت، ساده\nتمامی حقوق محفوظ است.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 10, color: Colors.grey.withValues(alpha: 0.8), height: 1.5, fontFamily: 'Vazirmatn'),
               ),
@@ -3682,6 +3207,127 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildAppModeSettingSection() {
+    final colors = context.colors;
+
+    return ValueListenableBuilder<AppMode>(
+      valueListenable: AppModeService.instance.notifier,
+      builder: (context, currentMode, _) {
+        final isSimple = currentMode == AppMode.simple;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: colors.border.withValues(alpha: 0.5)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'حالت اپ',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: colors.primary,
+                  fontFamily: 'Vazirmatn',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: SegmentedButton<AppMode>(
+                      segments: const [
+                        ButtonSegment<AppMode>(
+                          value: AppMode.simple,
+                          label: Text('ساده', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13)),
+                        ),
+                        ButtonSegment<AppMode>(
+                          value: AppMode.full,
+                          label: Text('کامل', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13)),
+                        ),
+                      ],
+                      selected: {currentMode},
+                      onSelectionChanged: (newSelection) async {
+                        final selectedMode = newSelection.first;
+                        if (selectedMode != currentMode) {
+                          await AppModeService.instance.set(selectedMode);
+                          if (selectedMode == AppMode.full) {
+                            unawaited(_checkAndSuggestFullOnboarding());
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                isSimple
+                    ? 'فقط لیست کارها و تقویم.'
+                    : 'همهٔ بخش‌ها: عبادت، سلامت، اهداف، درس، بینش‌ها، دستیار.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                  fontFamily: 'Vazirmatn',
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _checkAndSuggestFullOnboarding() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final onboardingRow = await db.query('app_settings', where: "key = 'onboarding_completed'", limit: 1);
+      final wakeTimeRow = await db.query('app_settings', where: "key = 'wake_time'", limit: 1);
+
+      final isOnboardingCompleted = onboardingRow.isNotEmpty && onboardingRow.first['value'] == 'true';
+      final isWakeTimeEmpty = wakeTimeRow.isEmpty || (wakeTimeRow.first['value'] as String?)?.trim().isEmpty == true;
+
+      if (isOnboardingCompleted && isWakeTimeEmpty && mounted) {
+        unawaited(showDialog(
+          context: context,
+          builder: (ctx) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              title: const Text('راه‌اندازی کامل را انجام می‌دهی؟', style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 16)),
+              content: const Text(
+                'برای استفاده از تنظیمات ریتم روزانه، می‌توانید راه‌اندازی کامل را ادامه دهید.',
+                style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 13),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('رد کردن', style: TextStyle(fontFamily: 'Vazirmatn')),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => OnboardingScreen(
+                          onFinished: () => Navigator.pop(context),
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('راه‌اندازی کامل', style: TextStyle(fontFamily: 'Vazirmatn')),
+                ),
+              ],
+            ),
+          ),
+        ));
+      }
+    } catch (_) {}
   }
 }
 

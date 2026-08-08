@@ -30,6 +30,11 @@ class PrayerTimeline {
     PrayerTimes times, {
     bool includeAsrIsha = true,
   }) {
+    var midnightShari = times.midnightShari;
+    if (midnightShari.isBefore(times.maghrib)) {
+      midnightShari = midnightShari.add(const Duration(days: 1));
+    }
+
     final slots = <PrayerSlot>[
       PrayerSlot(key: 'FAJR', titleFa: 'اذان صبح', at: times.fajr, isPrayer: true),
       PrayerSlot(key: 'SUNRISE', titleFa: 'طلوع آفتاب', at: times.sunrise, isPrayer: false),
@@ -39,7 +44,7 @@ class PrayerTimeline {
       PrayerSlot(key: 'MAGHRIB', titleFa: 'اذان مغرب', at: times.maghrib, isPrayer: true),
       if (includeAsrIsha)
         PrayerSlot(key: 'ISHA', titleFa: 'اذان عشا', at: times.isha, isPrayer: true),
-      PrayerSlot(key: 'MIDNIGHT_SHARI', titleFa: 'نیمه‌شب شرعی', at: times.midnightShari, isPrayer: false),
+      PrayerSlot(key: 'MIDNIGHT_SHARI', titleFa: 'نیمه‌شب شرعی', at: midnightShari, isPrayer: false),
     ];
     slots.sort((a, b) => a.at.compareTo(b.at));
     return slots;
@@ -112,15 +117,22 @@ class PrayerTimeline {
   }) {
     final slots = <PrayerSlot>[];
 
+    final maghribParts = times.maghrib.split(':');
+    final maghribH = int.tryParse(maghribParts.isNotEmpty ? maghribParts[0] : '') ?? 19;
+
     void addSlot(String key, String titleFa, String? timeStr, bool isPrayer) {
       if (timeStr == null || timeStr.isEmpty) return;
       final parts = timeStr.split(':');
       final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
       final m = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+      var dt = DateTime(date.year, date.month, date.day, h, m);
+      if (key == 'MIDNIGHT_SHARI' && h < maghribH) {
+        dt = dt.add(const Duration(days: 1));
+      }
       slots.add(PrayerSlot(
         key: key,
         titleFa: titleFa,
-        at: DateTime(date.year, date.month, date.day, h, m),
+        at: dt,
         isPrayer: isPrayer,
       ));
     }

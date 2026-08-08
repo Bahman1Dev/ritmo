@@ -7,12 +7,14 @@ class RitmoPressable extends StatefulWidget {
     super.key,
     required this.child,
     this.onTap,
+    this.onLongPress,
     this.scaleDown = 0.96,
     this.haptic = true,
     this.semanticLabel,
   });
   final Widget child;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final double scaleDown;
   final bool haptic;
   final String? semanticLabel;
@@ -79,6 +81,7 @@ class _RitmoPressableState extends State<RitmoPressable> with SingleTickerProvid
         onTapUp: _handleTapUp,
         onTapCancel: _handleTapCancel,
         onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         behavior: HitTestBehavior.opaque,
         child: reduceMotion
             ? widget.child

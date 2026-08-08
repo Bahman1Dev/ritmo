@@ -101,6 +101,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     )
 
                     sBackgroundEngine = engine
+                    AlarmChannelRegistrar.register(appContext, engine.dartExecutor.binaryMessenger)
                     sMethodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "com.ritmo.app/notif_action_bg")
                     isEngineNew = true
                 } else {

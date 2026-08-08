@@ -248,23 +248,20 @@ class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
 
   Future<void> _handleSnooze(List<String> practiceIds) async {
     final dateStr = (widget.date ?? DateTime.now()).toIso8601String().substring(0, 10);
-    try {
-      await AgendaActionHandler.instance.snoozePrayer(
-        practiceIds: practiceIds,
-        minutes: 15,
-        dateStr: dateStr,
-      );
+    final outcome = await AgendaActionHandler.instance.snoozePrayer(
+      practiceIds: practiceIds,
+      minutes: 15,
+      dateStr: dateStr,
+    );
 
-      await _loadWorshipData();
-      widget.onChanged();
+    await _loadWorshipData();
+    widget.onChanged();
 
-      if (mounted) {
+    if (mounted) {
+      if (outcome is SnoozeRefused) {
+        RitmoToast.show(context, outcome.userMessage);
+      } else {
         RitmoToast.show(context, 'یادآور با موفقیت ۱۵ دقیقه به تعویق افتاد.');
-      }
-    } catch (e) {
-      if (mounted) {
-        final msg = e.toString().replaceAll('Exception: ', '');
-        RitmoToast.show(context, msg);
       }
     }
   }
@@ -319,7 +316,11 @@ class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
     final fajrIsDone = _optimisticState.containsKey('FAJR')
         ? _optimisticState['FAJR']!
         : (fajrState?.isDone ?? false);
-    final fajrExpired = fajrState != null && !fajrIsDone && !fajrState.isSkipped && now.isAfter(fajrDeadline);
+    final fajrExpired = fajrState != null &&
+        !fajrIsDone &&
+        !fajrState.isSkipped &&
+        now.isAfter(times.fajr) &&
+        now.isAfter(fajrDeadline);
 
     // Group 2: Dhuhr & Asr
     final dhuhrState = _findPracticeState('DHUHR') ?? _findPracticeState('wp_dhuhr');
@@ -332,7 +333,11 @@ class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
         ? _optimisticState['DHUHR_ASR']!
         : (dhuhrPractices.isNotEmpty && dhuhrPractices.any((p) => p.isDone));
     final dhuhrSkipped = dhuhrPractices.isNotEmpty && dhuhrPractices.every((p) => p.isSkipped);
-    final dhuhrExpired = dhuhrPractices.isNotEmpty && !dhuhrDone && !dhuhrSkipped && now.isAfter(dhuhrDeadline);
+    final dhuhrExpired = dhuhrPractices.isNotEmpty &&
+        !dhuhrDone &&
+        !dhuhrSkipped &&
+        now.isAfter(times.dhuhr) &&
+        now.isAfter(dhuhrDeadline);
 
     // Group 3: Maghrib & Isha
     final maghribState = _findPracticeState('MAGHRIB') ?? _findPracticeState('wp_maghrib');
@@ -345,7 +350,11 @@ class _ObligatoryPrayersSectionState extends State<ObligatoryPrayersSection> {
         ? _optimisticState['MAGHRIB_ISHA']!
         : (maghribPractices.isNotEmpty && maghribPractices.any((p) => p.isDone));
     final maghribSkipped = maghribPractices.isNotEmpty && maghribPractices.every((p) => p.isSkipped);
-    final maghribExpired = maghribPractices.isNotEmpty && !maghribDone && !maghribSkipped && now.isAfter(maghribDeadline);
+    final maghribExpired = maghribPractices.isNotEmpty &&
+        !maghribDone &&
+        !maghribSkipped &&
+        now.isAfter(times.maghrib) &&
+        now.isAfter(maghribDeadline);
 
     // Ramadan Fasting
     final ramadanFastState = _findPracticeState('RAMADAN') ?? _findPracticeState('wp_fasting_ramadan');

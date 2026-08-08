@@ -10,8 +10,8 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import org.json.JSONArray
-import android.database.sqlite.SQLiteDatabase
 import java.util.Calendar
 
 class BootReceiver : BroadcastReceiver() {
@@ -25,12 +25,18 @@ class BootReceiver : BroadcastReceiver() {
         val action = intent.action
         Log.d(TAG, "Received broadcast action: $action")
 
-        if (action == Intent.ACTION_BOOT_COMPLETED || 
-            action == Intent.ACTION_MY_PACKAGE_REPLACED || 
-            action == Intent.ACTION_TIMEZONE_CHANGED || 
-            action == Intent.ACTION_TIME_CHANGED) {
-            // Restore alarms using the SharedPreferences snapshot without touching SQLite
+        if (action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             restoreAlarmsFromSnapshot(context)
+        } else if (action == Intent.ACTION_TIMEZONE_CHANGED || action == Intent.ACTION_TIME_CHANGED) {
+            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val lastRestoreMs = prefs.getLong("flutter.last_alarm_restore_ms", 0L)
+            val nowMs = System.currentTimeMillis()
+            if (Math.abs(nowMs - lastRestoreMs) > 60_000L) {
+                prefs.edit().putLong("flutter.last_alarm_restore_ms", nowMs).commit()
+                restoreAlarmsFromSnapshot(context)
+            } else {
+                Log.d(TAG, "Skipping alarm restore on time change: shift < 60 seconds")
+            }
         } else if (action == ALARM_TRIGGER_ACTION) {
             // An alarm fired. Check if it's a status update refresh or a normal routine alarm.
             val id = intent.getStringExtra("id") ?: "default_id"
@@ -46,11 +52,7 @@ class BootReceiver : BroadcastReceiver() {
                 }
                 context.sendBroadcast(updateIntent)
             } else {
-                if (isRoutineZoneActive(context, id)) {
-                    showAlarmNotification(context, id, title, isEssential)
-                } else {
-                    Log.d(TAG, "Skipping alarm notification $id: routine zone is not active.")
-                }
+                showAlarmNotification(context, id, title, isEssential)
                 // Also trigger status notification refresh to show the next proposed task!
                 val updateIntent = Intent(context, NotificationActionReceiver::class.java).apply {
                     this.action = "com.ritmo.app.NOTIF_ACTION"
@@ -87,8 +89,8 @@ class BootReceiver : BroadcastReceiver() {
                 val scheduledTime = alarmObj.getLong("scheduledTime")
                 val isEssential = alarmObj.optBoolean("isEssential", false)
 
-                // Only reschedule future alarms
-                if (scheduledTime > System.currentTimeMillis()) {
+                val nowMs = System.currentTimeMillis()
+                if (scheduledTime > nowMs) {
                     val alarmIntent = Intent(context, BootReceiver::class.java).apply {
                         action = ALARM_TRIGGER_ACTION
                         putExtra("id", id)
@@ -127,6 +129,10 @@ class BootReceiver : BroadcastReceiver() {
                         Log.e(TAG, "Error rescheduling alarm for '$title': ${e.message}", e)
                     }
                     Log.d(TAG, "Rescheduled alarm for '$title' (ID: $id) at $scheduledTime")
+                } else if (nowMs - scheduledTime < 2 * 3600 * 1000L) {
+                    // Missed alarm within 2 hours: fire immediately with late indicator
+                    Log.d(TAG, "Firing missed alarm ($id) with late indicator (was scheduled at $scheduledTime)")
+                    showAlarmNotification(context, id, "$title (دیرکرد)", isEssential)
                 }
             }
         } catch (e: Exception) {
@@ -134,20 +140,52 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 
+    private fun shouldUseFullScreen(context: Context, id: String, isEssential: Boolean): Boolean {
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        if (prefs.getString("flutter.notif_fullscreen_enabled", "true") != "true") return false
+
+        val scope = prefs.getString("flutter.notif_fullscreen_scope", "essential")
+        val optedIn = prefs.getStringSet("flutter.notif_fullscreen_ids", emptySet())?.contains(id) == true
+        if (scope == "essential" && !isEssential && !optedIn) return false
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            if (nm != null && !nm.canUseFullScreenIntent()) return false
+        }
+        return true
+    }
+
+    private fun buildSanitizedPublicVersion(context: Context, isEssential: Boolean): Notification {
+        val channelId = if (isEssential) RitmoNotificationChannels.ESSENTIAL else RitmoNotificationChannels.NORMAL
+        return NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(ContextCompat.getColor(context, R.color.ritmo_accent))
+            .setContentTitle(context.getString(if (isEssential) R.string.notif_vital_routine_title else R.string.notif_daily_routine_title))
+            .setContentText(context.getString(R.string.notif_vital_routine_title))
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+    }
+
     private fun showAlarmNotification(context: Context, id: String, title: String, isEssential: Boolean) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = if (isEssential) "RitmoEssentialChannel" else "RitmoNormalChannel"
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = if (isEssential) context.getString(R.string.notif_essential_channel_name) else context.getString(R.string.notif_normal_channel_name)
-            val importance = if (isEssential) NotificationManager.IMPORTANCE_HIGH else NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(channelId, name, importance).apply {
-                if (isEssential) {
-                    enableVibration(true)
-                    vibrationPattern = longArrayOf(0, 500, 200, 500)
-                }
+        RitmoNotificationChannels.ensure(context, notificationManager)
+
+        val channelId = if (isEssential) RitmoNotificationChannels.ESSENTIAL else RitmoNotificationChannels.NORMAL
+
+        if (isEssential) {
+            try {
+                val pm = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+                @Suppress("DEPRECATION")
+                val wakeLock = pm?.newWakeLock(
+                    android.os.PowerManager.FULL_WAKE_LOCK or
+                    android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP or
+                    android.os.PowerManager.ON_AFTER_RELEASE,
+                    "Ritmo:AlarmWakeLock"
+                )
+                wakeLock?.acquire(10_000L)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error acquiring WakeLock: ${e.message}")
             }
-            notificationManager.createNotificationChannel(channel)
         }
 
         // Open app when notification clicked
@@ -157,18 +195,6 @@ class BootReceiver : BroadcastReceiver() {
             context,
             notifNumericId,
             launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val startTimerIntent = Intent(context, MainActivity::class.java).apply {
-            action = "com.ritmo.app.START_TIMER"
-            putExtra("reminderId", id)
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val startTimerPendingIntent = PendingIntent.getActivity(
-            context,
-            generateRequestCode(id, "_START_TIMER"),
-            startTimerIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -212,18 +238,38 @@ class BootReceiver : BroadcastReceiver() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            val appIconRes = context.applicationInfo.icon
             val builder = NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(if (appIconRes != 0) appIconRes else android.R.drawable.ic_lock_idle_alarm)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setColor(ContextCompat.getColor(context, R.color.ritmo_accent))
                 .setContentTitle(context.getString(R.string.notif_vital_routine_title))
                 .setContentText(title)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setPublicVersion(buildSanitizedPublicVersion(context, isEssential))
+                .setOnlyAlertOnce(false)
+                .setWhen(System.currentTimeMillis())
+                .setShowWhen(true)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .addAction(0, context.getString(R.string.notif_action_done), donePendingIntent)
                 .addAction(0, context.getString(R.string.notif_action_snooze), snoozePendingIntent)
                 .addAction(0, context.getString(R.string.notif_action_dismiss), dismissPendingIntent)
-                .addAction(0, context.getString(R.string.notif_action_start_timer), startTimerPendingIntent)
+
+            if (shouldUseFullScreen(context, id, isEssential)) {
+                val alarmActivityIntent = Intent(context, AlarmActivity::class.java).apply {
+                    putExtra("reminderId", id)
+                    putExtra("title", title)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                val fullScreenPendingIntent = PendingIntent.getActivity(
+                    context,
+                    generateRequestCode(id, "_FULLSCREEN"),
+                    alarmActivityIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                builder.setFullScreenIntent(fullScreenPendingIntent, true)
+            }
 
             notificationManager.notify(notifNumericId, builder.build())
         } else {
@@ -231,40 +277,42 @@ class BootReceiver : BroadcastReceiver() {
             val digestMode = prefs.getString("flutter.notif_digest_mode", "false") == "true"
             val maxNonEssential = prefs.getInt("flutter.notif_max_non_essential_per_hour", 3)
 
-            // Sliding window rate limiter
-            val nowMs = System.currentTimeMillis()
-            val oneHourAgo = nowMs - 3600 * 1000
-            val fireTimestampsJson = prefs.getString("flutter.non_essential_fire_timestamps", "[]") ?: "[]"
-            
-            val inputJsonArray = org.json.JSONArray(fireTimestampsJson)
-            val newJsonArray = org.json.JSONArray()
-            var fireCountInLastHour = 0
+            var isRateLimited = false
+            synchronized(BootReceiver::class.java) {
+                val nowMs = System.currentTimeMillis()
+                val oneHourAgo = nowMs - 3600 * 1000
+                val fireTimestampsJson = prefs.getString("flutter.non_essential_fire_timestamps", "[]") ?: "[]"
 
-            for (i in 0 until inputJsonArray.length()) {
-                val ts = inputJsonArray.getLong(i)
-                if (ts > oneHourAgo) {
-                    newJsonArray.put(ts)
-                    fireCountInLastHour++
+                val inputJsonArray = org.json.JSONArray(fireTimestampsJson)
+                val newJsonArray = org.json.JSONArray()
+                var fireCountInLastHour = 0
+
+                for (i in 0 until inputJsonArray.length()) {
+                    val ts = inputJsonArray.getLong(i)
+                    if (ts > oneHourAgo) {
+                        newJsonArray.put(ts)
+                        fireCountInLastHour++
+                    }
                 }
+
+                newJsonArray.put(nowMs)
+                fireCountInLastHour++
+
+                prefs.edit().putString("flutter.non_essential_fire_timestamps", newJsonArray.toString()).commit()
+                isRateLimited = fireCountInLastHour > maxNonEssential
             }
 
-            newJsonArray.put(nowMs)
-            fireCountInLastHour++
-
-            prefs.edit().putString("flutter.non_essential_fire_timestamps", newJsonArray.toString()).apply()
-
-            val isRateLimited = fireCountInLastHour > maxNonEssential
-
             if (!digestMode) {
+                val nonEssentialNotifId = generateRequestCode(id, "_NOTIF")
                 val doneIntent = Intent(context, NotificationActionReceiver::class.java).apply {
                     action = "com.ritmo.app.NOTIF_ACTION"
                     putExtra("actionType", "DONE")
                     putExtra("reminderId", id)
-                    putExtra("notifId", id.hashCode())
+                    putExtra("notifId", nonEssentialNotifId)
                 }
                 val donePendingIntent = PendingIntent.getBroadcast(
                     context,
-                    (id + "DONE").hashCode(),
+                    generateRequestCode(id, "_DONE"),
                     doneIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
@@ -273,11 +321,11 @@ class BootReceiver : BroadcastReceiver() {
                     action = "com.ritmo.app.NOTIF_ACTION"
                     putExtra("actionType", "SNOOZE")
                     putExtra("reminderId", id)
-                    putExtra("notifId", id.hashCode())
+                    putExtra("notifId", nonEssentialNotifId)
                 }
                 val snoozePendingIntent = PendingIntent.getBroadcast(
                     context,
-                    (id + "SNOOZE").hashCode(),
+                    generateRequestCode(id, "_SNOOZE"),
                     snoozeIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
@@ -286,26 +334,26 @@ class BootReceiver : BroadcastReceiver() {
                     action = "com.ritmo.app.NOTIF_ACTION"
                     putExtra("actionType", "DISMISS")
                     putExtra("reminderId", id)
-                    putExtra("notifId", id.hashCode())
+                    putExtra("notifId", nonEssentialNotifId)
                 }
                 val dismissPendingIntent = PendingIntent.getBroadcast(
                     context,
-                    (id + "DISMISS").hashCode(),
+                    generateRequestCode(id, "_DISMISS"),
                     dismissIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
 
                 val builder = NotificationCompat.Builder(context, channelId)
-                    .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-                    .setContentTitle("🌿 روتین روزانه")
+                    .setSmallIcon(R.drawable.ic_notification)
+                    .setColor(ContextCompat.getColor(context, R.color.ritmo_accent))
+                    .setContentTitle(context.getString(R.string.notif_daily_routine_title))
                     .setContentText(title)
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
                     .setGroup(GROUP_KEY_NON_ESSENTIAL)
-                    .addAction(0, "انجام شد ✅", donePendingIntent)
-                    .addAction(0, "تعویق ⏰", snoozePendingIntent)
-                    .addAction(0, "رد کردن", dismissPendingIntent)
-                    .addAction(0, "الان انجام می‌دهم ⏱️", startTimerPendingIntent)
+                    .addAction(0, context.getString(R.string.notif_action_done), donePendingIntent)
+                    .addAction(0, context.getString(R.string.notif_action_snooze), snoozePendingIntent)
+                    .addAction(0, context.getString(R.string.notif_action_dismiss), dismissPendingIntent)
 
                 if (isRateLimited) {
                     builder.setPriority(NotificationCompat.PRIORITY_LOW)
@@ -318,7 +366,7 @@ class BootReceiver : BroadcastReceiver() {
                     builder.setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 }
 
-                notificationManager.notify(id.hashCode(), builder.build())
+                notificationManager.notify(nonEssentialNotifId, builder.build())
             } else {
                 // Digest mode active: Increment digest counter in prefs
                 var digestCount = prefs.getInt("flutter.digest_notif_count", 0)
@@ -381,133 +429,6 @@ class BootReceiver : BroadcastReceiver() {
             }
 
             notificationManager.notify(SUMMARY_NOTIF_ID, summaryBuilder.build())
-        }
-    }
-
-    private fun isRoutineZoneActive(context: Context, alarmId: String): Boolean {
-        if (!alarmId.startsWith("rem_")) return true
-
-        var routineZoneId: String? = null
-        try {
-            val dbPath = context.getDatabasePath("ritmo_secure.db")
-            if (!dbPath.exists()) return true
-
-            val db = SQLiteDatabase.openDatabase(dbPath.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
-
-            // 1. Look up routineId and courseSessionId from pending_reminders table using the alarm ID
-            var routineId: String? = null
-            var courseSessionId: String? = null
-            val pendingCursor = db.query("pending_reminders", arrayOf("routineId", "courseSessionId"), "id = ?", arrayOf(alarmId), null, null, null)
-            if (pendingCursor.moveToFirst()) {
-                routineId = pendingCursor.getString(0)
-                courseSessionId = pendingCursor.getString(1)
-            } else {
-                pendingCursor.close()
-                db.close()
-                return true // alarm not in pending_reminders; show it
-            }
-            pendingCursor.close()
-
-            if (routineId.isNullOrEmpty() && courseSessionId.isNullOrEmpty()) {
-                db.close()
-                return true
-            }
-
-            // 2. Get zoneId from routines or courses
-            if (!routineId.isNullOrEmpty()) {
-                val routineCursor = db.query("routines", arrayOf("zoneId"), "id = ?", arrayOf(routineId), null, null, null)
-                if (routineCursor.moveToFirst()) {
-                    routineZoneId = routineCursor.getString(0)
-                }
-                routineCursor.close()
-            } else if (!courseSessionId.isNullOrEmpty()) {
-                val queryStr = "SELECT c.zoneId FROM course_sessions cs JOIN courses c ON cs.courseId = c.id WHERE cs.id = ?"
-                val courseCursor = db.rawQuery(queryStr, arrayOf(courseSessionId))
-                if (courseCursor.moveToFirst()) {
-                    routineZoneId = courseCursor.getString(0)
-                }
-                courseCursor.close()
-            }
-
-            // If routine has no zone, it's public/global and always active
-            if (routineZoneId.isNullOrEmpty()) {
-                db.close()
-                return true
-            }
-
-            // 2. Resolve current active zone ID
-            var activeZoneId: String? = null
-
-            // A. Check manual override
-            var overrideId: String? = null
-            var overrideUntilMs: Long = 0
-            
-            val overrideIdCursor = db.query("app_settings", arrayOf("value"), "key = ?", arrayOf("realm_override_id"), null, null, null)
-            if (overrideIdCursor.moveToFirst()) {
-                overrideId = overrideIdCursor.getString(0)
-            }
-            overrideIdCursor.close()
-
-            val overrideUntilCursor = db.query("app_settings", arrayOf("value"), "key = ?", arrayOf("realm_override_until_ms"), null, null, null)
-            if (overrideUntilCursor.moveToFirst()) {
-                val untilStr = overrideUntilCursor.getString(0)
-                if (!untilStr.isNullOrEmpty()) {
-                    overrideUntilMs = untilStr.toLongOrNull() ?: 0
-                }
-            }
-            overrideUntilCursor.close()
-
-            val nowMs = System.currentTimeMillis()
-            if (!overrideId.isNullOrEmpty() && nowMs < overrideUntilMs) {
-                activeZoneId = overrideId
-            } else {
-                // B. Check scheduled zones
-                val calendar = Calendar.getInstance()
-                val calendarDay = calendar.get(Calendar.DAY_OF_WEEK)
-                val appDay = when (calendarDay) {
-                    Calendar.MONDAY -> 1
-                    Calendar.TUESDAY -> 2
-                    Calendar.WEDNESDAY -> 3
-                    Calendar.THURSDAY -> 4
-                    Calendar.FRIDAY -> 5
-                    Calendar.SATURDAY -> 6
-                    Calendar.SUNDAY -> 7
-                    else -> 1
-                }
-                val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
-
-                val scheduleCursor = db.query("zone_schedules", arrayOf("zoneId", "daysOfWeek", "startTime", "endTime"), null, null, null, null, null)
-                while (scheduleCursor.moveToNext()) {
-                    val zoneId = scheduleCursor.getString(0)
-                    val daysStr = scheduleCursor.getString(1) ?: ""
-                    val startStr = scheduleCursor.getString(2) ?: "00:00"
-                    val endStr = scheduleCursor.getString(3) ?: "23:59"
-
-                    val days = daysStr.split(",").map { it.trim() }
-                    if (days.contains(appDay.toString())) {
-                        val startParts = startStr.split(":")
-                        val endParts = endStr.split(":")
-                        if (startParts.size == 2 && endParts.size == 2) {
-                            val startMin = (startParts[0].toIntOrNull() ?: 0) * 60 + (startParts[1].toIntOrNull() ?: 0)
-                            val endMin = (endParts[0].toIntOrNull() ?: 0) * 60 + (endParts[1].toIntOrNull() ?: 0)
-                            if (currentMinutes in startMin..endMin) {
-                                activeZoneId = zoneId
-                                break
-                            }
-                        }
-                    }
-                }
-                scheduleCursor.close()
-            }
-
-            db.close()
-
-            // Compare zoneId
-            return routineZoneId == activeZoneId
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking routine zone active status: " + e.message)
-            return true // Fallback to show reminder in case of DB error
         }
     }
 }

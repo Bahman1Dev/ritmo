@@ -34,7 +34,7 @@ class StepWelcome extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         const Text(
-          'سیستم‌عامل شخصی زندگی شما',
+          'برنامهٔ روزت، ساده',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,

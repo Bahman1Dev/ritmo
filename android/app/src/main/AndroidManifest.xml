@@ -6,8 +6,10 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
-    <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />
 
     <application
         android:label="ریتمو"
@@ -45,6 +47,18 @@
                 <data android:scheme="appwrite-callback-6a74b9120005e1737ec6" />
             </intent-filter>
         </activity>
+
+        <!-- Full-Screen Alarm Activity -->
+        <activity
+            android:name=".AlarmActivity"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:showWhenLocked="true"
+            android:taskAffinity="ir.ritmo.app.alarm"
+            android:theme="@style/AlarmTheme" />
 
         <!-- Foreground Service Declaration -->
         <service

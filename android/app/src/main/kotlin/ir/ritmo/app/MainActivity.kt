@@ -46,59 +46,7 @@ class MainActivity : FlutterFragmentActivity() {
         }
 
         // 2. Alarm MethodChannel
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NativeChannels.ALARMS).setMethodCallHandler { call, result ->
-            when (call.method) {
-                AlarmMethods.SCHEDULE_EXACT_ALARM -> {
-                    val id = call.argument<String>("id")
-                    val time = (call.argument<Number>("time"))?.toLong()
-                    val title = call.argument<String>("title")
-                    val isEssential = call.argument<Boolean>("isEssential") ?: false
-
-                    if (id != null && time != null && title != null) {
-                        scheduleAlarm(id, time, title, isEssential)
-                        result.success(true)
-                    } else {
-                        result.error("INVALID_ARGUMENTS", "Missing id, time, or title", null)
-                    }
-                }
-                AlarmMethods.CANCEL_ALARM -> {
-                    val id = call.argument<String>("id")
-                    if (id != null) {
-                        cancelAlarm(id)
-                        result.success(true)
-                    } else {
-                        result.error("INVALID_ARGUMENTS", "Missing id", null)
-                    }
-                }
-                AlarmMethods.CHECK_EXACT_ALARM_PERMISSION -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                        result.success(alarmManager.canScheduleExactAlarms())
-                    } else {
-                        result.success(true)
-                    }
-                }
-                AlarmMethods.REQUEST_EXACT_ALARM_PERMISSION -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        try {
-                            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                                data = Uri.parse("package:$packageName")
-                            }
-                            startActivity(intent)
-                            result.success(true)
-                        } catch (e: Exception) {
-                            result.error("PERMISSION_ERROR", e.message, null)
-                        }
-                    } else {
-                        result.success(true)
-                    }
-                }
-                else -> {
-                    android.util.Log.w(TAG, "Unhandled method '${call.method}' on channel ${NativeChannels.ALARMS} — قرارداد ناهمخوان است")
-                    result.notImplemented()
-                }
-            }
-        }
+        AlarmChannelRegistrar.register(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
 
         // 3. Foreground Service MethodChannel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NativeChannels.FOREGROUND_SERVICE).setMethodCallHandler { call, result ->

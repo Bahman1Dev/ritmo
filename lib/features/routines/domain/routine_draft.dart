@@ -25,6 +25,7 @@ class RoutineDraft {
     this.zoneId,
     this.dependsOnRoutineId,
     this.notes,
+    this.hasExplicitDuration = false,
     this.energyRule = EnergyRule.none,
     this.priority = 1.0,
   });
@@ -36,6 +37,7 @@ class RoutineDraft {
   final String? customCategoryId;
   final PlannerItemType itemType;
   final int targetDurationMinutes;
+  final bool hasExplicitDuration;
   final int? lightDurationMinutes;
   final int? minimalDurationMinutes;
   final String timeOfDay; // "HH:mm"
@@ -141,7 +143,7 @@ class RoutineDraft {
         'isEssential': isEssential ? 1 : 0,
         'energyRule': energyRule.name,
         'priority': priority,
-        'targetDurationMinutes': targetDurationMinutes,
+        'targetDurationMinutes': hasExplicitDuration ? targetDurationMinutes : null,
         'lightDurationMinutes': lightDurationMinutes,
         'minimalDurationMinutes': minimalDurationMinutes,
         'dependsOnRoutineId': dependsOnRoutineId,
@@ -181,7 +183,7 @@ class RoutineDraft {
         'isEssential': isEssential ? 1 : 0,
         'energyRule': energyRule.name,
         'priority': priority,
-        'targetDurationMinutes': targetDurationMinutes,
+        'targetDurationMinutes': hasExplicitDuration ? targetDurationMinutes : null,
         'lightDurationMinutes': lightDurationMinutes,
         'minimalDurationMinutes': minimalDurationMinutes,
         'dependsOnRoutineId': dependsOnRoutineId,

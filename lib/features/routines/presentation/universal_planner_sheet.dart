@@ -273,7 +273,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
                     ),
                   ),
                   content: Text(
-                    'ایستگاه در حال ویرایش ذخیره نشده است. آیا می‌خواهید تغییرات را دور بیندازید؟',
+                    'کار در حال ویرایش ذخیره نشده است. آیا می‌خواهید تغییرات را دور بیندازید؟',
                     style: TextStyle(
                       fontFamily: 'Vazirmatn',
                       color: colors.textSecondary,
@@ -387,8 +387,8 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
                                           const SizedBox(height: 16),
                                           Text(
                                             _controller.isEditing
-                                                ? 'تغییرات ایستگاه با موفقیت ذخیره شد!'
-                                                : 'ایستگاه جدید به مسیر زندگی اضافه شد!',
+                                                ? 'تغییرات کار با موفقیت ذخیره شد!'
+                                                : 'کار جدید به مسیر زندگی اضافه شد!',
                                             style: const TextStyle(
                                               fontFamily: 'Vazirmatn',
                                               fontSize: 16,
@@ -452,7 +452,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
                 Icon(Icons.edit_rounded, size: 20, color: colors.primary),
                 const SizedBox(width: 8),
                 Text(
-                  'عنوان ایستگاه',
+                  'عنوان کار',
                   style: TextStyle(
                     fontFamily: 'Vazirmatn',
                     fontSize: 14,
@@ -476,7 +476,7 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
                 color: colors.textPrimary,
               ),
               decoration: InputDecoration(
-                hintText: 'عنوان ایستگاه را وارد کنید...',
+                hintText: 'عنوان کار را وارد کنید...',
                 hintStyle: TextStyle(
                   fontFamily: 'Vazirmatn',
                   fontSize: 14,

@@ -154,56 +154,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    // Entry point Premium & Module Gate (Fixes D-10)
-    final canCourses = PremiumService.instance.can(PremiumFeature.coursesModule);
-
-    if (!canCourses) {
-      return Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          backgroundColor: colors.bg,
-          appBar: AppBar(
-            title: const Text('دوره‌های آموزشی'),
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-          ),
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: PremiumGate(
-                feature: PremiumFeature.coursesModule,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(CupertinoIcons.lock_shield_fill, size: 64, color: Colors.amber),
-                    const SizedBox(height: 16),
-                    Text(
-                      'ارتقا به نسخه پرمیوم',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colors.textPrimary),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'ماژول دوره‌های آموزشی نیازمند اشتراک پرمیوم است.',
-                      style: TextStyle(fontSize: 13, color: colors.textSecondary),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () => PremiumUpgradeSheet.show(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.primary,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('مشاهده برنامه‌های پرمیوم'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+    // can() always returns true — no paywall
 
     if (!_coursesEnabled) {
       return Directionality(

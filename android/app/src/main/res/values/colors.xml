@@ -14,4 +14,5 @@
     <color name="notif_btn_inactive_text">#334155</color>
     <color name="notif_btn_active_bg">#D4A843</color>
     <color name="notif_btn_active_text">#FFFFFF</color>
+    <color name="ritmo_accent">#3B82F6</color>
 </resources>

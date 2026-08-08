@@ -130,8 +130,8 @@ class ReflectionPlannerPayload {
 
 class GenericPlannerPayload {
   String recurrenceType = 'EVERY_DAY';
-  int targetDuration = 60;
-  int reminderOffsetMinutes = 15;
+  int? targetDuration;
+  int reminderOffsetMinutes = 0;
   double priority = 1;
   String energyRule = 'NONE';
   String? dependsOnRoutineId;
@@ -139,8 +139,8 @@ class GenericPlannerPayload {
 
   void reset() {
     recurrenceType = 'EVERY_DAY';
-    targetDuration = 60;
-    reminderOffsetMinutes = 15;
+    targetDuration = null;
+    reminderOffsetMinutes = 0;
     priority = 1.0;
     energyRule = 'NONE';
     dependsOnRoutineId = null;

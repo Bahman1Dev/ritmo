@@ -59,7 +59,7 @@ class PlannerCategoryGrid extends StatelessWidget {
             // Frequent Stations Quick-Add Row
             if (controller.frequentStations.isNotEmpty && !controller.isEditing && controller.inputController.text.trim().isEmpty) ...[
               Text(
-                'ایستگاه‌های پرکاربرد اخیر',
+                'کارهای پرکاربرد اخیر',
                 style: TextStyle(
                   fontFamily: 'Vazirmatn',
                   fontSize: 12,
@@ -96,7 +96,7 @@ class PlannerCategoryGrid extends StatelessWidget {
             ],
 
             Text(
-              'انتخاب دسته‌بندی ایستگاه',
+              'انتخاب دسته‌بندی کار',
               style: TextStyle(
                 fontFamily: 'Vazirmatn',
                 fontSize: 12,

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:ritmo/core/backend/auth_service.dart';
 import 'package:ritmo/core/backend/models/auth_result.dart';
 import 'package:ritmo/core/theme/ritmo_colors.dart';
+import 'package:ritmo/features/profile/presentation/alarm_diagnostics_sheet.dart';
 import 'package:ritmo/features/profile/presentation/widgets/otp_verification_sheet.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -610,6 +611,16 @@ class _AccountScreenState extends State<AccountScreen> with WidgetsBindingObserv
                       'خروج از حساب کاربری',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => AlarmDiagnosticsSheet.show(context),
+                  icon: const Icon(Icons.medical_services_outlined),
+                  label: const Text('عیب‌یابی و سلامت سیستم آلارم‌ها'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
                 ),
               ],

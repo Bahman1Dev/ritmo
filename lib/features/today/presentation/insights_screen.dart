@@ -32,7 +32,6 @@ import 'package:ritmo/features/today/presentation/widgets/life_pulse_sparkline_c
 import 'package:ritmo/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:ritmo/core/ux/ritmo_snackbar.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class InsightsScreen extends StatefulWidget {

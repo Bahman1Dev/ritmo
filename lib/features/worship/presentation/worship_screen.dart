@@ -10,6 +10,7 @@ import 'package:ritmo/core/widgets/ritmo_module_app_bar.dart';
 import 'package:ritmo/features/worship/logic/hijri_calendar.dart';
 import 'package:ritmo/features/worship/logic/worship_engine.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
+import 'package:ritmo/features/worship/presentation/widgets/ai_worship_assistant_sheet.dart';
 import 'package:ritmo/features/worship/presentation/widgets/fullscreen_tasbih_sheet.dart';
 import 'package:ritmo/features/worship/presentation/widgets/lunar_month_grid.dart';
 import 'package:ritmo/features/worship/presentation/widgets/mustahab_section.dart';
@@ -118,6 +119,17 @@ class _WorshipScreenState extends State<WorshipScreen> {
     );
   }
 
+  void _openAiAssistantSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return const AiWorshipAssistantSheet();
+      },
+    );
+  }
+
   void _openQiblaCompass() {
     showModalBottomSheet(
       context: context,
@@ -168,6 +180,11 @@ class _WorshipScreenState extends State<WorshipScreen> {
               ),
             ),
             actions: [
+              IconButton(
+                icon: const Icon(CupertinoIcons.sparkles, color: Color(0xffD4A843)),
+                tooltip: 'دستیار معنوی هوشمند',
+                onPressed: _openAiAssistantSheet,
+              ),
               IconButton(
                 icon: const Icon(CupertinoIcons.compass, color: Color(0xffC4953B)),
                 tooltip: 'قبله‌نما',
@@ -228,9 +245,6 @@ class _WorshipScreenState extends State<WorshipScreen> {
                   WorshipSolarCalendar(
                     initialJalali: Jalali.now(),
                     qamariNightText: _getQamariNightText(),
-                    onOpenTasbih: () {
-                      FullscreenTasbihSheet.present(context);
-                    },
                   ),
                   const SizedBox(height: 16),
                 ],

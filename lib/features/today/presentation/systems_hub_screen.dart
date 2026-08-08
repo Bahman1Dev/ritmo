@@ -954,10 +954,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
   }
 
   void _handleCoursesTap(RitmoColors colors) {
-    if (!PremiumService.instance.can(PremiumFeature.coursesModule)) {
-      PremiumUpgradeSheet.show(context);
-      return;
-    }
+    // can() always returns true — no paywall
     if (_coursesEnabled) {
       Navigator.push(
         context,

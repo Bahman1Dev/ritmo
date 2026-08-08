@@ -120,7 +120,7 @@ class MySystemsStrip extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'سیستم‌های من',
+            'بخش‌ها',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,

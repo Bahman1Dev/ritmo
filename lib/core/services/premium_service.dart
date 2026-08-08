@@ -4,17 +4,18 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum PremiumFeature {
-  unlimitedRoutines, // free limit: 15
-  unlimitedGoals,    // free limit: 3
-  unlimitedAi,       // free quota: 5 daily, premium: unlimited
-  advancedInsights,  // premium only
-  smartReshuffle,    // premium only
-  coursesModule,     // premium only
-  konkurModule,      // premium only
-  advancedHealth,    // premium only
-  backupExport,      // premium only
-  customThemes,      // premium only
-  noAds,             // premium only
+  // همهٔ قابلیت‌ها باز است؛ can() و limitFor() سقف اعمال نمی‌کنند.
+  unlimitedRoutines,
+  unlimitedGoals,
+  unlimitedAi,
+  advancedInsights,
+  smartReshuffle,
+  coursesModule,
+  konkurModule,
+  advancedHealth,
+  backupExport,
+  customThemes,
+  noAds,
 }
 
 class PremiumService {

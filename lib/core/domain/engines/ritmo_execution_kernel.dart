@@ -12,6 +12,7 @@ import 'package:ritmo/core/domain/execution/handlers/delete_routine_handler.dart
 import 'package:ritmo/core/domain/execution/handlers/edit_routine_handler.dart';
 import 'package:ritmo/core/domain/execution/handlers/skip_occurrence_handler.dart';
 import 'package:ritmo/core/domain/execution/handlers/snooze_reminder_handler.dart';
+import 'package:ritmo/core/domain/execution/handlers/test_alarm_handler.dart';
 import 'package:ritmo/core/domain/execution/kernel_mutation_result.dart';
 import 'package:ritmo/core/domain/execution/post_commit_pipeline.dart';
 import 'package:ritmo/core/services/snapshot_sync_service.dart';
@@ -121,6 +122,11 @@ class ConfirmReshuffleCommand extends KernelCommand {
   final List<ReshuffleAction> actions;
 }
 
+class TestAlarmCommand extends KernelCommand {
+  const TestAlarmCommand({this.secondsFromNow = 5});
+  final int secondsFromNow;
+}
+
 class RitmoExecutionKernel {
   RitmoExecutionKernel._internal()
       : _handlers = const KernelCommandHandlerRegistry(
@@ -133,6 +139,7 @@ class RitmoExecutionKernel {
           skipOccurrenceHandler: SkipOccurrenceHandler(),
           snoozeReminderHandler: SnoozeReminderHandler(),
           confirmReshuffleHandler: ConfirmReshuffleHandler(),
+          testAlarmHandler: TestAlarmHandler(),
         );
 
   static final RitmoExecutionKernel instance = RitmoExecutionKernel._internal();

@@ -13,6 +13,12 @@ abstract interface class AlarmPlatform {
 
   /// Cancels a scheduled alarm.
   Future<bool> cancelAlarm(String id);
+
+  /// Checks if exact alarm permission is granted.
+  Future<bool> checkExactAlarmPermission();
+
+  /// Requests exact alarm permission from OS settings.
+  Future<bool> requestExactAlarmPermission();
 }
 
 class MethodChannelAlarmPlatform implements AlarmPlatform {
@@ -36,5 +42,15 @@ class MethodChannelAlarmPlatform implements AlarmPlatform {
   @override
   Future<bool> cancelAlarm(String id) {
     return NativeBridge.cancelAlarm(id);
+  }
+
+  @override
+  Future<bool> checkExactAlarmPermission() {
+    return NativeBridge.checkExactAlarmPermission();
+  }
+
+  @override
+  Future<bool> requestExactAlarmPermission() {
+    return NativeBridge.requestExactAlarmPermission();
   }
 }

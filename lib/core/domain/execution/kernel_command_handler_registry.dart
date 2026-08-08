@@ -14,6 +14,7 @@ class KernelCommandHandlerRegistry {
     required this.skipOccurrenceHandler,
     required this.snoozeReminderHandler,
     required this.confirmReshuffleHandler,
+    required this.testAlarmHandler,
     this.rescheduleOccurrenceHandler = const RescheduleOccurrenceHandler(),
     this.undoCompletionHandler = const UndoCompletionHandler(),
   });
@@ -27,6 +28,7 @@ class KernelCommandHandlerRegistry {
   final KernelCommandHandler<SkipOccurrenceCommand> skipOccurrenceHandler;
   final KernelCommandHandler<SnoozeReminderCommand> snoozeReminderHandler;
   final KernelCommandHandler<ConfirmReshuffleCommand> confirmReshuffleHandler;
+  final KernelCommandHandler<TestAlarmCommand> testAlarmHandler;
   final KernelCommandHandler<RescheduleOccurrenceCommand> rescheduleOccurrenceHandler;
   final KernelCommandHandler<UndoCompletionCommand> undoCompletionHandler;
 
@@ -40,6 +42,7 @@ class KernelCommandHandlerRegistry {
     if (command is SkipOccurrenceCommand) return skipOccurrenceHandler;
     if (command is SnoozeReminderCommand) return snoozeReminderHandler;
     if (command is ConfirmReshuffleCommand) return confirmReshuffleHandler;
+    if (command is TestAlarmCommand) return testAlarmHandler;
     if (command is RescheduleOccurrenceCommand) return rescheduleOccurrenceHandler;
     if (command is UndoCompletionCommand) return undoCompletionHandler;
     throw UnsupportedError('No handler registered for ${command.runtimeType}');

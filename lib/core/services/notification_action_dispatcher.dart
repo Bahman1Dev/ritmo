@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/completion/snooze_policy.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/core/domain/models.dart';
@@ -161,19 +162,27 @@ class NotificationActionHandler {
           }
 
         case 'SNOOZE':
-          // Load snooze minutes from settings or default to 10
-          final List<Map<String, dynamic>> settingsList = await db.query(
-            'app_settings',
-            where: 'key = ?',
-            whereArgs: ['snooze_minutes'],
+          final deferCount = (reminder['deferCount'] as int?) ?? 0;
+          final decision = SnoozePolicy.evaluate(
+            itemId: routineId,
+            now: DateTime.now(),
+            requestedMinutes: 10,
+            currentDeferCount: deferCount,
           );
-          
-          var snoozeMinutes = 10;
-          if (settingsList.isNotEmpty) {
-            snoozeMinutes = int.tryParse(settingsList.first['value'] as String) ?? 10;
+          switch (decision.verdict) {
+            case SnoozeVerdict.allowed:
+            case SnoozeVerdict.lastCall:
+              await RitmoExecutionKernel.instance.execute(
+                SnoozeReminderCommand(
+                  reminderId: reminderId,
+                  snoozeMinutes: decision.allowedMinutes > 0 ? decision.allowedMinutes : 10,
+                  dateStr: dateStr,
+                ),
+              );
+            case SnoozeVerdict.exhausted:
+            case SnoozeVerdict.blockedMidnight:
+              await _postBlockedSnoozeNotification(reminderId, decision);
           }
-
-          await AlarmSchedulerService.snoozeReminder(reminderId, snoozeMinutes);
 
         case 'DISMISS':
           // Check if this is a real routine
@@ -213,5 +222,9 @@ class NotificationActionHandler {
     } catch (e, stacktrace) {
       RitmoLog.error('NOTIF', 'Error handling action $action', e, stacktrace);
     }
+  }
+
+  static Future<void> _postBlockedSnoozeNotification(String reminderId, SnoozeDecision decision) async {
+    RitmoLog.warning('NOTIF', 'Snooze blocked for $reminderId: ${decision.verdict.name} (${decision.userMessage})');
   }
 }

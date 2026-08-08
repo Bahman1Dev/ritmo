@@ -1,9 +1,12 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 import 'package:ritmo/features/worship/logic/hijri_calendar.dart';
 import 'package:ritmo/features/worship/logic/worship_calendar_logic.dart';
 import 'package:ritmo/features/worship/logic/worship_occasions_data.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
+import 'package:ritmo/features/worship/presentation/widgets/fullscreen_tasbih_sheet.dart';
+import 'package:ritmo/features/worship/presentation/widgets/worship_day_detail_panel.dart';
 
 void main() {
   group('Worship Calendar Logic & Conversion Tests', () {
@@ -73,6 +76,45 @@ void main() {
     test('5. Daily Zikr of the week returns correct Persian dhikr', () {
       expect(WorshipOccasionsData.getDailyZikr(DateTime.saturday), contains('یا رَبَّ الْعالَمین'));
       expect(WorshipOccasionsData.getDailyZikr(DateTime.friday), contains('اللّهُمَّ صَلِّ'));
+
+      // Test parsing the pure title without parentheses count
+      final satZikr = WorshipOccasionsData.getDailyZikr(DateTime.saturday);
+      final cleanTitle = satZikr.split('(').first.trim();
+      expect(cleanTitle, equals('یا رَبَّ الْعالَمین'));
+    });
+
+    testWidgets('6. WorshipDayDetailPanel starts daily dhikr in FullscreenTasbihSheet', (tester) async {
+      final satDate = DateTime(2026, 8, 8); // Saturday
+      final satDay = WorshipCalendarDay(
+        dateTime: satDate,
+        jalali: Jalali.fromDateTime(satDate),
+        hijri: const HijriDate(day: 23, month: 2, year: 1448, monthName: 'صفر', formatted: '۲۳ صفر ۱۴۴۸'),
+        isCurrentMonth: true,
+        isToday: true,
+        isFriday: false,
+        occasions: const [],
+        dailyZikr: WorshipOccasionsData.getDailyZikr(DateTime.saturday),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: WorshipDayDetailPanel(selectedDay: satDay),
+          ),
+        ),
+      );
+
+      expect(find.text('شروع ذکر'), findsOneWidget);
+      expect(find.text(satDay.dailyZikr), findsOneWidget);
+
+      await tester.tap(find.text('شروع ذکر'));
+      await tester.pumpAndSettle();
+
+      // Should open FullscreenTasbihSheet with Saturday dhikr (یا رَبَّ الْعالَمین) and subtitle
+      expect(find.byType(FullscreenTasbihSheet), findsOneWidget);
+      expect(find.text('یا رَبَّ الْعالَمین'), findsOneWidget);
+      expect(find.text('ذکر روز هفته'), findsOneWidget);
+      expect(find.text('تسبیحات حضرت زهرا (س)'), findsNothing);
     });
   });
 }

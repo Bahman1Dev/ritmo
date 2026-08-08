@@ -166,7 +166,7 @@ class _RoutineNiyyahSheetState extends State<RoutineNiyyahSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'نیت انجام روتین',
+                        'آماده‌ای؟',
                         style: TextStyle(
                           fontFamily: 'Vazirmatn',
                           fontSize: 12,

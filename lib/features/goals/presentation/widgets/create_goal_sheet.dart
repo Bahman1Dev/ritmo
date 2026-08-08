@@ -353,20 +353,7 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
   Future<void> _saveGoal() async {
     if (_titleController.text.trim().isEmpty) return;
 
-    if (widget.goalToEdit == null && !PremiumService.instance.can(PremiumFeature.unlimitedGoals)) {
-      final db = await DatabaseHelper.instance.database;
-      final activeCountQuery = await db.rawQuery(
-        "SELECT COUNT(*) as count FROM goals WHERE status != 'COMPLETED' AND parentGoalId IS NULL"
-      );
-      final activeCount = (activeCountQuery.first['count'] as num?)?.toInt() ?? 0;
-      final limit = PremiumService.instance.limitFor(PremiumFeature.unlimitedGoals);
-
-      if (activeCount >= limit && mounted) {
-        unawaited(PremiumUpgradeSheet.show(context));
-        return;
-      }
-    }
-
+    // can() always returns true — no paywall
     setState(() {
       _isLoading = true;
     });

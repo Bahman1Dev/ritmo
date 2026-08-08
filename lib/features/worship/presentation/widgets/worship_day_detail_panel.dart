@@ -343,16 +343,13 @@ class WorshipDayDetailPanel extends StatelessWidget {
           // Action Button: Start Zikr (Real Route)
           InkWell(
             onTap: () {
-              if (onOpenTasbih != null) {
-                onOpenTasbih!();
-              } else {
-                FullscreenTasbihSheet.present(
-                  context,
-                  initialDhikrTitle: selectedDay.dailyZikr.split('(').first.trim(),
-                  targetCount: 100,
-                  isFatimaTasbih: false,
-                );
-              }
+              FullscreenTasbihSheet.present(
+                context,
+                initialDhikrTitle: selectedDay.dailyZikr.split('(').first.trim(),
+                dhikrSubtitle: 'ذکر روز هفته',
+                targetCount: 100,
+                isFatimaTasbih: false,
+              );
             },
             borderRadius: BorderRadius.circular(10),
             child: Container(

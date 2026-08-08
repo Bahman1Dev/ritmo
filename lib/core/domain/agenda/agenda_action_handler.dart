@@ -13,6 +13,20 @@ import 'package:ritmo/features/worship/logic/worship_repository.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:sqflite/sqflite.dart';
 
+sealed class SnoozeOutcome {}
+
+class SnoozeApplied extends SnoozeOutcome {
+  final DateTime newTime;
+  final int remainingQuota;
+  SnoozeApplied(this.newTime, this.remainingQuota);
+}
+
+class SnoozeRefused extends SnoozeOutcome {
+  final String reasonCode; // 'QUOTA_EXHAUSTED' | 'WINDOW_CLOSED' | 'PAST_MIDNIGHT'
+  final String userMessage;
+  SnoozeRefused(this.reasonCode, this.userMessage);
+}
+
 class AgendaActionHandler {
   AgendaActionHandler._();
   static final AgendaActionHandler instance = AgendaActionHandler._();
@@ -77,7 +91,7 @@ class AgendaActionHandler {
           date: date,
         );
         if (result is WorshipLogFailed) {
-          throw Exception(result.error.toString());
+          debugPrint('[AgendaActionHandler] togglePrayer logDone error: ${result.error}');
         }
       } else {
         await WorshipEngine.instance.clearLog(
@@ -91,7 +105,7 @@ class AgendaActionHandler {
   }
 
   /// Centralized logic to snooze a prayer reminder.
-  Future<void> snoozePrayer({
+  Future<SnoozeOutcome> snoozePrayer({
     required List<String> practiceIds,
     required int minutes,
     required String dateStr,
@@ -103,82 +117,99 @@ class AgendaActionHandler {
     final pTimesMap = await WorshipRepository.instance.getPrayerTimesForDate(now);
     final pTime = PrayerTime.fromMap(pTimesMap);
 
-    await db.transaction((txn) async {
-      for (final id in practiceIds) {
-        final practiceRows = await txn.query(
-          'worship_practices',
-          where: 'id = ?',
-          whereArgs: [id],
-        );
-        if (practiceRows.isEmpty) continue;
+    SnoozeOutcome outcome = SnoozeRefused('QUOTA_EXHAUSTED', 'سقف تعویق این مورد پر شده است.');
 
-        final pMap = practiceRows.first;
-        final currentDeferCount = pMap['deferCount'] as int? ?? 0;
-        final subType = (pMap['subType'] as String? ?? 'FAJR').toUpperCase();
-        final pType = (pMap['practiceType'] as String? ?? 'PRAYER').toUpperCase();
+    for (final id in practiceIds) {
+      final practiceRows = await db.query(
+        'worship_practices',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      if (practiceRows.isEmpty) continue;
 
-        final decision = SnoozePolicy.evaluate(
-          itemId: id,
-          now: now,
-          requestedMinutes: minutes,
-          currentDeferCount: currentDeferCount,
-          category: 'religious',
-          isEssential: pType == 'PRAYER' ? 1 : 0,
-          configuredMax: 2,
-        );
+      final pMap = practiceRows.first;
+      final currentDeferCount = pMap['deferCount'] as int? ?? 0;
+      final subType = (pMap['subType'] as String? ?? 'FAJR').toUpperCase();
+      final pType = (pMap['practiceType'] as String? ?? 'PRAYER').toUpperCase();
 
-        if (decision.verdict == SnoozeVerdict.exhausted || decision.verdict == SnoozeVerdict.blockedMidnight) {
-          throw Exception(decision.userMessage ?? 'سقف تعویق این مورد پر شده است.');
-        }
+      final quotaEnabledRows = await db.query('app_settings', where: "key = 'snooze_quota_enabled'", limit: 1);
+      final quotaEnabled = quotaEnabledRows.isNotEmpty && quotaEnabledRows.first['value'] == 'true';
 
-        var allowedMins = decision.allowedMinutes;
-        final deadline = PrayerTimeline.deadlineFor(subType, pTime, now);
+      final decision = SnoozePolicy.evaluate(
+        itemId: id,
+        now: now,
+        requestedMinutes: minutes,
+        currentDeferCount: currentDeferCount,
+        category: 'religious',
+        isEssential: pType == 'PRAYER' ? 1 : 0,
+        configuredMax: 2,
+        quotaEnabled: quotaEnabled,
+      );
 
-        if (deadline != null) {
-          final targetTime = now.add(Duration(minutes: allowedMins));
-          if (targetTime.isAfter(deadline)) {
-            final remainingToDeadline = deadline.difference(now).inMinutes;
-            if (remainingToDeadline < 5) {
-              throw Exception('مهلت شرعی این نماز در حال پایان است.');
-            }
-            allowedMins = remainingToDeadline;
-          }
-        }
+      if (decision.verdict == SnoozeVerdict.blockedMidnight) {
+        return SnoozeRefused('PAST_MIDNIGHT', 'زمان جدید از نیمه‌شب می‌گذرد.');
+      }
 
-        final snoozeUntilMs = nowMs + (allowedMins * 60 * 1000);
-        final newDeferCount = decision.deferCount;
-
-        await txn.update(
-          'worship_practices',
-          {
-            'deferCount': newDeferCount,
-            'lastDeferredUntil': snoozeUntilMs,
-            'updatedAt': nowMs,
-          },
-          where: 'id = ?',
-          whereArgs: [id],
-        );
-
-        final reminderId = 'worship_snooze_${id}_$nowMs';
-        await txn.insert(
-          'pending_reminders',
-          {
-            'id': reminderId,
-            'routineId': 'worship_$id',
-            'originalTime': nowMs,
-            'scheduledTime': snoozeUntilMs,
-            'snoozeUntil': snoozeUntilMs,
-            'state': 'delayed',
-            'deferCount': newDeferCount,
-            'createdAt': nowMs,
-            'updatedAt': nowMs,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
+      if (decision.verdict == SnoozeVerdict.exhausted) {
+        return SnoozeRefused(
+          'QUOTA_EXHAUSTED',
+          'این نماز را دو بار عقب انداختی. هر وقت آماده بودی ثبتش کن 🙏',
         );
       }
-    });
+
+      var allowedMins = decision.allowedMinutes;
+      final deadline = PrayerTimeline.deadlineFor(subType, pTime, now);
+
+      if (deadline != null) {
+        final targetTime = now.add(Duration(minutes: allowedMins));
+        if (targetTime.isAfter(deadline)) {
+          final remainingToDeadline = deadline.difference(now).inMinutes;
+          if (remainingToDeadline < 5) {
+            return SnoozeRefused('WINDOW_CLOSED', 'مهلت شرعی این نماز در حال پایان است.');
+          }
+          allowedMins = remainingToDeadline;
+        }
+      }
+
+      final snoozeUntilMs = nowMs + (allowedMins * 60 * 1000);
+      final newDeferCount = decision.deferCount;
+
+      await db.update(
+        'worship_practices',
+        {
+          'deferCount': newDeferCount,
+          'lastDeferredUntil': snoozeUntilMs,
+          'updatedAt': nowMs,
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+      final reminderId = 'worship_snooze_${id}_$nowMs';
+      await db.insert(
+        'pending_reminders',
+        {
+          'id': reminderId,
+          'routineId': 'worship_$id',
+          'originalTime': nowMs,
+          'scheduledTime': snoozeUntilMs,
+          'snoozeUntil': snoozeUntilMs,
+          'state': 'delayed',
+          'deferCount': newDeferCount,
+          'createdAt': nowMs,
+          'updatedAt': nowMs,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      outcome = SnoozeApplied(
+        DateTime.fromMillisecondsSinceEpoch(snoozeUntilMs),
+        decision.remaining,
+      );
+    }
 
     _invalidateAndNotify(dateStr, 'WorshipUpdated', {'date': dateStr});
+    return outcome;
   }
 
   /// Centralized logic to skip a prayer and optionally add it to Qada debts.
