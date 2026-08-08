@@ -1,22 +1,31 @@
 import 'package:flutter/foundation.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/commands/ritmo_command.dart';
 
 class ConsentProfile {
-
   const ConsentProfile({
-    this.routinesConsent = true,
-    this.goalsConsent = true,
-    this.energyConsent = true,
-    this.sleepConsent = true,
-    this.planningConsent = true,
-    this.cycleConsentChat = false,
+    this.cloudConsent = true,
+    this.readableDomains = const {
+      DataDomain.routines,
+      DataDomain.goals,
+      DataDomain.energy,
+      DataDomain.sleep,
+      DataDomain.worship,
+      DataDomain.konkur,
+      DataDomain.courses,
+      DataDomain.sports,
+    },
   });
-  final bool routinesConsent;
-  final bool goalsConsent;
-  final bool energyConsent;
-  final bool sleepConsent;
-  final bool planningConsent;
-  final bool cycleConsentChat;
+
+  final bool cloudConsent;
+  final Set<DataDomain> readableDomains;
+
+  bool get routinesConsent => readableDomains.contains(DataDomain.routines);
+  bool get goalsConsent => readableDomains.contains(DataDomain.goals);
+  bool get energyConsent => readableDomains.contains(DataDomain.energy);
+  bool get sleepConsent => readableDomains.contains(DataDomain.sleep);
+  bool get planningConsent => readableDomains.contains(DataDomain.goals) || readableDomains.contains(DataDomain.routines);
+  bool get cycleConsentChat => readableDomains.contains(DataDomain.cycle);
 
   static Future<ConsentProfile> loadFromDb() async {
     try {
@@ -24,17 +33,58 @@ class ConsentProfile {
       final settings = await db.query('app_settings');
       final settingsMap = {for (final s in settings) s['key']! as String: s['value']! as String};
       
+      bool isEnabled(String key, bool defaultValue) {
+        final val = settingsMap[key];
+        if (val == null) return defaultValue;
+        return val == 'true';
+      }
+
+      final cloudConsent = isEnabled('assistant_cloud_consent', true);
+      final readable = <DataDomain>{};
+
+      if (cloudConsent) {
+        if (isEnabled('module_today_routines', true) || isEnabled('module_progressive_habits_enabled', false)) {
+          readable.add(DataDomain.routines);
+        }
+        if (isEnabled('module_goals_enabled', false)) {
+          readable.add(DataDomain.goals);
+        }
+        if (isEnabled('module_energy_enabled', false)) {
+          readable.add(DataDomain.energy);
+        }
+        if (isEnabled('module_sleep_enabled', false)) {
+          readable.add(DataDomain.sleep);
+        }
+        if (isEnabled('module_religion_enabled', false)) {
+          readable.add(DataDomain.worship);
+        }
+        if (isEnabled('module_study_enabled', false)) {
+          readable.add(DataDomain.konkur);
+        }
+        if (isEnabled('module_courses_enabled', false)) {
+          readable.add(DataDomain.courses);
+        }
+        if (isEnabled('module_sports_enabled', false)) {
+          readable.add(DataDomain.sports);
+        }
+        if (isEnabled('module_cycle_enabled', false) && isEnabled('ai_domain_cycle_read', false)) {
+          readable.add(DataDomain.cycle);
+        }
+        if (isEnabled('module_medicine_enabled', false) && isEnabled('ai_domain_medical_read', false)) {
+          readable.add(DataDomain.medical);
+        }
+        if (isEnabled('ai_domain_reflection_read', false)) {
+          readable.add(DataDomain.reflection);
+        }
+      }
+
       return ConsentProfile(
-        routinesConsent: settingsMap['cycle_consent_reminders'] == 'true' || settingsMap['module_progressive_habits_enabled'] == 'true',
-        goalsConsent: settingsMap['cycle_consent_dashboard'] == 'true' || settingsMap['module_goals_enabled'] == 'true',
-        energyConsent: settingsMap['cycle_consent_energy'] == 'true' || settingsMap['module_energy_enabled'] == 'true',
-        sleepConsent: settingsMap['cycle_consent_energy'] == 'true' || settingsMap['module_sleep_enabled'] == 'true',
-        planningConsent: settingsMap['cycle_consent_dashboard'] == 'true' || settingsMap['module_goals_enabled'] == 'true',
-        cycleConsentChat: settingsMap['cycle_consent_chat'] == 'true' || settingsMap['module_cycle_enabled'] == 'true' || settingsMap['cycle_setup_done'] == 'true',
+        cloudConsent: cloudConsent,
+        readableDomains: readable,
       );
     } catch (e, st) {
       debugPrint('Error loading ConsentProfile from DB: $e\n$st');
-      return const ConsentProfile();
+      return const ConsentProfile(cloudConsent: true, readableDomains: {});
     }
   }
 }

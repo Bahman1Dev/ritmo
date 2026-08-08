@@ -170,10 +170,20 @@ class SupplementarySportsTables {
         gender TEXT,
         onboardingCompleted INTEGER DEFAULT 0,
         neighborFriendly INTEGER DEFAULT 0,
+        programStartDate TEXT,
+        deloadEveryNWeeks INTEGER DEFAULT 4,
         createdAt INTEGER NOT NULL,
         updatedAt INTEGER NOT NULL
       );
     ''');
+
+    // Ensure columns exist on existing databases
+    try {
+      await db.execute('ALTER TABLE ss_user_profile ADD COLUMN programStartDate TEXT;');
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE ss_user_profile ADD COLUMN deloadEveryNWeeks INTEGER DEFAULT 4;');
+    } catch (_) {}
 
     // 9. ss_decision_log
     await db.execute('''

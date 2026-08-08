@@ -27,7 +27,6 @@ import 'package:ritmo/features/goals/presentation/goals_screen.dart';
 import 'package:ritmo/features/goals/presentation/widgets/create_goal_sheet.dart';
 import 'package:ritmo/features/health/presentation/health_screen.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
-import 'package:ritmo/features/konkur/presentation/konkur_screen.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_study_sheet.dart';
 import 'package:ritmo/features/study/study_module_entry.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
@@ -36,6 +35,7 @@ import 'package:ritmo/features/sleep/presentation/widgets/sleep_log_sheet.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_home_dashboard_screen.dart';
 import 'package:ritmo/features/today/presentation/widgets/daily_reflection_sheet.dart';
 import 'package:ritmo/features/wellbeing/presentation/wellbeing_screen.dart';
+import 'package:ritmo/features/cycle/presentation/cycle_screen.dart';
 import 'package:ritmo/features/worship/presentation/worship_screen.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -258,34 +258,45 @@ class AssistantActionRegistry {
         }
 
       case AssistantActionType.openPage:
-        final route = action.targetRoute ?? action.payload['targetRoute']?.toString();
+        var route = action.targetRoute ?? action.payload['targetRoute']?.toString();
+        
+        // Fallback for cycle & period actions if route is missing
+        final titleLower = action.title.toLowerCase();
+        if (route == null || route.isEmpty) {
+          if (titleLower.contains('پریود') || titleLower.contains('چرخه') || titleLower.contains('قاعدگی')) {
+            route = '/cycle';
+          }
+        }
         if (route == null || !context.mounted) return;
 
         Widget? targetScreen;
         int? targetTabIndex;
 
-        if (route == '/goals') {
+        final routeLower = route.toLowerCase();
+        if (routeLower == '/goals' || routeLower == '/goal') {
           targetScreen = const GoalsScreen();
-        } else if (route == '/sports' || route == '/sport') {
+        } else if (routeLower == '/sports' || routeLower == '/sport') {
           targetScreen = const SSHomeDashboardScreen();
-        } else if (route == '/konkur' || route == '/study') {
-          StudyModuleEntry.open(context);
+        } else if (routeLower == '/konkur' || routeLower == '/study') {
+          await StudyModuleEntry.open(context);
           return;
-        } else if (route == '/health') {
+        } else if (routeLower == '/health') {
           targetScreen = const HealthScreen();
-        } else if (route == '/sleep') {
+        } else if (routeLower == '/sleep') {
           targetScreen = const WellbeingScreen(initialSection: WellbeingSection.sleep);
-        } else if (route == '/worship') {
+        } else if (routeLower == '/worship') {
           targetScreen = const WorshipScreen();
-        } else if (route == '/' || route == '/today') {
+        } else if (routeLower.contains('cycle') || routeLower.contains('period') || routeLower.contains('چرخه') || routeLower.contains('پریود')) {
+          targetScreen = const CycleScreen();
+        } else if (routeLower == '/' || routeLower == '/today') {
           targetTabIndex = 2;
-        } else if (route == '/routines' || route == '/routine') {
+        } else if (routeLower == '/routines' || routeLower == '/routine') {
           targetTabIndex = 3;
-        } else if (route == '/systems' || route == '/system') {
+        } else if (routeLower == '/systems' || routeLower == '/system') {
           targetTabIndex = 0;
-        } else if (route == '/insights' || route == '/reports') {
+        } else if (routeLower == '/insights' || routeLower == '/reports') {
           targetTabIndex = 1;
-        } else if (route == '/calendar') {
+        } else if (routeLower == '/calendar') {
           targetTabIndex = 4;
         }
 
@@ -304,8 +315,15 @@ class AssistantActionRegistry {
             MaterialPageRoute(builder: (context) => targetScreen!),
           ).then((_) => onComplete()));
         } else {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-          onComplete();
+          if (titleLower.contains('پریود') || titleLower.contains('چرخه') || titleLower.contains('قاعدگی')) {
+            unawaited(Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CycleScreen()),
+            ).then((_) => onComplete()));
+          } else {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+            onComplete();
+          }
         }
 
       case AssistantActionType.updateSetting:

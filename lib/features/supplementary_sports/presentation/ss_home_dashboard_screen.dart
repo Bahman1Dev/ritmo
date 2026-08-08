@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_movement_tab_screen.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_onboarding_flow.dart';
@@ -17,6 +18,10 @@ import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/ss_lottie_player.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/ss_muscle_image_resolver.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/ss_ai_coach_sheet.dart';
+import 'package:ritmo/features/supplementary_sports/data/models/ss_user_profile_model.dart';
+import 'package:ritmo/features/supplementary_sports/data/repositories/ss_prescription_repository.dart';
+import 'package:ritmo/features/supplementary_sports/domain/prescription/session_prescription.dart';
+import 'package:ritmo/features/supplementary_sports/presentation/ss_session_summary_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -58,6 +63,15 @@ class SSHomeWorkoutReady extends SSHomeUiState {
   final List<bool> weekTimeline;
 }
 
+class SSHomePrescriptionReady extends SSHomeUiState {
+  const SSHomePrescriptionReady({
+    required this.prescription,
+    required this.usesExternalApp,
+  });
+  final SessionPrescription prescription;
+  final bool usesExternalApp;
+}
+
 class SSHomeWorkoutCompleted extends SSHomeUiState {
 
   const SSHomeWorkoutCompleted({
@@ -94,78 +108,116 @@ class _SSHomeDashboardScreenState extends State<SSHomeDashboardScreen> {
       SSPlanOverviewScreen(
         onNavigateToTab: _navigateToTab,
       ),
-      SSMovementTabScreen(
-        onNavigateToTab: _navigateToTab,
-      ),
       SSProgressScreen(onNavigateToTab: _navigateToTab),
     ];
   }
 
   void _onTabSelected(int index) {
     setState(() {
-      _selectedIndex = index.clamp(0, 3);
+      _selectedIndex = index.clamp(0, 2);
     });
   }
 
   void _navigateToTab(int index) {
     setState(() {
-      _selectedIndex = index.clamp(0, 3);
+      _selectedIndex = index.clamp(0, 2);
     });
+  }
+
+  void _openSettingsModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return const SSSettingsScreen(isModal: true);
+      },
+    );
+  }
+
+  Widget _buildSegmentedControl(BuildContext context) {
+    final colors = context.colors;
+    final sportsAccent = context.modules.sports;
+    final labels = ['امروز', 'برنامه', 'روند'];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: colors.surfaceSunken,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.border),
+      ),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        children: List.generate(3, (index) {
+          final isSelected = _selectedIndex == index;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => _onTabSelected(index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? sportsAccent : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  labels[index],
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected ? Colors.white : colors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B0F19),
-      body: SafeArea(
-        child: Directionality(
-          textDirection: TextDirection.rtl,
-          child: IndexedStack(
-            index: _selectedIndex,
-            children: _pages,
+    final colors = context.colors;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: colors.background,
+        appBar: AppBar(
+          backgroundColor: colors.surface,
+          elevation: 0,
+          title: Text(
+            'ورزش و حرکت',
+            style: TextStyle(
+              fontFamily: 'Vazirmatn',
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: colors.textPrimary,
+            ),
           ),
+          centerTitle: false,
+          actions: [
+            IconButton(
+              icon: Icon(Icons.settings_outlined, color: colors.textPrimary),
+              onPressed: _openSettingsModal,
+            ),
+          ],
         ),
-      ),
-      bottomNavigationBar: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF0F172A),
-            border: Border(top: BorderSide(color: Color(0xFF1E293B))),
-          ),
-          child: BottomNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: _onTabSelected,
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            selectedItemColor: const Color(0xFF10B981),
-            unselectedItemColor: Colors.white38,
-            selectedLabelStyle: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.bold),
-            unselectedLabelStyle: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12),
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.local_fire_department),
-                activeIcon: Icon(Icons.local_fire_department_rounded),
-                label: 'امروز',
+        body: Column(
+          children: [
+            _buildSegmentedControl(context),
+            Expanded(
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: _pages,
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.calendar_month_outlined),
-                activeIcon: Icon(Icons.calendar_month_rounded),
-                label: 'برنامه',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.directions_walk),
-                activeIcon: Icon(Icons.directions_walk_rounded),
-                label: 'حرکت',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.bar_chart_outlined),
-                activeIcon: Icon(Icons.bar_chart_rounded),
-                label: 'پیشرفت',
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -865,7 +917,122 @@ class _SSHomeDashboardTabContentState extends State<SSHomeDashboardTabContent> {
         return;
       }
 
-      // Fetch today's plan
+      // ── NEW: Try ss_session_prescription first ──────────────────────
+      final todayIso = '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      SessionPrescription? todayPres;
+      try {
+        todayPres = await SsPrescriptionRepository.instance.getPrescriptionForDate(todayIso);
+      } catch (_) {}
+
+      SsUserProfile? userProfile;
+      try {
+        final profileRows = await db.query('ss_user_profile', where: 'id = ?', whereArgs: ['default']);
+        if (profileRows.isNotEmpty) {
+          userProfile = SsUserProfile.fromMap(profileRows.first);
+        }
+      } catch (_) {}
+
+      if (todayPres == null) {
+        final existingCount = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM ss_session_prescription')
+        ) ?? 0;
+
+        if (existingCount == 0) {
+          final prof = userProfile ?? SsUserProfile(
+            goal: FitnessGoal.bodyRecomposition,
+            experienceLevel: ExperienceLevel.beginner,
+            trainingLocation: TrainingLocation.home,
+            availableEquipment: [Equipment.bodyweightOnly, Equipment.dumbbell],
+            focusAreas: [BodyArea.arms, BodyArea.chest, BodyArea.legs],
+            physicalLimitations: [],
+            sessionDuration: SessionDuration.medium45,
+            createdAt: DateTime.now().millisecondsSinceEpoch,
+            updatedAt: DateTime.now().millisecondsSinceEpoch,
+          );
+          
+          await SsProgramBuilder.apply(ProgramBuildRequest(
+            fromDate: today,
+            profile: prof,
+          ));
+
+          try {
+            todayPres = await SsPrescriptionRepository.instance.getPrescriptionForDate(todayIso);
+          } catch (_) {}
+        }
+      }
+
+      bool detailMode = false;
+      try {
+        final dmRows = await db.query('app_settings', where: 'key = ?', whereArgs: ['sports_detail_mode']);
+        if (dmRows.isNotEmpty) {
+          detailMode = dmRows.first['value'] == 'true';
+        }
+      } catch (_) {}
+
+      if (todayPres != null) {
+        if (todayPres.slotType == SlotType.rest) {
+          if (mounted) {
+            setState(() {
+              _state = SSHomeRestDay(
+                suggestion: todayPres!.coachNoteFa ?? 'امروز روز استراحت شماست. پیاده‌روی سبک یا تمرین کششی پیشنهاد می‌شود.',
+              );
+            });
+          }
+          return;
+        }
+
+        // Build weekTimeline from prescriptions of the current ISO week
+        final weekStart = today.subtract(Duration(days: today.weekday - 1));
+        final weekPres = <String, Map<String, dynamic>>{};
+        for (var i = 0; i < 7; i++) {
+          final d = weekStart.add(Duration(days: i));
+          final iso = '${d.year.toString().padLeft(4,'0')}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
+          try {
+            final wp = await SsPrescriptionRepository.instance.getPrescriptionForDate(iso);
+            if (wp != null) weekPres[iso] = wp.toMap();
+          } catch (_) {}
+        }
+        final weekTimelineFromPres = List<bool>.generate(7, (i) {
+          final d = weekStart.add(Duration(days: i));
+          final iso = '${d.year.toString().padLeft(4,'0')}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
+          final wp = weekPres[iso];
+          return wp != null && wp['slotType'] != 'REST' && wp['targetMinutes'] != 0;
+        });
+
+        if (!detailMode) {
+          // Prescription mode: show minimal headline card
+          if (mounted) {
+            setState(() {
+              _state = SSHomePrescriptionReady(
+                prescription: todayPres!,
+                usesExternalApp: userProfile?.usesExternalApp ?? false,
+              );
+            });
+          }
+          return;
+        } else {
+          // Set/Reps mode: fall through to legacy plan if it exists, or show prescription in WorkoutReady style
+          if (mounted) {
+            setState(() {
+              _state = SSHomeWorkoutReady(
+                dayName: _getFarsiDayName(dayOfWeek),
+                dayOfWeek: dayOfWeek,
+                planId: todayPres!.id,
+                workoutName: todayPres.headlineFa,
+                exerciseCount: 0,
+                estimatedMinutes: todayPres.targetMinutes,
+                continuity: List.generate(7, (i) => i < 6),
+                aiSuggestion: todayPres.coachNoteFa,
+                weekTimeline: weekTimelineFromPres,
+              );
+            });
+          }
+          return;
+        }
+      }
+      // ── END: Prescription-first logic ───────────────────────────────
+
+      // Fetch today's plan (legacy)
       var plans = await db.query(
         'ss_workout_plan',
         where: 'dayOfWeek = ? AND id LIKE ?',
@@ -1063,6 +1230,48 @@ class _SSHomeDashboardTabContentState extends State<SSHomeDashboardTabContent> {
               _buildWeeklyStreakWidget(_weekCompleted),
               const SizedBox(height: 16),
               _buildAiCoachCard(aiSuggestion ?? 'امروز بدن شما پرانرژی‌تره، بهترین زمان برای افزایش شدت حرکاته. آب بیشتری بنوش و تمرکزت رو حفظ کن.'),
+              const SizedBox(height: 16),
+              _buildTodayBodyStatusWidget(),
+              const SizedBox(height: 16),
+              _buildNextWorkoutCard(
+                nextWorkoutName: _nextWorkoutName,
+                nextWorkoutMinutes: _nextWorkoutMinutes,
+                nextWorkoutDayName: _nextWorkoutDayName,
+              ),
+            ],
+          ),
+        );
+      case SSHomePrescriptionReady(
+        prescription: final pres,
+        usesExternalApp: final usesExternal,
+      ):
+        return _buildDashboardContent(
+          child: Column(
+            children: [
+              _buildHeroPrescriptionCard(
+                prescription: pres,
+                usesExternalApp: usesExternal,
+                onStart: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SSSessionSummaryScreen(
+                        sessionId: pres.id,
+                        completedCount: 1,
+                        totalCount: 1,
+                        durationSeconds: pres.targetMinutes * 60,
+                      ),
+                    ),
+                  ).then((_) {
+                    if (mounted) _loadDashboardData();
+                  });
+                },
+                onCantToday: _showCantTodayBottomSheet,
+              ),
+              const SizedBox(height: 16),
+              _buildWeeklyStreakWidget(_weekCompleted),
+              const SizedBox(height: 16),
+              _buildAiCoachCard(pres.coachNoteFa ?? 'امروز برنامه ورزشی خود را در اولویت قرار دهید.'),
               const SizedBox(height: 16),
               _buildTodayBodyStatusWidget(),
               const SizedBox(height: 16),
@@ -1346,6 +1555,197 @@ class _SSHomeDashboardTabContentState extends State<SSHomeDashboardTabContent> {
           ],
         ),
       ],
+    );
+  }
+
+  // ─── 2.1 MAIN HERO PRESCRIPTION CARD (NEW FOR MIGRATION V82) ───
+  Widget _buildHeroPrescriptionCard({
+    required SessionPrescription prescription,
+    required bool usesExternalApp,
+    required VoidCallback onStart,
+    required VoidCallback onCantToday,
+  }) {
+    final firstFocus = prescription.focusCodes.isNotEmpty ? prescription.focusCodes.first : 'full_body';
+    final coverImage = SSMuscleImageResolver.resolve(firstFocus, _userGender);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFF0EA5E9).withValues(alpha: 0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0EA5E9).withValues(alpha: 0.12),
+            blurRadius: 28,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          // Right 58%: Text Info, Title, Metrics & CTAs
+          Expanded(
+            flex: 58,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              textDirection: TextDirection.rtl,
+              children: [
+                // Top Tag Pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFF0EA5E9).withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.psychology_alt_rounded, color: Color(0xFF0EA5E9), size: 13),
+                      const SizedBox(width: 5),
+                      Text(
+                        usesExternalApp ? 'تمرین با اپ خارجی' : 'تمرین تجویزی هوشمند',
+                        style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Workout Title (Headline)
+                Text(
+                  prescription.headlineFa,
+                  style: const TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (prescription.coachNoteFa != null && prescription.coachNoteFa!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    prescription.coachNoteFa!,
+                    style: const TextStyle(
+                      fontFamily: 'Vazirmatn',
+                      fontSize: 11,
+                      color: Colors.white60,
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 10),
+
+                // Metrics
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    _heroMetric(Icons.access_time_rounded, toPersianDigits('${prescription.targetMinutes} دقیقه')),
+                    _heroMetric(Icons.fitness_center_rounded, prescription.slotType.labelFa),
+                    _heroMetric(Icons.speed_rounded, prescription.intensityTier.labelFa),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Stacked CTAs
+                Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0EA5E9),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                        ),
+                        icon: Icon(usesExternalApp ? Icons.open_in_new_rounded : Icons.play_arrow_rounded, size: 20),
+                        label: Text(
+                          usesExternalApp ? 'ثبت در اپ خارجی' : 'شروع تمرین تجویزی',
+                          style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: onStart,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 38,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.black.withValues(alpha: 0.35),
+                          side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.edit_note_rounded, size: 16, color: Colors.white70),
+                        label: const Text(
+                          'اصلاح تمرین',
+                          style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70),
+                        ),
+                        onPressed: onCantToday,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 14),
+
+          // Left 42%: Glowing Stage & Full Athlete Photo
+          Expanded(
+            flex: 42,
+            child: AspectRatio(
+              aspectRatio: 0.82,
+              child: Stack(
+                alignment: Alignment.center,
+                fit: StackFit.expand,
+                children: [
+                  // Glowing Radial Stage Background
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          const Color(0xFF0EA5E9).withValues(alpha: 0.55),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Athlete Cover Photo
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.asset(
+                      coverImage,
+                      fit: BoxFit.cover,
+                      errorBuilder: (ctx, err, stack) => const Icon(Icons.accessibility_new_rounded, size: 60, color: Color(0xFF0EA5E9)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

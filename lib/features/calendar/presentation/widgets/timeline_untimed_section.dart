@@ -4,6 +4,7 @@ import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 import 'package:ritmo/features/calendar/presentation/logic/direct_manipulation_eligibility.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
+import 'package:ritmo/features/calendar/utils/domain_palette.dart';
 
 class TimelineUntimedSection extends StatelessWidget {
   const TimelineUntimedSection({
@@ -108,7 +109,7 @@ class TimelineUntimedSection extends StatelessWidget {
   Widget _buildChipItem(BuildContext context, AgendaItem item, bool isDark) {
     final theme = Theme.of(context);
     final isDone = item.isCompleted;
-    final domainColor = _getDomainColor(item.domain);
+    final color = domainColor(context, item.domain);
     final schedulable = DirectManipulationEligibility.isSchedulable(item);
 
     final chipWidget = InkWell(
@@ -119,10 +120,10 @@ class TimelineUntimedSection extends StatelessWidget {
         decoration: BoxDecoration(
           color: isDone
               ? theme.disabledColor.withValues(alpha: 0.12)
-              : domainColor.withValues(alpha: isDark ? 0.15 : 0.08),
+              : color.withValues(alpha: isDark ? 0.15 : 0.08),
           borderRadius: BorderRadius.circular(CalendarTokens.radiusBadge),
           border: Border.all(
-            color: domainColor.withValues(alpha: isDone ? 0.2 : 0.3),
+            color: color.withValues(alpha: isDone ? 0.2 : 0.3),
           ),
         ),
         child: Row(
@@ -133,7 +134,7 @@ class TimelineUntimedSection extends StatelessWidget {
               height: 7,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDone ? theme.disabledColor : domainColor,
+                color: isDone ? theme.disabledColor : color,
               ),
             ),
             const SizedBox(width: CalendarTokens.spacingXs),
@@ -190,32 +191,5 @@ class TimelineUntimedSection extends StatelessWidget {
       ),
       child: chipWidget,
     );
-  }
-
-  static Color _getDomainColor(AgendaDomain domain) {
-    switch (domain) {
-      case AgendaDomain.routine:
-        return Colors.teal;
-      case AgendaDomain.prayer:
-        return Colors.indigo;
-      case AgendaDomain.mustahab:
-        return Colors.blueGrey;
-      case AgendaDomain.course:
-        return Colors.amber.shade800;
-      case AgendaDomain.goalStep:
-        return Colors.deepPurple;
-      case AgendaDomain.konkur:
-        return Colors.red;
-      case AgendaDomain.cycle:
-        return Colors.pink;
-      case AgendaDomain.worshipDebt:
-        return Colors.brown;
-      case AgendaDomain.sport:
-        return Colors.green;
-      case AgendaDomain.medicine:
-        return Colors.orange.shade800;
-      case AgendaDomain.event:
-        return Colors.blue;
-    }
   }
 }

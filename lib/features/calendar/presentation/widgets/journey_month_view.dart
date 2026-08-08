@@ -55,20 +55,21 @@ class JourneyMonthView extends StatelessWidget {
             // Weekday Header Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: weekHeadersRtl.map((h) {
+              children: List.generate(7, (idx) {
+                final isFridayHeader = idx == 6;
                 return Expanded(
                   child: Text(
-                    h,
+                    weekHeadersRtl[idx],
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: CalendarTokens.textLabel,
                       fontWeight: FontWeight.w600,
                       fontFamily: 'Vazirmatn',
-                      color: colors.textSecondary,
+                      color: isFridayHeader ? colors.error : colors.textSecondary,
                     ),
                   ),
                 );
-              }).toList(),
+              }),
             ),
             const SizedBox(height: CalendarTokens.spacingS),
 
@@ -88,6 +89,7 @@ class JourneyMonthView extends StatelessWidget {
                   final isCurrentMonth = jDay.year == jalaliSelected.year && jDay.month == jalaliSelected.month;
                   final isSelected = _isSameDay(day, selectedDate);
                   final isToday = _isSameDay(day, now);
+                  final isFriday = index % 7 == 6; // Friday is 7th column
 
                   final dateKey = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
                   final snapshot = rangeSnapshots[dateKey];
@@ -95,14 +97,25 @@ class JourneyMonthView extends StatelessWidget {
                   final overload = snapshot?.overloadScore ?? 0.0;
                   final hasConflicts = (snapshot?.conflicts.length ?? 0) > 0;
 
-                  // Unique domain colors (up to 4)
+                  // Unique domain colors (up to 4, includes task)
                   final presentDomains = <AgendaDomain>{};
                   for (final item in items) {
                     presentDomains.add(item.domain);
                     if (presentDomains.length >= 4) break;
                   }
 
-                  final tintAlpha = isCurrentMonth ? (overload.clamp(0.0, 1.0) * 0.22) : 0.0;
+                  // K26: 3-step Workload Heatmap Tint
+                  double tintAlpha = 0.0;
+                  if (isCurrentMonth) {
+                    if (overload > 0.6) {
+                      tintAlpha = 0.22; // heavy
+                    } else if (overload > 0.2) {
+                      tintAlpha = 0.12; // normal
+                    } else if (items.isNotEmpty) {
+                      tintAlpha = 0.05; // light
+                    }
+                  }
+
                   final cellBgColor = isSelected
                       ? colors.primaryContainer
                       : (tintAlpha > 0
@@ -126,23 +139,39 @@ class JourneyMonthView extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Day Number
-                          Align(
-                            alignment: Alignment.topRight,
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: 2, top: 2),
-                              child: Text(
-                                dayNumStr,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
-                                  color: isCurrentMonth
-                                      ? (isSelected ? colors.primary : colors.textPrimary)
-                                      : colors.disabled,
-                                  fontFamily: 'Vazirmatn',
+                          // Day Number + Holiday Dot Row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              if (isFriday)
+                                Container(
+                                  width: 4,
+                                  height: 4,
+                                  margin: const EdgeInsets.only(right: 3, top: 3),
+                                  decoration: BoxDecoration(
+                                    color: colors.error,
+                                    shape: BoxShape.circle,
+                                  ),
+                                )
+                              else
+                                const SizedBox(width: 4),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 2, top: 2),
+                                child: Text(
+                                  dayNumStr,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isToday || isSelected || isFriday ? FontWeight.bold : FontWeight.normal,
+                                    color: isCurrentMonth
+                                        ? (isSelected
+                                            ? colors.primary
+                                            : (isFriday ? colors.error : colors.textPrimary))
+                                        : colors.disabled,
+                                    fontFamily: 'Vazirmatn',
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
 
                           // Domain Dots (up to 4)
@@ -178,9 +207,58 @@ class JourneyMonthView extends StatelessWidget {
                 },
               ),
             ),
+
+            // K26: Workload Legend Row
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _WorkloadLegendDot(color: colors.primary.withValues(alpha: 0.05), label: 'سبک'),
+                  const SizedBox(width: 16),
+                  _WorkloadLegendDot(color: colors.primary.withValues(alpha: 0.12), label: 'عادی'),
+                  const SizedBox(width: 16),
+                  _WorkloadLegendDot(color: colors.primary.withValues(alpha: 0.22), label: 'شلوغ'),
+                ],
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _WorkloadLegendDot extends StatelessWidget {
+  const _WorkloadLegendDot({required this.color, required this.label});
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.2)),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: CalendarTokens.textLabel,
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+            fontFamily: 'Vazirmatn',
+          ),
+        ),
+      ],
     );
   }
 }

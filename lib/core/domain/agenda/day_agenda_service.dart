@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart' hide Category;
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/routine_agenda_source.dart';
+import 'package:ritmo/core/domain/agenda/sources/sports_agenda_source.dart';
+import 'package:ritmo/core/domain/agenda/sources/task_agenda_source.dart';
 import 'package:ritmo/core/domain/engines/cycle_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/models.dart';
@@ -44,6 +46,8 @@ class DayAgendaService {
   static const Set<String> _uiRefreshEvents = {
     'CourseSessionCompleted',
     'GoalStepToggled',
+    'TaskToggled',
+    'TaskUpdated',
     'PrayerCompleted',
     'WorshipUpdated',
     'RoutineDeleted',
@@ -52,6 +56,8 @@ class DayAgendaService {
   static const Set<String> _cacheInvalidatingEvents = {
     'CourseSessionCompleted',
     'GoalStepToggled',
+    'TaskToggled',
+    'TaskUpdated',
     'PrayerCompleted',
     'WorshipUpdated',
     'RoutineCompleted',
@@ -360,6 +366,12 @@ class DayAgendaService {
       }
     }
 
+    final tasksEnabled = settingsMap['calendar_show_tasks'] != 'false';
+    TaskAgendaSource? taskSource;
+    if (tasksEnabled && opts.wants(AgendaDomain.task)) {
+      taskSource = await TaskAgendaSource.load(db, start, end, _dateStr(DateTime.now()));
+    }
+
     return _AgendaContext(
       db: db,
       settingsMap: settingsMap,
@@ -369,6 +381,7 @@ class DayAgendaService {
       cycleAllowed: cycleAllowed,
       sportsEnabled: sportsEnabled,
       medicineEnabled: medicineEnabled,
+      taskSource: taskSource,
       routineSource: routineSource,
       completionsByDate: completionsByDate,
       prayerPractices: prayerPractices,
@@ -423,6 +436,7 @@ class DayAgendaService {
       AgendaDomain.cycle: ctx.cycleAllowed,
       AgendaDomain.sport: ctx.sportsEnabled,
       AgendaDomain.medicine: ctx.medicineEnabled,
+      AgendaDomain.task: ctx.taskSource != null,
     };
 
     if (opts.wants(AgendaDomain.routine)) {
@@ -488,6 +502,10 @@ class DayAgendaService {
 
     if (ctx.medicineEnabled && opts.wants(AgendaDomain.medicine)) {
       items.addAll(_collectMedicine(ctx, dateStr, isToday));
+    }
+
+    if (ctx.taskSource != null && opts.wants(AgendaDomain.task)) {
+      items.addAll(ctx.taskSource!.itemsForDate(dateStr, isToday: isToday));
     }
 
     final filtered = opts.includeCompleted
@@ -1238,6 +1256,7 @@ class _AgendaContext {
     required this.cycleAllowed,
     required this.sportsEnabled,
     required this.medicineEnabled,
+    this.taskSource,
     required this.routineSource,
     required this.completionsByDate,
     required this.prayerPractices,
@@ -1266,6 +1285,7 @@ class _AgendaContext {
   final bool cycleAllowed;
   final bool sportsEnabled;
   final bool medicineEnabled;
+  final TaskAgendaSource? taskSource;
   final RoutineAgendaSource routineSource;
   final Map<String, Map<String, Map<String, dynamic>>> completionsByDate;
   final List<Map<String, dynamic>> prayerPractices;

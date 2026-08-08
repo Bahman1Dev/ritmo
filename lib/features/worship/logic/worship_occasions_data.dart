@@ -70,6 +70,13 @@ class WorshipOccasionsData {
     ],
 
     // 2. Safar
+    '2-5': [
+      const WorshipOccasion(
+        title: 'شهادت حضرت رقیه (س) در خرابه شام',
+        category: WorshipOccasionCategory.mourning,
+        recommendedAmal: 'زیارت حضرت رقیه (س) و اقامه عزاداری',
+      )
+    ],
     '2-7': [
       const WorshipOccasion(
         title: 'ولادت امام موسی کاظم (ع)',
@@ -89,13 +96,21 @@ class WorshipOccasionsData {
       const WorshipOccasion(
         title: 'رحلت خاتم الانبیاء حضرت محمد (ص) و شهادت امام حسن مجتبی (ع)',
         category: WorshipOccasionCategory.mourning,
-        recommendedAmal: 'زیارت از از راه دور حضرت رسول (ص) و زیارت حضرت امام حسن (ع)',
+        recommendedAmal: 'زیارت از راه دور حضرت رسول (ص) و زیارت حضرت امام حسن (ع)',
+        isReligiousHoliday: true,
+      )
+    ],
+    '2-29': [
+      const WorshipOccasion(
+        title: 'شهادت ثامن الحجج حضرت علی بن موسی الرضا (ع) (آخر صفر)',
+        category: WorshipOccasionCategory.mourning,
+        recommendedAmal: 'زیارت حضرت امام رضا (ع) و صلوات خاصه امام رضا',
         isReligiousHoliday: true,
       )
     ],
     '2-30': [
       const WorshipOccasion(
-        title: 'شهادت ثامن الحجج حضرت علی بن موسی الرضا (ع)',
+        title: 'شهادت ثامن الحجج حضرت علی بن موسی الرضا (ع) (آخر صفر)',
         category: WorshipOccasionCategory.mourning,
         recommendedAmal: 'زیارت حضرت امام رضا (ع) و صلوات خاصه امام رضا',
         isReligiousHoliday: true,
@@ -112,10 +127,24 @@ class WorshipOccasionsData {
     ],
     '3-8': [
       const WorshipOccasion(
-        title: 'شهادت امام حسن عسکری (ع) و آغاز امامت حضرت مهدی (عج)',
+        title: 'شهادت امام حسن عسکری (ع)',
         category: WorshipOccasionCategory.mourning,
-        recommendedAmal: 'دعای عهد و زیارت امام زمان (عج)',
+        recommendedAmal: 'دعای عهد و زیارت امام حسن عسکری (ع)',
         isReligiousHoliday: true,
+      )
+    ],
+    '3-9': [
+      const WorshipOccasion(
+        title: 'آغاز امامت و ولایت حضرت ولی‌عصر امام مهدی (عج)',
+        category: WorshipOccasionCategory.celebration,
+        recommendedAmal: 'زیارت حضرت صاحب‌الزمان (عج) و تجدید بیعت با امام زمان',
+      )
+    ],
+    '3-12': [
+      const WorshipOccasion(
+        title: 'میلاد حضرت رسول اکرم (ص) (روایت اهل سنت) / آغاز هفته وحدت',
+        category: WorshipOccasionCategory.celebration,
+        recommendedAmal: 'ارسال صلوات بر پیامبر (ص) و تقویت وحدت اسلامی',
       )
     ],
     '3-17': [
@@ -166,6 +195,13 @@ class WorshipOccasionsData {
         category: WorshipOccasionCategory.mourning,
         recommendedAmal: 'تسبیحات حضرت زهرا، زیارتنامه و اقامه عزای فاطمی',
         isReligiousHoliday: true,
+      )
+    ],
+    '6-13': [
+      const WorshipOccasion(
+        title: 'وفات حضرت ام‌البنین (س) (روز تکریم مادران و همسران شهدا)',
+        category: WorshipOccasionCategory.mourning,
+        recommendedAmal: 'زیارت حضرت ام‌البنین (س) و هدیه فاتحه و صلوات به ایشان',
       )
     ],
     '6-20': [
@@ -352,6 +388,22 @@ class WorshipOccasionsData {
         recommendedAmal: 'روزه داشتن (ثواب ۷۰ سال روزه)، غسل، زیارت امام رضا و نماز دحو الارض',
       )
     ],
+    '11-29': [
+      const WorshipOccasion(
+        title: 'شهادت حضرت امام محمد تقی الجواد (ع) (آخر ذی‌القعده)',
+        category: WorshipOccasionCategory.mourning,
+        recommendedAmal: 'زیارت حضرت امام جواد (ع) و توسل به حضرت باب‌الحوائج',
+        isReligiousHoliday: true,
+      )
+    ],
+    '11-30': [
+      const WorshipOccasion(
+        title: 'شهادت حضرت امام محمد تقی الجواد (ع) (آخر ذی‌القعده)',
+        category: WorshipOccasionCategory.mourning,
+        recommendedAmal: 'زیارت حضرت امام جواد (ع) و توسل به حضرت باب‌الحوائج',
+        isReligiousHoliday: true,
+      )
+    ],
 
     // 12. Dhu al-Hijjah
     '12-1': [
@@ -403,6 +455,27 @@ class WorshipOccasionsData {
         title: 'روز مباهله پیامبر اکرم (ص) و روز آیه تطهیر',
         category: WorshipOccasionCategory.celebration,
         recommendedAmal: 'غسل، روزه، دعای مباهله و زیارت امیرالمؤمنین (ع)',
+      )
+    ],
+    '12-25': [
+      const WorshipOccasion(
+        title: 'روز نزول سوره هل اتی (حدیث کساء / روز خانواده)',
+        category: WorshipOccasionCategory.worshipDeed,
+        recommendedAmal: 'قرائت سوره هل اتی و حدیث کساء، تکریم خانواده',
+      )
+    ],
+    '12-29': [
+      const WorshipOccasion(
+        title: 'آخرین روز سال هجری قمری / استغفار و محاسبه نفس',
+        category: WorshipOccasionCategory.worshipDeed,
+        recommendedAmal: 'دو ركعت نماز پایان سال قمری و استغفار',
+      )
+    ],
+    '12-30': [
+      const WorshipOccasion(
+        title: 'آخرین روز سال هجری قمری / استغفار و محاسبه نفس',
+        category: WorshipOccasionCategory.worshipDeed,
+        recommendedAmal: 'دو ركعت نماز پایان سال قمری و استغفار',
       )
     ],
   };

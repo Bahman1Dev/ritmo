@@ -264,146 +264,175 @@ class _PrayerArcHeroState extends State<PrayerArcHero> with SingleTickerProvider
                   ],
                 ),
 
-                // ── CELESTIAL ORBIT WITH ULTRA-SLOW ORGANIC SPHERE PHYSICS (Height: 470px) ──
-                SizedBox(
-                  height: 470,
-                  width: double.infinity,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final w = constraints.maxWidth;
-                      const h = 470.0;
-                      final center = Offset(w / 2, h / 2);
-                      final orbitRadius = (math.min(w, h) / 2) - 18.0;
-                      final innerRadius = orbitRadius - 48.0;
+                // ── CELESTIAL ORBIT WITH PROPORTIONAL GEOMETRIC SCALING ──
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 500,
+                      maxHeight: 500,
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: 1.0,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final w = constraints.maxWidth;
+                          final h = constraints.maxHeight;
+                          final canvasSize = math.min(w, h);
+                          final center = Offset(w / 2, h / 2);
 
-                      // Pre-compute static relaxation base nodes once per layout
-                      final baseNodes = _computeBaseRelaxedNodes(
-                        times: times,
-                        center: center,
-                        orbitRadius: orbitRadius,
-                        innerRadius: innerRadius,
-                      );
+                          // Proportional geometric calculations:
+                          final orbitRadius = (canvasSize / 2) - (canvasSize * 0.045).clamp(10.0, 24.0);
+                          final centerDiameter = (canvasSize * 0.46).clamp(140.0, 220.0);
+                          final centerRadius = centerDiameter / 2.0;
+                          final sphereDiameter = (canvasSize * 0.125).clamp(36.0, 56.0);
+                          final sphereRadius = sphereDiameter / 2.0;
 
-                      return AnimatedBuilder(
-                        animation: _pulseController,
-                        builder: (context, child) {
-                          // Fast 60/120 FPS multi-harmonic organic animation & collision physics
-                          final resolvedNodes = _animateAndResolveCollisions(
-                            baseNodes: baseNodes,
-                            animValue: _pulseController.value,
+                          // Inner radius positioned strictly in the middle of available gap between central hub and orbit
+                          final innerRadius = centerRadius + sphereRadius +
+                              ((orbitRadius - sphereRadius - (centerRadius + sphereRadius)) * 0.5);
+
+                          // Pre-compute static relaxation base nodes once per layout
+                          final baseNodes = _computeBaseRelaxedNodes(
+                            times: times,
+                            center: center,
+                            orbitRadius: orbitRadius,
+                            innerRadius: innerRadius,
+                            sphereDiameter: sphereDiameter,
                           );
 
-                          return Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // 1. Orbit Track, Guide Rays, Anchor Dots & Sun/Moon Painter
-                              CustomPaint(
-                                size: Size(w, h),
-                                painter: _TwentyFourHourOrbitPainter(
-                                  day: widget.day,
-                                  now: _now,
-                                  sky: sky,
-                                  pulseValue: _pulseController.value,
-                                  orbitRadius: orbitRadius,
-                                  resolvedNodes: resolvedNodes,
-                                ),
-                              ),
+                          return AnimatedBuilder(
+                            animation: _pulseController,
+                            builder: (context, child) {
+                              final resolvedNodes = _animateAndResolveCollisions(
+                                baseNodes: baseNodes,
+                                animValue: _pulseController.value,
+                                sphereDiameter: sphereDiameter,
+                              );
 
-                              // 2. Glassmorphic Center Hub (Diameter 210px)
-                              Container(
-                                width: 210,
-                                height: 210,
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: sky.gradient.first.withValues(alpha: 0.95),
-                                  border: Border.all(
-                                    color: sky.goldColor.withValues(alpha: 0.60),
-                                    width: 2.0,
+                              // Dynamic font scaling inside central clock hub
+                              final clockFontSize = (centerDiameter * 0.13).clamp(16.0, 28.0);
+                              final countdownFontSize = (centerDiameter * 0.062).clamp(9.5, 13.0);
+                              final shamsiFontSize = (centerDiameter * 0.065).clamp(10.0, 13.5);
+                              final hijriFontSize = (centerDiameter * 0.065).clamp(10.0, 13.5);
+                              final gregorianFontSize = (centerDiameter * 0.055).clamp(8.5, 11.5);
+                              final centerPadding = (centerDiameter * 0.05).clamp(6.0, 12.0);
+
+                              return Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // 1. Orbit Track, Guide Rays, Anchor Dots & Sun/Moon Painter
+                                  CustomPaint(
+                                    size: Size(w, h),
+                                    painter: _TwentyFourHourOrbitPainter(
+                                      day: widget.day,
+                                      now: _now,
+                                      sky: sky,
+                                      pulseValue: _pulseController.value,
+                                      orbitRadius: orbitRadius,
+                                      resolvedNodes: resolvedNodes,
+                                    ),
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.5),
-                                      blurRadius: 28,
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // Live Digital Clock (28pt)
-                                    Text(
-                                      _formatTime(_now),
-                                      style: TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 1.0,
-                                        color: sky.textColor,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
 
-                                    // Countdown text (13pt)
-                                    Text(
-                                      countdownText,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: sky.goldColor,
-                                        height: 1.15,
+                                  // 2. Glassmorphic Center Hub (Dynamic Proportional Diameter)
+                                  Container(
+                                    width: centerDiameter,
+                                    height: centerDiameter,
+                                    padding: EdgeInsets.all(centerPadding),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: sky.gradient.first.withValues(alpha: 0.95),
+                                      border: Border.all(
+                                        color: sky.goldColor.withValues(alpha: 0.60),
+                                        width: 2.0,
                                       ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.5),
+                                          blurRadius: 28,
+                                        ),
+                                      ],
                                     ),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          // Live Digital Clock
+                                          Text(
+                                            _formatTime(_now),
+                                            style: TextStyle(
+                                              fontSize: clockFontSize,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 1.0,
+                                              color: sky.textColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
 
-                                    const SizedBox(height: 5),
-                                    Divider(
-                                      height: 6,
-                                      indent: 16,
-                                      endIndent: 16,
-                                      color: sky.goldColor.withValues(alpha: 0.4),
-                                    ),
+                                          // Countdown text
+                                          Text(
+                                            countdownText,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: countdownFontSize,
+                                              fontWeight: FontWeight.bold,
+                                              color: sky.goldColor,
+                                              height: 1.15,
+                                            ),
+                                          ),
 
-                                    // Integrated Triple Date
-                                    Text(
-                                      shamsiStr,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: sky.textColor,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 1),
-                                    Text(
-                                      hijriStr,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: sky.goldColor,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 1),
-                                    Text(
-                                      gregorianStr,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: sky.textColor.withValues(alpha: 0.8),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                                          const SizedBox(height: 4),
+                                          Divider(
+                                            height: 5,
+                                            indent: 14,
+                                            endIndent: 14,
+                                            color: sky.goldColor.withValues(alpha: 0.4),
+                                          ),
 
-                              // 3. Floating Circular Spheres with Stacked Title & Time
-                              ..._buildCircularSphereWidgets(context, resolvedNodes, sky),
-                            ],
+                                          // Integrated Triple Date
+                                          Text(
+                                            shamsiStr,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: shamsiFontSize,
+                                              fontWeight: FontWeight.bold,
+                                              color: sky.textColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 1),
+                                          Text(
+                                            hijriStr,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: hijriFontSize,
+                                              fontWeight: FontWeight.bold,
+                                              color: sky.goldColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 1),
+                                          Text(
+                                            gregorianStr,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: gregorianFontSize,
+                                              fontWeight: FontWeight.w600,
+                                              color: sky.textColor.withValues(alpha: 0.8),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+
+                                  // 3. Floating Circular Spheres with Stacked Title & Time
+                                  ..._buildCircularSphereWidgets(context, resolvedNodes, sky, sphereDiameter),
+                                ],
+                              );
+                            },
                           );
                         },
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 ),
 
@@ -444,11 +473,12 @@ class _PrayerArcHeroState extends State<PrayerArcHero> with SingleTickerProvider
     );
   }
 
-  // ── Render Circular Spheres (Diameter 48px) ──
+  // ── Render Circular Spheres (Proportional Dynamic Sizing) ──
   List<Widget> _buildCircularSphereWidgets(
     BuildContext context,
     List<_ResolvedNode> resolvedNodes,
     _SkyTheme sky,
+    double circleDiameter,
   ) {
     final practiceMap = <String, WorshipPracticeState>{};
     for (final st in widget.day.practices) {
@@ -456,6 +486,11 @@ class _PrayerArcHeroState extends State<PrayerArcHero> with SingleTickerProvider
         practiceMap[st.practice.subType!.toUpperCase()] = st;
       }
     }
+
+    final titleFontSize = (circleDiameter * 0.22).clamp(9.0, 12.0);
+    final timeFontSize = (circleDiameter * 0.20).clamp(8.0, 11.0);
+    final checkIconSize = (circleDiameter * 0.26).clamp(10.0, 14.0);
+    final borderWidth = circleDiameter * 0.026;
 
     final nodes = <Widget>[];
 
@@ -467,8 +502,6 @@ class _PrayerArcHeroState extends State<PrayerArcHero> with SingleTickerProvider
 
       final rawTimeStr = '${a.time.hour.toString().padLeft(2, '0')}:${a.time.minute.toString().padLeft(2, '0')}';
       final faTimeStr = toPersianDigits(rawTimeStr);
-
-      const circleDiameter = 54.0;
 
       nodes.add(
         Positioned(
@@ -508,7 +541,7 @@ class _PrayerArcHeroState extends State<PrayerArcHero> with SingleTickerProvider
                       : isPrayer
                           ? sky.goldColor.withValues(alpha: 0.65)
                           : sky.textColor.withValues(alpha: 0.35),
-                  width: isDone ? 1.6 : 1.3,
+                  width: isDone ? borderWidth * 1.2 : borderWidth,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -525,22 +558,22 @@ class _PrayerArcHeroState extends State<PrayerArcHero> with SingleTickerProvider
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (isDone)
-                      const Icon(Icons.check_rounded, size: 14, color: Colors.black)
+                      Icon(Icons.check_rounded, size: checkIconSize, color: Colors.black)
                     else
                       Text(
                         a.titleFa,
                         style: TextStyle(
-                          fontSize: 12.0,
+                          fontSize: titleFontSize,
                           fontWeight: FontWeight.w900,
                           color: sky.textColor,
                           height: 1.05,
                         ),
                       ),
-                    const SizedBox(height: 1.5),
+                    SizedBox(height: circleDiameter * 0.025),
                     Text(
                       faTimeStr,
                       style: TextStyle(
-                        fontSize: 11.0,
+                        fontSize: timeFontSize,
                         fontWeight: FontWeight.bold,
                         color: isDone ? Colors.black87 : sky.goldColor,
                         height: 1.05,
@@ -701,6 +734,7 @@ List<_ResolvedNode> _computeBaseRelaxedNodes({
   required Offset center,
   required double orbitRadius,
   required double innerRadius,
+  required double sphereDiameter,
 }) {
   final dhuhrFrac = times.dhuhr.hour + times.dhuhr.minute / 60.0;
 
@@ -749,7 +783,7 @@ List<_ResolvedNode> _computeBaseRelaxedNodes({
     if (nodes.length <= 1) return;
     nodes.sort((a, b) => a.badgeOffset.dy.compareTo(b.badgeOffset.dy));
 
-    const minGap = 54.0; // Sphere diameter (54px)
+    final minGap = sphereDiameter;
 
     for (var pass = 0; pass < 12; pass++) {
       for (var i = 0; i < nodes.length - 1; i++) {
@@ -781,6 +815,7 @@ List<_ResolvedNode> _computeBaseRelaxedNodes({
 List<_ResolvedNode> _animateAndResolveCollisions({
   required List<_ResolvedNode> baseNodes,
   required double animValue,
+  required double sphereDiameter,
 }) {
   final t = animValue * 2 * math.pi;
   final resultNodes = <_ResolvedNode>[];
@@ -794,8 +829,9 @@ List<_ResolvedNode> _animateAndResolveCollisions({
     final phaseY1 = i * 1.33 + 0.8;
     final phaseY2 = i * 2.15 + 2.1;
 
-    final floatDx = 8.5 * (math.sin(t + phaseX1) + 0.35 * math.sin(2.1 * t + phaseX2));
-    final floatDy = 8.5 * (math.cos(0.85 * t + phaseY1) + 0.35 * math.cos(1.6 * t + phaseY2));
+    final maxAmplitude = (sphereDiameter * 0.15).clamp(4.0, 8.5);
+    final floatDx = maxAmplitude * (math.sin(t + phaseX1) + 0.35 * math.sin(2.1 * t + phaseX2));
+    final floatDy = maxAmplitude * (math.cos(0.85 * t + phaseY1) + 0.35 * math.cos(1.6 * t + phaseY2));
 
     final node = _ResolvedNode(
       anchor: base.anchor,
@@ -808,7 +844,7 @@ List<_ResolvedNode> _animateAndResolveCollisions({
   }
 
   // Elastic Sphere Collision Resolution (Bubbles / Water Balloons Bouncing Effect)
-  const sphereDiameter = 58.0; // Circle diameter 54.0px + 4.0px safety buffer
+  final collisionDist = sphereDiameter + 4.0;
   for (var pass = 0; pass < 4; pass++) {
     for (var i = 0; i < resultNodes.length; i++) {
       for (var j = i + 1; j < resultNodes.length; j++) {
@@ -816,8 +852,8 @@ List<_ResolvedNode> _animateAndResolveCollisions({
         final n2 = resultNodes[j];
         final diff = n1.animatedOffset - n2.animatedOffset;
         final dist = diff.distance;
-        if (dist < sphereDiameter && dist > 0.001) {
-          final overlap = (sphereDiameter - dist) / 2.0;
+        if (dist < collisionDist && dist > 0.001) {
+          final overlap = (collisionDist - dist) / 2.0;
           final unit = diff / dist;
           n1.animatedOffset += unit * overlap;
           n2.animatedOffset -= unit * overlap;

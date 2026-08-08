@@ -1,24 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 
-/// لایه نگاشت تم تم‌های متفرقه ورزش تکمیلی به توکن‌های مرکزی Ritmo
+/// لایه نگاشت تم تکمیلی ورزش و حرکت به توکن‌های مرکزی Ritmo
 class SupplementarySportsTheme {
-  static const Color bgLight = Color(0xFFFAFAF8);
-  static const Color bgDark = Color(0xFF121212);
-  static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color surfaceDark = Color(0xFF1E1E1E);
-  static const Color textPrimaryLight = Color(0xFF1A1A1A);
-  static const Color textPrimaryDark = Color(0xFFF0F0F0);
-
   const SupplementarySportsTheme({
-    this.bg = bgDark,
-    this.card = surfaceDark,
-    this.textPrimary = textPrimaryDark,
-    this.textSecondary = textSecondaryDark,
-    this.emeraldPrimary = const Color(0xFF10B981),
-    this.surfaceVariant = const Color(0xFF262626),
-    this.surfaceBackground = const Color(0xFF171717),
-    this.cardBorder = const Color(0xFF404040),
+    required this.bg,
+    required this.card,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.emeraldPrimary,
+    required this.surfaceVariant,
+    required this.surfaceBackground,
+    required this.cardBorder,
   });
 
   final Color bg;
@@ -30,19 +23,33 @@ class SupplementarySportsTheme {
   final Color surfaceBackground;
   final Color cardBorder;
 
-  static const dark = SupplementarySportsTheme();
+  /// Dynamic constructor from BuildContext using central RitmoTheme tokens
+  factory SupplementarySportsTheme.of(BuildContext context) {
+    final colors = context.colors;
+    final isDark = context.isDark;
+    return SupplementarySportsTheme(
+      bg: colors.background,
+      card: colors.surface,
+      textPrimary: colors.textPrimary,
+      textSecondary: colors.textSecondary,
+      emeraldPrimary: context.modules.sports,
+      surfaceVariant: colors.surfaceElevated,
+      surfaceBackground: colors.background,
+      cardBorder: colors.textPrimary.withValues(alpha: isDark ? 0.12 : 0.08),
+    );
+  }
 
-  static const Color textSecondaryLight = Color(0xFF6B6B6B);
-  static const Color textSecondaryDark = Color(0xFFA0A0A0);
-
-  static const Color successLight = Color(0xFF2E7D5B);
-  static const Color successDark = Color(0xFF4CAF7D);
-
-  static const Color warningLight = Color(0xFFC9822A);
-  static const Color warningDark = Color(0xFFE0A75E);
-
-  static const Color dangerLight = Color(0xFFC0392B);
-  static const Color dangerDark = Color(0xFFE06C5C);
+  /// Default fallback instance
+  static const dark = SupplementarySportsTheme(
+    bg: Color(0xFF121212),
+    card: Color(0xFF1E1E1E),
+    textPrimary: Color(0xFFF0F0F0),
+    textSecondary: Color(0xFFA0A0A0),
+    emeraldPrimary: Color(0xFF10B981),
+    surfaceVariant: Color(0xFF262626),
+    surfaceBackground: Color(0xFF171717),
+    cardBorder: Color(0xFF404040),
+  );
 
   // Dynamic getters mapped to Ritmo central tokens
   static Color getBackgroundColor(BuildContext context) => context.colors.background;

@@ -1,5 +1,6 @@
 import 'package:ritmo/core/ai/ai_context_builder.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/domain/commands/ritmo_command.dart';
 
 class RagResult {   // فقط aggregate
   const RagResult({this.blocked = false, this.blockReason, this.blockMessage, this.data = const {}});
@@ -26,7 +27,7 @@ class ConversationRAG {
     final hasCycleKeyword = cycleKeywords.any(normalized.contains);
     final hasMedicalKeyword = medicalKeywords.any(normalized.contains);
 
-    if (hasCycleKeyword && consent.cycleConsentChat != true) {
+    if (hasCycleKeyword && !consent.readableDomains.contains(DataDomain.cycle)) {
       return const RagResult(
         blocked: true,
         blockReason: 'cycle_no_consent',
@@ -34,7 +35,7 @@ class ConversationRAG {
       );
     }
 
-    if (hasMedicalKeyword) {
+    if (hasMedicalKeyword && !consent.readableDomains.contains(DataDomain.medical)) {
       return const RagResult(
         blocked: true,
         blockReason: 'medical',
@@ -56,25 +57,25 @@ class ConversationRAG {
     final hasGoals = ['هدف', 'اهداف', 'پیشرفت', 'گام'].any(normalized.contains);
     final hasReflection = ['تأمل', 'بازتاب', 'خودارزیاب', 'روزنگار'].any(normalized.contains);
 
-    if (hasFitness) {
+    if (hasFitness && consent.readableDomains.contains(DataDomain.sports)) {
       retrievedData['fitness'] = await _fetchRoutineStats('fitness', dateLimit);
     }
-    if (hasStudy) {
+    if (hasStudy && (consent.readableDomains.contains(DataDomain.courses) || consent.readableDomains.contains(DataDomain.konkur))) {
       retrievedData['study'] = await _fetchStudyStats(dateLimit);
     }
-    if (hasPrayer) {
+    if (hasPrayer && consent.readableDomains.contains(DataDomain.worship)) {
       retrievedData['worship'] = await _fetchWorshipStats();
     }
-    if (hasSleep) {
+    if (hasSleep && consent.readableDomains.contains(DataDomain.sleep)) {
       retrievedData['sleep'] = await _fetchSleepStats(timestampLimit);
     }
-    if (hasEnergy) {
+    if (hasEnergy && consent.readableDomains.contains(DataDomain.energy)) {
       retrievedData['energy'] = await _fetchEnergyStats(timestampLimit);
     }
-    if (hasGoals) {
+    if (hasGoals && consent.readableDomains.contains(DataDomain.goals)) {
       retrievedData['goals'] = await _fetchGoalStats();
     }
-    if (hasReflection) {
+    if (hasReflection && consent.readableDomains.contains(DataDomain.reflection)) {
       retrievedData['reflection'] = await _fetchReflectionStats(timestampLimit);
     }
 

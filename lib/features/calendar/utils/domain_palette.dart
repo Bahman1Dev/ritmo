@@ -1,8 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
-import 'package:ritmo/core/theme/ritmo_colors.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
-import 'package:ritmo/core/theme/ritmo_palette.dart';
 
 Color domainColor(BuildContext context, AgendaDomain domain) {
   final modules = context.modules;
@@ -25,6 +24,8 @@ Color domainColor(BuildContext context, AgendaDomain domain) {
       return modules.byModuleId('sports');
     case AgendaDomain.event:
       return modules.byModuleId('planner');
+    case AgendaDomain.task:
+      return context.colors.primary;
   }
 }
 
@@ -59,6 +60,8 @@ IconData domainIcon(AgendaDomain domain) {
       return Icons.medication_rounded;
     case AgendaDomain.event:
       return Icons.event_rounded;
+    case AgendaDomain.task:
+      return CupertinoIcons.checkmark_square;
   }
 }
 
@@ -86,5 +89,7 @@ String domainLabelFa(AgendaDomain domain) {
       return 'دارو';
     case AgendaDomain.event:
       return 'رویداد';
+    case AgendaDomain.task:
+      return 'کار';
   }
 }

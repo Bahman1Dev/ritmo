@@ -84,7 +84,7 @@ class AIGateway {
   static const String defaultModel =
       String.fromEnvironment('AI_MODEL', defaultValue: 'deepseek-v4-flash-free');
   static const int defaultTimeoutMs =
-      int.fromEnvironment('AI_TIMEOUT', defaultValue: 60000);
+      int.fromEnvironment('AI_TIMEOUT', defaultValue: 120000);
 
   // Secondary credentials used as automatic failover when the primary key
   // hits a rate limit (429) or exhausts its daily quota (Cloudflare 4006).
@@ -582,8 +582,8 @@ class AIGateway {
         request.headers.addAll(headers);
         request.body = jsonEncode(requestBody);
 
-        // Cap initial connection timeout to 15s to failover quickly if blocked
-        final connectTimeout = math.min(config.timeoutMs, 15000);
+        // Give connection attempts generous timeout (120s+) so slow VPN/proxies do not cut off early
+        final connectTimeout = math.max(config.timeoutMs, 120000);
         final response = await client
             .send(request)
             .timeout(Duration(milliseconds: connectTimeout));
@@ -599,7 +599,10 @@ class AIGateway {
 
         final quota = errorBody.contains('4006') ||
             errorBody.contains('daily free allocation');
-        errorTag = quota ? 'quota_exceeded' : 'HTTP Error ${response.statusCode}';
+        final cleanBody = errorBody.trim();
+        errorTag = quota 
+            ? 'quota_exceeded' 
+            : 'HTTP Error ${response.statusCode}${cleanBody.isNotEmpty ? ': $cleanBody' : ''}';
 
         if (!isLastConfig) {
           debugPrint(

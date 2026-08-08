@@ -76,7 +76,7 @@ class PostponeRail extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            color: colors.elevated.withValues(alpha: 0.95),
+            color: colors.surfaceElevated.withValues(alpha: 0.95),
             borderRadius: const BorderRadius.horizontal(right: Radius.circular(16.0)),
             border: Border.all(color: colors.border),
             boxShadow: [

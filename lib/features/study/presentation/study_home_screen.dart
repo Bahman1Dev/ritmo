@@ -37,40 +37,49 @@ class _StudyHomeScreenState extends State<StudyHomeScreen> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    final settings = await StudySettingsRepository.instance.load();
-    final isKonkur = settings.konkurMode;
-    final subjects = await StudyRepository.instance.getSubjects(isKonkurMode: isKonkur);
-    final topics = await StudyRepository.instance.getTopics(isKonkurMode: isKonkur);
+    try {
+      final settings = await StudySettingsRepository.instance.load();
+      final isKonkur = settings.konkurMode;
+      final subjects = await StudyRepository.instance.getSubjects(isKonkurMode: isKonkur);
+      final topics = await StudyRepository.instance.getTopics(isKonkurMode: isKonkur);
 
-    final todayIso = DateTime.now().toIso8601String().substring(0, 10);
-    final todaySessions = await StudyRepository.instance.getSessions(dateIso: todayIso);
-    final allSessions = await StudyRepository.instance.getSessions(limit: 500);
+      final todayIso = DateTime.now().toIso8601String().substring(0, 10);
+      final todaySessions = await StudyRepository.instance.getSessions(dateIso: todayIso);
+      final allSessions = await StudyRepository.instance.getSessions(limit: 500);
 
-    final stats = await StudyRepository.instance.getAggregatedSubjectStats();
+      final stats = await StudyRepository.instance.getAggregatedSubjectStats();
 
-    final recs = StudyPlanner.evaluate(
-      subjects: subjects,
-      topics: topics,
-      todaySessions: todaySessions,
-      today: DateTime.now(),
-      dailyCapacityMinutes: settings.dailyTargetMinutes,
-    );
+      final recs = StudyPlanner.evaluate(
+        subjects: subjects,
+        topics: topics,
+        todaySessions: todaySessions,
+        today: DateTime.now(),
+        dailyCapacityMinutes: settings.dailyTargetMinutes,
+      );
 
-    final heatmapData = <String, int>{};
-    for (final s in allSessions) {
-      heatmapData[s.dateIso] = (heatmapData[s.dateIso] ?? 0) + s.durationMinutes;
-    }
+      final heatmapData = <String, int>{};
+      for (final s in allSessions) {
+        heatmapData[s.dateIso] = (heatmapData[s.dateIso] ?? 0) + s.durationMinutes;
+      }
 
-    if (mounted) {
-      setState(() {
-        _settings = settings;
-        _subjects = subjects;
-        _todaySessions = todaySessions;
-        _subjectStats = stats;
-        _weeklyHeatmapData = heatmapData;
-        _topRecommendation = recs.isNotEmpty ? recs.first : null;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _settings = settings;
+          _subjects = subjects;
+          _todaySessions = todaySessions;
+          _subjectStats = stats;
+          _weeklyHeatmapData = heatmapData;
+          _topRecommendation = recs.isNotEmpty ? recs.first : null;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('[StudyHomeScreen] Error loading study data: $e\n$st');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

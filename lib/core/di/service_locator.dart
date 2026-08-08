@@ -22,6 +22,8 @@ import 'package:ritmo/core/behavior/behavioral_intelligence_orchestrator.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/commands/commands_registry.dart';
+import 'package:ritmo/core/domain/commands/ritmo_command_bus.dart';
+import 'package:ritmo/core/domain/personas/persona_registry.dart';
 import 'package:ritmo/core/domain/engines/cycle_engine.dart';
 import 'package:ritmo/core/domain/engines/medical_engine.dart';
 import 'package:ritmo/core/domain/engines/ritmo_engine_bus.dart';
@@ -57,6 +59,11 @@ class AppBootstrapper {
 
     // 1. Initialize Event Bus and Engine Bus
     registerAllRitmoCommands();
+    assert(RitmoCommandBus.instance.registeredCommandIds.isNotEmpty,
+        'فرمان‌ها قبل از پرسوناها باید ثبت شوند');
+    PersonaRegistry.instance.initStandardPersonas();
+    assert(PersonaRegistry.instance.getPersona('global')!.commandIds.isNotEmpty,
+        'پرسونای سراسری خالی است — ترتیب راه‌اندازی خراب است');
     final eventBus = RitmoEventBus();
     sl.registerSingleton<RitmoEventBus>(eventBus);
 

@@ -23,6 +23,7 @@ class DirectManipulationEligibility {
       case AgendaDomain.sport:
       case AgendaDomain.goalStep:
       case AgendaDomain.konkur:
+      case AgendaDomain.task:
         return true;
       case AgendaDomain.mustahab:
         return item.itemType == AgendaItemType.flexible || item.itemType == AgendaItemType.floating;

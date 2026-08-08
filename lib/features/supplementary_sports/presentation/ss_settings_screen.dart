@@ -41,6 +41,7 @@ class _SSSettingsScreenState extends State<SSSettingsScreen> {
   bool _audioCuesEnabled = true;
   int _defaultRestSeconds = 90;
   bool _unitsMetric = true;
+  bool _detailMode = false;
 
   @override
   void initState() {
@@ -80,6 +81,16 @@ class _SSSettingsScreenState extends State<SSSettingsScreen> {
         _unitsMetric = metric;
         _isLoading = false;
       });
+
+      // Load detail mode from app_settings
+      try {
+        final dmRows = await db.query('app_settings', where: 'key = ?', whereArgs: ['sports_detail_mode']);
+        if (dmRows.isNotEmpty) {
+          setState(() {
+            _detailMode = dmRows.first['value'] == 'true';
+          });
+        }
+      } catch (_) {}
     } catch (e) {
       debugPrint('Error loading settings: $e');
       setState(() {
@@ -400,9 +411,11 @@ class _SSSettingsScreenState extends State<SSSettingsScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final colors = context.colors;
+
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAF8),
+        backgroundColor: colors.background,
         body: Center(child: SSLottiePlayer.loading(size: 100)),
       );
     }
@@ -525,6 +538,40 @@ class _SSSettingsScreenState extends State<SSSettingsScreen> {
                     ),
                   ],
                 ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: SupplementarySportsTheme.spacing32),
+
+        // Section: Program Settings (new v82)
+        _buildSectionTitle('تنظیمات برنامه'),
+        const SizedBox(height: SupplementarySportsTheme.spacing12),
+        _buildGlassCard(
+          isDark: isDark,
+          child: Column(
+            children: [
+              SwitchListTile(
+                title: const Text('حالت جزئی (ست / تکرار)', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.w500)),
+                subtitle: Text(
+                  _detailMode
+                    ? 'برنامه ورزشی با تعداد ست و تکرار نمایش داده می‌شود'
+                    : 'برنامه ورزشی با مدت زمان و عضلات هدف نمایش داده می‌شود',
+                  style: TextStyle(fontFamily: 'Vazirmatn', color: SupplementarySportsTheme.getTextSecondary(context)),
+                ),
+                value: _detailMode,
+                activeThumbColor: const Color(0xFF2E7D5B),
+                onChanged: (val) async {
+                  setState(() => _detailMode = val);
+                  try {
+                    final db = await DatabaseHelper.instance.database;
+                    await db.insert(
+                      'app_settings',
+                      {'key': 'sports_detail_mode', 'value': val ? 'true' : 'false', 'updatedAt': DateTime.now().millisecondsSinceEpoch},
+                      conflictAlgorithm: ConflictAlgorithm.replace,
+                    );
+                  } catch (_) {}
+                },
               ),
             ],
           ),
@@ -668,9 +715,10 @@ class _SSSettingsScreenState extends State<SSSettingsScreen> {
     }
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAF8),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('تنظیمات ورزش و حرکت', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold)),
+        backgroundColor: colors.surface,
+        title: Text('تنظیمات ورزش و حرکت', style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold, color: colors.textPrimary)),
         centerTitle: true,
       ),
       body: Directionality(

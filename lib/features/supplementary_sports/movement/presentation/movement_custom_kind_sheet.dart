@@ -41,7 +41,7 @@ class _MovementCustomKindSheetState extends State<MovementCustomKindSheet> {
   bool _isOutdoor = false;
   bool _isSocial = false;
   bool _needsVenue = false;
-  int _jointImpact = 1; // 0: low, 1: medium, 2: high
+  final int _jointImpact = 1; // 0: low, 1: medium, 2: high
 
   bool _isSaving = false;
   MovementKind? _similarFound;

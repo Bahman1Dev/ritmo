@@ -226,6 +226,18 @@ class SimpleTaskRepository {
     );
   }
 
+  /// Returns a single task by ID, or null if not found.
+  Future<SimpleTask?> getById(String id) async {
+    try {
+      final db = await _db;
+      final rows = await db.query('simple_tasks', where: 'id = ?', whereArgs: [id], limit: 1);
+      if (rows.isEmpty) return null;
+      return SimpleTask.fromMap(rows.first);
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Save a pending reminder for a task
   Future<void> addPendingReminder({
     required String reminderId,

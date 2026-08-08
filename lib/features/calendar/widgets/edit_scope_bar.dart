@@ -63,7 +63,7 @@ class _EditScopeBarState extends State<EditScopeBar> {
         margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         padding: const EdgeInsets.symmetric(horizontal: 12.0),
         decoration: BoxDecoration(
-          color: colors.elevated,
+          color: colors.surfaceElevated,
           borderRadius: BorderRadius.circular(22.0),
           border: Border.all(color: colors.border),
           boxShadow: [

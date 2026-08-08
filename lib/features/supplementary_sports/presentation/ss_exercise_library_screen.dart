@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/ss_lottie_player.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -448,15 +449,16 @@ class _SSExerciseLibraryScreenState extends State<SSExerciseLibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
+    final isDark = context.isDark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAF8),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0.5,
         leading: BackButton(
-          color: isDark ? Colors.white : Colors.black87,
+          color: colors.textPrimary,
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -465,7 +467,7 @@ class _SSExerciseLibraryScreenState extends State<SSExerciseLibraryScreen> {
             fontFamily: 'Vazirmatn',
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
+            color: colors.textPrimary,
           ),
         ),
         centerTitle: true,
@@ -476,13 +478,13 @@ class _SSExerciseLibraryScreenState extends State<SSExerciseLibraryScreen> {
           children: [
             // Search Bar Card
             Container(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              color: colors.surface,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFF3F4F6),
+                      color: colors.surfaceElevated,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 12),

@@ -28,6 +28,10 @@ class SsUserProfile {
     this.neighborFriendly = false,
     this.programStartDate,
     this.deloadEveryNWeeks = 4,
+    this.trainingDays = const [],
+    this.splitPattern = 'AUTO',
+    this.defaultIntensity = 'MODERATE',
+    this.usesExternalApp = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -60,6 +64,25 @@ class SsUserProfile {
         .whereType<Limitation>()
         .toList();
 
+    // Parse trainingDays
+    final trainingDaysRaw = map['trainingDays'];
+    List<int> trDays = [];
+    if (trainingDaysRaw is String && trainingDaysRaw.isNotEmpty) {
+      try {
+        trDays = List<int>.from(jsonDecode(trainingDaysRaw) as List);
+      } catch (_) {}
+    }
+    if (trDays.isEmpty) {
+      final daysCount = map['daysPerWeek'] as int? ?? 3;
+      if (daysCount == 1) trDays.addAll([6]);
+      else if (daysCount == 2) trDays.addAll([6, 2]);
+      else if (daysCount == 3) trDays.addAll([6, 1, 3]);
+      else if (daysCount == 4) trDays.addAll([6, 1, 3, 4]);
+      else if (daysCount == 5) trDays.addAll([6, 1, 2, 3, 4]);
+      else if (daysCount == 6) trDays.addAll([6, 7, 1, 2, 3, 4]);
+      else trDays.addAll([6, 7, 1, 2, 3, 4, 5]);
+    }
+
     return SsUserProfile(
       id: map['id']?.toString() ?? 'default',
       goal: _stringToGoal(map['goal']?.toString()) ?? FitnessGoal.bodyRecomposition,
@@ -76,6 +99,10 @@ class SsUserProfile {
       neighborFriendly: (map['neighborFriendly'] as int? ?? 0) == 1,
       programStartDate: map['programStartDate']?.toString(),
       deloadEveryNWeeks: map['deloadEveryNWeeks'] as int? ?? 4,
+      trainingDays: trDays,
+      splitPattern: map['splitPattern']?.toString() ?? 'AUTO',
+      defaultIntensity: map['defaultIntensity']?.toString() ?? 'MODERATE',
+      usesExternalApp: (map['usesExternalApp'] as int? ?? 0) == 1,
       createdAt: map['createdAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
       updatedAt: map['updatedAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
     );
@@ -95,6 +122,10 @@ class SsUserProfile {
   final bool neighborFriendly;
   final String? programStartDate;
   final int deloadEveryNWeeks;
+  final List<int> trainingDays;
+  final String splitPattern;
+  final String defaultIntensity;
+  final bool usesExternalApp;
   final int createdAt;
   final int updatedAt;
 
@@ -114,6 +145,10 @@ class SsUserProfile {
     bool? neighborFriendly,
     String? programStartDate,
     int? deloadEveryNWeeks,
+    List<int>? trainingDays,
+    String? splitPattern,
+    String? defaultIntensity,
+    bool? usesExternalApp,
     int? createdAt,
     int? updatedAt,
   }) {
@@ -133,6 +168,10 @@ class SsUserProfile {
       neighborFriendly: neighborFriendly ?? this.neighborFriendly,
       programStartDate: programStartDate ?? this.programStartDate,
       deloadEveryNWeeks: deloadEveryNWeeks ?? this.deloadEveryNWeeks,
+      trainingDays: trainingDays ?? this.trainingDays,
+      splitPattern: splitPattern ?? this.splitPattern,
+      defaultIntensity: defaultIntensity ?? this.defaultIntensity,
+      usesExternalApp: usesExternalApp ?? this.usesExternalApp,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -155,6 +194,10 @@ class SsUserProfile {
       'neighborFriendly': neighborFriendly ? 1 : 0,
       'programStartDate': programStartDate,
       'deloadEveryNWeeks': deloadEveryNWeeks,
+      'trainingDays': jsonEncode(trainingDays),
+      'splitPattern': splitPattern,
+      'defaultIntensity': defaultIntensity,
+      'usesExternalApp': usesExternalApp ? 1 : 0,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };

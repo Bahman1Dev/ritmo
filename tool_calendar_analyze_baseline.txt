@@ -1,17 +1,25 @@
 Analyzing calendar...
 
-  error - presentation\journey_screen.dart:388:39 - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'. - unawaited_futures
-  error - presentation\widgets\domain_selection_sheet.dart:177:21 - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'. - unawaited_futures
-warning - presentation\journey_screen.dart:16:8 - Unused import: 'package:ritmo/features/calendar/presentation/utils/calendar_motion.dart'. Try removing the import directive. - unused_import
-warning - presentation\journey_screen.dart:19:8 - Unused import: 'package:ritmo/features/calendar/presentation/widgets/domain_selection_sheet.dart'. Try removing the import directive. - unused_import
-warning - presentation\journey_screen.dart:233:11 - The value of the local variable 'colorScheme' isn't used. Try removing the variable or using it. - unused_local_variable
-   info - presentation\journey_screen.dart:386:83 - Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation. - prefer_const_constructors
-   info - presentation\models\now_pill_view_model.dart:77:93 - Unnecessary use of a null check ('!'). Try removing the null check. - unnecessary_null_checks
-   info - presentation\models\now_pill_view_model.dart:97:84 - Unnecessary use of a null check ('!'). Try removing the null check. - unnecessary_null_checks
-   info - presentation\widgets\calendar_search_delegate.dart:133:77 - Unnecessary use of a null check ('!'). Try removing the null check. - unnecessary_null_checks
-   info - presentation\widgets\journey_suggestions_section.dart:202:82 - Unnecessary use of a null check ('!'). Try removing the null check. - unnecessary_null_checks
-   info - presentation\widgets\timeline_grid.dart:504:34 - Unnecessary use of multiple underscores. Try using '_'. - unnecessary_underscores
-   info - presentation\widgets\timeline_overflow_card.dart:53:43 - Unnecessary use of multiple underscores. Try using '_'. - unnecessary_underscores
-   info - presentation\widgets\timeline_overflow_card.dart:75:63 - Unnecessary use of a null check ('!'). Try removing the null check. - unnecessary_null_checks
+warning - Unused import: 'package:ritmo/features/calendar/presentation/utils/calendar_motion.dart' - lib\features\calendar\presentation\journey_screen.dart:16:8 - unused_import
+warning - Unused import: 'package:ritmo/features/calendar/presentation/widgets/domain_selection_sheet.dart' - lib\features\calendar\presentation\journey_screen.dart:19:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\features\calendar\presentation\journey_screen.dart:386:83 - prefer_const_constructors
+warning - Unused import: 'package:ritmo/features/calendar/logic/timeline_snapping.dart' - lib\features\calendar\presentation\logic\direct_manipulation_eligibility.dart:2:8 - unused_import
+   info - Unnecessary use of a null check ('!') - lib\features\calendar\presentation\models\now_pill_view_model.dart:77:93 - unnecessary_null_checks
+   info - Unnecessary use of a null check ('!') - lib\features\calendar\presentation\models\now_pill_view_model.dart:97:84 - unnecessary_null_checks
+   info - Unnecessary use of a null check ('!') - lib\features\calendar\presentation\widgets\calendar_search_delegate.dart:124:77 - unnecessary_null_checks
+warning - Unused import: 'package:ritmo/features/calendar/utils/domain_palette.dart' - lib\features\calendar\presentation\widgets\domain_selection_sheet.dart:7:8 - unused_import
+warning - Unused import: 'package:ritmo/core/theme/ritmo_colors.dart' - lib\features\calendar\presentation\widgets\journey_month_view.dart:4:8 - unused_import
+   info - Unnecessary use of a null check ('!') - lib\features\calendar\presentation\widgets\journey_suggestions_section.dart:202:82 - unnecessary_null_checks
+warning - Unused import: 'package:ritmo/core/theme/ritmo_colors.dart' - lib\features\calendar\presentation\widgets\journey_week_view.dart:4:8 - unused_import
+warning - Unused import: 'package:ritmo/core/theme/ritmo_colors.dart' - lib\features\calendar\presentation\widgets\timeline_grid.dart:5:8 - unused_import
+   info - Unnecessary use of multiple underscores - lib\features\calendar\presentation\widgets\timeline_grid.dart:506:34 - unnecessary_underscores
+warning - Unused import: 'package:ritmo/core/domain/agenda/agenda_item.dart' - lib\features\calendar\presentation\widgets\timeline_item_card.dart:2:8 - unused_import
+   info - The import of 'package:ritmo/core/theme/ritmo_colors.dart' is unnecessary - lib\features\calendar\presentation\widgets\timeline_item_card.dart:3:8 - unnecessary_import
+   info - Unnecessary use of multiple underscores - lib\features\calendar\presentation\widgets\timeline_overflow_card.dart:53:43 - unnecessary_underscores
+   info - Unnecessary use of a null check ('!') - lib\features\calendar\presentation\widgets\timeline_overflow_card.dart:75:63 - unnecessary_null_checks
+warning - Unused import: 'package:ritmo/core/theme/ritmo_colors.dart' - lib\features\calendar\utils\domain_palette.dart:3:8 - unused_import
+warning - Unused import: 'package:ritmo/core/theme/ritmo_palette.dart' - lib\features\calendar\utils\domain_palette.dart:5:8 - unused_import
+   info - Unnecessary use of multiple underscores - lib\features\calendar\widgets\day_review_sheet.dart:117:41 - unnecessary_underscores
+   info - Use 'const' for final variables initialized to a constant value - lib\features\calendar\widgets\postpone_rail.dart:28:5 - prefer_const_declarations
 
-13 issues found.
+21 issues found.

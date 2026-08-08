@@ -13,10 +13,13 @@ import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
 import 'package:ritmo/features/courses/logic/course_scheduler.dart';
 import 'package:ritmo/core/domain/agenda/occurrence_override_repository.dart';
+import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/features/calendar/utils/calendar_defaults.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
-enum JourneyScale { day, week, month, year }
+/// Calendar view scale. `agenda` is the primary view ("what's next?").
+/// `week` and `year` are overflow-menu-only — shown in the ⋯ button.
+enum JourneyScale { agenda, day, week, month, year }
 
 class JourneyController extends ChangeNotifier {
   JourneyController({
@@ -42,7 +45,7 @@ class JourneyController extends ChangeNotifier {
 
   bool _isDisposed = false;
   DateTime _selectedDate = DateTime.now();
-  JourneyScale _activeScale = JourneyScale.day;
+  JourneyScale _activeScale = JourneyScale.agenda; // overridden by loadDefaultScale()
   bool _isLoading = false;
   bool _isExecutingAction = false;
   DayAgendaSnapshot? _snapshot;
@@ -115,6 +118,10 @@ class JourneyController extends ChangeNotifier {
   void navigatePeriod(int offset) {
     if (_isDisposed) return;
     switch (_activeScale) {
+      case JourneyScale.agenda:
+        // Agenda navigates in 7-day blocks (same as week)
+        _selectedDate = _selectedDate.add(Duration(days: 7 * offset));
+        break;
       case JourneyScale.day:
         _selectedDate = _selectedDate.add(Duration(days: offset));
         break;
@@ -137,6 +144,13 @@ class JourneyController extends ChangeNotifier {
 
   Future<void> loadForActiveScale({bool isBackgroundRefresh = false}) async {
     if (_isDisposed) return;
+
+    // K21: Agenda scale uses its own dedicated range loader
+    if (_activeScale == JourneyScale.agenda) {
+      await loadAgendaRange();
+      return;
+    }
+
     if (!isBackgroundRefresh && _snapshot == null) {
       _isLoading = true;
     }
@@ -345,6 +359,84 @@ class JourneyController extends ChangeNotifier {
     selectDate(date);
   }
 
+  /// K22 — Reads `calendar_default_scale` from app_settings and applies it.
+  /// EXCEPTION: if the caller sets scaleToSet on selectDate (e.g. via initialItemId
+  /// or a push notification), that takes priority and this method must NOT override it.
+  /// This comment is intentional — do not remove without reading 067.md §K22.
+  Future<void> loadDefaultScale() async {
+    if (_isDisposed) return;
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final rows = await db.query(
+        'app_settings',
+        where: 'key = ?',
+        whereArgs: ['calendar_default_scale'],
+        limit: 1,
+      );
+      if (rows.isNotEmpty) {
+        final val = rows.first['value']?.toString() ?? 'agenda';
+        final scale = _scaleFromString(val);
+        if (!_isDisposed) {
+          _activeScale = scale;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('[JourneyController] loadDefaultScale error: $e');
+    }
+  }
+
+  static JourneyScale _scaleFromString(String val) {
+    switch (val) {
+      case 'agenda': return JourneyScale.agenda;
+      case 'day':    return JourneyScale.day;
+      case 'week':   return JourneyScale.week;
+      case 'month':  return JourneyScale.month;
+      case 'year':   return JourneyScale.year;
+      default:       return JourneyScale.agenda;
+    }
+  }
+
+  /// K21 — Loads a date range for the Agenda scale.
+  ///
+  /// Performance target: < 250ms for the initial load.
+  /// Uses a single agendaForRange call — NOT one query per day.
+  /// Must start with if (_isDisposed) return; — guaranteed by spec (067.md §K21).
+  Future<void> loadAgendaRange({int daysBack = 14, int daysForward = 45}) async {
+    if (_isDisposed) return;
+    if (_snapshot == null) {
+      _isLoading = true;
+      notifyListeners();
+    }
+
+    try {
+      final sw = Stopwatch()..start();
+      final today = DateTime.now();
+      final start = today.subtract(Duration(days: daysBack));
+      final end = today.add(Duration(days: daysForward));
+
+      // Single range call — never N-per-day calls
+      final daysMap = await _agendaService.agendaForRange(start, end);
+      if (_isDisposed) return;
+
+      final newSnapshots = <String, DayAgendaSnapshot>{};
+      for (final entry in daysMap.entries) {
+        newSnapshots[entry.key] = _snapshotBuilder.buildSnapshot(entry.value);
+      }
+      _rangeSnapshots = newSnapshots;
+      sw.stop();
+      debugPrint('[JourneyController] loadAgendaRange: ${sw.elapsedMilliseconds}ms');
+    } catch (e, st) {
+      if (_isDisposed) return;
+      debugPrint('[JourneyController] loadAgendaRange error: $e\n$st');
+    } finally {
+      if (!_isDisposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
   Future<void> refresh() async {
     await loadForActiveScale(isBackgroundRefresh: true);
   }
@@ -377,6 +469,9 @@ class JourneyController extends ChangeNotifier {
     final dateOnly = DateTime(date.year, date.month, date.day);
     final j = Jalali.fromDateTime(dateOnly);
     switch (scale) {
+      case JourneyScale.agenda:
+        // Agenda loads a 60-day forward window from selected date
+        return (start: dateOnly, end: dateOnly.add(const Duration(days: 59)));
       case JourneyScale.day:
         return (start: dateOnly, end: dateOnly);
       case JourneyScale.week:

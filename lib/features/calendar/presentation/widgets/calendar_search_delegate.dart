@@ -1,14 +1,18 @@
-// lib/features/calendar/presentation/widgets/calendar_search_delegate.dart
-
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/action_router.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
+import 'package:ritmo/core/domain/models.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
-import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
-import 'package:ritmo/features/registry/domain/registry_entry.dart';
-
 import 'package:ritmo/core/utils/persian_text.dart';
+import 'package:ritmo/features/calendar/data/calendar_search_repository.dart';
+import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
+import 'package:ritmo/features/calendar/utils/domain_palette.dart';
+import 'package:ritmo/features/registry/domain/registry_entry.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 
+/// K36 + K37 — Global Calendar Search Delegate
+/// Grouped into: "امروز", "این هفته", "سایر تاریخ‌ها"
+/// Searches across current day items + global database via CalendarSearchRepository.
 class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
   CalendarSearchDelegate({
     required this.items,
@@ -21,7 +25,7 @@ class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
   final ValueChanged<AgendaItem>? onItemSelected;
 
   @override
-  String get searchFieldLabel => 'جستجوی رویدادها و برنامه‌ها...';
+  String get searchFieldLabel => 'جستجوی سراسری رویدادها و کاره…';
 
   @override
   List<Widget>? buildActions(BuildContext context) {
@@ -48,18 +52,72 @@ class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
 
   @override
   Widget buildResults(BuildContext context) {
-    return _buildList(context);
+    return _buildAsyncSearchList(context);
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    return _buildList(context);
+    return _buildAsyncSearchList(context);
   }
 
-  Widget _buildList(BuildContext context) {
-    final theme = Theme.of(context);
-    final q = normalizeFa(query);
+  Widget _buildAsyncSearchList(BuildContext context) {
+    final q = normalizeFa(query.trim());
 
+    if (q.isEmpty) {
+      return _buildTodayList(context, q);
+    }
+
+    return FutureBuilder<List<CalendarSearchHit>>(
+      future: CalendarSearchRepository.instance.search(query),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator.adaptive());
+        }
+
+        final hits = snapshot.data ?? [];
+        if (hits.isEmpty) {
+          return const Directionality(
+            textDirection: TextDirection.rtl,
+            child: Center(
+              child: Text(
+                'هیچ نتیجه‌ای یافت نشد.',
+                style: TextStyle(fontFamily: 'Vazirmatn'),
+              ),
+            ),
+          );
+        }
+
+        final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+        final todayHits = hits.where((h) => h.dateStr == todayStr).toList();
+        final otherHits = hits.where((h) => h.dateStr != todayStr).toList();
+
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: ListView(
+            padding: const EdgeInsets.all(CalendarTokens.spacingM),
+            children: [
+              if (todayHits.isNotEmpty) ...[
+                _SearchSectionHeader(
+                  title: 'امروز (${toPersianDigits(todayHits.length)})',
+                ),
+                ...todayHits.map((h) => _HitTile(hit: h, onSelected: close)),
+                const SizedBox(height: 12),
+              ],
+              if (otherHits.isNotEmpty) ...[
+                _SearchSectionHeader(
+                  title: 'سایر تاریخ‌ها (${toPersianDigits(otherHits.length)})',
+                ),
+                ...otherHits.map((h) => _HitTile(hit: h, onSelected: close)),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTodayList(BuildContext context, String q) {
+    final theme = Theme.of(context);
     final todayResults = q.isEmpty
         ? items
         : items
@@ -68,109 +126,91 @@ class CalendarSearchDelegate extends SearchDelegate<AgendaItem?> {
                 (i.subtitle != null && normalizeFa(i.subtitle!).contains(q)))
             .toList();
 
-    final allRegistryResults = q.isEmpty
-        ? registryEntries
-        : registryEntries
-            .where((r) =>
-                normalizeFa(r.title).contains(q) ||
-                (r.subtitle != null && normalizeFa(r.subtitle!).contains(q)))
-            .toList();
-
-    if (todayResults.isEmpty && allRegistryResults.isEmpty) {
-      return const Directionality(
-        textDirection: TextDirection.rtl,
-        child: Center(
-          child: Text(
-            'رویداد یا برنامه‌ای یافت نشد',
-            style: TextStyle(fontFamily: 'Vazirmatn'),
-          ),
-        ),
-      );
-    }
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: ListView(
         padding: const EdgeInsets.all(CalendarTokens.spacingM),
         children: [
-          if (todayResults.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-              child: Text(
-                'در این روز (${toPersianDigits(todayResults.length.toString())})',
-                style: TextStyle(
-                  fontFamily: 'Vazirmatn',
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ),
-            for (final item in todayResults)
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.event_note_rounded, color: theme.colorScheme.primary, size: 20),
-                ),
-                title: Text(
-                  item.title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn'),
-                ),
-                subtitle: Text(
-                  '${item.timeOfDay != null ? toPersianDigits(item.timeOfDay!) : "تمام‌روز"} ${item.subtitle != null && item.subtitle!.isNotEmpty ? "• ${item.subtitle}" : ""}',
-                  style: const TextStyle(fontFamily: 'Vazirmatn'),
-                ),
-                onTap: () {
-                  close(context, item);
-                  onItemSelected?.call(item);
-                },
-              ),
-          ],
-
-          if (allRegistryResults.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-              child: Text(
-                'همهٔ برنامه‌ها (${toPersianDigits(allRegistryResults.length.toString())})',
-                style: TextStyle(
-                  fontFamily: 'Vazirmatn',
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.secondary,
-                ),
-              ),
-            ),
-            for (final entry in allRegistryResults)
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: entry.domain.color(context).withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(entry.domain.icon, color: entry.domain.color(context), size: 20),
-                ),
-                title: Text(
-                  entry.title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Vazirmatn'),
-                ),
-                subtitle: Text(
-                  '${entry.domain.faLabel} · ${entry.scheduleSummary}',
-                  style: const TextStyle(fontFamily: 'Vazirmatn'),
-                ),
-                onTap: () {
-                  close(context, null);
-                  ActionRouter.open(context, item: entry.agendaProxy);
-                },
-              ),
-          ],
+          _SearchSectionHeader(
+            title: 'برنامه‌های امروز (${toPersianDigits(todayResults.length)})',
+          ),
+          ...todayResults.map((item) {
+            final color = domainColor(context, item.domain);
+            final icon = domainIcon(item.domain);
+            return ListTile(
+              leading: Icon(icon, color: color),
+              title: Text(item.title, style: const TextStyle(fontFamily: 'Vazirmatn')),
+              subtitle: item.subtitle != null
+                  ? Text(item.subtitle!, style: const TextStyle(fontFamily: 'Vazirmatn'))
+                  : null,
+              onTap: () {
+                onItemSelected?.call(item);
+                close(context, item);
+              },
+            );
+          }),
         ],
       ),
+    );
+  }
+}
+
+class _SearchSectionHeader extends StatelessWidget {
+  const _SearchSectionHeader({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: CalendarTokens.textSection,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'Vazirmatn',
+          color: theme.colorScheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+class _HitTile extends StatelessWidget {
+  const _HitTile({required this.hit, required this.onSelected});
+  final CalendarSearchHit hit;
+  final void Function(BuildContext, AgendaItem?) onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = domainColor(context, hit.domain);
+    final icon = domainIcon(hit.domain);
+
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(
+        hit.title,
+        style: const TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        '${hit.dateStr}${hit.subtitle != null ? ' · ${hit.subtitle}' : ''}',
+        style: const TextStyle(fontFamily: 'Vazirmatn', fontSize: 12),
+      ),
+      onTap: () {
+        // Construct target item for router
+        final item = AgendaItem(
+          id: hit.id,
+          domain: hit.domain,
+          sourceId: hit.sourceId,
+          title: hit.title,
+          dateStr: hit.dateStr,
+          category: Category.personal,
+          deepLink: AgendaDeepLink(domain: hit.domain, targetId: hit.sourceId),
+        );
+        ActionRouter.open(context, item: item);
+        onSelected(context, item);
+      },
     );
   }
 }

@@ -1,6 +1,8 @@
-import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:ritmo/core/domain/engines/engine_invalidation_tag.dart';
+import 'package:ritmo/core/domain/commands/param_spec.dart';
+import 'package:ritmo/core/domain/commands/command_plan.dart';
 
-/// Sensitivity level for Ritmo Commands
 enum Sensitivity {
   safe,
   confirm,
@@ -8,7 +10,6 @@ enum Sensitivity {
   forbidden,
 }
 
-/// Data domains touched by commands and personas
 enum DataDomain {
   routines,
   goals,
@@ -23,29 +24,40 @@ enum DataDomain {
   courses,
 }
 
-/// Execution context passed to commands
-class CommandContext {
-  const CommandContext({
+enum CommandSource {
+  user,
+  assistant,
+  system,
+  undo,
+}
+
+class AgentCommandContext {
+  const AgentCommandContext({
     required this.payload,
-    required this.resultSource,
+    required this.source,
+    required this.personaId,
+    required this.now,
+    required this.txn,
     this.assistantId,
+    this.planId,
   });
 
   final Map<String, dynamic> payload;
-
-  /// Source of action execution: MUST be 'AI', 'SYSTEM', etc. MUST NOT be 'USER' for AI actions.
-  final String resultSource;
+  final CommandSource source;
+  final String personaId;
+  final DateTime now;
+  final DatabaseExecutor txn;
   final String? assistantId;
+  final String? planId;
 }
 
-/// Result returned from command execution or inverse
 class CommandResult {
   const CommandResult({
     required this.success,
     required this.commandId,
     this.outputData,
+    this.inverseData,
     this.errorMessage,
-    this.inverseToken,
   });
 
   factory CommandResult.failure({
@@ -62,33 +74,40 @@ class CommandResult {
   factory CommandResult.ok({
     required String commandId,
     Map<String, dynamic>? outputData,
-    String? inverseToken,
+    Map<String, dynamic>? inverseData,
   }) {
     return CommandResult(
       success: true,
       commandId: commandId,
       outputData: outputData,
-      inverseToken: inverseToken,
+      inverseData: inverseData,
     );
   }
 
   final bool success;
   final String commandId;
   final Map<String, dynamic>? outputData;
+  final Map<String, dynamic>? inverseData;
   final String? errorMessage;
-  final String? inverseToken;
 }
 
-/// Abstract base class for all commands in the Ritmo Command Layer
 abstract class RitmoCommand {
   const RitmoCommand();
 
   String get id;
   String get humanTitle;
+  String get humanDescriptionFa;
   Sensitivity get sensitivity;
   Set<DataDomain> get touches;
-  Map<String, dynamic> get schema;
+  Map<String, ParamSpec> get params;
 
-  Future<CommandResult> run(CommandContext ctx);
-  Future<CommandResult?> inverse(CommandResult result);
+  Future<bool> isAvailable(AgentCommandContext ctx) async => true;
+
+  Future<PlanDiff> preview(AgentCommandContext ctx);
+
+  Future<CommandResult> run(AgentCommandContext ctx);
+
+  Future<CommandResult?> undo(AgentCommandContext ctx, Map<String, dynamic> inverseData);
+
+  Set<EngineInvalidationTag> get invalidates => const {};
 }

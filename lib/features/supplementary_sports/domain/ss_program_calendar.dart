@@ -1,90 +1,53 @@
-import 'package:sqflite/sqflite.dart';
-
-/// Single source of truth for Supplementary Sports program calendar calculations.
-class SSProgramCalendar {
-  /// Calculates current active week based on programStartDate.
-  static int currentWeek(String? programStartDateIso, DateTime today) {
-    if (programStartDateIso == null || programStartDateIso.isEmpty) {
+class SsProgramCalendar {
+  /// هفتهٔ چندم از چرخه؟ از programStartDate محاسبه می‌شود.
+  static int cycleWeekFor(DateTime date, {required DateTime programStart, int cycleLength = 4}) {
+    // If start is in the future, return week 1
+    if (date.isBefore(programStart)) {
       return 1;
     }
-    final startDate = DateTime.tryParse(programStartDateIso);
-    if (startDate == null) return 1;
-
-    final diffDays = today.difference(startDate).inDays;
-    if (diffDays < 0) return 1;
-    final week = (diffDays ~/ 7) + 1;
-    return week < 1 ? 1 : week;
+    // Normalize date and start to ignore time of day
+    final startNormalized = DateTime(programStart.year, programStart.month, programStart.day);
+    final dateNormalized = DateTime(date.year, date.month, date.day);
+    
+    final diffDays = dateNormalized.difference(startNormalized).inDays;
+    final elapsedWeeks = diffDays ~/ 7;
+    return (elapsedWeeks % cycleLength) + 1;
   }
 
-  /// Farsi Day of Week: Saturday=1 ... Friday=7
-  static int farsiDayOfWeek(DateTime date) {
-    switch (date.weekday) {
-      case DateTime.saturday:
-        return 1;
-      case DateTime.sunday:
-        return 2;
-      case DateTime.monday:
-        return 3;
-      case DateTime.tuesday:
-        return 4;
-      case DateTime.wednesday:
-        return 5;
-      case DateTime.thursday:
-        return 6;
-      case DateTime.friday:
-        return 7;
-      default:
-        return 1;
-    }
+  /// آیا این هفته دیلود (استراحت/ریکاوری سبک) است؟ deloadEveryNWeeks == 0 یعنی هرگز.
+  static bool isDeloadWeek(int cycleWeek, {required int deloadEveryNWeeks}) {
+    return deloadEveryNWeeks > 0 && cycleWeek == deloadEveryNWeeks;
   }
 
-  /// Returns calendar date for given week and Farsi day of week.
-  static DateTime dateForPlanDay({
-    required String? programStartDateIso,
-    required int week,
-    required int dayOfWeek,
-  }) {
-    DateTime baseDate = DateTime.now();
-    if (programStartDateIso != null && programStartDateIso.isNotEmpty) {
-      baseDate = DateTime.tryParse(programStartDateIso) ?? DateTime.now();
-    }
-
-    final baseDow = farsiDayOfWeek(baseDate);
-    final satWeek1 = DateTime(baseDate.year, baseDate.month, baseDate.day).subtract(Duration(days: baseDow - 1));
-
-    final daysOffset = ((week - 1) * 7) + (dayOfWeek - 1);
-    return satWeek1.add(Duration(days: daysOffset));
+  /// تبدیل صریح بین دو نگاشت روز هفته — تنها جایی که این تبدیل مجاز است.
+  /// ۱=شنبه  →  ۶=شنبه
+  static int legacySsDayToRitmoDay(int ssDay) {
+    return switch (ssDay) {
+      1 => 6, // Sat
+      2 => 7, // Sun
+      3 => 1, // Mon
+      4 => 2, // Tue
+      5 => 3, // Wed
+      6 => 4, // Thu
+      7 => 5, // Fri
+      _ => 6,
+    };
   }
 
-  /// Counts number of pending/missed days past scheduled date.
-  static Future<int> missedDaysCount(Database db, DateTime today) async {
-    final todayIso = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-    final result = await db.rawQuery(
-      "SELECT COUNT(*) as count FROM ss_plan_schedule WHERE scheduledDate < ? AND status = 'PENDING'",
-      [todayIso],
-    );
-    return Sqflite.firstIntValue(result) ?? 0;
+  static int ritmoDayToLegacySsDay(int ritmoDay) {
+    return switch (ritmoDay) {
+      6 => 1, // Sat
+      7 => 2, // Sun
+      1 => 3, // Mon
+      2 => 4, // Tue
+      3 => 5, // Wed
+      4 => 6, // Thu
+      5 => 7, // Fri
+      _ => 1,
+    };
   }
 
-  /// Returns Persian day name (e.g. شنبه)
-  static String getFarsiDayName(int farsiDow) {
-    switch (farsiDow) {
-      case 1:
-        return 'شنبه';
-      case 2:
-        return 'یکشنبه';
-      case 3:
-        return 'دوشنبه';
-      case 4:
-        return 'سه‌شنبه';
-      case 5:
-        return 'چهارشنبه';
-      case 6:
-        return 'پنجشنبه';
-      case 7:
-        return 'جمعه';
-      default:
-        return 'شنبه';
-    }
+  static int ritmoDayOf(DateTime date) {
+    return date.weekday; // 1: Mon ... 7: Sun
   }
 }

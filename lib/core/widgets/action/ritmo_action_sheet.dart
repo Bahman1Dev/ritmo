@@ -8,6 +8,7 @@ import 'package:ritmo/core/ux/ritmo_sheet_scaffold.dart';
 import 'package:ritmo/core/widgets/action/action_sheet_registry.dart';
 import 'package:ritmo/core/widgets/action/action_sheet_result.dart';
 import 'package:ritmo/core/widgets/action/sheet_actions.dart';
+import 'package:ritmo/features/calendar/utils/domain_palette.dart';
 
 /// Five-zone unified Action Sheet presentation container.
 class RitmoActionSheet extends StatefulWidget {
@@ -156,7 +157,7 @@ class _RitmoActionSheetState extends State<RitmoActionSheet> {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                _getDomainIcon(widget.item.domain),
+                domainIcon(widget.item.domain),
                 color: colors.primary,
                 size: 22,
               ),
@@ -195,7 +196,7 @@ class _RitmoActionSheetState extends State<RitmoActionSheet> {
                 border: Border.all(color: colors.border.withValues(alpha: 0.4)),
               ),
               child: Text(
-                _getDomainName(widget.item.domain),
+                domainLabelFa(widget.item.domain),
                 style: TextStyle(
                   fontSize: 11,
                   color: colors.textSecondary,
@@ -349,38 +350,5 @@ class _RitmoActionSheetState extends State<RitmoActionSheet> {
           ),
         ],
       ],
-    );
-  }
-
-  IconData _getDomainIcon(AgendaDomain domain) {
-    return switch (domain) {
-      AgendaDomain.routine => CupertinoIcons.repeat,
-      AgendaDomain.prayer => CupertinoIcons.sun_max,
-      AgendaDomain.mustahab => CupertinoIcons.heart,
-      AgendaDomain.worshipDebt => CupertinoIcons.book,
-      AgendaDomain.sport => CupertinoIcons.sportscourt,
-      AgendaDomain.goalStep => CupertinoIcons.flag,
-      AgendaDomain.medicine => CupertinoIcons.bandage,
-      AgendaDomain.konkur => CupertinoIcons.pencil,
-      AgendaDomain.course => CupertinoIcons.book_circle,
-      AgendaDomain.cycle => CupertinoIcons.drop,
-      AgendaDomain.event => CupertinoIcons.calendar,
-    };
-  }
-
-  String _getDomainName(AgendaDomain domain) {
-    return switch (domain) {
-      AgendaDomain.routine => 'روتین',
-      AgendaDomain.prayer => 'نماز',
-      AgendaDomain.mustahab => 'مستحبات',
-      AgendaDomain.worshipDebt => 'بدهی عبادی',
-      AgendaDomain.sport => 'ورزش',
-      AgendaDomain.goalStep => 'گام هدف',
-      AgendaDomain.medicine => 'دارو',
-      AgendaDomain.konkur => 'کنکور',
-      AgendaDomain.cycle => 'چرخه',
-      AgendaDomain.course => 'دوره',
-      AgendaDomain.event => 'رویداد',
-    };
   }
 }

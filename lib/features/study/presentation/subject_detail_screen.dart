@@ -29,12 +29,21 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
 
   Future<void> _loadTopics() async {
     setState(() => _isLoading = true);
-    final topics = await StudyRepository.instance.getTopics(subjectId: widget.subject.id);
-    if (mounted) {
-      setState(() {
-        _topics = topics;
-        _isLoading = false;
-      });
+    try {
+      final topics = await StudyRepository.instance.getTopics(subjectId: widget.subject.id);
+      if (mounted) {
+        setState(() {
+          _topics = topics;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('[SubjectDetailScreen] Error loading topics: $e\n$st');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

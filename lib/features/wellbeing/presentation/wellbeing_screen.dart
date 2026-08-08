@@ -49,7 +49,6 @@ class _WellbeingScreenState extends State<WellbeingScreen>
     with SingleTickerProviderStateMixin {
   bool _hasLoadedOnce = false;
   bool _loadFailed = false;
-  bool _isRefreshing = false;
   bool _isDirty = false;
   int _loadToken = 0;
   int _selectedHorizonDays = 14;
@@ -140,56 +139,51 @@ class _WellbeingScreenState extends State<WellbeingScreen>
 
     try {
       final db = await DatabaseHelper.instance.database;
-
-      // Module enabled checks
-      final moduleResults = await Future.wait([
-        ModuleManagementService.instance.isModuleEnabled('module_energy_enabled').catchError((_) => false),
-        ModuleManagementService.instance.isModuleEnabled('module_sleep_enabled').catchError((_) => false),
-      ]);
-      _energyEnabled = moduleResults[0];
-      _sleepEnabled = moduleResults[1];
-
-      // H-17: Fetch user configured sleep target from settings
-      try {
-        final targetRows = await db.query('app_settings', where: "key LIKE 'sleep_target_%'");
-        String bedtime = '23:30';
-        String wake = '07:00';
-        int durationMinutes = 450;
-        for (final r in targetRows) {
-          final k = r['key'] as String;
-          final v = r['value'] as String;
-          if (k == 'sleep_target_bedtime') bedtime = v;
-          if (k == 'sleep_target_wake') wake = v;
-          if (k == 'sleep_target_duration_minutes') durationMinutes = int.tryParse(v) ?? 450;
-        }
-        _sleepTarget = SleepTarget(bedtime: bedtime, wake: wake, durationMinutes: durationMinutes);
-      } catch (_) {}
-
       final horizonMs = RitmoDate.startOfDayMillis(now.subtract(Duration(days: _selectedHorizonDays)));
       final horizonKey = RitmoDate.dayKey(now.subtract(Duration(days: _selectedHorizonDays)));
 
-      // H-03: Parallel DB Queries
+      // H-03: Combined Parallel DB Queries & Module Checks
       final dbResults = await Future.wait([
-        db.query('energy_logs', where: 'loggedAt >= ?', whereArgs: [horizonMs], orderBy: 'loggedAt DESC', limit: 500).catchError((_) => <Map<String, dynamic>>[]),
-        db.query('mood_logs', where: 'loggedAt >= ?', whereArgs: [horizonMs], orderBy: 'loggedAt DESC', limit: 500).catchError((_) => <Map<String, dynamic>>[]),
-        db.query('sleep_logs', where: 'date >= ?', whereArgs: [horizonKey], orderBy: 'date DESC', limit: 60).catchError((_) => <Map<String, dynamic>>[]),
-        db.query('daily_reflections', where: 'date >= ?', whereArgs: [horizonKey], orderBy: 'date DESC', limit: 60).catchError((_) => <Map<String, dynamic>>[]),
-        db.query('daily_checkins', where: 'date >= ?', whereArgs: [horizonKey], orderBy: 'date DESC', limit: 60).catchError((_) => <Map<String, dynamic>>[]),
+        ModuleManagementService.instance.isModuleEnabled('module_energy_enabled').catchError((_) => false),
+        ModuleManagementService.instance.isModuleEnabled('module_sleep_enabled').catchError((_) => false),
+        db.query('app_settings', where: "key LIKE 'sleep_target_%'").catchError((_) => <Map<String, dynamic>>[]),
+        db.query('energy_logs', where: 'loggedAt >= ?', whereArgs: [horizonMs], orderBy: 'loggedAt DESC', limit: 200).catchError((_) => <Map<String, dynamic>>[]),
+        db.query('mood_logs', where: 'loggedAt >= ?', whereArgs: [horizonMs], orderBy: 'loggedAt DESC', limit: 200).catchError((_) => <Map<String, dynamic>>[]),
+        db.query('sleep_logs', where: 'date >= ?', whereArgs: [horizonKey], orderBy: 'date DESC', limit: 45).catchError((_) => <Map<String, dynamic>>[]),
+        db.query('daily_reflections', where: 'date >= ?', whereArgs: [horizonKey], orderBy: 'date DESC', limit: 45).catchError((_) => <Map<String, dynamic>>[]),
+        db.query('daily_checkins', where: 'date >= ?', whereArgs: [horizonKey], orderBy: 'date DESC', limit: 45).catchError((_) => <Map<String, dynamic>>[]),
         db.query('routines', where: 'isArchived = 0').catchError((_) => <Map<String, dynamic>>[]),
-        db.query('routine_completions', where: 'completionTime >= ?', whereArgs: [horizonMs], limit: 2000).catchError((_) => <Map<String, dynamic>>[]),
-        db.query('daily_rhythm', where: 'date >= ?', whereArgs: [horizonKey], limit: 60).catchError((_) => <Map<String, dynamic>>[]),
+        db.query('routine_completions', where: 'completionTime >= ?', whereArgs: [horizonMs], limit: 1000).catchError((_) => <Map<String, dynamic>>[]),
+        db.query('daily_rhythm', where: 'date >= ?', whereArgs: [horizonKey], limit: 45).catchError((_) => <Map<String, dynamic>>[]),
       ]);
 
       if (!mounted || token != _loadToken) return;
 
-      final energyRows = dbResults[0];
-      final moodRows = dbResults[1];
-      final sleepRows = dbResults[2];
-      final reflectionRows = dbResults[3];
-      final checkinRows = dbResults[4];
-      final routineRows = dbResults[5];
-      final completionRows = dbResults[6];
-      final rhythmRows = dbResults[7];
+      _energyEnabled = dbResults[0] as bool;
+      _sleepEnabled = dbResults[1] as bool;
+
+      // Parse sleep target settings
+      final targetRows = dbResults[2] as List<Map<String, dynamic>>;
+      String bedtime = '23:30';
+      String wake = '07:00';
+      int durationMinutes = 450;
+      for (final r in targetRows) {
+        final k = r['key'] as String;
+        final v = r['value'] as String;
+        if (k == 'sleep_target_bedtime') bedtime = v;
+        if (k == 'sleep_target_wake') wake = v;
+        if (k == 'sleep_target_duration_minutes') durationMinutes = int.tryParse(v) ?? 450;
+      }
+      _sleepTarget = SleepTarget(bedtime: bedtime, wake: wake, durationMinutes: durationMinutes);
+
+      final energyRows = dbResults[3] as List<Map<String, dynamic>>;
+      final moodRows = dbResults[4] as List<Map<String, dynamic>>;
+      final sleepRows = dbResults[5] as List<Map<String, dynamic>>;
+      final reflectionRows = dbResults[6] as List<Map<String, dynamic>>;
+      final checkinRows = dbResults[7] as List<Map<String, dynamic>>;
+      final routineRows = dbResults[8] as List<Map<String, dynamic>>;
+      final completionRows = dbResults[9] as List<Map<String, dynamic>>;
+      final rhythmRows = dbResults[10] as List<Map<String, dynamic>>;
 
       _rawEnergyLogs = energyRows.map((r) => EnergyLog.fromMap(r)).toList();
       _rawMoodLogs = moodRows.map((r) => MoodLog.fromMap(r)).toList();
@@ -229,49 +223,45 @@ class _WellbeingScreenState extends State<WellbeingScreen>
         routineCompletions: completionRows,
       );
 
-      // Safe Engine Evaluations with Direct Instantiation Fallbacks & 3s Timeouts
-      EnergyAnalyticsOutput? energyOut;
-      try {
-        energyOut = await RitmoEngineBus.instance.execute<EnergyAnalyticsEngineInput, EnergyAnalyticsOutput>(EnergyAnalyticsEngine, energyInput).timeout(const Duration(seconds: 3));
-      } catch (_) {
-        try { energyOut = await EnergyAnalyticsEngine().calculate(energyInput); } catch (_) {}
+      // Safe Parallel Engine Evaluations with 1s Timeout
+      Future<T?> evalEngine<I, T>(
+        Type engineType,
+        I input,
+        Future<T> Function() fallbackCalc,
+      ) async {
+        try {
+          return await RitmoEngineBus.instance
+              .execute<I, T>(engineType, input)
+              .timeout(const Duration(milliseconds: 1000));
+        } catch (_) {
+          try {
+            return await fallbackCalc().timeout(const Duration(milliseconds: 1000));
+          } catch (_) {
+            return null;
+          }
+        }
       }
 
-      MoodEngineOutput? moodOut;
-      try {
-        moodOut = await RitmoEngineBus.instance.execute<MoodEngineInput, MoodEngineOutput>(MoodEngine, moodInput).timeout(const Duration(seconds: 3));
-      } catch (_) {
-        try { moodOut = await MoodEngine().calculate(moodInput); } catch (_) {}
-      }
+      final engineResults = await Future.wait([
+        evalEngine<EnergyAnalyticsEngineInput, EnergyAnalyticsOutput>(
+            EnergyAnalyticsEngine, energyInput, () => EnergyAnalyticsEngine().calculate(energyInput)),
+        evalEngine<MoodEngineInput, MoodEngineOutput>(
+            MoodEngine, moodInput, () => MoodEngine().calculate(moodInput)),
+        evalEngine<SleepEngineInput, SleepEngineOutput>(
+            SleepEngine, sleepInput, () => SleepEngine().calculate(sleepInput)),
+        evalEngine<ReflectionEngineInput, ReflectionEngineOutput>(
+            ReflectionEngine, reflectionInput, () => ReflectionEngine().calculate(reflectionInput)),
+        evalEngine<LifeBalanceEngineInput, LifeBalanceEngineOutput>(
+            LifeBalanceEngine, balanceInput, () => LifeBalanceEngine().calculate(balanceInput)),
+      ]);
 
-      SleepEngineOutput? sleepOut;
-      try {
-        sleepOut = await RitmoEngineBus.instance.execute<SleepEngineInput, SleepEngineOutput>(SleepEngine, sleepInput).timeout(const Duration(seconds: 3));
-      } catch (_) {
-        try { sleepOut = await SleepEngine().calculate(sleepInput); } catch (_) {}
-      }
+      if (!mounted || token != _loadToken) return;
 
-      ReflectionEngineOutput? reflectionOut;
-      try {
-        reflectionOut = await RitmoEngineBus.instance.execute<ReflectionEngineInput, ReflectionEngineOutput>(ReflectionEngine, reflectionInput).timeout(const Duration(seconds: 3));
-      } catch (_) {
-        try { reflectionOut = await ReflectionEngine().calculate(reflectionInput); } catch (_) {}
-      }
-
-      LifeBalanceEngineOutput? balanceOut;
-      try {
-        balanceOut = await RitmoEngineBus.instance.execute<LifeBalanceEngineInput, LifeBalanceEngineOutput>(LifeBalanceEngine, balanceInput).timeout(const Duration(seconds: 3));
-      } catch (_) {
-        try { balanceOut = await LifeBalanceEngine().calculate(balanceInput); } catch (_) {}
-      }
-
-      if (!mounted) return;
-
-      _energyOutput = energyOut;
-      _moodOutput = moodOut;
-      _sleepOutput = sleepOut;
-      _reflectionOutput = reflectionOut;
-      _lifeBalanceOutput = balanceOut;
+      _energyOutput = engineResults[0] as EnergyAnalyticsOutput?;
+      _moodOutput = engineResults[1] as MoodEngineOutput?;
+      _sleepOutput = engineResults[2] as SleepEngineOutput?;
+      _reflectionOutput = engineResults[3] as ReflectionEngineOutput?;
+      _lifeBalanceOutput = engineResults[4] as LifeBalanceEngineOutput?;
 
       _wellbeing = const WellbeingEngine().compute(
         WellbeingEngineInput(
@@ -329,7 +319,6 @@ class _WellbeingScreenState extends State<WellbeingScreen>
         setState(() {
           _loadFailed = false;
           _hasLoadedOnce = true;
-          _isRefreshing = false;
         });
       }
     } catch (e, stack) {
@@ -338,7 +327,6 @@ class _WellbeingScreenState extends State<WellbeingScreen>
       if (mounted) {
         setState(() {
           _hasLoadedOnce = true;
-          _isRefreshing = false;
         });
       }
     }
@@ -386,10 +374,10 @@ class _WellbeingScreenState extends State<WellbeingScreen>
   }
 
   void _openAssistant() {
-    RitmoSheetScaffold.present(
+    showModalBottomSheet(
       context: context,
-      title: 'دستیار هوشمند حال و تعادل',
-      subtitle: 'راهنمای تحلیل ریتم زیستی شما',
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) => AiWellbeingAssistantSheet(
         energyEnabled: _energyEnabled,
         sleepEnabled: _sleepEnabled,

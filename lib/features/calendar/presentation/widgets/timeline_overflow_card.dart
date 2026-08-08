@@ -3,6 +3,7 @@ import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/action_router.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
+import 'package:ritmo/features/calendar/utils/domain_palette.dart';
 
 class TimelineOverflowCard extends StatelessWidget {
   const TimelineOverflowCard({
@@ -53,14 +54,14 @@ class TimelineOverflowCard extends StatelessWidget {
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final item = overflowItems[index];
-                      final domainColor = _getDomainColor(item.domain);
-                      final domainIcon = _getDomainIcon(item.domain);
+                      final color = domainColor(context, item.domain);
+                      final icon = domainIcon(item.domain);
 
                       return ListTile(
                         leading: CircleAvatar(
                           radius: 12,
-                          backgroundColor: domainColor.withValues(alpha: 0.15),
-                          child: Icon(domainIcon, size: 14, color: domainColor),
+                          backgroundColor: color.withValues(alpha: 0.15),
+                          child: Icon(icon, size: 14, color: color),
                         ),
                         title: Text(
                           item.title,
@@ -126,59 +127,5 @@ class TimelineOverflowCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  static IconData _getDomainIcon(AgendaDomain domain) {
-    switch (domain) {
-      case AgendaDomain.routine:
-        return Icons.task_alt_rounded;
-      case AgendaDomain.prayer:
-        return Icons.access_time_filled_rounded;
-      case AgendaDomain.mustahab:
-        return Icons.auto_awesome_rounded;
-      case AgendaDomain.course:
-        return Icons.menu_book_rounded;
-      case AgendaDomain.goalStep:
-        return Icons.track_changes_rounded;
-      case AgendaDomain.konkur:
-        return Icons.assignment_rounded;
-      case AgendaDomain.cycle:
-        return Icons.favorite_rounded;
-      case AgendaDomain.worshipDebt:
-        return Icons.restore_rounded;
-      case AgendaDomain.sport:
-        return Icons.fitness_center_rounded;
-      case AgendaDomain.medicine:
-        return Icons.medication_rounded;
-      case AgendaDomain.event:
-        return Icons.event_rounded;
-    }
-  }
-
-  static Color _getDomainColor(AgendaDomain domain) {
-    switch (domain) {
-      case AgendaDomain.routine:
-        return Colors.teal;
-      case AgendaDomain.prayer:
-        return Colors.indigo;
-      case AgendaDomain.mustahab:
-        return Colors.blueGrey;
-      case AgendaDomain.course:
-        return Colors.amber.shade800;
-      case AgendaDomain.goalStep:
-        return Colors.deepPurple;
-      case AgendaDomain.konkur:
-        return Colors.red;
-      case AgendaDomain.cycle:
-        return Colors.pink;
-      case AgendaDomain.worshipDebt:
-        return Colors.brown;
-      case AgendaDomain.sport:
-        return Colors.green;
-      case AgendaDomain.medicine:
-        return Colors.orange.shade800;
-      case AgendaDomain.event:
-        return Colors.blue;
-    }
   }
 }

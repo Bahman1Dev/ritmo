@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:ritmo/core/ai/ai_context_builder.dart';
+import 'package:ritmo/core/ai/ai_error_messages.dart';
 import 'package:ritmo/core/ai/chat/chat_models.dart';
 import 'package:ritmo/core/ai/chat/chat_repository.dart';
 import 'package:ritmo/core/ai/chat/streaming_chat_service.dart';
@@ -993,15 +994,36 @@ class _AiChatScreenState extends State<AiChatScreen> {
     if (idx != -1) {
       setState(() {
         final currentContent = _messages[idx].content;
-        String errorMsg;
-        if (errorText.contains('no_api_key') || errorText.contains('quota_exhausted')) {
-          errorMsg = 'کلید دسترسی (API Key) یا سهمیه هوش مصنوعی فعال نیست 🔌\n\nلطفاً وارد تنظیمات پروفایل (چرخ‌دنده بالای صفحه) -> «تنظیمات هوش مصنوعی (AI)» شوید و ارائه‌دهنده (مثل OpenRouter یا Zhipu AI) یا API Key خود را تنظیم نمایید.';
-        } else {
-          errorMsg = currentContent.isEmpty
-              ? 'خطا در ارتباط با سرور هوش مصنوعی. لطفاً اتصال اینترنت/فیلترشکن را بررسی کنید یا در تنظیمات پروفایل ارائه‌دهنده هوش مصنوعی را تغییر دهید 🔌'
-              : '$currentContent\n\n[خطا در ارتباط: $errorText]';
+
+        String friendlySummary = AiErrorMessages.fa(exception: errorText);
+        if (errorText.contains('no_api_key') || errorText.contains('401') || errorText.contains('quota_exhausted')) {
+          friendlySummary = 'کلید دسترسی (API Key) یا سهمیه هوش مصنوعی فعال نیست 🔌\nلطفاً وارد تنظیمات پروفایل (چرخ‌دنده بالای صفحه) -> «تنظیمات هوش مصنوعی (AI)» شوید و ارائه‌دهنده یا API Key خود را بررسی کنید.';
+        } else if (errorText.contains('429')) {
+          friendlySummary = 'سقف تعداد درخواست‌های لحظه‌ای پر شده است (Rate Limit). لطفاً چند لحظه دیگر دوباره تلاش کنید.';
+        } else if (errorText.toLowerCase().contains('timeout')) {
+          friendlySummary = 'زمان انتظار برای پاسخ سرور هوش مصنوعی به پایان رسید (Timeout ⏱️). سرور در مهلت مقرر ۱۲۰ ثانیه پاسخ نداد.';
         }
-        _messages[idx] = _messages[idx].copyWith(content: errorMsg, isStreaming: false);
+
+        final cleanDetails = errorText.trim().isEmpty ? 'اطلاعات بیشتری از خطای شبکه یا سرور دریافت نشد.' : errorText;
+
+        final formattedBox = '''
+⚠️ **خطا در ارتباط با سرور هوش مصنوعی**
+
+📌 **تحلیل خطا:**
+$friendlySummary
+
+🔍 **علت دقیق و جزئیات فنی خطا:**
+`$cleanDetails`
+
+💡 **راهکار پیشنهادشده:**
+۱. اتصال اینترنت و فعال بودن فیلترشکن خود را بررسی کنید.
+۲. از چرخ‌دنده بالای صفحه، تنظیمات هوش مصنوعی را باز کرده و ارائه‌دهنده یا مدل دیگری (مانند OpenRouter یا Zhipu AI) انتخاب نمایید.''';
+
+        final String finalContent = currentContent.isEmpty
+            ? formattedBox
+            : '$currentContent\n\n$formattedBox';
+
+        _messages[idx] = _messages[idx].copyWith(content: finalContent, isStreaming: false);
       });
     }
     setState(() {
@@ -1013,42 +1035,68 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   Future<void> _cancelStream() async {
     if (_sub == null) return;
-    await _sub!.cancel();
     
-    final idx = _messages.indexWhere((m) => m.id == _streamingId);
-    if (idx != -1) {
-      final current = _messages[idx];
-      if (current.content.trim().isNotEmpty) {
-        final saved = current.copyWith(
-          content: '${current.content}\n\n[قطع شد]',
-          isStreaming: false,
-        );
-        await ChatRepository.instance.addMessage(saved);
-        setState(() {
-          _messages[idx] = saved;
-        });
-      } else {
-        setState(() {
-          _messages.removeAt(idx);
-        });
-      }
-    }
-    
+    final subToCancel = _sub;
+    final streamingIdToCancel = _streamingId;
+
     setState(() {
       _sub = null;
       _streamingId = null;
     });
-  }
 
-  void _cancelStreamSilent() {
-    if (_sub == null) return;
-    _sub!.cancel();
-    final idx = _messages.indexWhere((m) => m.id == _streamingId);
+    try {
+      await subToCancel?.cancel();
+    } catch (e) {
+      debugPrint('Error cancelling stream: $e');
+    }
+
+    final targetId = streamingIdToCancel;
+    final idx = targetId != null 
+        ? _messages.indexWhere((m) => m.id == targetId)
+        : _messages.indexWhere((m) => m.isStreaming);
+
     if (idx != -1) {
       final current = _messages[idx];
       if (current.content.trim().isNotEmpty) {
         final saved = current.copyWith(
-          content: '${current.content}\n\n[قطع شد]',
+          content: '${current.content}\n\n[پاسخ‌دهی توسط کاربر متوقف شد 🛑]',
+          isStreaming: false,
+        );
+        await ChatRepository.instance.addMessage(saved);
+        if (mounted) {
+          setState(() {
+            _messages[idx] = saved;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _messages.removeAt(idx);
+          });
+        }
+      }
+    }
+  }
+
+  void _cancelStreamSilent() {
+    if (_sub == null) return;
+    final subToCancel = _sub;
+    final targetId = _streamingId;
+
+    _sub = null;
+    _streamingId = null;
+
+    subToCancel?.cancel();
+    
+    final idx = targetId != null 
+        ? _messages.indexWhere((m) => m.id == targetId)
+        : _messages.indexWhere((m) => m.isStreaming);
+
+    if (idx != -1) {
+      final current = _messages[idx];
+      if (current.content.trim().isNotEmpty) {
+        final saved = current.copyWith(
+          content: '${current.content}\n\n[توسط کاربر متوقف شد 🛑]',
           isStreaming: false,
         );
         ChatRepository.instance.addMessage(saved);
@@ -1070,15 +1118,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   Future<void> _handleAction(ChatAction action) async {
     RitmoHaptics.confirm();
-    if (action.type == 'openPage' && action.targetRoute != null) {
-      unawaited(Navigator.pushNamed(context, action.targetRoute!));
-    } else {
-      await AssistantActionRegistry.executeAction(
-        context,
-        action.toAssistantAction(),
-        () {},
-      );
-    }
+    final assistantAction = action.toAssistantAction();
+    await AssistantActionRegistry.executeAction(
+      context,
+      assistantAction,
+      () {},
+    );
   }
 
   void _copyToClipboard(String content) {
@@ -1374,15 +1419,22 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 ),
 
               // Chat Input row
-              SafeArea(
-                bottom: !widget.isTab,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    12,
-                    12,
-                    12,
-                    widget.isTab ? 84.0 : 12.0,
-                  ),
+              Builder(
+                builder: (context) {
+                  final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+                  final effectiveBottomPadding = isKeyboardOpen
+                      ? 12.0
+                      : (widget.isTab ? 84.0 : 12.0);
+
+                  return SafeArea(
+                    bottom: !widget.isTab && !isKeyboardOpen,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        12,
+                        12,
+                        12,
+                        effectiveBottomPadding,
+                      ),
                   child: Row(
                     children: [
                       if (!_isStreaming) ...[
@@ -1457,10 +1509,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     ],
                   ),
                 ),
-              ),
-            ],
+              );
+            },
           ),
-        ),
+        ],
+      ),
+    ),
       ),
     );
   }

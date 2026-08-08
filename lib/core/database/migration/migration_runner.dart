@@ -19,6 +19,9 @@ import 'package:ritmo/core/database/migration/migrations/migration_v77_ai_connec
 import 'package:ritmo/core/database/migration/migrations/migration_v78_settings_profile.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v79_task_upgrade.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v80_ai_opencode_defaults.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v81_agent_layer.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v82_sports_prescription.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v83_calendar_upgrade.dart';
 
 class MigrationRunner {
   static final List<Migration> _migrations = [
@@ -101,6 +104,9 @@ class MigrationRunner {
     MigrationV78SettingsProfile(), // Prompt 058: Settings registry, quiet hours, PIN split, dead keys cleanup
     MigrationV79TaskUpgrade(), // Prompt 063: Task steps, importance, attachments
     MigrationV80AiOpencodeDefaults(), // OpenCode AI default configuration
+    MigrationV81AgentLayer(),
+    MigrationV82SportsPrescription(),
+    MigrationV83CalendarUpgrade(), // Prompt 067: day_marks table + calendar default settings
   ];
 
   static Future<void> run(Database db, int oldVersion, int newVersion) async {

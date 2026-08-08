@@ -7,6 +7,8 @@ import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/supplementary_sports/data/models/ss_plan_models.dart';
 import 'package:ritmo/features/supplementary_sports/data/models/ss_user_profile_model.dart';
 import 'package:ritmo/features/supplementary_sports/data/repositories/ss_plan_generator.dart';
+import 'package:ritmo/features/supplementary_sports/data/repositories/ss_prescription_repository.dart';
+import 'package:ritmo/features/supplementary_sports/domain/prescription/session_prescription.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_exercise_library_screen.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_plan_day_detail_screen.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/bottom_sheet_container.dart';
@@ -84,97 +86,217 @@ class _SSPlanOverviewScreenState extends State<SSPlanOverviewScreen> {
         where: 'finishedAt IS NOT NULL',
       );
 
+      bool detailMode = false;
+      try {
+        final dmRows = await db.query('app_settings', where: 'key = ?', whereArgs: ['sports_detail_mode']);
+        if (dmRows.isNotEmpty) {
+          detailMode = dmRows.first['value'] == 'true';
+        }
+      } catch (_) {}
+
+      final allPres = await db.query('ss_session_prescription');
+
       final allDaysList = <Map<String, dynamic>>[];
       var completedWorkoutsCount = 0;
       var totalPlannedWorkoutsCount = 0;
-
-      for (var w = 1; w <= 4; w++) {
-        for (var dow = 1; dow <= 7; dow++) {
-          final planId = 'plan_w${w}_$dow';
-          final planExists = allPlans.any((p) => p['id'] == planId);
-          final isCompleted = allLogs.any((l) => l['planId'] == planId);
-          
-          final dayIndex = (w - 1) * 7 + dow;
-          var status = 'rest';
-
-          if (planExists) {
-            totalPlannedWorkoutsCount++;
-            if (isCompleted) {
-              status = 'done';
-              completedWorkoutsCount++;
-            } else if (dayIndex == currentDayIndex) {
-              status = 'today';
-            } else if (dayIndex < currentDayIndex) {
-              status = 'missed';
-            } else {
-              status = 'upcoming';
-            }
-          } else {
-            if (dayIndex == currentDayIndex) {
-              status = 'today_rest';
-            } else if (dayIndex < currentDayIndex) {
-              status = 'past_rest';
-            } else {
-              status = 'future_rest';
-            }
-          }
-
-          allDaysList.add({
-            'dayIndex': dayIndex,
-            'week': w,
-            'dayOfWeek': dow,
-            'planId': planId,
-            'isPlanned': planExists,
-            'status': status,
-          });
-        }
-      }
-
-      // Filter current week plans for the list view below the grid
-      List<Map<String, dynamic>> plans = allPlans.where((p) => p['id'].toString().startsWith('plan_w${_selectedWeek}_')).toList();
-      if (plans.isEmpty && _selectedWeek == 1) {
-        plans = allPlans;
-      }
-
       final weekDaysList = <PlanDaySummary>[];
-      for (var dayNum = 1; dayNum <= 7; dayNum++) {
-        final dayName = _getFarsiDayName(dayNum);
-        final dayPlan = plans.firstWhere(
-          (p) => (p['dayOfWeek'] as int) == dayNum,
-          orElse: () => {},
-        );
 
-        if (dayPlan.isEmpty) {
-          weekDaysList.add(
-            PlanDaySummary(
-              id: 'rest_$dayNum',
-              dayName: dayName,
-              muscleGroups: 'استراحت',
-              status: DayStatus.rest,
-            ),
-          );
-        } else {
-          final planId = dayPlan['id'].toString();
-          final musclesRaw = jsonDecode(dayPlan['muscleGroups'].toString()) as List<dynamic>;
-          final musclesText = musclesRaw.join(' و ');
+      if (!detailMode && allPres.isNotEmpty) {
+        // --- Prescription Mode UI Population ---
+        for (var w = 1; w <= 4; w++) {
+          for (var dow = 1; dow <= 7; dow++) {
+            final dayIndex = (w - 1) * 7 + dow;
+            final presMatch = allPres.where((p) {
+              final cycleWeekVal = p['cycleWeek'] as int? ?? 1;
+              if (cycleWeekVal != w) return false;
+              try {
+                final dateStr = p['dateIso'] as String?;
+                if (dateStr == null) return false;
+                final dt = DateTime.parse(dateStr);
+                final fDow = _getFarsiDayOfWeek(dt);
+                return fDow == dow;
+              } catch (_) {
+                return false;
+              }
+            });
 
-          final isCompleted = allLogs.any((log) => log['planId'] == planId);
+            final presExists = presMatch.isNotEmpty;
+            final pres = presExists ? presMatch.first : null;
+            final isRest = pres != null && pres['slotType'] == 'REST';
+            final statusStr = pres != null ? pres['status'] as String? ?? 'PLANNED' : 'REST';
+            final isCompleted = statusStr == 'DONE' || statusStr == 'PARTIAL';
 
-          var status = DayStatus.upcoming;
-          if (isCompleted) {
-            status = DayStatus.completed;
-          } else if (dayNum == todayFarsiDay && _selectedWeek == currentWeek) {
-            status = DayStatus.today;
+            var status = 'rest';
+            if (presExists && !isRest) {
+              totalPlannedWorkoutsCount++;
+              if (isCompleted) {
+                status = 'done';
+                completedWorkoutsCount++;
+              } else if (dayIndex == currentDayIndex) {
+                status = 'today';
+              } else if (dayIndex < currentDayIndex) {
+                status = 'missed';
+              } else {
+                status = 'upcoming';
+              }
+            } else {
+              if (dayIndex == currentDayIndex) {
+                status = 'today_rest';
+              } else if (dayIndex < currentDayIndex) {
+                status = 'past_rest';
+              } else {
+                status = 'future_rest';
+              }
+            }
+
+            allDaysList.add({
+              'dayIndex': dayIndex,
+              'week': w,
+              'dayOfWeek': dow,
+              'planId': pres?['id']?.toString() ?? 'pres_w${w}_$dow',
+              'isPlanned': presExists && !isRest,
+              'status': status,
+            });
           }
+        }
 
-          weekDaysList.add(
-            PlanDaySummary(
-              id: planId,
-              dayName: dayName,
-              muscleGroups: 'تمرین $musclesText',
-              status: status,
-            ),
+        // Filter current week plans for the list view below the grid
+        final weekPresList = allPres.where((p) => (p['cycleWeek'] as int? ?? 1) == _selectedWeek).toList();
+        for (var dayNum = 1; dayNum <= 7; dayNum++) {
+          final dayName = _getFarsiDayName(dayNum);
+          final presMatch = weekPresList.where((p) {
+            try {
+              final dateStr = p['dateIso'] as String?;
+              if (dateStr == null) return false;
+              final dt = DateTime.parse(dateStr);
+              return _getFarsiDayOfWeek(dt) == dayNum;
+            } catch (_) {
+              return false;
+            }
+          });
+
+          if (presMatch.isEmpty || presMatch.first['slotType'] == 'REST') {
+            weekDaysList.add(
+              PlanDaySummary(
+                id: 'rest_$dayNum',
+                dayName: dayName,
+                muscleGroups: 'استراحت',
+                status: DayStatus.rest,
+              ),
+            );
+          } else {
+            final p = presMatch.first;
+            final planId = p['id'].toString();
+            final headline = p['headlineFa'] as String? ?? 'تمرین ورزشی';
+            final statusStr = p['status'] as String? ?? 'PLANNED';
+            final isCompleted = statusStr == 'DONE' || statusStr == 'PARTIAL';
+
+            var status = DayStatus.upcoming;
+            if (isCompleted) {
+              status = DayStatus.completed;
+            } else if (dayNum == todayFarsiDay && _selectedWeek == currentWeek) {
+              status = DayStatus.today;
+            }
+
+            weekDaysList.add(
+              PlanDaySummary(
+                id: planId,
+                dayName: dayName,
+                muscleGroups: headline,
+                status: status,
+              ),
+            );
+          }
+        }
+      } else {
+        // --- Legacy/Set-Reps Mode UI Population ---
+        for (var w = 1; w <= 4; w++) {
+          for (var dow = 1; dow <= 7; dow++) {
+            final planId = 'plan_w${w}_$dow';
+            final planExists = allPlans.any((p) => p['id'] == planId);
+            final isCompleted = allLogs.any((l) => l['planId'] == planId);
+            
+            final dayIndex = (w - 1) * 7 + dow;
+            var status = 'rest';
+
+            if (planExists) {
+              totalPlannedWorkoutsCount++;
+              if (isCompleted) {
+                status = 'done';
+                completedWorkoutsCount++;
+              } else if (dayIndex == currentDayIndex) {
+                status = 'today';
+              } else if (dayIndex < currentDayIndex) {
+                status = 'missed';
+              } else {
+                status = 'upcoming';
+              }
+            } else {
+              if (dayIndex == currentDayIndex) {
+                status = 'today_rest';
+              } else if (dayIndex < currentDayIndex) {
+                status = 'past_rest';
+              } else {
+                status = 'future_rest';
+              }
+            }
+
+            allDaysList.add({
+              'dayIndex': dayIndex,
+              'week': w,
+              'dayOfWeek': dow,
+              'planId': planId,
+              'isPlanned': planExists,
+              'status': status,
+            });
+          }
+        }
+
+        // Filter current week plans for the list view below the grid
+        List<Map<String, dynamic>> plans = allPlans.where((p) => p['id'].toString().startsWith('plan_w${_selectedWeek}_')).toList();
+        if (plans.isEmpty && _selectedWeek == 1) {
+          plans = allPlans;
+        }
+
+        for (var dayNum = 1; dayNum <= 7; dayNum++) {
+          final dayName = _getFarsiDayName(dayNum);
+          final dayPlan = plans.firstWhere(
+            (p) => (p['dayOfWeek'] as int) == dayNum,
+            orElse: () => {},
           );
+
+          if (dayPlan.isEmpty) {
+            weekDaysList.add(
+              PlanDaySummary(
+                id: 'rest_$dayNum',
+                dayName: dayName,
+                muscleGroups: 'استراحت',
+                status: DayStatus.rest,
+              ),
+            );
+          } else {
+            final planId = dayPlan['id'].toString();
+            final musclesRaw = jsonDecode(dayPlan['muscleGroups'].toString()) as List<dynamic>;
+            final musclesText = musclesRaw.join(' و ');
+
+            final isCompleted = allLogs.any((log) => log['planId'] == planId);
+
+            var status = DayStatus.upcoming;
+            if (isCompleted) {
+              status = DayStatus.completed;
+            } else if (dayNum == todayFarsiDay && _selectedWeek == currentWeek) {
+              status = DayStatus.today;
+            }
+
+            weekDaysList.add(
+              PlanDaySummary(
+                id: planId,
+                dayName: dayName,
+                muscleGroups: 'تمرین $musclesText',
+                status: status,
+              ),
+            );
+          }
         }
       }
 

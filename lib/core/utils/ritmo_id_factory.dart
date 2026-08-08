@@ -28,6 +28,7 @@ class RitmoIdFactory {
   static String ssPr() => 'sspr_${_stamp()}';
   static String ssDecision() => 'ssdec_${_stamp()}';
   static String ssCustomExercise() => 'ssex_custom_${_stamp()}';
+  static String ssPrescription(String dateIso) => 'pres_${dateIso}_${_stamp()}';
 
   // Movement Layer IDs
   static String movementLog() => 'mv_${_stamp()}';

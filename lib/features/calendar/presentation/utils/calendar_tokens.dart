@@ -76,4 +76,9 @@ class CalendarTokens {
   static const double textMeta = 12.0;
   static const double textLabel = 11.0;
   static const double textSection = 13.0;
+
+  // ─── Agenda View ───
+  /// Fixed row height for agenda list items — prevents scroll jitter
+  static const double agendaRowHeight = 52.0;
+  static const double agendaBucketHeaderHeight = 36.0;
 }

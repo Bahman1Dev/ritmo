@@ -19,6 +19,10 @@ import 'package:ritmo/features/calendar/presentation/widgets/calendar_search_del
 import 'package:ritmo/features/calendar/presentation/widgets/domain_selection_sheet.dart';
 import 'package:ritmo/features/calendar/utils/calendar_defaults.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
+import 'package:ritmo/features/calendar/presentation/widgets/day_summary_bar.dart';
+import 'package:ritmo/features/calendar/presentation/widgets/empty_day_view.dart';
+import 'package:ritmo/features/calendar/presentation/widgets/go_to_date_dialog.dart';
+import 'package:ritmo/features/calendar/presentation/widgets/journey_agenda_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_month_view.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_scale_switcher.dart';
 import 'package:ritmo/features/calendar/presentation/widgets/journey_smart_panel.dart';
@@ -62,13 +66,18 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
     final startDate = widget.initialDate ?? DateTime.now();
     _prevDate = startDate;
-    _controller.loadDate(startDate).then((_) {
-      if (widget.initialItemId != null) {
-        _focusItemById(widget.initialItemId);
-      } else {
-        _autoScrollToNow();
-      }
-    });
+
+    if (widget.initialItemId != null) {
+      // K22 EXCEPTION: navigating to a specific item forces day scale.
+      // This comment is intentional — do not remove without reading 067.md §K22.
+      _controller.selectDate(startDate, scaleToSet: JourneyScale.day);
+      _controller.loadForActiveScale().then((_) => _focusItemById(widget.initialItemId));
+    } else {
+      // K22: Load user-preferred scale from settings; fall back to agenda.
+      _controller.loadDefaultScale().then((_) {
+        _controller.loadForActiveScale().then((_) => _autoScrollToNow());
+      });
+    }
 
     _checkHealthIssues();
     _eventSubscription = RitmoEventBus().onEvents.listen((event) {
@@ -210,6 +219,8 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
   String _getSubContextTitle(JourneyScale scale, DateTime date) {
     switch (scale) {
+      case JourneyScale.agenda:
+        return 'نمای برنامه';
       case JourneyScale.day:
         final jalali = Jalali.fromDateTime(date);
         return 'روز ${jalali.formatter.wN}';
@@ -380,6 +391,21 @@ class _JourneyScreenState extends State<JourneyScreen> {
                                 height: 36,
                                 child: IconButton(
                                   padding: EdgeInsets.zero,
+                                  icon: const Icon(Icons.calendar_month_outlined, size: 20),
+                                  tooltip: 'برو به تاریخ',
+                                  onPressed: () async {
+                                    final picked = await GoToDateDialog.show(context, initialDate: selectedDate);
+                                    if (picked != null && mounted) {
+                                      _controller.selectDate(picked);
+                                    }
+                                  },
+                                ),
+                              ),
+                              SizedBox(
+                                width: 36,
+                                height: 36,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
                                   icon: const Icon(Icons.search_rounded, size: 20),
                                   tooltip: 'جستجوی رویدادها',
                                   onPressed: () async {
@@ -523,13 +549,28 @@ class _JourneyScreenState extends State<JourneyScreen> {
     required bool isToday,
   }) {
     switch (activeScale) {
+      case JourneyScale.agenda:
+        return JourneyAgendaView(
+          rangeSnapshots: _controller.rangeSnapshots,
+          now: DateTime.now(),
+          onItemTap: _openItemDetails,
+          onAddTap: () => UniversalPlannerSheet.show(context: context),
+        );
       case JourneyScale.day:
-        return snapshot == null
-            ? const Center(child: Text('هیچ برنامه‌ای برای این روز ثبت نشده'))
+        return (snapshot == null || snapshot.items.isEmpty)
+            ? EmptyDayView(
+                date: selectedDate,
+                onRefreshRequested: _controller.refresh,
+              )
             : Stack(
                 children: [
                   Column(
                     children: [
+                      // K24 — Day Summary Bar
+                      DaySummaryBar(
+                        snapshot: snapshot,
+                        onTapFreeGaps: _openSmartPanel,
+                      ),
                       TimelineUntimedSection(
                         untimedItems: untimedItems,
                         onItemTap: _openItemDetails,

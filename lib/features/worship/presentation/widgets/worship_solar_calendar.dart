@@ -31,6 +31,7 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
 
   late WorshipCalendarMonthData _monthData;
   late WorshipCalendarDay _selectedDay;
+  bool _isCollapsed = false;
 
   @override
   void initState() {
@@ -123,6 +124,18 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
+    // Calculate displayed days: Full month or selected week row
+    final selectedIdx = _monthData.days.indexWhere(
+      (d) => d.jalali.year == _selectedDay.jalali.year &&
+          d.jalali.month == _selectedDay.jalali.month &&
+          d.jalali.day == _selectedDay.jalali.day,
+    );
+    final validIdx = selectedIdx >= 0 ? selectedIdx : 0;
+    final weekStart = (validIdx ~/ 7) * 7;
+    final displayedDays = _isCollapsed
+        ? _monthData.days.sublist(weekStart, weekStart + 7)
+        : _monthData.days;
+
     return Column(
       children: [
         // Main Premium Solar Calendar Surface Card
@@ -146,7 +159,7 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header: Navigation, Month Title & Subtitle
+              // Header: Navigation, Month Title & Subtitle + Collapse Toggle
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -207,15 +220,28 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
                     ),
                   ),
 
-                  // Prev / Next Month Controls
+                  // Collapse Toggle + Prev / Next Month Controls
                   Row(
                     children: [
+                      // Collapse / Expand Toggle Button
+                      IconButton(
+                        onPressed: () => setState(() => _isCollapsed = !_isCollapsed),
+                        icon: Icon(
+                          _isCollapsed ? CupertinoIcons.chevron_down : CupertinoIcons.chevron_up,
+                          size: 20,
+                        ),
+                        color: colors.textPrimary,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                        tooltip: _isCollapsed ? 'باز کردن تقویم' : 'جمع کردن تقویم',
+                      ),
+                      const SizedBox(width: 2),
                       IconButton(
                         onPressed: _goToNextMonth,
                         icon: const Icon(CupertinoIcons.chevron_forward, size: 20),
                         color: colors.textPrimary,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
                         tooltip: 'ماه بعد',
                       ),
                       IconButton(
@@ -223,7 +249,7 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
                         icon: const Icon(CupertinoIcons.chevron_back, size: 20),
                         color: colors.textPrimary,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
                         tooltip: 'ماه قبل',
                       ),
                     ],
@@ -251,22 +277,22 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
               Divider(height: 1, color: colors.textPrimary.withValues(alpha: 0.08)),
               const SizedBox(height: 10),
 
-              // 7-Column Grid (35 or 42 Days)
+              // 7-Column Grid (Month View or Collapsed Week View)
               AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 250),
                 child: GridView.builder(
-                  key: ValueKey('${_monthData.year}-${_monthData.month}'),
+                  key: ValueKey('${_monthData.year}-${_monthData.month}-collapsed:$_isCollapsed-week:$weekStart'),
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _monthData.days.length,
+                  itemCount: displayedDays.length,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 7,
                     mainAxisSpacing: 6,
                     crossAxisSpacing: 6,
-                    childAspectRatio: 0.86,
+                    childAspectRatio: 1.05,
                   ),
                   itemBuilder: (context, index) {
-                    final day = _monthData.days[index];
+                    final day = displayedDays[index];
                     return _buildDayCell(context, colors, day);
                   },
                 ),
@@ -308,7 +334,7 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
 
     final isToday = day.isToday;
     final isCurrentMonth = day.isCurrentMonth;
-    final isFriday = day.isFriday;
+    final isHoliday = day.isHoliday;
 
     // Card background color
     Color bgColor;
@@ -318,26 +344,18 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
       bgColor = Colors.transparent;
     }
 
-    // Main text color
+    // Main text color (Red for holidays: Fridays, national & religious holidays)
     Color mainTextColor;
     if (isSelected) {
       mainTextColor = Colors.white;
     } else if (!isCurrentMonth) {
-      mainTextColor = colors.textTertiary.withValues(alpha: 0.35);
-    } else if (isFriday) {
+      mainTextColor = isHoliday
+          ? const Color(0xFFE53935).withValues(alpha: 0.40)
+          : colors.textTertiary.withValues(alpha: 0.35);
+    } else if (isHoliday) {
       mainTextColor = const Color(0xFFE53935);
     } else {
       mainTextColor = colors.textPrimary;
-    }
-
-    // Secondary digits color
-    Color subTextColor;
-    if (isSelected) {
-      subTextColor = Colors.white.withValues(alpha: 0.85);
-    } else if (!isCurrentMonth) {
-      subTextColor = colors.textTertiary.withValues(alpha: 0.25);
-    } else {
-      subTextColor = colors.textSecondary;
     }
 
     return GestureDetector(
@@ -363,46 +381,15 @@ class _WorshipSolarCalendarState extends State<WorshipSolarCalendar> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Primary Solar Day Number (Enlarged)
+            // Single Primary Solar Day Number (Enlarged to 20pt)
             Text(
               toPersianDigits(day.jalali.day.toString()),
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: (isToday || isSelected) ? FontWeight.bold : FontWeight.w600,
+                fontSize: 20,
+                fontWeight: (isToday || isSelected || isHoliday) ? FontWeight.bold : FontWeight.w600,
                 color: mainTextColor,
                 fontFamily: 'Vazirmatn',
               ),
-            ),
-
-            const SizedBox(height: 2),
-
-            // Secondary Digits: Gregorian & Hijri (Enlarged)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  day.dateTime.day.toString(),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: subTextColor,
-                    fontFamily: 'Roboto',
-                  ),
-                ),
-                Text(
-                  ' • ',
-                  style: TextStyle(fontSize: 8, color: subTextColor),
-                ),
-                Text(
-                  toPersianDigits(day.hijri.day.toString()),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: subTextColor,
-                    fontFamily: 'Vazirmatn',
-                  ),
-                ),
-              ],
             ),
 
             const SizedBox(height: 3),

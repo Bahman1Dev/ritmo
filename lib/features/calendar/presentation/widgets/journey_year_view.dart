@@ -148,24 +148,33 @@ class JourneyYearView extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${toPersianDigits(monthTaskCount.toString())} برنامه',
+                                monthTaskCount > 0
+                                    ? '${toPersianDigits((progressRatio * 100).round())}٪'
+                                    : '—',
                                 style: TextStyle(
                                   fontSize: CalendarTokens.textMeta,
+                                  fontWeight: FontWeight.w600,
                                   fontFamily: 'Vazirmatn',
-                                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.60),
+                                  color: monthTaskCount > 0
+                                      ? (isCurrentMonth || isSelectedMonth
+                                          ? theme.colorScheme.primary
+                                          : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.70))
+                                      : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.30),
                                 ),
                               ),
                               const SizedBox(height: 4),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(2),
                                 child: LinearProgressIndicator(
-                                  value: progressRatio,
+                                  value: monthTaskCount > 0 ? progressRatio : 0.0,
                                   minHeight: 3,
                                   backgroundColor: theme.dividerColor.withValues(alpha: 0.12),
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    monthCompletedCount == monthTaskCount && monthTaskCount > 0
-                                        ? CalendarTokens.emerald
-                                        : theme.colorScheme.primary,
+                                    monthTaskCount == 0
+                                        ? theme.disabledColor
+                                        : (monthCompletedCount == monthTaskCount
+                                            ? CalendarTokens.emerald
+                                            : theme.colorScheme.primary),
                                   ),
                                 ),
                               ),

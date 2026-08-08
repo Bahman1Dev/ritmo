@@ -20,7 +20,7 @@ class DatabaseHelper {
   DatabaseHelper._init();
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
-  static const int _dbVersion = 80;
+  static const int _dbVersion = 83;
 
   @visibleForTesting
   static set databaseInstance(Database? db) => _database = db;
@@ -37,7 +37,8 @@ class DatabaseHelper {
       _database = db;
       _dbInitCompleter!.complete(db);
       return db;
-    } catch (e) {
+    } catch (e, st) {
+      _dbInitCompleter?.completeError(e, st);
       _dbInitCompleter = null;
       rethrow;
     }

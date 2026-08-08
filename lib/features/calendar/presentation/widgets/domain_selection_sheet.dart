@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
@@ -183,17 +184,19 @@ class DomainSelectionSheet extends StatelessWidget {
                   final subjects = await KonkurRepository.instance.getSubjects();
                   final topics = await KonkurRepository.instance.getTopics();
                   if (context.mounted) {
-                    showModalBottomSheet<void>(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (ctx) => KonkurStudySheet(
-                        subjects: subjects,
-                        topics: topics,
-                        onSaved: () {
-                          DayAgendaService.instance.invalidateDate(dateStr);
-                          onCreated();
-                        },
+                    unawaited(
+                      showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (ctx) => KonkurStudySheet(
+                          subjects: subjects,
+                          topics: topics,
+                          onSaved: () {
+                            DayAgendaService.instance.invalidateDate(dateStr);
+                            onCreated();
+                          },
+                        ),
                       ),
                     );
                   }

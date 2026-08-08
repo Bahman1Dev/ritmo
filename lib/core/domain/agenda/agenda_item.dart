@@ -17,6 +17,7 @@ enum AgendaDomain {
   sport,
   medicine,
   event,
+  task,
 }
 
 /// Explicit classification of an agenda item's scheduling constraints.

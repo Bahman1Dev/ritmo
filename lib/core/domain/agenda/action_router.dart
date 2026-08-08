@@ -4,6 +4,7 @@ import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/agenda/action_feedback.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
+import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/completion/completion_gateway.dart';
 import 'package:ritmo/core/domain/completion/completion_outcome.dart';
 import 'package:ritmo/core/domain/completion/completion_request.dart';
@@ -22,6 +23,9 @@ import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dar
 import 'package:ritmo/features/routines/shared/routine_actions.dart';
 import 'package:ritmo/features/routines/shared/widgets/routine_details_sheet.dart';
 import 'package:ritmo/features/routines/shared/widgets/routine_niyyah_sheet.dart';
+import 'package:ritmo/features/simple_tasks/data/simple_task_repository.dart';
+import 'package:ritmo/features/simple_tasks/domain/simple_task.dart';
+import 'package:ritmo/features/simple_tasks/presentation/widgets/task_detail_sheet.dart';
 import 'package:ritmo/features/supplementary_sports/movement/presentation/movement_log_sheet.dart';
 import 'package:ritmo/features/today/presentation/active_timer_overlay.dart';
 
@@ -187,7 +191,61 @@ class ActionRouter {
           ActionFeedback.info(context, message: item.title);
         }
         break;
+
+      case AgendaDomain.task:
+        await _handleTaskAction(context, item, onChanged: onChanged);
+        break;
     }
+  }
+
+  static Future<void> _handleTaskAction(
+    BuildContext context,
+    AgendaItem item, {
+    VoidCallback? onChanged,
+  }) async {
+    // Load the SimpleTask from the repository by sourceId
+    SimpleTask? task;
+    try {
+      task = await SimpleTaskRepository.instance.getById(item.sourceId);
+    } catch (e) {
+      debugPrint('[ActionRouter] Task lookup error: $e');
+    }
+
+    if (task == null) {
+      if (context.mounted) {
+        ActionFeedback.failure(context, message: 'اطلاعات این کار در دسترس نیست');
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => TaskDetailSheet(
+        task: task!,
+        onTaskUpdated: () {
+          DayAgendaService.instance.invalidateDate(item.dateStr);
+          RitmoEventBus().fire(RitmoEvent(
+            type: 'TaskUpdated',
+            timestamp: DateTime.now(),
+            payload: {'date': item.dateStr, 'taskId': item.sourceId},
+          ));
+          onChanged?.call();
+        },
+        onTaskDeleted: () {
+          DayAgendaService.instance.invalidateDate(item.dateStr);
+          RitmoEventBus().fire(RitmoEvent(
+            type: 'TaskUpdated',
+            timestamp: DateTime.now(),
+            payload: {'date': item.dateStr, 'taskId': item.sourceId},
+          ));
+          onChanged?.call();
+        },
+      ),
+    );
   }
 
   static Future<void> _guard(

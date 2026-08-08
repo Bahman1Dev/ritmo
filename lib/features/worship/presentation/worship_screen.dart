@@ -11,7 +11,6 @@ import 'package:ritmo/features/worship/logic/hijri_calendar.dart';
 import 'package:ritmo/features/worship/logic/worship_engine.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:ritmo/features/worship/presentation/widgets/ai_worship_assistant_sheet.dart';
-import 'package:ritmo/features/worship/presentation/widgets/fullscreen_tasbih_sheet.dart';
 import 'package:ritmo/features/worship/presentation/widgets/lunar_month_grid.dart';
 import 'package:ritmo/features/worship/presentation/widgets/mustahab_section.dart';
 import 'package:ritmo/features/worship/presentation/widgets/night_prayer_card.dart';
@@ -21,7 +20,6 @@ import 'package:ritmo/features/worship/presentation/widgets/prayer_city_picker.d
 import 'package:ritmo/features/worship/presentation/widgets/qibla_compass_sheet.dart';
 import 'package:ritmo/features/worship/presentation/widgets/quran_dhikr_section.dart';
 import 'package:ritmo/features/worship/presentation/widgets/worship_debts_section.dart';
-import 'package:ritmo/features/worship/presentation/widgets/worship_seasons_section.dart';
 import 'package:ritmo/features/worship/presentation/widgets/worship_solar_calendar.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
@@ -274,13 +272,6 @@ class _WorshipScreenState extends State<WorshipScreen> {
                   // 8. DEBTS ("جبران")
                   WorshipDebtsSection(
                     onChanged: _onDataChanged,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // 9. SEASONS
-                  WorshipSeasonsSection(
-                    onChanged: _onDataChanged,
-                    hijriDate: _worshipDay?.hijri,
                   ),
                   const SizedBox(height: 24),
                 ],

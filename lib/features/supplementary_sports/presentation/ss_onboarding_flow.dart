@@ -263,6 +263,14 @@ class _SSOnboardingFlowState extends State<SSOnboardingFlow> {
         updatedAt: now,
       );
 
+      // Ensure columns exist on legacy databases
+      try {
+        await db.execute('ALTER TABLE ss_user_profile ADD COLUMN programStartDate TEXT;');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE ss_user_profile ADD COLUMN deloadEveryNWeeks INTEGER DEFAULT 4;');
+      } catch (_) {}
+
       // Save Profile
       await db.insert(
         'ss_user_profile',
@@ -1374,13 +1382,13 @@ class _AiPlanBuildingProgressView extends StatelessWidget {
                       child: isDone
                           ? const Icon(Icons.check, color: Colors.white, size: 16)
                           : isCurrent
-                              ? Center(
+                              ? const Center(
                                   child: SizedBox(
                                     width: 14,
                                     height: 14,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                     ),
                                   ),
                                 )

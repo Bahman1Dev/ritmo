@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/features/worship/logic/worship_calendar_logic.dart';
+import 'package:ritmo/features/worship/logic/worship_engine.dart';
 import 'package:ritmo/features/worship/logic/worship_occasions_data.dart';
 import 'package:ritmo/features/worship/models/worship_models.dart';
 import 'package:ritmo/features/worship/presentation/widgets/fullscreen_tasbih_sheet.dart';
 
-class WorshipDayDetailPanel extends StatelessWidget {
+class WorshipDayDetailPanel extends StatefulWidget {
   const WorshipDayDetailPanel({
     super.key,
     required this.selectedDay,
@@ -21,6 +25,14 @@ class WorshipDayDetailPanel extends StatelessWidget {
 
   final VoidCallback? onOpenTasbih;
 
+  @override
+  State<WorshipDayDetailPanel> createState() => _WorshipDayDetailPanelState();
+}
+
+class _WorshipDayDetailPanelState extends State<WorshipDayDetailPanel> {
+  WorshipDay? _worshipDay;
+  bool _isLoadingDay = true;
+
   static const List<String> weekdayNamesFa = [
     'دوشنبه',   // 1
     'سه‌شنبه',  // 2
@@ -31,6 +43,38 @@ class WorshipDayDetailPanel extends StatelessWidget {
     'یکشنبه',   // 7
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadDayData();
+  }
+
+  @override
+  void didUpdateWidget(WorshipDayDetailPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedDay.dateTime != widget.selectedDay.dateTime) {
+      _loadDayData();
+    }
+  }
+
+  Future<void> _loadDayData() async {
+    try {
+      final dayData = await WorshipEngine.instance.loadDay(widget.selectedDay.dateTime);
+      if (mounted) {
+        setState(() {
+          _worshipDay = dayData;
+          _isLoadingDay = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingDay = false;
+        });
+      }
+    }
+  }
+
   String _getWeekdayName(int weekday) {
     return weekdayNamesFa[(weekday - 1) % 7];
   }
@@ -38,6 +82,7 @@ class WorshipDayDetailPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final selectedDay = widget.selectedDay;
     final j = selectedDay.jalali;
     final h = selectedDay.hijri;
     final dt = selectedDay.dateTime;
@@ -139,7 +184,7 @@ class WorshipDayDetailPanel extends StatelessWidget {
             ),
 
             // Qamari Night Badge (if active for today after Maghrib)
-            if (selectedDay.isToday && qamariNightText != null) ...[
+            if (selectedDay.isToday && widget.qamariNightText != null) ...[
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -154,7 +199,7 @@ class WorshipDayDetailPanel extends StatelessWidget {
                     const Icon(CupertinoIcons.moon_stars_fill, size: 14, color: Color(0xFFFFD700)),
                     const SizedBox(width: 8),
                     Text(
-                      qamariNightText!,
+                      widget.qamariNightText!,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -171,6 +216,11 @@ class WorshipDayDetailPanel extends StatelessWidget {
             Divider(height: 1, color: colors.textPrimary.withValues(alpha: 0.08)),
             const SizedBox(height: 14),
 
+            // Obligatory Prayers Status Card
+            _buildObligatoryPrayersCard(context, colors),
+
+            const SizedBox(height: 14),
+
             // Occasions List or Empty State
             if (selectedDay.hasOccasions) ...[
               ...selectedDay.occasions.map((occ) => _buildOccasionCard(context, colors, occ)),
@@ -184,6 +234,167 @@ class WorshipDayDetailPanel extends StatelessWidget {
             _buildDailyZikrCard(context, colors),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildObligatoryPrayersCard(BuildContext context, RitmoColors colors) {
+    final prayers = [
+      {'key': 'FAJR', 'label': 'صبح'},
+      {'key': 'DHUHR', 'label': 'ظهر'},
+      {'key': 'ASR', 'label': 'عصر'},
+      {'key': 'MAGHRIB', 'label': 'مغرب'},
+      {'key': 'ISHA', 'label': 'عشا'},
+    ];
+
+    final practiceMap = <String, WorshipPracticeState>{};
+    if (_worshipDay != null) {
+      for (final st in _worshipDay!.practices) {
+        final key = (st.practice.subType ?? st.practice.id).toUpperCase();
+        practiceMap[key] = st;
+      }
+    }
+
+    final isToday = widget.selectedDay.isToday;
+    final isFuture = widget.selectedDay.dateTime.isAfter(DateTime.now());
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.surfaceElevated.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.textPrimary.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(CupertinoIcons.checkmark_seal_fill, size: 15, color: Color(0xFFC4953B)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'وضعیت نمازهای واجب این روز',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                      fontFamily: 'Vazirmatn',
+                    ),
+                  ),
+                ],
+              ),
+              if (_isLoadingDay)
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFC4953B)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: prayers.map((p) {
+              final pKey = p['key']!;
+              final pLabel = p['label']!;
+              final st = practiceMap[pKey];
+
+              final isDone = st?.isDone ?? false;
+              final resultType = st?.resultType;
+
+              Color bgBadge;
+              Color textBadgeColor;
+              IconData badgeIcon;
+              String statusText;
+
+              if (isDone) {
+                bgBadge = const Color(0xFF10B981).withValues(alpha: 0.12);
+                textBadgeColor = const Color(0xFF10B981);
+                badgeIcon = CupertinoIcons.checkmark_alt_circle_fill;
+                statusText = 'خوانده شد';
+              } else if (resultType == 'MISSED' || resultType == 'QADA_ADDED') {
+                bgBadge = const Color(0xFFE53935).withValues(alpha: 0.12);
+                textBadgeColor = const Color(0xFFE53935);
+                badgeIcon = CupertinoIcons.xmark_circle_fill;
+                statusText = 'قضا شد';
+              } else if (resultType == 'SKIPPED') {
+                bgBadge = const Color(0xFF8B5CF6).withValues(alpha: 0.12);
+                textBadgeColor = const Color(0xFF8B5CF6);
+                badgeIcon = CupertinoIcons.moon_fill;
+                statusText = 'معاف';
+              } else if (isFuture) {
+                bgBadge = colors.textPrimary.withValues(alpha: 0.04);
+                textBadgeColor = colors.textTertiary;
+                badgeIcon = CupertinoIcons.clock;
+                statusText = 'در انتظار';
+              } else {
+                bgBadge = colors.textPrimary.withValues(alpha: 0.05);
+                textBadgeColor = colors.textSecondary;
+                badgeIcon = CupertinoIcons.circle;
+                statusText = isToday ? 'در انتظار' : 'ثبت‌نشده';
+              }
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () async {
+                    if (st != null && !isFuture) {
+                      unawaited(HapticFeedback.lightImpact());
+                      if (isDone) {
+                        await WorshipEngine.instance.logSkip(
+                          practiceId: st.practice.id,
+                          date: widget.selectedDay.dateTime,
+                        );
+                      } else {
+                        await WorshipEngine.instance.logDone(
+                          practiceId: st.practice.id,
+                          date: widget.selectedDay.dateTime,
+                        );
+                      }
+                      unawaited(_loadDayData());
+                    }
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: bgBadge,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: textBadgeColor.withValues(alpha: 0.25)),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(badgeIcon, size: 15, color: textBadgeColor),
+                        const SizedBox(height: 4),
+                        Text(
+                          pLabel,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: colors.textPrimary,
+                            fontFamily: 'Vazirmatn',
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          statusText,
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                            color: textBadgeColor,
+                            fontFamily: 'Vazirmatn',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -328,7 +539,7 @@ class WorshipDayDetailPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  selectedDay.dailyZikr,
+                  widget.selectedDay.dailyZikr,
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -345,7 +556,7 @@ class WorshipDayDetailPanel extends StatelessWidget {
             onTap: () {
               FullscreenTasbihSheet.present(
                 context,
-                initialDhikrTitle: selectedDay.dailyZikr.split('(').first.trim(),
+                initialDhikrTitle: widget.selectedDay.dailyZikr.split('(').first.trim(),
                 dhikrSubtitle: 'ذکر روز هفته',
                 targetCount: 100,
                 isFatimaTasbih: false,

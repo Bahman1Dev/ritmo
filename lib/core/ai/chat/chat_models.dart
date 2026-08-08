@@ -27,12 +27,25 @@ class ChatAction {
   Map<String, dynamic> toJson() =>
     {'type': type, 'label': label, 'payload': payload, 'targetRoute': targetRoute};
 
-  AssistantAction toAssistantAction() => AssistantAction(
-    type: AssistantActionType.fromString(type),
-    title: label,
-    payload: payload,
-    targetRoute: targetRoute,
-  );
+  AssistantAction toAssistantAction() {
+    var resolvedRoute = targetRoute ?? (payload['targetRoute']?.toString());
+    final labelLower = label.toLowerCase();
+    if (resolvedRoute == null || resolvedRoute.isEmpty) {
+      if (labelLower.contains('پریود') || labelLower.contains('چرخه') || labelLower.contains('قاعدگی')) {
+        resolvedRoute = '/cycle';
+      }
+    }
+
+    var resolvedType = AssistantActionType.tryFromString(type);
+    resolvedType ??= AssistantActionType.openPage;
+
+    return AssistantAction(
+      type: resolvedType,
+      title: label,
+      payload: payload,
+      targetRoute: resolvedRoute,
+    );
+  }
 }
 
 class ChatMessage {   // in-memory only — به DB نمیرود

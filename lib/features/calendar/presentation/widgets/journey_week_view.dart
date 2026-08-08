@@ -40,6 +40,18 @@ class JourneyWeekView extends StatelessWidget {
     final nowMinutes = (now.hour * 60) + now.minute;
     final nowTop = nowMinutes * miniPxPerMin;
 
+    int weekTotal = 0;
+    int weekCompleted = 0;
+    for (final day in weekDays) {
+      final k = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+      final snap = rangeSnapshots[k];
+      if (snap != null) {
+        weekTotal += snap.completedCount + snap.remainingCount;
+        weekCompleted += snap.completedCount;
+      }
+    }
+    final weekRatio = weekTotal > 0 ? (weekCompleted / weekTotal).clamp(0.0, 1.0) : 0.0;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Padding(
@@ -49,6 +61,40 @@ class JourneyWeekView extends StatelessWidget {
         ),
         child: Column(
           children: [
+            // K27 — Weekly Progress Bar
+            Padding(
+              padding: const EdgeInsets.only(bottom: CalendarTokens.spacingS),
+              child: Row(
+                children: [
+                  Text(
+                    'پیشرفت هفته: ${toPersianDigits(weekCompleted)} از ${toPersianDigits(weekTotal)}',
+                    style: TextStyle(
+                      fontSize: CalendarTokens.textMeta,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Vazirmatn',
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: weekRatio,
+                        minHeight: 4,
+                        backgroundColor: colors.border.withValues(alpha: 0.3),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          weekCompleted == weekTotal && weekTotal > 0
+                              ? CalendarTokens.emerald
+                              : colors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             // Week Header Row (7 mini headers)
             Row(
               children: List.generate(7, (index) {

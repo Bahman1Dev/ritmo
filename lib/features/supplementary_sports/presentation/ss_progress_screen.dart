@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/analytics/movement_load_calculator.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/supplementary_sports/data/models/ss_session_models.dart';
 import 'package:ritmo/features/supplementary_sports/data/models/ss_user_profile_model.dart';
@@ -382,11 +383,12 @@ class _SSProgressScreenState extends State<SSProgressScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
+    final isDark = context.isDark;
 
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAF8),
+        backgroundColor: colors.background,
         body: Center(child: SSLottiePlayer.loading(size: 100)),
       );
     }
@@ -394,7 +396,7 @@ class _SSProgressScreenState extends State<SSProgressScreen> {
     switch (_state) {
       case SSProgressEmpty():
         return Scaffold(
-          backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAF8),
+          backgroundColor: colors.background,
           body: EmptyStateView(
             message: 'روند پیشرفت شما پس از ثبت حداقل ۱ جلسه تمرینی آغاز می‌شود. تا کنون تمرینی تمام نشده است.',
             actionLabel: 'شروع تمرین امروز',

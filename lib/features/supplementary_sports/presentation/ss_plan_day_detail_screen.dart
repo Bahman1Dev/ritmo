@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/assistant/logic/assistant_action_registry.dart';
 import 'package:ritmo/features/assistant/models/assistant_models.dart';
@@ -516,21 +517,21 @@ class _SSPlanDayDetailScreenState extends State<SSPlanDayDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final colors = context.colors;
 
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAF8),
+        backgroundColor: colors.background,
         body: Center(child: SSLottiePlayer.loading(size: 100)),
       );
     }
 
     if (_planId == null) {
       return Scaffold(
-        backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAF8),
+        backgroundColor: colors.background,
         appBar: AppBar(
-          title: Text(widget.dayName, style: const TextStyle(fontFamily: 'Vazirmatn')),
+          backgroundColor: colors.surface,
+          title: Text(widget.dayName, style: TextStyle(fontFamily: 'Vazirmatn', color: colors.textPrimary)),
           centerTitle: true,
         ),
         body: Directionality(
@@ -545,9 +546,10 @@ class _SSPlanDayDetailScreenState extends State<SSPlanDayDetailScreen> {
     }
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAF8),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: Text('جزئیات تمرین ${widget.dayName}', style: const TextStyle(fontFamily: 'Vazirmatn')),
+        backgroundColor: colors.surface,
+        title: Text('جزئیات تمرین ${widget.dayName}', style: TextStyle(fontFamily: 'Vazirmatn', color: colors.textPrimary)),
         centerTitle: true,
       ),
       body: Directionality(

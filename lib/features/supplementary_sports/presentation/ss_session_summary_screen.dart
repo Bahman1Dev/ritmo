@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/analytics/movement_load_calculator.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/utils/ritmo_id_factory.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
@@ -15,6 +16,8 @@ import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/ss_lottie_player.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/widgets/shared/stat_card.dart';
 import 'package:ritmo/features/supplementary_sports/supplementary_sports_theme.dart';
+import 'package:ritmo/features/supplementary_sports/data/repositories/ss_prescription_repository.dart';
+import 'package:ritmo/features/supplementary_sports/domain/prescription/session_prescription.dart';
 
 /// Screen summarizing the results of a completed supplementary sports workout session.
 class SSSessionSummaryScreen extends StatefulWidget {
@@ -151,10 +154,11 @@ class _SSSessionSummaryScreenState extends State<SSSessionSummaryScreen> {
       );
 
       if (existingLogs.isEmpty) {
+        final logId = RitmoIdFactory.workoutLog();
         final durMins = (widget.durationSeconds / 60).round().clamp(1, 999);
         await MovementRepository.instance.logEvent(
           MovementEvent(
-            id: RitmoIdFactory.workoutLog(),
+            id: logId,
             kindCode: 'WEIGHTLIFTING',
             durationMinutes: durMins,
             intensity: MovementIntensity.medium,
@@ -163,6 +167,19 @@ class _SSSessionSummaryScreenState extends State<SSSessionSummaryScreen> {
             note: 'تمرین تکمیلی ${widget.sessionId}',
           ),
         );
+
+        // Link logId to today's prescription (Phase E audit hook)
+        try {
+          final presRepo = SsPrescriptionRepository.instance;
+          final pres = await presRepo.getPrescriptionForDate(todayIso);
+          if (pres != null) {
+            await presRepo.savePrescription(pres.copyWith(
+              status: PrescriptionStatus.done,
+              workoutLogId: logId,
+              updatedAt: today.millisecondsSinceEpoch,
+            ));
+          }
+        } catch (_) {}
       }
 
       // 3. Fire event to live sync calendar views
@@ -220,26 +237,25 @@ class _SSSessionSummaryScreenState extends State<SSSessionSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final colors = context.colors;
 
     if (_isLoading) {
       return Scaffold(
-        backgroundColor:
-            isDark ? const Color(0xFF121212) : const Color(0xFFFAFAF8),
+        backgroundColor: colors.background,
         body: Center(child: SSLottiePlayer.loading(size: 100)),
       );
     }
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF121212) : const Color(0xFFFAFAF8),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text(
+        backgroundColor: colors.surface,
+        title: Text(
           'خلاصه تمرین امروز',
           style: TextStyle(
             fontFamily: 'Vazirmatn',
             fontWeight: FontWeight.bold,
+            color: colors.textPrimary,
           ),
         ),
         centerTitle: true,
