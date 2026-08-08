@@ -10,6 +10,7 @@ import 'package:workmanager/workmanager.dart';
 import 'package:ritmo/core/services/background_worker.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:ritmo/core/database/seed/seed_service.dart';
 import 'package:ritmo/core/services/account_reset_service.dart';
 import 'package:ritmo/core/services/device_service.dart';
 import 'package:ritmo/core/security/app_lock_gate.dart';
@@ -138,7 +139,6 @@ class RitmoApp extends StatefulWidget {
 class _RitmoAppState extends State<RitmoApp> {
   bool _showSplash = true;
   bool _onboardingCompleted = false;
-  Object? _initError;
   late Future<void> _initializationFuture;
 
   @override
@@ -149,35 +149,14 @@ class _RitmoAppState extends State<RitmoApp> {
 
   Future<void> _initialize() async {
     try {
-      _initError = null;
-      // 1. Trigger database open
       final db = await DatabaseHelper.instance.database;
+      
+      // 1. Seed initial data
+      await SeedService.seedAll(db);
 
-      // 2. Initialize Premium/Entitlement service
-      try {
-        await PremiumService.instance.init();
-      } catch (e, st) {
-        RitmoLog.error('Init', 'PremiumService init failed', e, st);
-      }
-
-      // 3. Register current device
-      try {
-        await DeviceService.instance.registerCurrentDevice();
-      } catch (e, st) {
-        RitmoLog.error('Init', 'Device registration failed', e, st);
-      }
-
-      // 4. Reconcile external background updates and sync occurrences
-      try {
-        await RitmoExecutionKernel.instance.reconcileExternalState();
-      } catch (e, st) {
-        RitmoLog.error('Init', 'Reconcile external state failed', e, st);
-      }
-
-      // 5. Check if onboarding is completed via OnboardingGate
+      // 2. Check if onboarding is completed via OnboardingGate
       _onboardingCompleted = await OnboardingGate.isCompleted(db);
     } catch (e, st) {
-      _initError = e;
       RitmoLog.error('Init', 'Critical startup error in _initialize', e, st);
       rethrow;
     }

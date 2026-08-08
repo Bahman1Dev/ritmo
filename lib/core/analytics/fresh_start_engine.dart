@@ -76,7 +76,10 @@ class FreshStartEngine implements CachedEngine<FreshStartInput, FreshStartOutput
   void invalidate() {}
 
   @override
-  String fingerprint(FreshStartInput input) => input.toString();
+  String fingerprint(FreshStartInput input) {
+    final dateStr = input.now.toIso8601String().substring(0, 10);
+    return '$dateStr|${input.stagnantGoals.length}|${input.deadRoutines.length}|${input.birthdayJalali}';
+  }
 
   @override
   Future<FreshStartOutput> calculate(FreshStartInput input) async {

@@ -63,7 +63,7 @@ class ModuleRegistry {
     ModuleDescriptor(
       key: 'module_study_enabled',
       titleFa: 'درس و مطالعه',
-      oneLineFa: 'برنامه‌ریزی دروس، سرفصل‌ها و حالت اختصاصی کنکور',
+      oneLineFa: 'برنامهٔ مطالعه، سرفصل‌ها و مرور',
       icon: Icons.school_rounded,
       defaultEnabled: false,
     ),

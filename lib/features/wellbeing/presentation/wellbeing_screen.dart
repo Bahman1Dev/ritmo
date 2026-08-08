@@ -48,9 +48,8 @@ class WellbeingScreen extends StatefulWidget {
 class _WellbeingScreenState extends State<WellbeingScreen>
     with SingleTickerProviderStateMixin {
   bool _hasLoadedOnce = false;
-  // ignore: unused_field
-  bool _isRefreshing = false;
   bool _loadFailed = false;
+  bool _isRefreshing = false;
   bool _isDirty = false;
   int _loadToken = 0;
   int _selectedHorizonDays = 14;
@@ -230,22 +229,49 @@ class _WellbeingScreenState extends State<WellbeingScreen>
         routineCompletions: completionRows,
       );
 
-      // H-03: Parallel Engine Evaluations via Bus
-      final engineResults = await Future.wait([
-        RitmoEngineBus.instance.execute<EnergyAnalyticsEngineInput, EnergyAnalyticsOutput>(EnergyAnalyticsEngine, energyInput).then<EnergyAnalyticsOutput?>((v) => v).catchError((_) => null),
-        RitmoEngineBus.instance.execute<MoodEngineInput, MoodEngineOutput>(MoodEngine, moodInput).then<MoodEngineOutput?>((v) => v).catchError((_) => null),
-        RitmoEngineBus.instance.execute<SleepEngineInput, SleepEngineOutput>(SleepEngine, sleepInput).then<SleepEngineOutput?>((v) => v).catchError((_) => null),
-        RitmoEngineBus.instance.execute<ReflectionEngineInput, ReflectionEngineOutput>(ReflectionEngine, reflectionInput).then<ReflectionEngineOutput?>((v) => v).catchError((_) => null),
-        RitmoEngineBus.instance.execute<LifeBalanceEngineInput, LifeBalanceEngineOutput>(LifeBalanceEngine, balanceInput).then<LifeBalanceEngineOutput?>((v) => v).catchError((_) => null),
-      ]);
+      // Safe Engine Evaluations with Direct Instantiation Fallbacks & 3s Timeouts
+      EnergyAnalyticsOutput? energyOut;
+      try {
+        energyOut = await RitmoEngineBus.instance.execute<EnergyAnalyticsEngineInput, EnergyAnalyticsOutput>(EnergyAnalyticsEngine, energyInput).timeout(const Duration(seconds: 3));
+      } catch (_) {
+        try { energyOut = await EnergyAnalyticsEngine().calculate(energyInput); } catch (_) {}
+      }
 
-      if (!mounted || token != _loadToken) return;
+      MoodEngineOutput? moodOut;
+      try {
+        moodOut = await RitmoEngineBus.instance.execute<MoodEngineInput, MoodEngineOutput>(MoodEngine, moodInput).timeout(const Duration(seconds: 3));
+      } catch (_) {
+        try { moodOut = await MoodEngine().calculate(moodInput); } catch (_) {}
+      }
 
-      _energyOutput = engineResults[0] as EnergyAnalyticsOutput?;
-      _moodOutput = engineResults[1] as MoodEngineOutput?;
-      _sleepOutput = engineResults[2] as SleepEngineOutput?;
-      _reflectionOutput = engineResults[3] as ReflectionEngineOutput?;
-      _lifeBalanceOutput = engineResults[4] as LifeBalanceEngineOutput?;
+      SleepEngineOutput? sleepOut;
+      try {
+        sleepOut = await RitmoEngineBus.instance.execute<SleepEngineInput, SleepEngineOutput>(SleepEngine, sleepInput).timeout(const Duration(seconds: 3));
+      } catch (_) {
+        try { sleepOut = await SleepEngine().calculate(sleepInput); } catch (_) {}
+      }
+
+      ReflectionEngineOutput? reflectionOut;
+      try {
+        reflectionOut = await RitmoEngineBus.instance.execute<ReflectionEngineInput, ReflectionEngineOutput>(ReflectionEngine, reflectionInput).timeout(const Duration(seconds: 3));
+      } catch (_) {
+        try { reflectionOut = await ReflectionEngine().calculate(reflectionInput); } catch (_) {}
+      }
+
+      LifeBalanceEngineOutput? balanceOut;
+      try {
+        balanceOut = await RitmoEngineBus.instance.execute<LifeBalanceEngineInput, LifeBalanceEngineOutput>(LifeBalanceEngine, balanceInput).timeout(const Duration(seconds: 3));
+      } catch (_) {
+        try { balanceOut = await LifeBalanceEngine().calculate(balanceInput); } catch (_) {}
+      }
+
+      if (!mounted) return;
+
+      _energyOutput = energyOut;
+      _moodOutput = moodOut;
+      _sleepOutput = sleepOut;
+      _reflectionOutput = reflectionOut;
+      _lifeBalanceOutput = balanceOut;
 
       _wellbeing = const WellbeingEngine().compute(
         WellbeingEngineInput(
@@ -265,7 +291,7 @@ class _WellbeingScreenState extends State<WellbeingScreen>
         ),
       );
 
-      // H-08: Build trend dataset once in _loadAllData, avoiding build() loop
+      // Build trend dataset once in _loadAllData
       final dayKeys = RitmoDate.lastNDayKeys(now, _selectedHorizonDays);
       final energyByDate = <String, double>{};
       for (final e in _rawEnergyLogs) {
@@ -299,20 +325,22 @@ class _WellbeingScreenState extends State<WellbeingScreen>
         );
       }).toList();
 
-      setState(() {
-        _loadFailed = false;
-        _hasLoadedOnce = true;
-        _isRefreshing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loadFailed = false;
+          _hasLoadedOnce = true;
+          _isRefreshing = false;
+        });
+      }
     } catch (e, stack) {
       debugPrint('[WellbeingScreen ERROR] $e\n$stack');
-      if (!mounted || token != _loadToken) return;
-      // H-15 / W-01: Set _loadFailed = true on catch
-      setState(() {
-        _loadFailed = true;
-        _hasLoadedOnce = true;
-        _isRefreshing = false;
-      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _hasLoadedOnce = true;
+          _isRefreshing = false;
+        });
+      }
     }
   }
 

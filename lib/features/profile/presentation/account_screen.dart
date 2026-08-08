@@ -1,5 +1,6 @@
 // lib/features/profile/presentation/account_screen.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ritmo/core/backend/auth_service.dart';
@@ -88,25 +89,27 @@ class _AccountScreenState extends State<AccountScreen> with WidgetsBindingObserv
     setState(() => _isLoading = false);
 
     if (res.isSuccess) {
-      OtpVerificationSheet.show(
-        context,
-        identifier: normalized,
-        onSuccess: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle_outline, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text('با موفقیت وارد حساب کاربری شدید.'),
-                ],
+      unawaited(
+        OtpVerificationSheet.show(
+          context,
+          identifier: normalized,
+          onSuccess: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle_outline, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('با موفقیت وارد حساب کاربری شدید.'),
+                  ],
+                ),
+                backgroundColor: const Color(0xff10B981),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              backgroundColor: const Color(0xff10B981),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-        },
+            );
+          },
+        ),
       );
     } else {
       setState(() => _errorMessage = res.errorMessage ?? AuthErrorCode.unknown.persianMessage);
@@ -147,27 +150,29 @@ class _AccountScreenState extends State<AccountScreen> with WidgetsBindingObserv
     setState(() => _isLoading = false);
 
     if (res.isSuccess && res.data != null) {
-      OtpVerificationSheet.show(
-        context,
-        identifier: email,
-        isEmail: true,
-        emailUserId: res.data,
-        onSuccess: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle_outline, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text('با موفقیت از طریق ایمیل وارد حساب کاربری شدید.'),
-                ],
+      unawaited(
+        OtpVerificationSheet.show(
+          context,
+          identifier: email,
+          isEmail: true,
+          emailUserId: res.data,
+          onSuccess: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle_outline, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('با موفقیت از طریق ایمیل وارد حساب کاربری شدید.'),
+                  ],
+                ),
+                backgroundColor: const Color(0xff10B981),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              backgroundColor: const Color(0xff10B981),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-        },
+            );
+          },
+        ),
       );
     } else {
       setState(() => _errorMessage = res.errorMessage ?? AuthErrorCode.unknown.persianMessage);

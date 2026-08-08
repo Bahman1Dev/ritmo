@@ -81,7 +81,7 @@ class _InboxScreenState extends State<InboxScreen> {
             TextButton(
               onPressed: () async {
                 await CentralInboxService.markAllRead();
-                _loadItems();
+                await _loadItems();
               },
               child: const Text(
                 'خواندن همه',

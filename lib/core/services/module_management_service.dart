@@ -226,13 +226,15 @@ class ModuleManagementService {
             await safeDeleteSettingsLike('assistant_%');
             break;
 
-          case 'module_konkur_enabled':
+          case 'module_study_enabled':
             await safeDelete('konkur_subjects');
             await safeDelete('konkur_topics');
             await safeDelete('konkur_mock_exams');
             await safeDelete('konkur_mock_exam_results');
             await safeDelete('konkur_study_sessions');
             await safeDelete('konkur_plan_items');
+            await safeDelete('study_active_session');
+            await safeDeleteSettingsLike('study_%');
             await safeDeleteSettingsLike('konkur_%');
             break;
 

@@ -117,6 +117,36 @@ class AgendaConflictDetector {
     return conflicts;
   }
 
+  List<AgendaConflict> checkCandidate({
+    required List<AgendaItem> existing,
+    required int startMinutes,
+    required int durationMinutes,
+    String? ignoreSourceId,
+  }) {
+    final candidateEnd = startMinutes + durationMinutes;
+    final conflicts = <AgendaConflict>[];
+
+    for (final item in existing) {
+      if (ignoreSourceId != null && item.sourceId == ignoreSourceId) continue;
+      if (!item.isTimed || item.isCompleted) continue;
+
+      final start = _parseStartMinutes(item.timeOfDay);
+      final dur = (item.durationMinutes ?? 0) <= 0 ? 15 : item.durationMinutes!;
+      final end = start + dur;
+
+      if (startMinutes < end && start < candidateEnd) {
+        conflicts.add(AgendaConflict(
+          itemA: item,
+          itemB: item,
+          type: ConflictType.overlap,
+          description: 'تداخل با ${item.title}',
+          isHardConflict: !DirectManipulationEligibility.isDraggable(item),
+        ));
+      }
+    }
+    return conflicts;
+  }
+
   static int _calculateOverlap(int sA, int eA, int sB, int eB) {
     final start = sA > sB ? sA : sB;
     final end = eA < eB ? eA : eB;

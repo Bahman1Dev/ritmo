@@ -231,7 +231,6 @@ class _JourneyScreenState extends State<JourneyScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     return AnimatedBuilder(
       animation: _controller,
@@ -386,12 +385,14 @@ class _JourneyScreenState extends State<JourneyScreen> {
                                   onPressed: () async {
                                     final entries = await RegistryService().query(RegistryQuery(), {});
                                     if (context.mounted) {
-                                      showSearch(
-                                        context: context,
-                                        delegate: CalendarSearchDelegate(
-                                          items: allItems,
-                                          registryEntries: entries,
-                                          onItemSelected: _openItemDetails,
+                                      unawaited(
+                                        showSearch(
+                                          context: context,
+                                          delegate: CalendarSearchDelegate(
+                                            items: allItems,
+                                            registryEntries: entries,
+                                            onItemSelected: _openItemDetails,
+                                          ),
                                         ),
                                       );
                                     }

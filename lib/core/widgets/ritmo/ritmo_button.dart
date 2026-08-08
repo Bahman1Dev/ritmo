@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/ux/ritmo_haptics.dart';
 
 class RitmoPrimaryButton extends StatelessWidget {
   const RitmoPrimaryButton({
@@ -29,7 +30,7 @@ class RitmoPrimaryButton extends StatelessWidget {
 
     final childWidget = Row(
       mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
-      main: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (isLoading) ...[
           SizedBox(
@@ -61,7 +62,7 @@ class RitmoPrimaryButton extends StatelessWidget {
     final buttonStyle = MaterialButton(
       onPressed: canPress
           ? () {
-              RitmoHapticsPolicy.tap();
+              RitmoHaptics.tap();
               onPressed?.call();
             }
           : null,
@@ -107,7 +108,7 @@ class RitmoSecondaryButton extends StatelessWidget {
 
     final childWidget = Row(
       mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
-      main: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (icon != null) ...[
           Icon(icon, size: 18, color: colors.primary),

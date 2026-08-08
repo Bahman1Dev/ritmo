@@ -37,6 +37,31 @@ class PlannerAdvancedSection extends StatelessWidget {
               color: isSelected ? Colors.white : colors.textSecondary,
             ),
           ),
+  Widget _buildCogSegment(String? value, String label, RitmoColors colors) {
+    final isSelected = controller.cognitiveLoad == value;
+    return GestureDetector(
+      onTap: () {
+        controller.cognitiveLoad = value;
+        controller.notifyListeners();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? colors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? colors.primary : colors.border.withValues(alpha: 0.15),
+            width: 1.2,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Vazirmatn',
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? Colors.white : colors.textSecondary,
+          ),
         ),
       ),
     );
@@ -126,6 +151,28 @@ class PlannerAdvancedSection extends StatelessWidget {
                       const SizedBox(width: 8),
                       _buildPrioritySegment(1.5, 'بالا', colors),
                     ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'نوع بار شناختی (برای مسیریابی زمان)',
+                    style: TextStyle(fontFamily: 'Vazirmatn', fontSize: 12, color: colors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildCogSegment(null, 'خالی', colors),
+                        const SizedBox(width: 6),
+                        _buildCogSegment('ANALYTICAL', 'تحلیلی', colors),
+                        const SizedBox(width: 6),
+                        _buildCogSegment('ADMINISTRATIVE', 'اداری', colors),
+                        const SizedBox(width: 6),
+                        _buildCogSegment('CREATIVE', 'خلاق', colors),
+                        const SizedBox(width: 6),
+                        _buildCogSegment('PHYSICAL', 'بدنی', colors),
+                      ],
+                    ),
                   ),
                 ],
               ),

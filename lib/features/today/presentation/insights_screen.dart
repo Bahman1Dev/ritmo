@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:ritmo/core/ai/ai_briefing_service.dart';
 import 'package:ritmo/core/ai/ai_gateway.dart';
 import 'package:ritmo/core/ai/ai_shared_rules.dart';
@@ -292,6 +294,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
             isMenstruating: _isFemale && _isCycleModuleEnabled,
           ),
         );
+        unawaited(_pushInsightsToInbox(_insights));
       }
     } catch (e) {
       debugPrint('Error loading insights: $e');

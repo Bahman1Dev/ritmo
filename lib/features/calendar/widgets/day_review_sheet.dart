@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
-
-import 'package:ritmo/core/theme/ritmo_colors.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
-import 'package:ritmo/core/ux/ritmo_toast.dart';
+import 'package:ritmo/core/ux/ritmo_snackbar.dart';
 import 'package:ritmo/features/calendar/presentation/logic/today_calendar_convergence_helper.dart';
 
 class DayReviewSheet extends StatelessWidget {
@@ -38,7 +37,7 @@ class DayReviewSheet extends StatelessWidget {
   }
 
   Future<void> _completeAll(BuildContext context) async {
-    RitmoHapticsPolicy.success();
+    RitmoHaptics.success();
     final helper = TodayCalendarConvergenceHelper();
     for (final item in uncompletedItems) {
       await helper.completeItem(item);
@@ -47,7 +46,7 @@ class DayReviewSheet extends StatelessWidget {
 
     if (context.mounted) {
       Navigator.of(context).pop();
-      RitmoToast.show(
+      RitmoSnackbar.success(
         context,
         'تمام برنامه‌های روز انجام شدند',
       );
@@ -62,7 +61,9 @@ class DayReviewSheet extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
-        maxHeight: MediaQuery.of(context).size.height * 0.75,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
+        ),
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -195,7 +196,7 @@ class DayReviewSheet extends StatelessWidget {
   }) {
     return InkWell(
       onTap: () {
-        RitmoHapticsPolicy.tap();
+        RitmoHaptics.tap();
         onTap();
       },
       borderRadius: BorderRadius.circular(8),

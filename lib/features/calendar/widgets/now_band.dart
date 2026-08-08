@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ritmo/core/theme/ritmo_colors.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 
 class NowBand extends StatelessWidget {
   const NowBand({

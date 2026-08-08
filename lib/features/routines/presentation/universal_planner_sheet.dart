@@ -238,12 +238,12 @@ class _UniversalPlannerSheetState extends State<UniversalPlannerSheet> {
     });
 
     _controller.setSportsScreenOpener(() {
-      Navigator.push(
-        context,
+      final nav = Navigator.of(context);
+      nav.push(
         MaterialPageRoute(builder: (context) => const SSHomeDashboardScreen()),
       ).then((_) {
         widget.onSaved?.call();
-        if (mounted) Navigator.of(context).pop();
+        if (mounted) nav.pop();
       });
     });
 

@@ -11,6 +11,8 @@ import 'package:ritmo/core/database/migration/migrations/migration_v69_calendar_
 import 'package:ritmo/core/database/migration/migrations/migration_v70_course_skip_reason.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v71_motivation_cognitive.dart';
 import 'package:ritmo/core/database/migration/migrations/migration_v72_cleanup.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v73_study_schema.dart';
+import 'package:ritmo/core/database/migration/migrations/migration_v74_psych_layer_settings.dart';
 
 class MigrationRunner {
   static final List<Migration> _migrations = [
@@ -85,6 +87,8 @@ class MigrationRunner {
     MigrationV70CourseSkipReason(), // Prompt 056: Add skipReason column to course_sessions
     MigrationV71MotivationCognitive(), // Prompt 059: Motivation diagnosis, cognitive load & identity habit columns
     MigrationV72Cleanup(), // Prompt 055: Drop deprecated zones, zone_schedules & worship_seasons tables
+    MigrationV73StudySchema(), // Prompt 056: Study module schema refactoring
+    MigrationV74PsychLayerSettings(), // Prompt 060: Psychology layer settings
   ];
 
   static Future<void> run(Database db, int oldVersion, int newVersion) async {

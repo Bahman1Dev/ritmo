@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
-import 'package:ritmo/core/theme/ritmo_colors.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/utils/persian_digits.dart';
 import 'package:ritmo/features/calendar/presentation/utils/calendar_tokens.dart';
 

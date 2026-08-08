@@ -525,9 +525,10 @@ class _AiCycleAssistantSheetState extends State<AiCycleAssistantSheet> {
 
   Future<void> _handleAction(ChatAction action) async {
     await HapticFeedback.mediumImpact();
+    if (!mounted) return;
     if (action.type == 'openPage') {
       final route = action.targetRoute ?? action.payload['targetRoute']?.toString();
-      if (route != null && route.isNotEmpty && context.mounted) {
+      if (route != null && route.isNotEmpty && mounted) {
         unawaited(Navigator.pushNamed(context, route));
       }
       return;
@@ -538,7 +539,7 @@ class _AiCycleAssistantSheetState extends State<AiCycleAssistantSheet> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => Directionality(
+      builder: (dialogCtx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape: RoundedRectangleBorder(
@@ -1022,9 +1023,9 @@ ${_shareData ? 'اطلاعات چرخه کاربر برای شخصی‌سازی 
                                       if (sess.id == _sessionId) {
                                         if (updated.isNotEmpty) {
                                           _sessionId = updated.first.id;
-                                          _loadMessages();
+                                          await _loadMessages();
                                         } else {
-                                          _loadActiveSession();
+                                          await _loadActiveSession();
                                         }
                                       }
                                     },

@@ -29,6 +29,7 @@ import 'package:ritmo/features/health/presentation/health_screen.dart';
 import 'package:ritmo/features/konkur/models/konkur_models.dart';
 import 'package:ritmo/features/konkur/presentation/konkur_screen.dart';
 import 'package:ritmo/features/konkur/presentation/widgets/konkur_study_sheet.dart';
+import 'package:ritmo/features/study/study_module_entry.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
 import 'package:ritmo/features/sleep/models/sleep_models.dart';
 import 'package:ritmo/features/sleep/presentation/widgets/sleep_log_sheet.dart';
@@ -267,8 +268,9 @@ class AssistantActionRegistry {
           targetScreen = const GoalsScreen();
         } else if (route == '/sports' || route == '/sport') {
           targetScreen = const SSHomeDashboardScreen();
-        } else if (route == '/konkur') {
-          targetScreen = const KonkurScreen();
+        } else if (route == '/konkur' || route == '/study') {
+          StudyModuleEntry.open(context);
+          return;
         } else if (route == '/health') {
           targetScreen = const HealthScreen();
         } else if (route == '/sleep') {

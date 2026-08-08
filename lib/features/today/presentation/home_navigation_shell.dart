@@ -238,8 +238,6 @@ class _HomeNavigationShellState extends State<HomeNavigationShell> {
   }
 
   Widget _buildCustomBottomBar() {
-    final colors = context.colors;
-
     return RitmoGlassSurface(
       blurSigma: 24,
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),

@@ -67,6 +67,7 @@ class PlannerController extends ChangeNotifier {
   Category selectedCategory = Category.personal;
   String itemType = 'ROUTINE'; // 'ROUTINE' | 'REMINDER' | 'TASK' | 'REFLECT' | 'EVENT'
   double priority = 1; // 0.5=Low, 1.0=Medium, 1.5=High, 2.0=Critical
+  String? cognitiveLoad; // 'ANALYTICAL' | 'ADMINISTRATIVE' | 'CREATIVE' | 'PHYSICAL'
   
   // Temporal data for medical category
   MedicationFormData? tempMedicationData;

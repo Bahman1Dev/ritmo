@@ -1,4 +1,5 @@
 import 'package:ritmo/core/database/database_helper.dart';
+import 'package:sqflite/sqflite.dart';
 
 enum SkipReasonType {
   tired,        // خسته بودم
@@ -38,14 +39,34 @@ class MotivationDiagnosisService {
     required String completionId,
     required String routineId,
     required SkipReasonType reason,
+    String? dateStr,
   }) async {
     final db = await DatabaseHelper.instance.database;
-    await db.update(
-      'routine_completions',
-      {'skipReason': reason.name.toUpperCase()},
-      where: 'id = ?',
-      whereArgs: [completionId],
-    );
+    await db.transaction((txn) async {
+      await txn.update(
+        'routine_completions',
+        {'skipReason': reason.name.toUpperCase()},
+        where: 'id = ?',
+        whereArgs: [completionId],
+      );
+
+      if (dateStr != null && dateStr.isNotEmpty) {
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        await txn.insert(
+          'skip_reasons',
+          {
+            'id': 'sr_${routineId}_$dateStr',
+            'itemId': routineId,
+            'domain': 'routine',
+            'dateStr': dateStr,
+            'reason': reason.name.toUpperCase(),
+            'note': null,
+            'createdAt': nowMs,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
   }
 
   /// Returns recommended corrective action for a given skip reason (§5 نگاشت علت به اقدام).

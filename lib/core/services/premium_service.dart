@@ -33,12 +33,12 @@ class PremiumService {
   String _store = 'none';
   bool _debugMockActive = false;
 
-  bool get isPremium => true; // Phase 10: Unlocked by default until real payment gateway integration
-  String get purchaseType => 'lifetime';
-  int get expiryDateMs => 0;
-  int get purchaseDateMs => 0;
-  String get store => 'all_access';
-  bool get isDebugMockActive => true;
+  bool get isPremium => _isPremium;
+  String get purchaseType => _purchaseType;
+  int get expiryDateMs => _expiryDateMs;
+  int get purchaseDateMs => _purchaseDateMs;
+  String get store => _store;
+  bool get isDebugMockActive => _debugMockActive;
 
 
   Future<void> init() async {

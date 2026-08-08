@@ -30,7 +30,7 @@ class KonkurRegistrySource implements RegistrySource {
     final db = await DatabaseHelper.instance.database;
     final rows = await db.query(
       'konkur_subjects',
-      orderBy: 'title ASC',
+      orderBy: 'name ASC',
       limit: limit,
       offset: offset,
     );
@@ -40,7 +40,7 @@ class KonkurRegistrySource implements RegistrySource {
     final entries = <RegistryEntry>[];
     for (final r in rows) {
       final id = r['id'] as String;
-      final title = r['title'] as String? ?? '';
+      final title = r['name'] as String? ?? '';
 
       // Count topics
       final topicsRes = await db.rawQuery(

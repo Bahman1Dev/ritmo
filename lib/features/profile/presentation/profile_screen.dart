@@ -780,58 +780,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSheetOption({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xff1C1F2E);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? const Color(0xff5B8AF5).withValues(alpha: 0.15)
-                : Colors.white.withValues(alpha: 0.03),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? const Color(0xff5B8AF5) : Colors.transparent,
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                    fontFamily: 'Vazirmatn',
-                  ),
-                ),
-              ),
-              if (isSelected)
-                const Icon(Icons.check_circle, color: Color(0xff5B8AF5), size: 18),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+
 
   void _showPersonalInfoSheet() {
     final nameEditController = TextEditingController(text: _userName);
@@ -2212,10 +2161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _updateThemeMode(ThemeMode mode) async {
-    await widget.themeRepository.updateThemeMode(mode);
-    setState(() {});
-  }
+
 
   void _showAppearanceSheet() {
     Navigator.push(

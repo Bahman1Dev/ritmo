@@ -103,7 +103,11 @@ class MotivationDiagnosisEngine
   void invalidate() {}
 
   @override
-  String fingerprint(MotivationDiagnosisInput input) => input.toString();
+  String fingerprint(MotivationDiagnosisInput input) {
+    final nowMs = (input.now ?? DateTime.fromMillisecondsSinceEpoch(0)).millisecondsSinceEpoch;
+    final quarter = nowMs ~/ (15 * 60 * 1000);
+    return '${input.routineId}|$quarter|${input.routineCompletions.length}';
+  }
 
   @override
   Future<MotivationDiagnosisOutput> calculate(MotivationDiagnosisInput input) async {

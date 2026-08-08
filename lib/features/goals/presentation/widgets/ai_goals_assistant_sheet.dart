@@ -131,7 +131,7 @@ class _AiGoalsAssistantSheetState extends State<AiGoalsAssistantSheet> {
 
     if (action.type == 'openPage') {
       final route = action.targetRoute ?? action.payload['targetRoute']?.toString();
-      if (route != null && route.isNotEmpty) {
+      if (route != null && route.isNotEmpty && mounted) {
         unawaited(Navigator.pushNamed(context, route));
       }
       return;
@@ -142,7 +142,7 @@ class _AiGoalsAssistantSheetState extends State<AiGoalsAssistantSheet> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => Directionality(
+      builder: (dialogCtx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape: RoundedRectangleBorder(

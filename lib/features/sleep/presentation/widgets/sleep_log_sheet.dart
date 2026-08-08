@@ -194,7 +194,7 @@ class _SleepLogSheetState extends State<SleepLogSheet> {
         },
       ));
 
-      HapticFeedback.mediumImpact();
+      await HapticFeedback.mediumImpact();
       widget.onSaved();
       
       if (mounted) {

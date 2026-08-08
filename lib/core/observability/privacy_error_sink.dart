@@ -29,7 +29,6 @@ class PrivacyErrorSink implements LogSink {
     return noPersian;
   }
 
-  @override
   void log(String level, String scope, String message, [Object? error, StackTrace? st]) {
     if (level == 'ERROR') {
       unawaited(logError(scope, message, error, st));

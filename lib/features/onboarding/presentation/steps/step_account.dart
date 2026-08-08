@@ -57,10 +57,12 @@ class _StepAccountState extends State<StepAccount> {
     setState(() => _isLoading = false);
 
     if (res.isSuccess) {
-      OtpVerificationSheet.show(
-        context,
-        identifier: normalized,
-        onSuccess: widget.onNext,
+      unawaited(
+        OtpVerificationSheet.show(
+          context,
+          identifier: normalized,
+          onSuccess: widget.onNext,
+        ),
       );
     } else {
       setState(() => _errorMessage = res.errorMessage);

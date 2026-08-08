@@ -83,7 +83,7 @@ class _MovementCustomKindSheetState extends State<MovementCustomKindSheet> {
       }
     }
 
-    await _doSave();
+    unawaited(_doSave());
   }
 
   Future<void> _doSave() async {
@@ -113,7 +113,7 @@ class _MovementCustomKindSheetState extends State<MovementCustomKindSheet> {
 
     try {
       final created = await MovementRepository.instance.createCustomKind(customKind);
-      unawaited(HapticFeedback.mediumImpact());
+      await HapticFeedback.mediumImpact();
       if (mounted) Navigator.of(context).pop(created);
     } catch (e) {
       if (mounted) {
@@ -283,24 +283,9 @@ class _MovementCustomKindSheetState extends State<MovementCustomKindSheet> {
                 const SizedBox(height: 8),
                 Column(
                   children: [
-                    RadioListTile<double>(
-                      title: const Text('سبک (نفسم بند نمی‌آید)', style: TextStyle(fontFamily: 'Vazirmatn')),
-                      value: 3.0,
-                      groupValue: _baseMet,
-                      onChanged: (v) => setState(() => _baseMet = v!),
-                    ),
-                    RadioListTile<double>(
-                      title: const Text('متوسط (نفس‌نفس می‌زنم)', style: TextStyle(fontFamily: 'Vazirmatn')),
-                      value: 6.0,
-                      groupValue: _baseMet,
-                      onChanged: (v) => setState(() => _baseMet = v!),
-                    ),
-                    RadioListTile<double>(
-                      title: const Text('شدید (نمی‌توانم صحبت کنم)', style: TextStyle(fontFamily: 'Vazirmatn')),
-                      value: 9.0,
-                      groupValue: _baseMet,
-                      onChanged: (v) => setState(() => _baseMet = v!),
-                    ),
+                    _buildMetOption(3.0, 'سبک (نفسم بند نمی‌آید)', colors),
+                    _buildMetOption(6.0, 'متوسط (نفس‌نفس می‌زنم)', colors),
+                    _buildMetOption(9.0, 'شدید (نمی‌توانم صحبت کنم)', colors),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -369,6 +354,47 @@ class _MovementCustomKindSheetState extends State<MovementCustomKindSheet> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetOption(double value, String label, RitmoColors colors) {
+    final isSelected = _baseMet == value;
+    return InkWell(
+      onTap: () => setState(() => _baseMet = value),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? colors.primary.withValues(alpha: 0.12) : colors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? colors.primary : colors.border.withValues(alpha: 0.5),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+              color: isSelected ? colors.primary : colors.textSecondary,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? colors.primary : colors.textPrimary,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

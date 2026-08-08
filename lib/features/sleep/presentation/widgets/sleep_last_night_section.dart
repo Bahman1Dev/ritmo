@@ -60,7 +60,7 @@ class _SleepLastNightSectionState extends State<SleepLastNightSection> {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      HapticFeedback.selectionClick();
+      await HapticFeedback.selectionClick();
       widget.onRefresh();
     } catch (e) {
       debugPrint('Error saving winddown setting: $e');

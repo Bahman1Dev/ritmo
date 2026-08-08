@@ -144,7 +144,7 @@ class _SleepTargetSheetState extends State<SleepTargetSheet> {
         },
       ));
 
-      HapticFeedback.mediumImpact();
+      await HapticFeedback.mediumImpact();
       widget.onSaved();
 
       if (mounted) {

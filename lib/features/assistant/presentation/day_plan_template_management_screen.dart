@@ -1,8 +1,7 @@
-// lib/features/assistant/presentation/day_plan_template_management_screen.dart
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/theme/ritmo_theme.dart';
+import 'package:ritmo/core/ux/ritmo_snackbar.dart';
 import 'package:ritmo/core/utils/ritmo_toast.dart';
 import 'package:ritmo/features/assistant/logic/day_plan_template_service.dart';
 import 'package:ritmo/features/assistant/models/day_plan_models.dart';
@@ -73,12 +72,14 @@ class _DayPlanTemplateManagementScreenState extends State<DayPlanTemplateManagem
                   await DayPlanTemplateService.instance.renameTemplate(template.id, newName);
                   if (ctx.mounted) {
                     Navigator.pop(ctx);
+                  }
+                  if (mounted) {
                     await _loadTemplates();
-                    RitmoToast.show(ctx, 'نام قالب تغییر یافت ✏️');
+                    RitmoSnackbar.success(context, 'نام قالب تغییر یافت ✏️');
                   }
                 } catch (e) {
-                  if (ctx.mounted) {
-                    RitmoToast.show(ctx, 'خطا در تغییر نام ❌');
+                  if (mounted) {
+                    RitmoSnackbar.error(context, 'خطا در تغییر نام ❌');
                   }
                 }
               },
@@ -114,12 +115,14 @@ class _DayPlanTemplateManagementScreenState extends State<DayPlanTemplateManagem
                   await DayPlanTemplateService.instance.deleteTemplate(template.id);
                   if (ctx.mounted) {
                     Navigator.pop(ctx);
+                  }
+                  if (mounted) {
                     await _loadTemplates();
-                    RitmoToast.show(ctx, 'قالب با موفقیت حذف شد 🗑️');
+                    RitmoSnackbar.success(context, 'قالب با موفقیت حذف شد 🗑️');
                   }
                 } catch (e) {
-                  if (ctx.mounted) {
-                    RitmoToast.show(ctx, 'خطا در حذف قالب ❌');
+                  if (mounted) {
+                    RitmoSnackbar.error(context, 'خطا در حذف قالب ❌');
                   }
                 }
               },

@@ -694,9 +694,9 @@ $_sportsContext
                                       if (sess.id == _sessionId) {
                                         if (updated.isNotEmpty) {
                                           _sessionId = updated.first.id;
-                                          unawaited(_loadMessages());
+                                          await _loadMessages();
                                         } else {
-                                          unawaited(_loadActiveSession());
+                                          await _loadActiveSession();
                                         }
                                       }
                                     },

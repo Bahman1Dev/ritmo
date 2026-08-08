@@ -28,7 +28,7 @@ class IdentityVoteService {
 
     final goals = await db.query(
       'goals',
-      where: "identityStatement IS NOT NULL AND identityStatement != '' AND isPrivate = 0",
+      where: "identityStatement IS NOT NULL AND identityStatement != ''",
     );
 
     final summaries = <IdentityVoteSummary>[];
@@ -38,12 +38,12 @@ class IdentityVoteService {
       final title = g['title'] as String? ?? '';
       final statement = g['identityStatement'] as String;
 
-      // Count completions linked to this goal or its steps
+      // Count completions linked to this goal or its steps using routine_actual_completions view
       final completions = await db.rawQuery('''
-        SELECT completionTime FROM routine_completions rc
+        SELECT rc.completionTime FROM routine_actual_completions rc
         JOIN routines r ON rc.routineId = r.id
         JOIN goal_steps gs ON gs.linkedRoutineId = r.id
-        WHERE gs.goalId = ? AND rc.resultType IN ('COMPLETED', 'DONE', 'PARTIAL')
+        WHERE gs.goalId = ? AND r.isArchived = 0
       ''', [goalId]);
 
       int weekVotes = 0;

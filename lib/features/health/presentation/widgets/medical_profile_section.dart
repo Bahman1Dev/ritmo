@@ -179,7 +179,7 @@ class _MedicalProfileSectionState extends State<MedicalProfileSection> {
       setState(() {
         _isEditing = false;
       });
-      _loadData();
+      await _loadData();
     } catch (e) {
       debugPrint('Error saving profile: $e');
     }

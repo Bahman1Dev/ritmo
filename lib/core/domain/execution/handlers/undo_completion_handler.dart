@@ -14,7 +14,7 @@ class UndoCompletionHandler
     CommandContext context,
     UndoCompletionCommand command,
   ) async {
-    final outcome = await CompletionGateway.instance.undo(command.undoToken);
+    await CompletionGateway.instance.undo(command.undoToken);
 
     return KernelMutationResult(
       domainEvents: [

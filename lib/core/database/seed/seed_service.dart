@@ -41,6 +41,16 @@ class SeedService {
       'longest_streak': '0',
       'last_success_date': '',
       'assistant_cloud_consent': 'false',
+      // Psychology layer settings (§3 T-A5)
+      'motivation_diagnosis_enabled': 'true',
+      'daily_budget_warning_enabled': 'true',
+      'wip_limit_enabled': 'true',
+      'wip_limit_count': '3',
+      'cognitive_routing_enabled': 'false',
+      'fresh_start_enabled': 'true',
+      'capture_inbox_enabled': 'true',
+      'mastery_pleasure_sampling_enabled': 'false',
+      'mastery_decay_enabled': 'true',
       // Module flags (default false)
       'module_religion_enabled': 'true',
       'prayer_city_id': 'TEHRAN_TEHRAN',

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:ritmo/core/theme/ritmo_colors.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
 import 'package:ritmo/features/calendar/presentation/journey_controller.dart';
 
@@ -39,7 +39,7 @@ class _EditScopeBarState extends State<EditScopeBar> {
   }
 
   void _selectScope(CalendarEditScope scope) {
-    RitmoHapticsPolicy.tap();
+    RitmoHaptics.tap();
     setState(() {
       _selectedScope = scope;
     });

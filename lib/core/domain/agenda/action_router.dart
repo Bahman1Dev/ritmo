@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/database/database_helper.dart';
 import 'package:ritmo/core/domain/agenda/action_feedback.dart';
@@ -176,7 +177,7 @@ class ActionRouter {
           }
         } else {
           if (context.mounted) {
-            Navigator.pushNamed(context, '/cycle');
+            unawaited(Navigator.pushNamed(context, '/cycle'));
           }
         }
         break;

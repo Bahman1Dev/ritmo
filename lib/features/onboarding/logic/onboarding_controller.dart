@@ -257,7 +257,6 @@ class OnboardingController extends ChangeNotifier {
             isFemale: gender == 'FEMALE',
             enableCycle: enableCycle,
             canUseCourses: canCourses,
-            canUseKonkur: canKonkur,
           );
 
           for (final entry in moduleStates.entries) {

@@ -39,6 +39,7 @@ import 'package:ritmo/features/health/presentation/health_screen.dart';
 import 'package:ritmo/features/inbox/logic/inbox_navigator.dart';
 import 'package:ritmo/features/inbox/presentation/inbox_screen.dart';
 import 'package:ritmo/features/konkur/presentation/konkur_screen.dart';
+import 'package:ritmo/features/study/study_module_entry.dart';
 import 'package:ritmo/features/premium/presentation/premium_upgrade_sheet.dart';
 import 'package:ritmo/features/profile/presentation/profile_screen.dart';
 import 'package:ritmo/features/routines/presentation/universal_planner_sheet.dart';
@@ -89,7 +90,6 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
   bool _isFirstLoad = true;
   AiBriefing? _briefing;
   bool _isBriefingLoading = false;
-  int _rhythmScore = 82;
   int _unreadInboxCount = 0;
   StreamSubscription? _inboxSubscription;
   List<InboxItem> _recentInboxItems = [];
@@ -100,6 +100,9 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
 
   // Specialized Dashboard state variables
   Map<String, String> _settingsMap = {};
+  int? _rhythmScore;
+  String? _currentEnergyTimeAgo;
+  List<String> _currentEnergyExplanation = [];
 
 
   DailyBehavior? _dailyBehavior;
@@ -119,8 +122,6 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
   double _currentEnergyPercent = 65;
   String _currentEnergyLabel = 'متوسط';
   String _currentEnergyDesc = 'مناسب برای مطالعه، پروژه‌ها و روتین‌ها';
-  String _currentEnergyTimeAgo = 'بر اساس پیش‌فرض';
-  List<String> _currentEnergyExplanation = [];
   String? _peakPerformanceWindow;
   String? _mostFatiguedWindow;
   String? _mostProductiveWeekday;
@@ -438,12 +439,10 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
           return;
         }
         screen = const CoursesScreen();
+      case 'study':
       case 'konkur':
-        if (!PremiumService.instance.can(PremiumFeature.konkurModule)) {
-          PremiumUpgradeSheet.show(context);
-          return;
-        }
-        screen = const KonkurScreen();
+        StudyModuleEntry.open(context).then((_) => _loadDashboardData());
+        return;
     }
     if (screen == null) return;
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen!))
@@ -477,128 +476,6 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
         ).then((_) => _loadDashboardData()));
       }
     }
-  }
-
-  Future<Map<String, String?>> _loadEnergyAnalyticsData() async {
-    return {
-      'peak': _peakPerformanceWindow,
-      'fatigued': _mostFatiguedWindow,
-      'productive': _mostProductiveWeekday,
-    };
-  }
-
-  Widget _buildSelectableLevelCard({
-    required String label,
-    required String value,
-    required bool isSelected,
-    required Color activeColor,
-    required VoidCallback onTap,
-    required RitmoColors colors,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? activeColor.withValues(alpha: 0.12) : colors.textPrimary.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? activeColor : colors.border.withValues(alpha: 0.5),
-              width: isSelected ? 1.5 : 0.8,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Vazirmatn',
-                fontSize: 11.5,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? colors.textPrimary : colors.textSecondary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFactorChip({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-    required RitmoColors colors,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? colors.primary.withValues(alpha: 0.12) : colors.textPrimary.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? colors.primary : colors.border.withValues(alpha: 0.5),
-            width: selected ? 1.2 : 0.8,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Vazirmatn',
-            fontSize: 11,
-            color: selected ? colors.primary : colors.textSecondary,
-            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAnalyticsItemRow({
-    required IconData icon,
-    required String title,
-    required String value,
-    required RitmoColors colors,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: colors.textPrimary.withValues(alpha: 0.02),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.border.withValues(alpha: 0.3), width: 0.8),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 14, color: colors.textSecondary),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontFamily: 'Vazirmatn',
-                  fontSize: 11.5,
-                  color: colors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: 'Vazirmatn',
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _completeTask(Routine routine, String resultType, [int? customDuration]) async {
@@ -1175,10 +1052,7 @@ class _NowDashboardScreenState extends State<NowDashboardScreen> with WidgetsBin
   }
 
 
-  void _showToast(String msg) {
-    if (!mounted) return;
-    RitmoToast.show(context, msg);
-  }
+
 
 
 

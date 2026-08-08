@@ -149,7 +149,7 @@ class ElasticTimeScale {
         height = (raw.end - raw.start) * pxPerMinExpanded;
       }
 
-      finalBand.add(ElasticBand(
+      finalBands.add(ElasticBand(
         startMinutes: raw.start,
         endMinutes: raw.end,
         isFolded: isFolded,

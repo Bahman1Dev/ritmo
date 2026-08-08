@@ -364,6 +364,7 @@ class _RitmoActionSheetState extends State<RitmoActionSheet> {
       AgendaDomain.konkur => CupertinoIcons.pencil,
       AgendaDomain.course => CupertinoIcons.book_circle,
       AgendaDomain.cycle => CupertinoIcons.drop,
+      AgendaDomain.event => CupertinoIcons.calendar,
     };
   }
 
@@ -379,6 +380,7 @@ class _RitmoActionSheetState extends State<RitmoActionSheet> {
       AgendaDomain.konkur => 'کنکور',
       AgendaDomain.cycle => 'چرخه',
       AgendaDomain.course => 'دوره',
+      AgendaDomain.event => 'رویداد',
     };
   }
 }

@@ -18,7 +18,7 @@ import 'package:ritmo/features/courses/presentation/courses_screen.dart';
 import 'package:ritmo/features/cycle/presentation/cycle_screen.dart';
 import 'package:ritmo/features/goals/presentation/goals_screen.dart';
 import 'package:ritmo/features/health/presentation/health_screen.dart';
-import 'package:ritmo/features/study/presentation/study_screen.dart';
+import 'package:ritmo/features/study/study_module_entry.dart';
 import 'package:ritmo/features/premium/presentation/premium_upgrade_sheet.dart';
 import 'package:ritmo/features/profile/presentation/profile_screen.dart';
 import 'package:ritmo/features/supplementary_sports/presentation/ss_home_dashboard_screen.dart';
@@ -982,15 +982,8 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
   }
 
   void _handleStudyTap(RitmoColors colors) {
-    if (!PremiumService.instance.can(PremiumFeature.konkurModule)) {
-      PremiumUpgradeSheet.show(context);
-      return;
-    }
     if (_konkurEnabled) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const StudyScreen()),
-      ).then((_) => _loadAllData());
+      StudyModuleEntry.open(context).then((_) => _loadAllData());
     } else {
       _showActivationSheet(
         title: 'فعال‌سازی ماژول درس و مطالعه',
@@ -999,10 +992,7 @@ class _SystemsHubScreenState extends State<SystemsHubScreen> with TickerProvider
         iconColor: const Color(0xff8B5CF6),
         settingKey: 'module_study_enabled',
         onActivated: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const StudyScreen()),
-          ).then((_) => _loadAllData());
+          StudyModuleEntry.open(context).then((_) => _loadAllData());
         },
         colors: colors,
       );

@@ -7,7 +7,7 @@ class OnboardingModuleMap {
   static const Map<FocusArea, List<String>> moduleSuggestions = {
     FocusArea.health: ['module_medicine_enabled'],
     FocusArea.sport: ['module_supplementary_sports_enabled'],
-    FocusArea.study: ['module_courses_enabled'],
+    FocusArea.study: ['module_study_enabled'],
     FocusArea.skill: ['module_courses_enabled'],
     FocusArea.work: ['module_goals_enabled'],
     FocusArea.income: ['module_goals_enabled'],
@@ -24,7 +24,6 @@ class OnboardingModuleMap {
     required bool isFemale,
     bool enableCycle = false,
     bool canUseCourses = true,
-    bool canUseKonkur = true,
   }) {
     final activeKeys = <String>{};
 
@@ -45,8 +44,6 @@ class OnboardingModuleMap {
     final result = <String, String>{};
     for (final key in ModuleManagementService.allModuleKeys) {
       if (key == 'module_courses_enabled' && !canUseCourses) {
-        result[key] = 'false';
-      } else if (key == 'module_konkur_enabled' && !canUseKonkur) {
         result[key] = 'false';
       } else {
         result[key] = activeKeys.contains(key) ? 'true' : 'false';

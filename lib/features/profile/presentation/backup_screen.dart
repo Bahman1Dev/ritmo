@@ -804,7 +804,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                               ),
                                             );
                                             if (confirm ?? false) {
-                                              _deleteBackup(meta);
+                                              await _deleteBackup(meta);
                                             }
                                           },
                                           tooltip: 'حذف',

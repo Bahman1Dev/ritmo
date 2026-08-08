@@ -8,6 +8,10 @@ import 'package:ritmo/core/analytics/life_balance_engine.dart';
 import 'package:ritmo/core/analytics/milestone_engine.dart';
 import 'package:ritmo/core/analytics/reflection_engine.dart';
 import 'package:ritmo/core/analytics/sleep_engine.dart';
+import 'package:ritmo/core/analytics/cognitive_routing_engine.dart';
+import 'package:ritmo/core/analytics/daily_budget_engine.dart';
+import 'package:ritmo/core/analytics/fresh_start_engine.dart';
+import 'package:ritmo/core/analytics/motivation_diagnosis_engine.dart';
 import 'package:ritmo/core/behavior/behavioral_intelligence_orchestrator.dart';
 import 'package:ritmo/core/domain/engines/cycle_engine.dart';
 import 'package:ritmo/core/domain/engines/engine_invalidation_tag.dart';
@@ -179,6 +183,27 @@ class EngineInvalidationPolicy {
       EngineInvalidationTag.reflection,
       EngineInvalidationTag.cycle,
       EngineInvalidationTag.zone,
+      EngineInvalidationTag.global,
+    },
+    MotivationDiagnosisEngine: {
+      EngineInvalidationTag.routineOutcome,
+      EngineInvalidationTag.routineStructure,
+      EngineInvalidationTag.global,
+    },
+    DailyBudgetEngine: {
+      EngineInvalidationTag.routineStructure,
+      EngineInvalidationTag.routineOutcome,
+      EngineInvalidationTag.sleep,
+      EngineInvalidationTag.global,
+    },
+    CognitiveRoutingEngine: {
+      EngineInvalidationTag.energy,
+      EngineInvalidationTag.routineStructure,
+      EngineInvalidationTag.global,
+    },
+    FreshStartEngine: {
+      EngineInvalidationTag.goals,
+      EngineInvalidationTag.routineOutcome,
       EngineInvalidationTag.global,
     },
   };

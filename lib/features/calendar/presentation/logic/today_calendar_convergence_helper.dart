@@ -6,6 +6,7 @@ import 'package:ritmo/core/domain/agenda/day_agenda_snapshot_builder.dart';
 import 'package:ritmo/core/domain/agenda/models/day_agenda_snapshot.dart';
 import 'package:ritmo/core/domain/engines/ritmo_event_bus.dart';
 import 'package:ritmo/core/domain/engines/ritmo_execution_kernel.dart';
+import 'package:ritmo/features/calendar/utils/calendar_defaults.dart';
 
 /// Central helper for convergence and cross-feature workflows between Calendar and Today Dashboard.
 class TodayCalendarConvergenceHelper {

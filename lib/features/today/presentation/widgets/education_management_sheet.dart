@@ -218,6 +218,14 @@ class _EducationManagementSheetState extends State<EducationManagementSheet> {
                       ),
                     ),
                   ),
+                  IconButton(
+                    icon: const Icon(CupertinoIcons.trash, size: 16, color: Colors.white38),
+                    onPressed: () => _deleteCourse(courseId),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: 'حذف دوره',
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     '${toPersianDigits(completedCount)} از ${toPersianDigits(total)} جلسه',
                     style: TextStyle(fontSize: 11, color: colors.textSecondary, fontFamily: 'Vazirmatn'),

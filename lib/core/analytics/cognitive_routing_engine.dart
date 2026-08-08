@@ -84,7 +84,9 @@ class CognitiveRoutingEngine
   void invalidate() {}
 
   @override
-  String fingerprint(CognitiveRoutingInput input) => input.toString();
+  String fingerprint(CognitiveRoutingInput input) {
+    return '${input.dateStr}|${input.routines.length}|${input.energyOutput.sampleCount}';
+  }
 
   @override
   Future<CognitiveRoutingOutput> calculate(CognitiveRoutingInput input) async {

@@ -59,7 +59,9 @@ class DailyBudgetEngine implements CachedEngine<DailyBudgetInput, DailyBudgetOut
   void invalidate() {}
 
   @override
-  String fingerprint(DailyBudgetInput input) => input.toString();
+  String fingerprint(DailyBudgetInput input) {
+    return '${input.dateStr}|${input.plannedItems.length}|${input.loggedSleepHours}|${input.worshipMinutes}';
+  }
 
   @override
   Future<DailyBudgetOutput> calculate(DailyBudgetInput input) async {

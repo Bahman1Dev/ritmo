@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_item.dart';
 import 'package:ritmo/core/domain/agenda/day_agenda_service.dart';
 import 'package:ritmo/core/domain/agenda/occurrence_override_repository.dart';
-import 'package:ritmo/core/theme/ritmo_colors.dart';
+import 'package:ritmo/core/theme/ritmo_theme.dart';
 import 'package:ritmo/core/ux/ritmo_haptics.dart';
-import 'package:ritmo/core/ux/ritmo_toast.dart';
+import 'package:ritmo/core/ux/ritmo_snackbar.dart';
 
 class PostponeRail extends StatelessWidget {
   const PostponeRail({
@@ -19,7 +19,7 @@ class PostponeRail extends StatelessWidget {
   static String _formatDate(DateTime dt) => dt.toIso8601String().substring(0, 10);
 
   Future<void> _postponeTo(BuildContext context, int addDays, String label) async {
-    RitmoHapticsPolicy.success();
+    RitmoHaptics.success();
     final sourceDate = DateTime.parse(item.dateStr);
     final targetDate = sourceDate.add(Duration(days: addDays));
     final targetDateStr = _formatDate(targetDate);
@@ -53,16 +53,9 @@ class PostponeRail extends StatelessWidget {
     DayAgendaService.instance.invalidateDate(targetDateStr);
 
     if (context.mounted) {
-      RitmoToast.show(
+      RitmoSnackbar.success(
         context,
         'رویداد به $label موکول شد',
-        onUndo: () async {
-          await repo.remove(item.domain.name, item.sourceId, item.dateStr);
-          await repo.remove(item.domain.name, item.sourceId, targetDateStr);
-          DayAgendaService.instance.invalidateDate(item.dateStr);
-          DayAgendaService.instance.invalidateDate(targetDateStr);
-          onPostponed();
-        },
       );
     }
 

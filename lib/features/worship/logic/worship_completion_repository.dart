@@ -63,7 +63,7 @@ class WorshipCompletionRepository {
   }
 
   /// Single batch query to load status for a range of dates [fromDateStr, toDateStr].
-  /// Returns Map<dateStr, Map<practiceId, WorshipDayStatus>>.
+  /// Returns `Map<dateStr, Map<practiceId, WorshipDayStatus>>`.
   Future<Map<String, Map<String, WorshipDayStatus>>> statusForRange(
     String fromDateStr,
     String toDateStr,

@@ -4,46 +4,65 @@ import 'package:ritmo/features/konkur/models/konkur_models.dart';
 class KonkurReviewPolicy {
   const KonkurReviewPolicy();
 
-  /// Computes the next review date based on session outcome and mastery level.
+  static const List<int> standardIntervals = [1, 3, 7, 16, 35, 90];
+  static const int masteryDecayThresholdDays = 60;
+
+  /// Computes the next review date based on session outcome, mastery level, and optional exam date.
   DateTime? computeNextReviewDate({
     required String? outcome,
     required MasteryLevel currentMastery,
     required DateTime from,
+    DateTime? examDate,
+    DateTime? lastStudiedAt,
   }) {
     final cleanFrom = DateTime(from.year, from.month, from.day);
 
+    // Final 30 days compression before exam
+    final isFinal30Days = examDate != null &&
+        examDate.difference(cleanFrom).inDays <= 30 &&
+        examDate.difference(cleanFrom).inDays > 0;
+
+    int intervalDays = 7;
+
     if (outcome == 'NEEDS_REVIEW') {
-      return cleanFrom.add(const Duration(days: 1));
-    }
-
-    if (outcome == 'NEEDS_PRACTICE') {
-      return cleanFrom.add(const Duration(days: 2));
-    }
-
-    if (outcome == 'PARTIAL') {
-      return cleanFrom.add(const Duration(days: 3));
-    }
-
-    if (outcome == 'UNDERSTOOD') {
+      intervalDays = 1;
+    } else if (outcome == 'NEEDS_PRACTICE') {
+      intervalDays = 3;
+    } else if (outcome == 'PARTIAL') {
+      intervalDays = 3;
+    } else if (outcome == 'UNDERSTOOD') {
       switch (currentMastery) {
         case MasteryLevel.notStarted:
         case MasteryLevel.learning:
-          return cleanFrom.add(const Duration(days: 3));
+          intervalDays = 3;
+          break;
         case MasteryLevel.needsReview:
-          return cleanFrom.add(const Duration(days: 7));
+          intervalDays = 7;
+          break;
         case MasteryLevel.mastered:
-          return cleanFrom.add(const Duration(days: 21));
+          intervalDays = 35;
+          break;
+      }
+    } else {
+      if (currentMastery == MasteryLevel.mastered) {
+        intervalDays = 35;
+      } else if (currentMastery == MasteryLevel.needsReview) {
+        intervalDays = 7;
+      } else {
+        return null;
       }
     }
 
-    // Default fallback interval for non-outcome updates
-    if (currentMastery == MasteryLevel.mastered) {
-      return cleanFrom.add(const Duration(days: 21));
-    } else if (currentMastery == MasteryLevel.needsReview) {
-      return cleanFrom.add(const Duration(days: 3));
+    if (isFinal30Days) {
+      intervalDays = intervalDays.clamp(1, 7);
     }
 
-    return null;
+    final nextReviewDate = cleanFrom.add(Duration(days: intervalDays));
+    if (examDate != null && nextReviewDate.isAfter(examDate)) {
+      return examDate;
+    }
+
+    return nextReviewDate;
   }
 
   /// Recommends mode (STUDY / TEST / REVIEW) based on completion targets and review due date.

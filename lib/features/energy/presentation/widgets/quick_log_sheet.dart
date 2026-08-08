@@ -102,7 +102,7 @@ class _QuickLogSheetState extends State<QuickLogSheet> {
         }
       });
 
-      HapticFeedback.mediumImpact();
+      await HapticFeedback.mediumImpact();
       RitmoEvents.notifyRoutineChanged();
       widget.onSaved();
 

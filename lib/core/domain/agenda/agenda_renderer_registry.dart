@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ritmo/core/domain/agenda/agenda_action_handler.dart';
@@ -321,20 +322,22 @@ class RoutineAgendaRenderer extends AgendaTileRenderer {
               final todayStr = DateTime.now().toIso8601String().substring(0, 10);
               final isToday = item.dateStr == todayStr;
               if (isToday) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ActiveTimerOverlay(
-                      routine: routine,
-                      completionMode: selectedMode,
-                      dateStr: item.dateStr,        // T4: item's date
-                      onCompleted: (outcome) {      // T6: only on confirmed completion
-                        Navigator.pop(context);
-                        onChanged();
-                      },
-                      onCancelled: () {             // T6: neutral — no success
-                        Navigator.pop(context);
-                      },
+                unawaited(
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ActiveTimerOverlay(
+                        routine: routine,
+                        completionMode: selectedMode,
+                        dateStr: item.dateStr,        // T4: item's date
+                        onCompleted: (outcome) {      // T6: only on confirmed completion
+                          Navigator.pop(context);
+                          onChanged();
+                        },
+                        onCancelled: () {             // T6: neutral — no success
+                          Navigator.pop(context);
+                        },
+                      ),
                     ),
                   ),
                 );
@@ -403,11 +406,13 @@ class RoutineAgendaRenderer extends AgendaTileRenderer {
               );
             },
             onViewDetails: () async {
-              RoutineDetailsSheet.show(
-                context: context,
-                routine: routine,
-                targetDate: item.dateStr,
-                onReverted: onChanged,
+              unawaited(
+                RoutineDetailsSheet.show(
+                  context: context,
+                  routine: routine,
+                  targetDate: item.dateStr,
+                  onReverted: onChanged,
+                ),
               );
             },
           );
